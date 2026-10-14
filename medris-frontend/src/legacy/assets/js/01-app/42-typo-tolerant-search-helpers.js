@@ -42,7 +42,7 @@ async function lvMergeFuzzyProducts(term,existing,kind){
   const idx=await lvFuzzyNameIndex("products");
   const hits=idx.map(x=>({id:x.id,s:lvFuzzyScore(term,x.name)})).filter(x=>x.s!=null&&!have.has(String(x.id))).sort((a,b)=>a.s-b.s).slice(0,12);
   if(!hits.length) return existing;
-  const r=await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor_id,vendor:vendors(business_name,lat,lng,avg_rating,review_count)").in("id",hits.map(h=>h.id)).eq("status","active");
+  const r=await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor_id,vendor:vendors(business_name,logo_url,lat,lng,avg_rating,review_count)").in("id",hits.map(h=>h.id)).eq("status","active");
   const byId_=new Map((r.data||[]).map(x=>[String(x.id),x]));
   const extra=hits.map(h=>byId_.get(String(h.id))).filter(Boolean).filter(p=>kind==="products"?!p.is_service:kind==="services"?!!p.is_service:true).map(p=>({...p,vendor_business_name:p.vendor?.business_name,vendor_lat:p.vendor?.lat,vendor_lng:p.vendor?.lng,vendor_avg_rating:p.vendor?.avg_rating,vendor_review_count:p.vendor?.review_count}));
   return [...existing,...extra];

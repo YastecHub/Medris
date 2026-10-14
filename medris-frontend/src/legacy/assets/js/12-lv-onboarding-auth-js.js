@@ -1415,7 +1415,8 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var v=window.lvViewCampus(),mine=window.lvMyCampusId(),r=v==="all"?null:rec(v);
     var chev='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
     var pin='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
-    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):pin)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
+    var allArt='<svg class="lvcb-allart" width="28" height="28" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="38" fill="#e9edff"/><path d="M40 16L12 30l28 14 28-14z" fill="#5f6ff0"/><path d="M23 38v12c0 5 8 9 17 9s17-4 17-9V38L40 45z" fill="#8f7cf5"/><path d="M66 32v17" stroke="#f6c453" stroke-width="3.5" stroke-linecap="round"/><circle cx="66" cy="52" r="4" fill="#f6c453"/></svg>';
+    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):allArt)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
       +'<div class="seg" role="tablist"><button type="button" role="tab" data-m="mine" aria-selected="'+(mine&&v===mine)+'" class="'+(mine&&v===mine?'on':'')+'">Mine</button><button type="button" role="tab" data-m="all" aria-selected="'+(v==="all")+'" class="'+(v==="all"?'on':'')+'">All</button></div>'
       +'<button type="button" class="lvcb-trophy" data-lb="1" aria-label="Vendor of the Week" title="Vendor of the Week"><i class="fa-solid fa-trophy"></i></button>';
   }
@@ -1538,13 +1539,67 @@ async function reqPhotosPicked(e){
   var room=4-(window.__reqPhotos||[]).length;
   for(var i=0;i<files.length&&i<room;i++){
     var f=files[i]; if(!/^image\//.test(f.type)) continue;
-    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); }
+    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); (window.__reqDraftPhotos=window.__reqDraftPhotos||[]).push(await reqFileToDataUrl(small)); }
     catch(_){ showToast("Couldn't read one of the photos.","error"); }
   }
   if(files.length>room) showToast("You can add up to 4 photos.","info");
+  reqPhotosPaint(); reqDraftSave();
+}
+function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); reqDraftSave(); }
+/* A phone can reload the page while its photo picker is open (the camera / gallery takes the memory), which used to wipe the
+   form and drop the person back on the home page. The form and the picked photos are kept for a few minutes so they survive. */
+var REQ_DRAFT_KEY="lv-req-draft";
+function reqDraftRead(){ try{ var d=JSON.parse(sessionStorage.getItem(REQ_DRAFT_KEY)||"null"); return d&&Date.now()-d.t<30*60*1000?d:null; }catch(_){ return null; } }
+function reqDraftClear(){ try{ sessionStorage.removeItem(REQ_DRAFT_KEY); }catch(_){} }
+function reqDraftSave(){
+  if(!document.getElementById("reqTitle")) return;
+  var g=function(id){ var el=document.getElementById(id); return el?el.value:""; };
+  var typeEl=document.querySelector('input[name="reqType"]:checked');
+  var d={t:Date.now(),title:g("reqTitle"),desc:g("reqDesc"),city:g("reqCity"),type:typeEl?typeEl.value:"buy",sector:g("reqSector"),category:g("reqCategory"),photos:window.__reqDraftPhotos||[]};
+  try{ sessionStorage.setItem(REQ_DRAFT_KEY,JSON.stringify(d)); }
+  catch(_){ d.photos=[]; try{ sessionStorage.setItem(REQ_DRAFT_KEY,JSON.stringify(d)); }catch(__){} }
+}
+function reqFileToDataUrl(file){ return new Promise(function(res){ var r=new FileReader(); r.onload=function(){ res(String(r.result||"")); }; r.onerror=function(){ res(""); }; r.readAsDataURL(file); }); }
+async function reqDraftRestore(){
+  var d=reqDraftRead(); if(!d||!document.getElementById("reqTitle")) return;
+  var set=function(id,v){ var el=document.getElementById(id); if(el&&v!=null&&v!=="") el.value=v; };
+  set("reqTitle",d.title); set("reqDesc",d.desc); set("reqCity",d.city);
+  var radio=document.querySelector('input[name="reqType"][value="'+(d.type==="rent"?"rent":"buy")+'"]'); if(radio) radio.checked=true;
+  try{ updateRequestFormFields(); }catch(_){}
+  if(d.sector){ set("reqSector",d.sector); var sec=(typeof sectors!=="undefined"?sectors:[]).find(function(x){return String(x.id)===String(d.sector);}); var sl=document.getElementById("reqSectorLabel"); if(sl&&sec) sl.textContent=sec.name; try{ updateRequestCategoryOptions(); }catch(_){} }
+  if(d.category){ set("reqCategory",d.category); var cat=(window.__categories||[]).find(function(x){return String(x.id)===String(d.category);}); var cl=document.getElementById("reqCategoryLabel"); if(cl&&cat) cl.textContent=cat.name; }
+  window.__reqDraftPhotos=[];
+  for(var i=0;i<(d.photos||[]).length&&i<4;i++){
+    try{ var blob=await (await fetch(d.photos[i])).blob(); var f=new File([blob],"photo-"+i+".jpg",{type:blob.type||"image/jpeg"}); window.__reqPhotos.push({file:f,url:URL.createObjectURL(f)}); window.__reqDraftPhotos.push(d.photos[i]); }catch(_){}
+  }
   reqPhotosPaint();
 }
-function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); }
+document.addEventListener("input",function(e){ var id=e.target&&e.target.id; if(id==="reqTitle"||id==="reqDesc"||id==="reqCity") reqDraftSave(); },true);
+document.addEventListener("change",function(e){ if(e.target&&e.target.name==="reqType") reqDraftSave(); },true);
+document.addEventListener("click",function(e){
+  if(e.target.closest&&e.target.closest("#reqPhotoBox .req-drop, #reqPhotoBox .req-ph.add")) reqDraftSave();
+},true);
+/* A phone can reload the whole page while its photo picker is open. Remember where the person was when any file picker
+   opens; if the page comes back reloaded (the picker never reports back), open that screen again instead of the home page. */
+(function(){
+  var KEY="lv-picker-resume";
+  document.addEventListener("click",function(e){
+    var t=e.target; if(!t||t.tagName!=="INPUT"||t.type!=="file") return;
+    try{ sessionStorage.setItem(KEY,JSON.stringify({t:Date.now(),view:typeof currentView!=="undefined"?currentView:"",params:typeof currentViewParams!=="undefined"?currentViewParams:{}})); }catch(_){}
+  },true);
+  /* the page survived the picker (it got focus back and is still here): nothing to resume */
+  window.addEventListener("focus",function(){ setTimeout(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} },8000); });
+  var r=null; try{ r=JSON.parse(sessionStorage.getItem(KEY)||"null"); }catch(_){}
+  if(!r||!r.view||Date.now()-r.t>3*60*1000) return;
+  var tries=0, timer=setInterval(function(){
+    tries++;
+    if(tries>60){ clearInterval(timer); return; }
+    if(typeof session==="undefined"||!session||typeof navigate!=="function"||typeof currentView==="undefined"||!currentView) return;
+    clearInterval(timer);
+    try{ sessionStorage.removeItem(KEY); }catch(_){}
+    if(currentView!==r.view) navigate(r.view,r.params||{},false);
+  },250);
+})();
 function reqPhotosHtml(photos){
   var l=Array.isArray(photos)?photos.filter(Boolean):[]; if(!l.length) return "";
   window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(l)-1;
@@ -2108,7 +2163,7 @@ async function setVendorRequestPref(v){
         var by={}; all.forEach(function(v){ var k=v.campus_id&&v.campus_id!=="none"?v.campus_id:"__none"; (by[k]=by[k]||[]).push(v); });
         ADM={all:all,by:by,mode:"review"};
         var total=all.length,set=all.length-(by.__none||[]).length,ver=all.filter(function(v){return v.student_verified;}).length,pend=all.filter(function(v){return v.svs==="pending";}).length;
-        host.innerHTML='<div id="acSubs"></div><div id="acTop"><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div>'
+        host.innerHTML='<div id="acSubs"></div><div id="acTop"><details class="ac-drawer"><summary><span class="ac-sum-t">Overview</span><span class="ac-sum-v"><b>'+total+'</b> vendors<i>·</i><b>'+(by.__none||[]).length+'</b> no campus<i>·</i><b>'+pend+'</b> to review</span><span class="ac-sum-chev" aria-hidden="true"></span></summary><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div></details>'
           +'<div class="ac-tools"><input type="search" placeholder="Search a vendor or campus…"><button type="button" class="ac-chip on" data-m="review">To review</button><button type="button" class="ac-chip" data-m="verified">Verified</button><button type="button" class="ac-chip" data-m="unverified">Unverified</button><button type="button" class="ac-chip" data-m="all">By campus</button></div></div><div id="acList"></div>';
         paintList(host); loadSubs(host);
         host.addEventListener("input",function(e){ if(e.target.matches("input")) paintList(host); });
@@ -2210,3 +2265,25 @@ document.addEventListener("click",function(e){
   var sel=document.getElementById("loginRole"); if(sel) sel.value=b.dataset.r;
   b.parentNode.querySelectorAll("button").forEach(function(x){ var on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-checked",String(on)); });
 });
+
+
+/* The bell next to "Following" shows the chosen notification mode: All = blue bell, Most relevant = star, Off = bell with a slash. */
+(function(){
+  var ICON={all:"fa-solid fa-bell",relevant:"fa-solid fa-star",off:"fa-regular fa-bell-slash"};
+  var Q=0;
+  function paint(){
+    Q=0;
+    document.querySelectorAll(".storefront-follow-wrap").forEach(function(w){
+      var bell=w.querySelector(".follow-settings-btn"); if(!bell) return;
+      var vid=w.getAttribute("data-follow-vendor-id")||"";
+      var menu=w.querySelector(".follow-menu")||(vid&&document.querySelector('.follow-menu[data-follow-sheet-vendor-id="'+CSS.escape(vid)+'"]'));
+      var row=menu&&menu.querySelector('.follow-mode-row[aria-pressed="true"]');
+      var mode=(row&&row.getAttribute("data-notify-mode"))||"all";
+      bell.setAttribute("data-mode",mode);
+      var i=bell.querySelector("i"); if(i&&i.className!==ICON[mode]) i.className=ICON[mode];
+    });
+  }
+  function sched(){ if(!Q) Q=requestAnimationFrame(paint); }
+  try{ new MutationObserver(sched).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["aria-pressed","disabled"]}); }catch(_){}
+  sched();
+})();

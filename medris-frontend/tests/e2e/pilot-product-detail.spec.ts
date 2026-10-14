@@ -238,7 +238,7 @@ test.describe("Product page: React matches legacy", () => {
       await settle(page, 3);
       await expect(page.locator("#buyError")).not.toHaveClass(/hidden/);
 
-      await page.locator(".product-comments-toggle").click();
+      await page.locator('.product-detail-top-actions button[aria-label="Open comments"]').click();
       await settle(page, 3);
       await expect(page.locator("#productCommentsPanel")).toBeAttached();
     });

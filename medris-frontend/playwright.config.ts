@@ -6,7 +6,7 @@ import { defineConfig } from "@playwright/test";
 // test could not reach the live Supabase project. Every network request the page makes is
 // answered by tests/e2e/support/network.ts; anything it does not recognise is blocked and
 // reported, never passed through.
-const PORT = 4180;
+const PORT = Number(process.env.E2E_PORT ?? 4180);
 const FIXTURE_ENV = {
   VITE_SUPABASE_URL: "https://e2e-fixture.supabase.co",
   VITE_SUPABASE_ANON_KEY: "e2e-fixture-anon-key",

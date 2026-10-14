@@ -376,7 +376,7 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
           </button>
           <button type="button" className="product-storefront-share-btn lv-top-comment-btn" onClick={() => call("lvOpenProductComments", product.id)} title="Comments" aria-label="Open comments">
             <span className="lv-cbubble">
-              <i className="fa-regular fa-comment"></i>
+              <i className="fa-solid fa-comment-dots"></i>
               <b className="lv-ccount" data-product-id={product.id}>
                 {String(commentCount)}
               </b>

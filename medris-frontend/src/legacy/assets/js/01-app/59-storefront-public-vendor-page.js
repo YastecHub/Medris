@@ -233,8 +233,8 @@ function storefrontFollowNotificationMode(st) {
   if (String(x.mute_mode || '') === 'always' && vals.every(v => v === false)) return 'off';
   if (vals.every(v => v === true)) return 'all';
   if (x.notify_new_listing !== false && x.notify_new_service !== false && x.notify_new_package !== false && x.notify_new_variety === false && x.notify_price_change === false && x.notify_discount === false) return 'relevant';
-  // New follows/defaults without an explicit preference use LevroMart's recommended mode.
-  if (vals.every(v => v == null)) return 'relevant';
+  // New follows/defaults without an explicit preference get everything ("All").
+  if (vals.every(v => v == null)) return 'all';
   return 'relevant';
 }
 function storefrontFollowWrapInnerHtml(v, followState) {
