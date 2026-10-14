@@ -180,6 +180,40 @@ test("Create account: the Google button and campus field follow dark mode", asyn
   expect(await lightness(".lv-campus-btn")).toBeLessThan(80);
 });
 
+test.describe("Round 2 feedback", () => {
+  test("a tick is drawn only for a vendor marked verified", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const shown = await page.evaluate(() => {
+      document.body.insertAdjacentHTML("beforeend", '<i id="t1" data-vt="x" class="fa-solid fa-circle-check sr-verified"></i><i id="t2" data-vt="y" class="fa-solid fa-circle-check sr-verified lv-on"></i>');
+      return ["t1", "t2"].map((id) => getComputedStyle(document.getElementById(id)!).display);
+    });
+    expect(shown[0]).toBe("none");
+    expect(shown[1]).not.toBe("none");
+  });
+
+  test("the product picture box is exactly as tall as the picture (no grey strip below it)", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS } }, "/?react=off");
+    await page.route(/images\.example\.test/, (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="720" viewBox="0 0 600 720"><rect width="600" height="720" fill="#e8a33d"/></svg>' }));
+    await goTo(page, "productDetail", { productId: PD_FULL.id });
+    await settle(page, 14);
+    await page.waitForFunction(() => { const i = document.querySelector<HTMLImageElement>(".product-detail-card .product-gallery-main img"); return !!i && i.complete && i.naturalHeight > 0; }, undefined, { timeout: 8000 }).catch(() => undefined);
+    await settle(page, 4);
+    const m = await page.evaluate(() => {
+      const box = document.querySelector(".product-detail-card .product-gallery-main")!.getBoundingClientRect();
+      const img = document.querySelector(".product-detail-card .product-gallery-main img")!.getBoundingClientRect();
+      return { box: box.height, img: img.height };
+    });
+    expect(Math.abs(m.box - m.img)).toBeLessThan(2);
+  });
+
+  test("dashboard row icons are solid text colour, not faded", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "dark", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    await goTo(page, "profile").catch(() => undefined);
+    const color = await page.evaluate(() => { document.getElementById("app")!.insertAdjacentHTML("beforeend", '<span id="zi" class="lv-row-ico"><i class="fa-solid fa-heart"></i></span>'); return getComputedStyle(document.getElementById("zi")!).color; });
+    expect(color).toBe("rgb(255, 255, 255)");
+  });
+});
+
 test.describe("Temporary WhatsApp contact", () => {
   const open = async (page: Page, vendorRow: Record<string, unknown>) => {
     await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS, vendors: [vendorRow] } }, "/?react=off");
