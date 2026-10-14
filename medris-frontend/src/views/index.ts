@@ -21,5 +21,6 @@ export const VIEW_LOADERS: Readonly<Record<string, () => Promise<ViewModule>>> =
   notifications: () => import("./notifications/NotificationsPage"),
   vendors: () => import("./vendors/VendorsPage"),
   storefront: () => import("./storefront/StorefrontPage"),
+  productDetail: () => import("./product-detail/ProductDetailPage"),
   search: () => import("./search/SearchPage"),
 };

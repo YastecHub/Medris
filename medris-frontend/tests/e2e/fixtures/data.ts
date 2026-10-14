@@ -357,3 +357,90 @@ export const SHOP_RPCS = {
   get_vendor_stats: [{ review_count: 2, avg_rating: 4 }],
   get_vendor_follow_state: [{ following: false, follower_count: 1234 }],
 };
+
+// ---- A product's page (used by pilot-product-detail.spec.ts; NOT part of the defaults) ----
+
+export const PD_VENDOR = {
+  id: "00000000-0000-4000-8000-0000000007b1",
+  user_id: "00000000-0000-4000-8000-0000000007b2",
+  business_name: "Ada's Kitchen",
+  previous_business_name: "Ada Foods",
+  name_changed_at: "2026-02-25T09:00:00.000Z", // inside the 14-day "formerly" window of the frozen clock
+  logo_url: "https://images.example.test/shop-logo.png",
+  city: "Lagos",
+  address: "12 Fixture Road",
+  phone: null,
+  whatsapp_number: null,
+  whatsapp_visible: false,
+  avg_rating: 4.3,
+  review_count: 7,
+  verification_status: "verified",
+  is_active: true,
+  lat: 6.5244,
+  lng: 3.3792,
+  delivery_fee: 500,
+  delivery_fee_mode: "distance",
+  delivery_fee_per_km: 120,
+};
+
+const pdProduct = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000009${String(n).padStart(2, "0")}`,
+  vendor_id: PD_VENDOR.id,
+  name: `Product ${n}`,
+  description: `Product ${n} is an invented listing.`,
+  photos: ["https://images.example.test/p1.png"],
+  listing_type: "sale",
+  sale_price: 5000,
+  discount_price: null,
+  rental_rate: null,
+  rental_rate_unit: null,
+  is_service: false,
+  billing_model: "monthly",
+  service_price_unit: null,
+  condition: "new",
+  quantity_available: 8,
+  quantity_total: 10,
+  track_quantity: true,
+  payment_timing: "pay_before",
+  payment_deposit_percent: 20,
+  deposit_amount: null,
+  delivery_fee: 500,
+  delivery_fee_mode: "flat",
+  delivery_fee_per_km: null,
+  view_count: 42,
+  status: "active",
+  category: { name: "Snacks" },
+  vendor: PD_VENDOR,
+  created_at: `2026-02-0${n}T09:00:00.000Z`,
+  ...over,
+});
+
+export const PD_FULL = pdProduct(1, {
+  name: "Jollof Party Pack",
+  description: "Smoky party jollof for ten people, with chicken, plantain and coleslaw. ".repeat(4).trim() + " [variants: hidden]",
+  photos: ["https://images.example.test/p1.png", "https://images.example.test/p2.png", "https://images.example.test/p3.png"],
+  listing_type: "both",
+  sale_price: 25000,
+  discount_price: 20000,
+  rental_rate: 3000,
+  rental_rate_unit: "day",
+  deposit_amount: 5000,
+  payment_timing: "pay_after",
+  payment_deposit_percent: 30,
+  delivery_fee_mode: "distance", // asks for the buyer's location (the old page then switches to pickup when it is refused)
+  delivery_fee_per_km: 120,
+});
+export const PD_VARIANTS = [
+  { id: "00000000-0000-4000-8000-0000000009c2", product_id: PD_FULL.id, name: "Large tray", description: "Feeds fifteen.", photo_url: null, sale_price: 32000, discount_price: null, rental_rate: null, quantity_available: 3, sort_order: 2, created_at: "2026-02-01T09:00:00.000Z" },
+  { id: "00000000-0000-4000-8000-0000000009c1", product_id: PD_FULL.id, name: "Regular tray", description: null, photo_url: null, sale_price: 25000, discount_price: 20000, rental_rate: null, quantity_available: null, sort_order: 1, created_at: "2026-02-01T09:00:00.000Z" },
+  { id: "00000000-0000-4000-8000-0000000009c3", product_id: PD_FULL.id, name: "Photo variety", description: "With a photo.", photo_url: "https://images.example.test/p4.png", sale_price: 27000, discount_price: null, rental_rate: null, quantity_available: 0, sort_order: 3, created_at: "2026-02-01T09:00:00.000Z" },
+];
+export const PD_SIMPLE = pdProduct(2, { name: "Chin Chin Tub", description: "Crunchy.", sale_price: 1800, condition: null, track_quantity: false });
+export const PD_RENT = pdProduct(3, { name: "Party Tent", listing_type: "rent", sale_price: null, rental_rate: 15000, rental_rate_unit: "day", photos: [], condition: "like-new", vendor: { ...PD_VENDOR, logo_url: null, previous_business_name: null } });
+export const PD_SERVICE = pdProduct(4, { name: "Cake Decorating", is_service: true, sale_price: 8000, service_price_unit: "hour", photos: ["https://images.example.test/s1.png"], condition: null });
+export const PD_COMMISSION = pdProduct(5, { name: "Logo Design", is_service: true, billing_model: "commission", sale_price: null, photos: [] });
+export const PD_PAUSED = pdProduct(6, { name: "Paused Listing", status: "paused" });
+export const PD_HOSTILE = pdProduct(7, { name: '<i>Fancy</i> & "Quoted" Cake', description: '<b>bold</b> "quotes"', vendor: { ...PD_VENDOR, business_name: '<u>Shop</u> & "Co"', previous_business_name: null, logo_url: null } });
+// A listing in a category that has a "You may also need" shelf (the old table of related equipment).
+export const PD_RELATED = pdProduct(8, { name: "Blood Pressure Monitor", sale_price: 15000, category: { name: "Blood Pressure Machine" } });
+export const PD_ROWS = [PD_FULL, PD_SIMPLE, PD_RENT, PD_SERVICE, PD_COMMISSION, PD_PAUSED, PD_HOSTILE, PD_RELATED];
