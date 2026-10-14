@@ -29,7 +29,7 @@ request that says why the look changed.
 
 ## What the tests hold constant
 
-Frozen clock (2 March 2026), reduced motion, no animations, service worker off, first-visit
+Inter is served from bundled copies (`fixtures/fonts/`), so text is drawn the same on every machine. Frozen clock (2 March 2026), reduced motion, no animations, service worker off, first-visit
 welcome screens / app tour / permission reminders switched off, notifications
-reported as granted. The map library (Leaflet), web fonts and the icon font are not loaded, so the
+reported as granted. The map library (Leaflet) and the icon font are not loaded, so the
 pictures show text without icons; this is the same for the legacy and the React version of a screen.
