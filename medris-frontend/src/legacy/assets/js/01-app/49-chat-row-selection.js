@@ -45,7 +45,7 @@ function filterMsgList() {
   if (msgListFilter === "all") shown = shown.filter((c) => !archivedIds.has(c.conversation_id));
   if (q) shown = shown.filter((c) => (c.other_name || "").toLowerCase().includes(q) || (c.last_message || "").toLowerCase().includes(q));
   shown = [...shown].sort((a,b) => Number(isConversationPinned(b)) - Number(isConversationPinned(a)));
-  wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state">${q ? "No conversations match that search." : emptyReason}</div>`;
+  wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state lv-empty-state">${typeof lvIllus === "function" ? `<span class="lv-empty-illus">${lvIllus(q ? "search" : "chat", 76)}</span>` : ""}<strong>${q ? "No conversations match that search." : emptyReason}</strong></div>`;
 }
 
 // Refresh the cached conversation list without blocking navigation.
