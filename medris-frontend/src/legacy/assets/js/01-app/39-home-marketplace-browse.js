@@ -262,7 +262,7 @@ async function renderHome() {
   const scopedTopVendors = topVendors;
   if (scopedTopVendors && scopedTopVendors.length) {
     const shuffledTopVendors = deterministicHourlyShuffle(scopedTopVendors,"top-rated-vendors");
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map((x) => vendorPageCardHtml(x, true)).join("")}</div>`;
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-gem'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map((x) => vendorPageCardHtml(x, true)).join("")}</div>`;
   }
 
   if (recommendedPackages.length) {
@@ -270,8 +270,8 @@ async function renderHome() {
   }
 
   if (typeof lvHomeBand === "function") html += lvHomeBand();
-  html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
-  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-table-cells-large"></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
+  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-bag-shopping"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-bell-concierge"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-gift"></i> Packages</button></div>`;
   html += `<div class="browse-filter-toolbar">
     <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()">${window.LV_FILTER_SVG}<i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button>
     <input type="search" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search products, packages, or services" />

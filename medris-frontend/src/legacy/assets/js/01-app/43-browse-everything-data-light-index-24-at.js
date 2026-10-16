@@ -274,9 +274,12 @@ function lvInitials(name){
   if(!w.length) return "?";
   return ((w[0][0]||"")+(w.length>1?(w[1][0]||""):(w[0][1]||""))).toUpperCase();
 }
-function lvInitialsTileHtml(name){
+function lvInitialsTileHtml(name, isService){
   let h=0; const n=String(name||"Levromart"); for(let i=0;i<n.length;i++) h=(h*31+n.charCodeAt(i))%360;
-  return `<span class="img-initials" style="--ih:${h}" aria-label="${esc(n)}">${esc(lvInitials(n))}</span>`;
+  const ini=lvInitials(n);
+  // A service without a photo (or a name to take letters from) gets an embossed service glyph instead of a bare letter or "?".
+  if(isService||ini==="?") return `<span class="img-initials img-embossed" style="--ih:${h}" aria-label="${esc(n)}"><i class="fa-solid ${isService?"fa-bell-concierge":"fa-store"}" aria-hidden="true"></i></span>`;
+  return `<span class="img-initials" style="--ih:${h}" aria-label="${esc(n)}">${esc(ini)}</span>`;
 }
 function productCardHtml(p) {
   const img = p.photos?.[0];
@@ -286,7 +289,7 @@ function productCardHtml(p) {
   const ownListing = isOwnVendorId(p.vendor?.id);
   const canQuickAdd = !ownListing && !p.is_service && (p.listing_type === "sale" || p.listing_type === "both") && profile?.role !== "admin";
   const actionHtml = p.is_service
-    ? `<span class="card-service-btn" title="Service listing" aria-label="Service listing"><i class="fa-solid fa-hand-holding-heart"></i></span>`
+    ? `<span class="card-service-btn" title="Service listing" aria-label="Service listing"><i class="fa-solid fa-bell-concierge"></i></span>`
     : canQuickAdd
       ? `<button type="button" class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>`
       : ownListing
@@ -314,7 +317,9 @@ function productCardHtml(p) {
   // A product with no photo of its own falls back to the vendor's logo
   // filling the whole image slot, rather than a bare "No image" icon --
   // every card ends up with an actual picture in it.
-  const noImageFallback = p.vendor?.logo_url
+  const noImageFallback = p.is_service
+    ? lvInitialsTileHtml(p.vendor?.business_name || p.name, true)
+    : p.vendor?.logo_url
     ? `<img src="${esc(p.vendor.logo_url)}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false" onerror="this.outerHTML=lvInitialsTileHtml(this.alt)">`
     : lvInitialsTileHtml(p.vendor?.business_name || p.name);
   // "Buy price" + the flat delivery fee, added up for you, so the number on
