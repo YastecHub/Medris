@@ -855,6 +855,7 @@ function hideLeviFromPanel() {
           <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left<span id="lbScope"></span></span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
+        <div class="lb-hero-people" aria-hidden="true"><img src="/lb/person-a.webp" alt="" width="52" height="52" decoding="async"><img src="/lb/person-b.webp" alt="" width="52" height="52" decoding="async"></div>
       </div>
       <div class="lb-scope-seg" id="lbScopeSeg" role="tablist" aria-label="Campus"></div>
       <div class="lb-tabs" role="tablist">${tabsNow().map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>

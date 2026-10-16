@@ -1907,3 +1907,9 @@ html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in 
 .vmp-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vmp-card-name{overflow:visible!important;text-overflow:clip!important}
 @media (min-width:900px){html body #bottomNav::before{order:-2}}
+
+/* Vendor leaderboard: two friendly faces in the hero (decorative) */
+.lb-hero-people{position:absolute;right:.8rem;top:.5rem;display:flex;pointer-events:none;z-index:1}
+.lb-hero-people img{width:3.1rem;height:3.1rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 6px 14px rgba(20,10,80,.35)}
+.lb-hero-people img+img{margin-left:-.9rem;margin-top:.3rem}
+.lb-hero-top{padding-right:5.4rem}
