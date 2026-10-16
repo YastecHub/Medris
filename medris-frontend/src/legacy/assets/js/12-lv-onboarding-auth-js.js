@@ -315,7 +315,7 @@
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name"><span class="lv-svr-nm">'+ee(v.business_name||"Vendor")+'</span><i data-vt="'+ee(v.id)+'" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor" title="Verified vendor"></i></span></button>';
   }
   // remember vendors opened from the search page
   function hookNav(){
@@ -554,7 +554,7 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(nm)+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name"><span class="lv-svr-nm">'+ee(nm)+'</span><i data-vt="'+ee(v.id)+'" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor" title="Verified vendor"></i></span></button>';
   }
   function loadPool(){
     if(pool&&Date.now()-poolAt<300000) return Promise.resolve(pool);
@@ -1100,22 +1100,26 @@ document.addEventListener("click",function(e){
     var go=function(v){ if(v&&v.id) goStore(v.id); };
     if(CMV.has(uid)) go(CMV.get(uid)); else vendorOf(uid).then(go);
   };
+  // One comment, laid out like TikTok: avatar, name, the text, then time + Reply underneath; the heart and its count sit on the right.
+  var HEART='<svg class="lv-heart" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 20.6s-7.5-4.5-9.3-9.2C1.5 8.2 3.4 4.7 6.9 4.7c2 0 3.5 1 5.1 3 1.6-2 3.1-3 5.1-3 3.5 0 5.4 3.5 4.2 6.7-1.8 4.7-9.3 9.2-9.3 9.2z"/></svg>';
   window.lvCommentRowHtml=function(c,lm,ml,d,kind){
     var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");
     var liked=ml&&ml.has(id),n=Number((lm&&lm.get(id))||0);
     var nm=c.author_name||"Levromart user";
-    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:2.4rem;height:2.4rem;object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,"2.4rem","product-comment-avatar",nm,c.user_id||nm);
+    var sz=d?"1.9rem":"2.4rem";
+    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:'+sz+';height:'+sz+';object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,sz,"product-comment-avatar",nm,c.user_id||nm);
     var edited=c.updated_at&&new Date(c.updated_at)-new Date(c.created_at)>3000?'<span class="muted lv-edited">· edited</span>':"";
     var body=window.lvMentionHtml?window.lvMentionHtml(c.content,c.author_name):esc(c.content);
     var lf=k==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=k==="package"?"replyToPackageComment":"replyToProductComment";
-    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:1.1rem;':'')+'">'
+    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+(String(id).indexOf("tmp-")===0?' lv-cr-pending':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:2.6rem;':'')+'">'
       +'<span class="lv-cr-av" role="button" tabindex="0" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+av+'</span>'
-      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited
-      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>'
+      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button>'
+      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis"></i></button></div>'
       +'<div class="product-comment-body">'+body+'</div>'
-      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like"><i class="fa-'+(liked?'solid':'regular')+' fa-thumbs-up"></i>'+(n>0?'<span>'+n+'</span>':'')+'</button>'
-      +'<button type="button" class="lv-cr-act product-comment-action" onclick="'+rf+'(\''+esc(id)+'\')" aria-label="Reply"><i class="fa-regular fa-comment"></i></button></div>'
-      +'</div></div>';
+      +'<div class="lv-cr-meta"><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited+'<button type="button" class="lv-cr-reply" onclick="'+rf+'(\''+esc(id)+'\')">Reply</button></div>'
+      +'</div>'
+      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like" aria-pressed="'+(liked?'true':'false')+'">'+HEART+'</button><span class="lv-cr-n">'+(n>0?n:'')+'</span></div>'
+      +'</div>';
   };
   function openReport(kind,id){
     var R=["Spam or advert","Abusive or hateful","Misleading or scam","Something else"];
