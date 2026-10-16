@@ -792,7 +792,7 @@ window.lvPdPrefetch = function (id) {
     setTimeout(() => { el.style.transition = ""; }, 260);
   }
   document.addEventListener("touchstart", (e) => {
-    t0 = null; lock = null;
+    t0 = null; lock = null; window.__lvSwipeWarm = null;
     if (currentView !== "productDetail" || e.touches.length !== 1) return;
     if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
@@ -808,7 +808,7 @@ window.lvPdPrefetch = function (id) {
     el.style.transition = "none";
     el.style.transform = `translateX(${dx * 0.85}px)`;
     el.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
-    showHint(dx);
+    if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; target(d).then((id) => { if (id) window.lvPdPrefetch?.(id); }).catch(() => {}); }
   }, { passive: false });
   // Frozen picture of the page being left: it slides away while the next product is prepared behind it, so the person
   // never sees a loading state or a reload, only one product sliding out and the next sliding in.
@@ -872,24 +872,16 @@ window.lvPdPrefetch = function (id) {
       try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
       ok = ok && await waitForProduct(id);
       window.__lvSwipeNav = false;
-      if (ok) {
-        // do not slide in an empty frame: wait (briefly) for the first photo to be ready
-        const img = app()?.querySelector(".product-gallery-slide img, .product-detail-media img");
-        if (img) {
-          if (!img.complete) await Promise.race([new Promise((r) => { img.addEventListener("load", r, { once: true }); img.addEventListener("error", r, { once: true }); }), new Promise((r) => setTimeout(r, 350))]);
-          try { await Promise.race([img.decode(), new Promise((r) => setTimeout(r, 120))]); } catch (_) {}
-        }
-      }
       const now = app();
       if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
       // 3. both slide together, like one carousel
       try { window.scrollTo(0, 0); } catch (_) {}
       now.style.transition = "none"; now.style.transform = `translateX(${dir * innerWidth}px)`; now.style.opacity = "1";
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const ease = "transform .22s cubic-bezier(.2,.8,.2,1)";
+      await new Promise((r) => requestAnimationFrame(r));
+      const ease = "transform .2s cubic-bezier(.22,.9,.3,1)";
       snap.remove();
       now.style.transition = ease; now.style.transform = "translateX(0)";
-      await new Promise((r) => setTimeout(r, 240));
+      await new Promise((r) => setTimeout(r, 210));
       snap.remove();
       now.style.transition = ""; now.style.transform = ""; now.style.opacity = "";
     } finally { busy = false; window.__lvSwipeNav = false; }
