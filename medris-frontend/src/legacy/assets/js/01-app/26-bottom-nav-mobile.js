@@ -49,22 +49,22 @@ function renderBottomNav() {
   if (!nav) return;
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const vendorsTab = { icon: lvLineIcon('store'), label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
-  const notificationsTab = { icon: lvLineIcon('bell'), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
+  const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
+  const notificationsTab = { icon: "<i class='fa-solid fa-bell'></i>", label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const requestsTab = isVendorUser
-    ? { icon: lvLineIcon('request'), label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
-    : { icon: lvLineIcon('request'), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+    ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
+    : { icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
   const ordersTab = isVendorUser
-    ? { icon: lvLineIcon('orders'), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
-    : { icon: lvLineIcon('orders'), label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
-  const homeTab = { icon: lvLineIcon('home'), label: "Home", action: "lvHomeTap()", view: "home" };
+    ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
+    : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "lvHomeTap()", view: "home" };
 
   let items;
   if (session && profile?.role === "admin") {
     // Admin navigation remains unchanged; the centered + button is not used here.
     items = [homeTab, vendorsTab,
-      { icon: lvLineIcon('shield'), label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
-      { icon: lvLineIcon('coins'), label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
+      { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
+      { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
     // Vendor navigation: Home, Vendors | + | Notifications, Orders.
     // Messages moved to the header; My Shop moved into the vendor's
@@ -76,7 +76,7 @@ function renderBottomNav() {
     items = [homeTab, vendorsTab, requestsTab, notificationsTab, ordersTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
-      { icon: lvLineIcon('user'), label: "Login", action: "showLogin()", view: null }];
+      { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
   }
 
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
