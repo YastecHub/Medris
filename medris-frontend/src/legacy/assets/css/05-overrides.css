@@ -2179,3 +2179,10 @@ html body #levromartOfflineOverlay .levromart-offline-retry{background:linear-gr
 /* ===== Vendor cards (final): nothing at the bottom. Lilac circle near the top centre-right, gold top-left, a faint green circle mid-right, soft dots ===== */
 html:root body #app .vc2,html:root body #app .vd-card{background-image:radial-gradient(circle at 66% 0,rgba(139,107,255,.30) 0 50px,transparent 51px),radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 44px,transparent 45px),radial-gradient(circle at 104% 40%,rgba(25,196,134,.13) 0 34px,transparent 35px),radial-gradient(circle,rgba(106,61,240,.09) 1.5px,transparent 2px)!important;background-size:auto,auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,no-repeat,repeat!important}
 :root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 66% 0,rgba(139,107,255,.28) 0 50px,transparent 51px),radial-gradient(circle at 0 0,rgba(255,200,61,.18) 0 44px,transparent 45px),radial-gradient(circle at 104% 40%,rgba(25,196,134,.10) 0 34px,transparent 35px),radial-gradient(circle,rgba(255,255,255,.05) 1.5px,transparent 2px)!important}
+
+/* ===== Levi floating button = the same glass badge as the map / campus picker ===== */
+html body #aiChatFab:has(.lv-fab-badge){background:transparent!important;box-shadow:none!important;border:0!important;overflow:visible!important}
+html body #aiChatFab:has(.lv-fab-badge)::before,html body #aiChatFab:has(.lv-fab-badge)::after{display:none!important;content:none!important}
+html body #aiChatFab .lv-fab-badge{position:absolute;inset:-12%;display:block;pointer-events:none;z-index:2;filter:drop-shadow(0 6px 10px rgba(75,46,131,.4));transition:opacity .15s}
+html body #aiChatFab .lv-fab-badge svg{width:100%;height:100%;display:block}
+html body #aiChatFab.directing .lv-fab-badge{opacity:0}
