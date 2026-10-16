@@ -500,7 +500,7 @@ function homeQuickActionsHtml() {
     { key: "request", icon: "fa-hand", tone: "aqua", title: "Request Item", desc: "Let vendors find it" },
     { key: "chat", icon: "fa-comment-dots", tone: "blue", title: "Chat Directly", desc: "Get quick answers" },
   ];
-  return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon"><i class="fa-solid ${a.icon}"></i></span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
+  return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon">${typeof lvIllus === "function" ? lvIllus(({products:"bag",services:"tools",rent:"key",vendors:"store",request:"hand",chat:"chat"})[a.key] || "box", 34) : `<i class="fa-solid ${a.icon}"></i>`}</span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
 }
 // Icon comes from the sector's own database row. Rows saved with the generic
 // placeholder (or none) fall back to a keyword match on the name, then to a
