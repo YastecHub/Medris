@@ -2003,9 +2003,9 @@ html:root body #app .request-equipment-page .theme-option{box-shadow:none!import
 html:root body #app .request-equipment-page .theme-option:has(input:checked){border:2px solid var(--lv-g1)!important;background:color-mix(in srgb,var(--lv-g1) 14%,var(--card))!important;color:var(--lv-g1)!important}
 html:root body #app .request-equipment-page .theme-option:has(input:checked)::after{content:"\f00c";font-family:"Font Awesome 6 Free";font-weight:900;margin-left:.5rem;font-size:.8rem}
 /* Action buttons: lively brand gradient (flat, soft glow) */
-html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):not(.hidden){background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;border-radius:999px!important;font-weight:800!important;box-shadow:0 8px 18px rgba(11,107,71,.28)!important}
-html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):active{transform:scale(.97)}
-html:root body #app .btn.btn-outline{border-radius:999px!important;border:1.5px solid color-mix(in srgb,#0f9d6a 55%,var(--border))!important;color:#0f9d6a!important;font-weight:800!important}
+html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):not(.hidden):not(.follow-btn){background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;border-radius:999px!important;font-weight:800!important;box-shadow:0 8px 18px rgba(11,107,71,.28)!important}
+html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):not(.follow-btn):active{transform:scale(.97)}
+html:root body #app .btn.btn-outline:not(.follow-btn){border-radius:999px!important;border:1.5px solid color-mix(in srgb,#0f9d6a 55%,var(--border))!important;color:#0f9d6a!important;font-weight:800!important}
 /* Crown (Vendor of the Week): flat gold badge, no glow or bounce */
 /* Vendor card banners: brand colours with a soft shine; avatar ring */
 #app .vc2-banner{background-size:cover}
@@ -2091,10 +2091,23 @@ html:root body #app .vd-page .vd-seg .vd-tab{flex:0 1 auto!important;padding-lef
 /* View buttons: simple icons like the filter/search/history icons */
 html:root body #app .vd-page .vd-views button.vd-view i{font-size:1.05rem}
 /* Home quick actions: illustrated icons on a white chip */
-html:root body #app .levro-quick-action .levro-quick-icon{background:#fff!important;width:3rem!important;height:3rem!important;border-radius:16px!important;display:grid!important;place-items:center;box-shadow:0 6px 12px rgba(0,0,0,.18)!important}
-html:root body #app .levro-quick-action .levro-quick-icon svg{width:2rem;height:2rem}
 .orders-empty-icon{background:transparent!important;box-shadow:none!important;width:auto!important;height:auto!important}
 .orders-empty-icon svg{filter:drop-shadow(0 10px 12px rgba(224,138,61,.35))}
 /* Cards (products, services, vendors, packages): soft circular watermarks that show in light and dark */
-html:root body #app .product-card,html:root body #app .vc2,html:root body #app .vd-card,html:root body #app .package-card,html:root body #app .service-card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 108% 112%,rgba(25,196,134,.20) 0 38px,transparent 39px),radial-gradient(circle at 108% 112%,transparent 0 52px,rgba(25,196,134,.28) 53px 55px,transparent 56px),radial-gradient(circle at -6% 108%,rgba(255,200,61,.26) 0 24px,transparent 25px),radial-gradient(circle at 70% 118%,transparent 0 30px,rgba(106,61,240,.22) 31px 33px,transparent 34px)!important}
-:root[data-theme="dark"] body #app .product-card,:root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="black"] body #app .product-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 108% 112%,rgba(25,196,134,.16) 0 38px,transparent 39px),radial-gradient(circle at 108% 112%,transparent 0 52px,rgba(25,196,134,.24) 53px 55px,transparent 56px),radial-gradient(circle at -6% 108%,rgba(255,200,61,.16) 0 24px,transparent 25px),radial-gradient(circle at 70% 118%,transparent 0 30px,rgba(139,107,255,.26) 31px 33px,transparent 34px)!important}
+
+/* Round 5 */
+/* bottom bar + header line icons */
+.icon-btn .lv-line-ic{display:block}
+/* quick action arrows: small round chip */
+html:root body #app .levro-home-quick-actions .levro-quick-arrow{display:grid!important;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:rgba(255,255,255,.26)!important;color:#fff!important;font-size:.7rem;box-shadow:none!important}
+
+/* Round 6 */
+/* quick actions: original font icons, white on the gradient */
+html:root body #app .levro-quick-action .levro-quick-icon{background:rgba(255,255,255,.22)!important;box-shadow:none!important}
+html:root body #app .levro-quick-action .levro-quick-icon i{color:#fff!important}
+/* Cards (products, services, packages, vendors): even all-round pattern: tiny dots across the card + soft corner circles (top-left and bottom-right), no lines */
+html:root body #app .product-card,html:root body #app .vc2,html:root body #app .vd-card,html:root body #app .package-card,html:root body #app .service-card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.24) 0 44px,transparent 45px),radial-gradient(circle,rgba(106,61,240,.12) 1.5px,transparent 2px)!important;background-size:auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,repeat!important}
+:root[data-theme="dark"] body #app .product-card,:root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="dark"] body #app .package-card,:root[data-theme="dark"] body #app .service-card,:root[data-theme="black"] body #app .product-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 0 0,rgba(255,200,61,.18) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.18) 0 44px,transparent 45px),radial-gradient(circle,rgba(255,255,255,.07) 1.5px,transparent 2px)!important}
+/* Vendors view buttons: no fill at all; the active one is just green */
+:root:root:root body #app .vd-page .vd-views button.vd-view,:root:root:root body #app .vd-page .vd-views button.vd-view.active{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important}
+:root:root:root body #app .vd-page .vd-views button.vd-view.active{color:#0f9d6a!important}

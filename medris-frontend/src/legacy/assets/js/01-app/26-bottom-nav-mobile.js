@@ -30,6 +30,20 @@ function lvHomeTap() {
   resetHomeFilters();
   navigate("home");
 }
+// Line icons for the bottom bar (one family: 1.9 stroke, rounded)
+window.lvLineIcon = function (n) {
+  const P = {
+    home: "<path d='M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'/>",
+    store: "<path d='M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9M10 20v-5h4v5'/>",
+    request: "<circle cx='12' cy='12' r='9'/><path d='M12 8v8M8 12h8'/>",
+    bell: "<path d='M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9M10 19a2 2 0 0 0 4 0'/>",
+    orders: "<path d='M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'/>",
+    shield: "<path d='M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'/>",
+    coins: "<circle cx='12' cy='12' r='9'/><path d='M9 16V8l6 8V8'/>",
+    user: "<circle cx='12' cy='8' r='4'/><path d='M4 21c0-4 3.500-6 8-6s8 2 8 6'/>",
+  };
+  return `<svg class="lv-line-ic" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.home}</svg>`;
+};
 function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
