@@ -2052,3 +2052,41 @@ html:root body #app .search-page-filter.active{background:linear-gradient(135deg
 html:root body #app .search-page-chip{border-radius:999px;padding:.4rem .85rem;border:1.5px solid color-mix(in srgb,#19c486 40%,var(--border));background:color-mix(in srgb,#19c486 8%,var(--card));color:var(--text);font-weight:700;font-size:.84rem}
 html:root body #app .search-page-history-head span,html:root body #app .search-page-section>h3,html:root body #app .search-page-section .section-title{font-size:.74rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6a3df0}
 html:root body #app .search-page-history-head button{color:#0f9d6a;font-weight:800}
+
+/* ===== Round 3 (lv-r4): quieter nav/crown, plain view icons, bright quick actions, patterned cards, chips ===== */
+/* bottom bar: no line, no bubble; active = colour only */
+html:root body #bottomNav .bottom-nav-item.active::before,html:root body #bottomNav .bottom-nav-item.active::after{content:none!important;display:none!important}
+/* crown: quiet, soft gold tint */
+html:root body #lvCampusBar .lvcb-trophy{width:2.1rem!important;height:2.1rem!important;border-radius:12px!important;background:rgba(245,158,11,.14)!important;box-shadow:none!important;border:1px solid rgba(245,158,11,.28)!important}
+html:root body #lvCampusBar .lvcb-trophy i{color:#f59e0b!important;font-size:.95rem!important}
+/* vendors: grid/list/map icons like the plain filter/search/history icons */
+html:root body #app .vd-page .vd-views{background:transparent!important;border:0!important;padding:0!important;gap:.1rem}
+html:root body #app .vd-page .vd-views button.vd-view,html:root body #app .vd-page .vd-views button.vd-view.active{width:2.3rem!important;height:2.3rem!important;border-radius:10px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--text-muted)!important}
+html:root body #app .vd-page .vd-views button.vd-view svg{width:20px!important;height:20px!important;stroke-width:1.8!important;stroke:currentColor!important}
+html:root body #app .vd-page .vd-views button.vd-view.active{color:var(--text)!important;background:color-mix(in srgb,var(--text) 8%,transparent)!important}
+/* Home quick actions: bright brand tiles */
+html:root body #app .levro-quick-action{position:relative;overflow:hidden;border:0!important;box-shadow:0 10px 20px rgba(15,23,42,.18)!important;color:#fff!important}
+html:root body #app .levro-quick-action::after{content:"";position:absolute;right:-26px;top:-30px;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.18);pointer-events:none}
+html:root body #app .levro-quick-action *{color:#fff!important}
+html:root body #app .levro-quick-action .levro-quick-icon{background:rgba(255,255,255,.22)!important;border-radius:14px!important;box-shadow:none!important}
+html:root body #app .levro-quick-action small,html:root body #app .levro-quick-action .levro-quick-desc{opacity:.9}
+html:root body #app .levro-quick-mint{background:linear-gradient(135deg,#19c486,#0b6b47)!important}
+html:root body #app .levro-quick-peach{background:linear-gradient(135deg,#ffb12e,#ff7a3d)!important}
+html:root body #app .levro-quick-lavender{background:linear-gradient(135deg,#8b6bff,#4b2e83)!important}
+html:root body #app .levro-quick-pink{background:linear-gradient(135deg,#ff6aa8,#c2379f)!important}
+html:root body #app .levro-quick-aqua{background:linear-gradient(135deg,#1fd3c6,#0e8f9c)!important}
+html:root body #app .levro-quick-blue{background:linear-gradient(135deg,#4f9bff,#2f5fe0)!important}
+/* product cards: soft circle patterns */
+html:root body #app .product-card{position:relative;background-image:radial-gradient(circle at 100% 100%,color-mix(in srgb,#19c486 16%,transparent) 0 42px,transparent 43px),radial-gradient(circle at 100% 100%,color-mix(in srgb,#6a3df0 10%,transparent) 0 70px,transparent 71px),radial-gradient(circle at 0 100%,color-mix(in srgb,#ffc83d 14%,transparent) 0 28px,transparent 29px)!important;background-color:var(--card)!important}
+/* category chips (Home rail + Vendors) */
+html:root body #app .levro-home-cat-chip,html:root body #app .vd-chip{border-radius:999px!important;border:1.5px solid color-mix(in srgb,#6a3df0 25%,var(--border))!important;background:color-mix(in srgb,#6a3df0 6%,var(--card))!important;font-weight:800!important;box-shadow:none!important}
+html:root body #app .levro-home-cat-chip.active,html:root body #app .levro-home-cat-chip.on,html:root body #app .levro-home-cat-all.active,html:root body #app .vd-chip.on,html:root body #app .vd-chip.active,html:root body #app .vd-chip.sel{background:linear-gradient(135deg,#19c486,#0b6b47)!important;border-color:transparent!important;color:#fff!important}
+/* campus picker: All campuses button */
+#lvCampus .lvc-foot button[data-a=all]{display:inline-flex;align-items:center;justify-content:center;gap:.55rem}
+#lvCampus .lvc-foot button[data-a=all] i{display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:rgba(255,255,255,.25);font-size:.85rem}
+/* Request: Buy/Rent options, a bit richer */
+html:root body #app .request-equipment-page .theme-option{min-height:3.6rem;font-size:1rem;gap:.5rem}
+html:root body #app .request-equipment-page .theme-option:nth-of-type(1):has(input:checked){border-color:#19c486!important;background:color-mix(in srgb,#19c486 16%,var(--card))!important;color:#0f9d6a!important}
+html:root body #app .request-equipment-page .theme-option:nth-of-type(2):has(input:checked){border-color:#6a3df0!important;background:color-mix(in srgb,#6a3df0 14%,var(--card))!important;color:#6a3df0!important}
+/* Following buttons: flatter, calmer purple with a tick */
+html:root body #app .vendor-card-follow-btn.following,html:root body #app .vd-follow.following,html:root body #app .fn-follow.following,html:root body #app .sr-follow.following{background:color-mix(in srgb,#6a3df0 16%,var(--card))!important;color:#6a3df0!important;box-shadow:inset 0 0 0 1.5px #6a3df0!important}
