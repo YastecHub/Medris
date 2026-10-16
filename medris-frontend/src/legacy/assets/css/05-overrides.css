@@ -2350,5 +2350,52 @@ html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd
 html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row{padding:0!important}
 html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label svg,html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label i{background:transparent!important;width:auto!important;height:auto!important;padding:0!important;color:var(--text-muted,#667)!important}
 
+/* Suggested / recently viewed vendors on the search page: one-line name cut with "…", and the green tick stays visible after it for verified vendors */
+html body #app .lv-svr-item .lv-svr-name{display:flex!important;align-items:center;justify-content:center;gap:1px;max-width:100%;-webkit-line-clamp:unset!important;overflow:hidden}
+html body #app .lv-svr-item .lv-svr-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .lv-svr-item .lv-svr-name>i{flex:0 0 auto;margin-left:.15em!important}
+
+/* ===== Comments, TikTok-style: roomy rows, heart on the right, time + Reply under the text, pill composer ===== */
+html:root body #lvCs .lv-cs-card{border-radius:22px 22px 0 0!important}
+html:root body #lvCs .lv-cs-head{padding:1.25rem 1rem .85rem!important;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
+html:root body #lvCs .lv-cs-head strong{font-size:.95rem!important;font-weight:700!important;letter-spacing:.01em}
+html:root body #lvCs .lv-cs-x{color:var(--text,#111)!important;background:transparent!important;font-size:1rem!important}
+html:root body #lvCs .lv-cs-body>.product-comments-panel,html:root body #lvCs .lv-cs-body>#productCommentsPanel,html:root body #lvCs .lv-cs-body>#packageCommentsPanel{padding:.3rem 1.1rem 0!important}
+/* a comment */
+html:root body .product-comment-row.lv-cr{display:flex!important;align-items:flex-start;gap:.7rem!important;padding:.7rem 0!important;border:0!important;background:transparent!important}
+html:root body .product-comment-row.lv-cr .lv-cr-av img,html:root body .product-comment-row.lv-cr .lv-cr-av>*{border-radius:50%!important;flex:none}
+html:root body .product-comment-row.lv-cr .product-comment-main{flex:1 1 auto;min-width:0}
+html:root body .product-comment-row.lv-cr .lv-cr-head{display:flex!important;align-items:center;gap:.35rem;min-height:1.4rem}
+html:root body .product-comment-row.lv-cr .lv-cr-name{font-size:.8rem!important;font-weight:700!important;color:var(--text-muted,#6b7280)!important;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html:root body .product-comment-row.lv-cr .lv-cr-dots{order:99;margin-left:auto;width:1.6rem;height:1.6rem;color:var(--text-muted,#9ca3af)!important;font-size:.85rem;opacity:.85}
+html:root body .product-comment-row.lv-cr .product-comment-body{font-size:.95rem!important;line-height:1.38!important;color:var(--text,#111)!important;margin:.05rem 0 .2rem!important;overflow-wrap:anywhere}
+html:root body .product-comment-row.lv-cr .lv-cr-meta{display:flex;align-items:center;gap:.9rem;font-size:.76rem;color:var(--text-muted,#8b919c)}
+html:root body .product-comment-row.lv-cr .lv-cr-time{font-size:.76rem!important}
+html:root body .product-comment-row.lv-cr .lv-cr-reply{border:0;background:none;padding:.15rem 0;font:inherit;font-size:.78rem;font-weight:700;color:var(--text-muted,#6b7280);cursor:pointer}
+html:root body .product-comment-row.lv-cr .lv-cr-reply:active{opacity:.6}
+/* heart + count on the right */
+html:root body .product-comment-row.lv-cr .lv-cr-actions{flex:none;display:flex!important;flex-direction:column;align-items:center;gap:0;margin:.15rem 0 0!important;min-width:2rem}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act{padding:.2rem!important;min-width:0!important;width:auto!important;height:auto!important;background:transparent!important;border:0!important;color:var(--text-muted,#9ca3af)!important;display:grid!important;place-items:center;border-radius:50%!important;transition:transform .12s}
+html:root body .product-comment-row.lv-cr .lv-heart{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;transition:fill .12s,stroke .12s}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.active{color:#fe2c55!important}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.active .lv-heart{fill:#fe2c55;stroke:#fe2c55}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act:active{transform:scale(.85)}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.lv-pop .lv-heart{animation:lvHeartPop .28s ease-out}
+@keyframes lvHeartPop{0%{transform:scale(.7)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+html:root body .product-comment-row.lv-cr .lv-cr-n{font-size:.72rem;font-weight:600;color:var(--text-muted,#8b919c);min-height:.9rem;line-height:.9rem}
+html:root body .product-comment-row.lv-cr.lv-cr-pending{opacity:.6}
+/* replies */
+html:root body .comment-replies-toggle{display:flex;align-items:center;gap:.6rem;margin:.1rem 0 .3rem 2.6rem;padding:.2rem 0;border:0;background:none;color:var(--text-muted,#6b7280);font-size:.78rem;font-weight:700;cursor:pointer}
+html:root body .comment-replies-toggle .cr-line{display:inline-block;width:1.5rem;height:1px;background:color-mix(in srgb,var(--text,#111) 25%,transparent)}
+/* composer: a soft pill and a round send button */
+html:root body #lvCs .product-comment-composer{background:var(--card,#fff)!important;border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important;padding:.6rem 1rem calc(.65rem + env(safe-area-inset-bottom,0px))!important}
+html:root body #lvCs .product-comment-compose-row textarea{background:color-mix(in srgb,var(--text,#111) 6%,transparent)!important;border:0!important;border-radius:999px!important;padding:.7rem 1.1rem!important;font-size:.95rem!important;min-height:2.75rem!important}
+html:root body #lvCs .product-comment-compose-row textarea:focus{box-shadow:none!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
+html:root body #lvCs .product-comment-compose-row .btn{width:2.75rem!important;height:2.75rem!important;min-width:2.75rem!important;border-radius:50%!important;background:var(--text,#111)!important;color:var(--card,#fff)!important;border:0!important;box-shadow:none!important}
+html:root body #lvCs .product-comment-compose-row .btn i{color:inherit!important;font-size:.95rem}
+html:root body #lvCs .product-comment-compose-row textarea:placeholder-shown+.btn{opacity:.3!important}
+html:root body #lvCs .product-comment-replying{background:color-mix(in srgb,var(--text,#111) 6%,transparent);border-radius:12px;padding:.4rem .7rem!important;margin-bottom:.45rem;font-size:.8rem}
+@media (prefers-reduced-motion:reduce){html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.lv-pop .lv-heart{animation:none}}
+
 /* Product page: the title always takes the same two-line space (longer names are cut with …), so the photo sits in exactly the same place on every product. That is what lets the next product slide in without any jump. */
 html:root body #app .product-detail-card .product-detail-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;min-height:2.4em!important}
