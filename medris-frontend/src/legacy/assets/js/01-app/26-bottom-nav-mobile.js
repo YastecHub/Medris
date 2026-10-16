@@ -57,9 +57,9 @@ function renderBottomNav() {
     // profile page (tapping the header avatar opens it directly).
     items = [homeTab, vendorsTab, notificationsTab, ordersTab];
   } else if (session) {
-    // Buyer navigation: Request → Vendors → Home → Notifications → Orders.
+    // Buyer navigation: Home → Vendors → Request → Notifications → Orders (Home is always the first tab, same as every other account).
     // Messages moved to the header, same as vendors.
-    items = [requestsTab, vendorsTab, homeTab, notificationsTab, ordersTab];
+    items = [homeTab, vendorsTab, requestsTab, notificationsTab, ordersTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
@@ -77,7 +77,7 @@ function renderBottomNav() {
     nav.classList.remove("has-add", "buyer-no-add");
     nav.innerHTML = items.map(itemHtml).join("");
   } else if (session) {
-    // Buyers use a clean five-item rail. Home is the middle slot and there is
+    // Buyers use a clean five-item rail. Home is the first slot and there is
     // deliberately no + creation control on the buyer interface.
     nav.classList.remove("has-add");
     nav.classList.add("buyer-no-add");
