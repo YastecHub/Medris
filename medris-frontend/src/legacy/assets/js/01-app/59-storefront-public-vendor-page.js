@@ -432,9 +432,9 @@ async function renderStorefrontInner(vendorId) {
   const productCount = allProducts.filter((p) => !p.is_service).length;
   const serviceCount = allProducts.filter((p) => !!p.is_service).length;
   html += `<div class="storefront-catalog-tabs" role="tablist" aria-label="Storefront catalogue">
-    <button type="button" class="storefront-catalog-tab active" id="storefrontProductsTab" role="tab" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-box"></i> Products <span class="tab-count" id="storefrontProductsCount">(${productCount})</span></button>
-    <button type="button" class="storefront-catalog-tab" id="storefrontServicesTab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span class="tab-count" id="storefrontServicesCount">(${serviceCount})</span></button>
-    <button type="button" class="storefront-catalog-tab" id="storefrontPackagesTab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('packages')"><i class="fa-solid fa-box-open"></i> Packages <span class="tab-count" id="storefrontPackagesCount">(…)</span></button>
+    <button type="button" class="storefront-catalog-tab active" id="storefrontProductsTab" role="tab" aria-label="Products" title="Products" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-bag-shopping"></i> Products <span class="tab-count" id="storefrontProductsCount">(${productCount})</span></button>
+    <button type="button" class="storefront-catalog-tab" id="storefrontServicesTab" role="tab" aria-label="Services" title="Services" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-bell-concierge"></i> Services <span class="tab-count" id="storefrontServicesCount">(${serviceCount})</span></button>
+    <button type="button" class="storefront-catalog-tab" id="storefrontPackagesTab" role="tab" aria-label="Packages" title="Packages" aria-selected="false" onclick="switchStorefrontCatalogTab('packages')"><i class="fa-solid fa-gift"></i> Packages <span class="tab-count" id="storefrontPackagesCount">(…)</span></button>
   </div>`;
 
   html += `<section class="storefront-packages storefront-tab-panel-hidden" id="storefrontPackagesSection">${storefrontPackagesLoadingInnerHtml()}</section>`;

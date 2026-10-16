@@ -83,7 +83,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   // to guess; with no cached list yet it shows no categories rather than
   // every sector, because only categories that actually have listings belong.
   const railCategories = Array.isArray(cache.categoriesWithListings) && cache.categoriesWithListings.length ? cache.categoriesWithListings : (window.__levroRailCategories || []);
-  if (railCategories.length) html += homeCategoryRailHtml(railCategories);
+  // the home category rail was removed (nobody used it); the campus bar now sits right under the search bar
   html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += homeQuickActionsHtml();
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
