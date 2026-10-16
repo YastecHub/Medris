@@ -377,7 +377,7 @@ async function renderStorefrontInner(vendorId) {
     v.cac_number ? `<div class="ms-item"><i class='fa-solid fa-building-columns'></i> CAC verified</div>` : "",
     yearsSince(v.created_at) ? `<div class="ms-item"><i class="fa-solid fa-calendar-check"></i> ${esc(yearsSince(v.created_at))}</div>` : "",
     v.opening_hours ? `<div class="ms-item"><i class='fa-solid fa-clock'></i> ${esc(v.opening_hours)}</div>` : "",
-    profile?.role !== "admin" ? `<button type="button" class="ms-item" onclick="showSuggestionModal('vendor','${v.id}')"><i class='fa-solid fa-comment-medical'></i> Suggest something</button>` : "",
+    profile?.role !== "admin" ? `<button type="button" class="ms-item" onclick="showSuggestionModal('vendor','${v.id}')"><i class='fa-solid fa-lightbulb'></i> Suggest something</button>` : "",
     `<button type="button" class="ms-item" onclick="openStorefrontShare('${v.id}');closeStorefrontMoreSheet()"><i class='fa-solid fa-share-nodes'></i> Share storefront</button>`,
   ].filter(Boolean).join("");
 
