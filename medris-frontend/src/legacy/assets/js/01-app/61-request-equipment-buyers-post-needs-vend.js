@@ -1,4 +1,28 @@
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
+// ---------- Friendly page header (Request an item, Vendors): brand card, one person, floating icons ----------
+window.lvPageHero = function (kind) {
+  const C = {
+    request: { img: "/lb/person-a.webp", t: "Can't find it?", em: "Request it.", p: "Post what you need and nearby vendors send you offers.", icons: ["fa-hand", "fa-box-open", "fa-tag"] },
+    vendors: { img: "/lb/person-b.webp", t: "Meet your", em: "campus vendors.", p: "Shops, services and rentals near you, all in one place.", icons: ["fa-store", "fa-bag-shopping", "fa-star"] },
+  }[kind];
+  if (!C) return "";
+  setTimeout(() => lvFloatHero(), 350); setTimeout(() => lvFloatHero(), 1200);
+  return `<section class="lv-hero2 lv-hero2-${kind}" aria-hidden="true">
+    <div class="lv-hero2-copy"><b>${C.t}</b><b class="em">${C.em}</b><span>${C.p}</span></div>
+    <i class="lv-fl lv-fl1 fa-solid ${C.icons[0]}"></i><i class="lv-fl lv-fl2 fa-solid ${C.icons[1]}"></i><i class="lv-fl lv-fl3 fa-solid ${C.icons[2]}"></i>
+    <img class="lv-fl lv-hero2-img" src="${C.img}" alt="" width="96" height="96" decoding="async">
+  </section>`;
+};
+window.lvFloatHero = function () {
+  try {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    document.querySelectorAll(".lv-hero2 .lv-fl:not([data-fl])").forEach((el, i) => {
+      el.setAttribute("data-fl", "1");
+      const dy = 4 + (i % 3) * 2, r = (i % 2 ? -1 : 1) * (2 + i);
+      el.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(-${dy}px) rotate(${r}deg)` }, { transform: "translateY(0) rotate(0deg)" }], { duration: 2600 + i * 380, delay: i * 250, iterations: Infinity, easing: "ease-in-out" });
+    });
+  } catch (_) {}
+};
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
   const [{ data: myRequests, error: myRequestsError }] = await Promise.all([
@@ -8,7 +32,7 @@ async function renderRequestEquipment() {
     (async () => { if (!window.__categories?.length) { const { data } = await levroData.catalogue.categories(); window.__categories = data || []; } })(),
   ]);
 
-  let html = `<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
+  let html = `${lvPageHero("request")}<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
     <div class="card request-equipment-page" style="max-width:520px;">
       <div id="reqError" class="error-text hidden"></div>
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
