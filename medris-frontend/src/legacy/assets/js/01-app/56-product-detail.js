@@ -783,20 +783,7 @@ window.lvPdPrefetch = function (id) {
     if (i < 0 || ids.length < 2) return null;
     return ids[(i + dir + ids.length) % ids.length];
   }
-  function showHint(dx) {
-    if (!hint) {
-      hint = document.createElement("div");
-      hint.className = "lv-swipe-hint";
-      hint.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
-      document.body.appendChild(hint);
-    }
-    const left = dx > 0, p = Math.min(1, Math.abs(dx) / (innerWidth * 0.33));
-    hint.classList.toggle("left", left);
-    hint.firstChild.className = "fa-solid " + (left ? "fa-chevron-left" : "fa-chevron-right");
-    hint.style.opacity = String(Math.min(1, p * 1.2));
-    hint.style.transform = `translateY(-50%) scale(${0.7 + p * 0.5})`;
-    hint.classList.toggle("ready", p >= 1);
-  }
+  function showHint() { /* no edge arrow: the page itself follows the finger */ }
   function clearHint() { if (hint) { hint.remove(); hint = null; } }
   function reset(el, animate) {
     if (!el) return;
@@ -857,7 +844,7 @@ window.lvPdPrefetch = function (id) {
       const f = await getFeed(); if (!f) return;
       const ids = f.ids, i = ids.indexOf(String(cur.id));
       if (i < 0 || ids.length < 2) return;
-      [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
+      [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length], ids[(i + 2) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
     } catch (_) {}
   }, 600);
   let busy = false;
@@ -866,7 +853,7 @@ window.lvPdPrefetch = function (id) {
     if (!start || was !== "h") { clearHint(); return; }
     const el = app(), dx = e.changedTouches[0].clientX - start.x, dt = Date.now() - start.t;
     clearHint();
-    const far = Math.abs(dx) > innerWidth * 0.33, flick = Math.abs(dx) > 60 && dt < 280;
+    const far = Math.abs(dx) > innerWidth * 0.25, flick = Math.abs(dx) > 45 && dt < 320;
     if (!far && !flick || busy) { reset(el, true); return; }
     const dir = dx < 0 ? 1 : -1;
     busy = true;
@@ -877,11 +864,9 @@ window.lvPdPrefetch = function (id) {
       const snap = snapshotOf(el);
       snap.style.transform = `translateX(${dx * 0.85}px)`;
       snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
-      // 2. load the next product behind it, out of sight
+      // 2. send the old page on its way right away; the next product loads behind it (usually already prefetched)
       el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
-      const spinner = document.createElement("div");
-      spinner.className = "lv-swipe-wait"; spinner.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-      const spinTimer = setTimeout(() => document.body.appendChild(spinner), 450);
+      snap.style.transition = "transform .2s cubic-bezier(.3,.7,.3,1), opacity .2s"; snap.style.transform = `translateX(${-dir * innerWidth * 0.5}px)`; snap.style.opacity = "0.15";
       let ok = true;
       window.__lvSwipeNav = true; // the router must not paint a saved snapshot or a loading shell behind the slide
       try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
@@ -891,21 +876,20 @@ window.lvPdPrefetch = function (id) {
         // do not slide in an empty frame: wait (briefly) for the first photo to be ready
         const img = app()?.querySelector(".product-gallery-slide img, .product-detail-media img");
         if (img) {
-          if (!img.complete) await Promise.race([new Promise((r) => { img.addEventListener("load", r, { once: true }); img.addEventListener("error", r, { once: true }); }), new Promise((r) => setTimeout(r, 900))]);
-          try { await Promise.race([img.decode(), new Promise((r) => setTimeout(r, 300))]); } catch (_) {}
+          if (!img.complete) await Promise.race([new Promise((r) => { img.addEventListener("load", r, { once: true }); img.addEventListener("error", r, { once: true }); }), new Promise((r) => setTimeout(r, 350))]);
+          try { await Promise.race([img.decode(), new Promise((r) => setTimeout(r, 120))]); } catch (_) {}
         }
       }
-      clearTimeout(spinTimer); spinner.remove();
       const now = app();
       if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
       // 3. both slide together, like one carousel
       try { window.scrollTo(0, 0); } catch (_) {}
       now.style.transition = "none"; now.style.transform = `translateX(${dir * innerWidth}px)`; now.style.opacity = "1";
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const ease = "transform .28s cubic-bezier(.2,.8,.2,1)";
-      snap.style.transition = ease; snap.style.transform = `translateX(${-dir * innerWidth}px)`;
+      const ease = "transform .22s cubic-bezier(.2,.8,.2,1)";
+      snap.remove();
       now.style.transition = ease; now.style.transform = "translateX(0)";
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 240));
       snap.remove();
       now.style.transition = ""; now.style.transform = ""; now.style.opacity = "";
     } finally { busy = false; window.__lvSwipeNav = false; }

@@ -1,4 +1,21 @@
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
+// ---------- Colourful illustrated icons (flat, soft gradients) used on Home quick actions and empty states ----------
+window.lvIllus = function (kind, px) {
+  const g = (id, a, b) => `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+  const S = {
+    bag: g("lia", "#ffb12e", "#ff5d73") + "</defs><path d='M17 17a7 7 0 0 1 14 0' fill='none' stroke='#b4234a' stroke-width='3' stroke-linecap='round'/><path d='M9 17h30l2.5 24a3 3 0 0 1-3 3.3H9.5a3 3 0 0 1-3-3.3z' fill='url(#lia)'/><path d='M9 17h30l.6 6H8.4z' fill='#fff' opacity='.25'/><path d='M18 30q6 6 12 0' fill='none' stroke='#fff' stroke-width='3' stroke-linecap='round'/><defs>",
+    tools: g("lib", "#4f9bff", "#2f5fe0") + "</defs><path d='M10 38 30 18' stroke='#9aa7bd' stroke-width='6' stroke-linecap='round'/><path d='M33 8a8 8 0 0 0-8 10l-1 1 5 5 1-1a8 8 0 0 0 10-8l-5 3-4-4z' fill='url(#lib)'/><path d='M38 38 22 22' stroke='#ff8a3d' stroke-width='6' stroke-linecap='round'/><circle cx='38' cy='38' r='4' fill='#ffc83d'/><defs>",
+    key: g("lic", "#ffe27a", "#ff9a3d") + "</defs><circle cx='17' cy='20' r='11' fill='url(#lic)'/><circle cx='14' cy='17' r='3.6' fill='#fff' opacity='.9'/><path d='M25 27 41 43M33 35l5-5M38 40l4-4' stroke='#e08a1e' stroke-width='5' stroke-linecap='round'/><defs>",
+    store: g("lid", "#ff6aa8", "#c2379f") + "</defs><rect x='8' y='22' width='32' height='20' rx='3' fill='#fff'/><path d='M6 22 9 9h30l3 13z' fill='url(#lid)'/><path d='M14 9l-2 13M24 9v13M34 9l2 13' stroke='#fff' stroke-width='2.4' opacity='.7'/><rect x='19' y='29' width='10' height='13' rx='2' fill='#6a3df0'/><defs>",
+    hand: g("lie", "#ffe27a", "#ffb12e") + "</defs><path d='M16 24V12a3 3 0 0 1 6 0v10m0-12a3 3 0 0 1 6 0v12m0-9a3 3 0 0 1 6 0v14c0 9-5 15-13 15-6 0-9-3-12-8l-4-7a3 3 0 0 1 5-3l4 5z' fill='url(#lie)' stroke='#e08a1e' stroke-width='1.6' stroke-linejoin='round'/><defs>",
+    chat: g("lif", "#4f9bff", "#6a3df0") + "</defs><path d='M8 12a6 6 0 0 1 6-6h20a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22l-9 8v-8h-1a6 6 0 0 1-4-6z' fill='url(#lif)'/><circle cx='16' cy='19' r='2.6' fill='#fff'/><circle cx='24' cy='19' r='2.6' fill='#fff'/><circle cx='32' cy='19' r='2.6' fill='#fff'/><defs>",
+    box: g("lig", "#ffc58a", "#e08a3d") + "</defs><path d='M6 16 24 8l18 8v18L24 42 6 34z' fill='url(#lig)'/><path d='M6 16l18 8 18-8M24 24v18' fill='none' stroke='#fff' stroke-width='2.4' opacity='.7'/><path d='M24 24 42 16l-4-3-18 8z' fill='#fff' opacity='.25'/><path d='M36 4l1.2 3 3 1.2-3 1.2L36 12.4l-1.2-3-3-1.2 3-1.2z' fill='#ffd21f'/><defs>",
+    cart: g("lih", "#19c486", "#0b6b47") + "</defs><path d='M4 7h6l5 24h22l4-17H13' fill='none' stroke='url(#lih)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/><circle cx='19' cy='39' r='3.6' fill='#ffc83d'/><circle cx='34' cy='39' r='3.6' fill='#ffc83d'/><defs>",
+    search: g("lii", "#6a3df0", "#4f9bff") + "</defs><circle cx='21' cy='21' r='13' fill='#fff' stroke='url(#lii)' stroke-width='5'/><path d='M31 31l12 12' stroke='#ff9a3d' stroke-width='6' stroke-linecap='round'/><path d='M15 17q3-5 8-3' fill='none' stroke='#9fd0ff' stroke-width='2.4' stroke-linecap='round'/><defs>",
+  };
+  const body = S[kind] || S.box, size = px || 40;
+  return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true" class="lv-illus"><defs>${body}</defs></svg>`.replace("<defs></defs>", "");
+};
 // ---------- Friendly page header (Request an item, Vendors): brand card, one person, floating icons ----------
 window.lvPageHero = function (kind) {
   const C = {
