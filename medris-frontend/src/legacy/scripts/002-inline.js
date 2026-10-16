@@ -1,1 +1,1 @@
-try{var __t=localStorage.getItem("medris-theme");document.documentElement.setAttribute("data-splash",(__t==="dark"||__t==="black")?"dark":(__t==="light"?"light":"auto"))}catch(e){}
+try{var __t=localStorage.getItem("medris-theme-v2")?localStorage.getItem("medris-theme"):"black";if(!__t)__t="black";document.documentElement.setAttribute("data-splash",(__t==="dark"||__t==="black")?"dark":(__t==="light"?"light":"auto"));if(__t==="black"||__t==="dark")document.documentElement.setAttribute("data-theme",__t)}catch(e){}
