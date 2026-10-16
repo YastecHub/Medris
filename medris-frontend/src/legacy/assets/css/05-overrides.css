@@ -2230,8 +2230,6 @@ html body #aiChatFab.directing .lv-fab-badge{opacity:0}
   html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active>span:last-child{font-weight:800!important}
   html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active .bn-icon{transform:scale(1.06)}
   html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active::before,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active::after{content:none!important;display:none!important}
-  html:root body #bottomNav .bn-pill{position:absolute;inset:0;z-index:0;border-radius:20px;background:linear-gradient(180deg,#e3f8ee,#d3f3e5);box-shadow:inset 0 0 0 1px rgba(15,157,106,.14),0 4px 12px -4px rgba(15,157,106,.3);pointer-events:none}
-  html:root[data-theme="dark"] body #bottomNav .bn-pill,html:root[data-theme="black"] body #bottomNav .bn-pill{background:linear-gradient(180deg,rgba(52,211,153,.2),rgba(52,211,153,.12));box-shadow:inset 0 0 0 1px rgba(52,211,153,.22)}
   /* badge sits on the icon corner, ringed in the bar colour */
   html:root body #bottomNav.bottom-nav.bottom-nav .bn-badge{top:-.45rem!important;right:-.85rem!important;left:auto!important;min-width:1rem!important;width:1rem!important;height:1rem!important;font-size:.55rem!important;box-shadow:0 0 0 2px var(--card,#fff)!important}
   /* vendor "+" button: a brand-green circle (the label stays under it) */
@@ -2283,3 +2281,18 @@ html:root body #app .browse-filter-toolbar>button#browseFilterTrigger.browse-fil
 html:root body #app .browse-filter-trigger .browse-filter-chevron{display:none!important}
 html:root body #app .browse-filter-trigger svg{width:18px!important;height:18px!important}
 html:root body #app .browse-filter-trigger[aria-expanded="true"]{border-color:#19c486!important;color:#0f9d6a!important;background:color-mix(in srgb,#19c486 12%,var(--card,#fff))!important}
+
+/* ===== Declutter round: bottom bar icons just turn green, Browse heading hidden, Vendors toolbar ===== */
+/* the "Browse everything" heading stays in the page (links scroll to it) but takes no space */
+html body #app #browseSection.section-title{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;border:0!important;visibility:hidden}
+/* Vendors: view switch is one quiet segmented control; the selected view is a light chip with a green icon */
+:root:root:root:root body #app .vd-page .vd-head{justify-content:flex-end!important}
+:root:root:root:root body #app .vd-page .vd-views{display:inline-flex!important;gap:2px!important;padding:3px!important;border-radius:14px!important;background:color-mix(in srgb,var(--text,#111) 7%,transparent)!important;border:0!important;box-shadow:none!important}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn){width:2.5rem!important;height:2.2rem!important;min-width:0!important;border-radius:11px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--text-muted,#667)!important;display:inline-grid!important;place-items:center!important;transition:background .15s,color .15s}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn) svg{width:19px!important;height:19px!important;stroke-width:1.9!important;stroke:currentColor!important;fill:none!important}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn).active{background:var(--card,#fff)!important;color:#0f9d6a!important;box-shadow:0 2px 8px -2px rgba(15,23,42,.22)!important}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn).active svg{stroke:currentColor!important;color:#0f9d6a!important}
+/* Vendors filter button: the same small tidy square as Browse everything */
+:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn{width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;align-self:center!important;display:inline-grid!important;place-items:center!important;border-radius:14px!important;background:var(--card,#fff)!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;color:var(--text,#111)!important;box-shadow:0 2px 8px -4px rgba(15,23,42,.25)!important}
+:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn svg{width:18px!important;height:18px!important;stroke:currentColor!important;fill:none!important}
+:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn[aria-expanded="true"]{border-color:#19c486!important;color:#0f9d6a!important;background:color-mix(in srgb,#19c486 12%,var(--card,#fff))!important}
