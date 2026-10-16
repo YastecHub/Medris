@@ -17,7 +17,8 @@ async function loadBrowseIndex(activeSector, activeCategory) {
   const idx = await loadBrowseIndexRaw(activeSector, activeCategory);
   const view = (typeof window.lvViewCampus === "function") ? window.lvViewCampus() : "all";
   if (!Array.isArray(idx) || !view || view === "all") return idx;
-  return idx.filter((x) => x.campus_id === view || x.ops_scope === "all" || (x.ops_scope === "multiple" && Array.isArray(x.ops) && x.ops.includes(view)));
+  // strictly the chosen campus: a vendor shows only on its own home campus
+  return idx.filter((x) => x.campus_id === view);
 }
 async function loadBrowseIndexRaw(activeSector, activeCategory) {
   const slot = Math.floor(Date.now() / 600000);
