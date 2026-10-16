@@ -948,3 +948,37 @@ async function reactToAiMessage(evt, msgId, emoji) {
     });
   }
 }
+
+// Levi's floating button wears the same glass Levromart badge as the map and
+// campus picker (shared `lvMascotSvg`), so the assistant looks the same everywhere.
+(function lvFabBadge() {
+  function put() {
+    var fab = document.getElementById("aiChatFab");
+    if (!fab) return false;
+    if (fab.querySelector(".lv-fab-badge")) return true;
+    if (!window.lvMascotSvg) return false;
+    var b = document.createElement("span");
+    b.className = "lv-fab-badge";
+    b.setAttribute("aria-hidden", "true");
+    b.innerHTML = window.lvMascotSvg;
+    fab.insertBefore(b, fab.firstChild);
+    blink(b);
+    return true;
+  }
+  // CSS animation can be switched off by the calm-motion setting, so blink with the Web Animations API.
+  function blink(b) {
+    var eye = b.querySelector(".lvc-eye");
+    if (!eye || !eye.animate) return;
+    try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (_) {}
+    eye.style.transformBox = "fill-box";
+    eye.style.transformOrigin = "center";
+    (function once() {
+      try {
+        eye.animate([{ transform: "scaleY(1)" }, { transform: "scaleY(.1)", offset: .5 }, { transform: "scaleY(1)" }], { duration: 220, easing: "ease-in-out" });
+      } catch (_) {}
+      setTimeout(once, 3200 + Math.random() * 2200);
+    })();
+  }
+  var tries = 0;
+  (function tick() { if (!put() && tries++ < 40) setTimeout(tick, 250); })();
+})();
