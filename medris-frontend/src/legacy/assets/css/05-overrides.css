@@ -2349,3 +2349,6 @@ html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) :is
 html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-step-title{padding:0!important}
 html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row{padding:0!important}
 html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label svg,html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label i{background:transparent!important;width:auto!important;height:auto!important;padding:0!important;color:var(--text-muted,#667)!important}
+
+/* Product page: the title always takes the same two-line space (longer names are cut with …), so the photo sits in exactly the same place on every product. That is what lets the next product slide in without any jump. */
+html:root body #app .product-detail-card .product-detail-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;min-height:2.4em!important}
