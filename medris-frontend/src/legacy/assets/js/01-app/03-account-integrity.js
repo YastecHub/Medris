@@ -100,7 +100,6 @@ function brandSpinnerHtml(label) {
 setLogoMask(document.getElementById("brandLogoRight"), LEVROMART_LOGO_RIGHT);
 document.getElementById("loginModalLogo").src = "{{inline-asset:levromart-splash-img.webp}}";
 document.getElementById("aiChatFabLogo").src = MEDRIS_LOGO;
-document.getElementById("tourLeviLogo").src = MEDRIS_LOGO;
 document.getElementById("aiChatHeaderLogo").src = MEDRIS_LOGO;
 // The favicon (and app icon, for search engines and browser tabs) uses the
 // branded /icon-192.png set in the <head> instead -- MEDRIS_LOGO is a

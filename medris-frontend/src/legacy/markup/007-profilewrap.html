@@ -151,19 +151,20 @@
   </div>
 </div>
 
-<div id="tourModal" class="tour-spotlight-overlay hidden">
-  <div class="tour-spotlight-hole centered" id="tourSpotlightHole"></div>
-  <div class="install-modal-content tour-content tour-callout centered" id="tourCallout">
-    <div class="install-modal-badge"><img id="tourLeviLogo" alt="Levi" style="width:2.6rem;height:2.6rem;border-radius:50%;object-fit:contain;" /></div>
-    <p class="muted" style="margin:0 0 0.2rem;font-size:0.75rem;font-weight:600;letter-spacing:0.03em;text-transform:uppercase;"><i id="tourIcon" class="fa-solid fa-hand-sparkles"></i> Levi says</p>
-    <h3 id="tourTitle">Welcome to Levromart</h3>
-    <p class="muted" id="tourBody"></p>
-    <div class="tour-dots" id="tourDots"></div>
-    <div class="install-modal-actions">
-      <button class="btn btn-sm btn-outline hidden" id="tourBackBtn" onclick="tourBack()">Back</button>
-      <button class="btn" id="tourNextBtn" onclick="tourNext()">Next</button>
+<div id="lvTour" class="lvt hidden">
+  <div class="lvt-hole none" id="lvTourHole"></div>
+  <div class="lvt-sheet" id="lvTourSheet" role="dialog" aria-live="polite" aria-label="App tour">
+    <div class="lvt-head">
+      <span class="lvt-mascot" aria-hidden="true"></span>
+      <div class="lvt-titles"><p class="lvt-says"><i id="lvTourIcon" class="fa-solid fa-hand-sparkles"></i> Levi says</p><h3 id="lvTourTitle">Hi, I'm Levi</h3></div>
+      <button type="button" class="lvt-skip" onclick="skipTour()">Skip</button>
     </div>
-    <button class="tour-skip" onclick="skipTour()">Skip tour</button>
+    <p class="lvt-body" id="lvTourBody"></p>
+    <div class="lvt-dots" id="lvTourDots"></div>
+    <div class="lvt-actions">
+      <button type="button" class="lvt-btn lvt-ghost lvt-hide" id="lvTourBack" onclick="tourBack()">Back</button>
+      <button type="button" class="lvt-btn lvt-pri" id="lvTourNext" onclick="tourNext()">Next</button>
+    </div>
   </div>
 </div>
 
