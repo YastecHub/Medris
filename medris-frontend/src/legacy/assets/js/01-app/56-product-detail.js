@@ -823,42 +823,35 @@ window.lvPdPrefetch = function (id) {
     if (e && !peekData.has(k)) e.first.then((r) => { if (r?.data) peekData.set(k, r.data); });
     return peekData.get(k) || null;
   }
+  // A light preview of the next product: its name and photo, in exactly the place and size they have on every product page
+  // (the page keeps the title in a fixed two-line space, so the photo is always in the same spot). When the real page takes
+  // over, nothing moves.
   function buildPeek(d, dir) {
     const host = app(); if (!host) return null;
     const r0 = host.getBoundingClientRect(), sy = window.scrollY || 0;
     // the page is being dragged sideways when the preview is built: measure it where it would rest
     const tx = parseFloat((host.style.transform.match(/translateX\(([-0-9.]+)px/) || [])[1]) || 0;
     const r = { left: r0.left - tx, top: r0.top, width: r0.width };
-    const top = Math.max(0, r.top);
-    // The preview copies the exact place and size of the current page's photo, so when the real page replaces it
-    // the photo stays put (no pop up / down).
-    const gi = document.querySelector("#app .product-gallery-main img, #app .product-gallery-carousel img, #app .product-detail-card img");
+    const top = sy > 0 ? 0 : Math.max(0, r.top);
     const el = document.createElement("div");
     el.className = "lv-swipe-peek";
+    Object.assign(el.style, { position: "fixed", left: r.left + "px", top: top + "px", width: r.width + "px", height: (innerHeight - top) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: `translate3d(${dir * innerWidth}px,0,0)`, willChange: "transform" });
     const img = Array.isArray(d.photos) ? d.photos[0] : "";
-    let imgBox = "";
-    if (gi) {
-      const gr0 = gi.getBoundingClientRect(), cs = getComputedStyle(gi);
-      const gr = { left: gr0.left - tx, top: gr0.top, width: gr0.width, height: gr0.height };
-      // a longer or shorter product name moves the photo down or up: measure the next name the same way the page will
-      let delta = 0;
-      try {
-        const h2 = document.querySelector("#app .product-detail-title");
-        if (h2 && h2.parentNode) {
-          const c = h2.cloneNode(false); c.textContent = d.name || "";
-          c.style.cssText += `;position:absolute;visibility:hidden;left:0;top:-9999px;width:${h2.getBoundingClientRect().width}px`;
-          h2.parentNode.appendChild(c); delta = c.getBoundingClientRect().height - h2.getBoundingClientRect().height; c.remove();
-        }
-      } catch (_) {}
-      gr.top += delta;
-      // where the photo will sit once the next page is at the top of the screen
-      const topInApp = Math.max(0, (gr.top + sy) - (sy > 0 ? 0 : top));
-      imgBox = `<div class="lvp-name" style="height:${Math.max(0, Math.round(topInApp))}px">${esc(d.name || "")}</div><div style="margin-left:${Math.round(gr.left - r.left)}px;width:${Math.round(gr.width)}px;height:${Math.round(gr.height)}px;border-radius:${esc(cs.borderRadius || "24px")};overflow:hidden;background:color-mix(in srgb,var(--text,#111) 6%,transparent)">${img ? `<img src="${esc(img)}" alt="" decoding="async" style="width:100%;height:100%;object-fit:${esc(cs.objectFit || "cover")};display:block">` : ""}</div>`;
-    } else {
-      imgBox = `<div class="lvp-img">${img ? `<img src="${esc(img)}" alt="" decoding="async">` : ""}</div><div class="lvp-body"><div class="lvp-name">${esc(d.name || "")}</div><div class="lvp-shop">${esc(d.vendor?.business_name || "")}</div></div>`;
+    const gi = document.querySelector("#app .product-gallery-main img, #app .product-gallery-carousel img, #app .product-detail-media img");
+    const h2 = document.querySelector("#app .product-detail-title");
+    const rel = (e) => { const b = e.getBoundingClientRect(); return { x: b.left - tx - r.left, y: b.top + sy - top, w: b.width, h: b.height }; };
+    let html = "";
+    if (h2) {
+      const b = rel(h2), cs = getComputedStyle(h2);
+      html += `<div style="position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;padding:${cs.padding};font-family:${cs.fontFamily};font-size:${cs.fontSize};font-weight:${cs.fontWeight};line-height:${cs.lineHeight};letter-spacing:${cs.letterSpacing};color:${cs.color};margin:0">${esc(d.name || "")}</div>`;
     }
-    el.innerHTML = imgBox;
-    Object.assign(el.style, { position: "fixed", left: r.left + "px", top: (sy > 0 ? 0 : top) + "px", width: r.width + "px", height: (innerHeight - (sy > 0 ? 0 : top)) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: `translate3d(${dir * innerWidth}px,0,0)`, willChange: "transform" });
+    if (gi) {
+      const b = rel(gi), cs = getComputedStyle(gi);
+      html += `<div style="position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;border-radius:${cs.borderRadius};overflow:hidden;background:color-mix(in srgb,var(--text,#111) 6%,transparent)">${img ? `<img src="${esc(img)}" alt="" decoding="async" style="width:100%;height:100%;object-fit:${cs.objectFit || "cover"};display:block">` : ""}</div>`;
+    } else {
+      html += `<div class="lvp-img">${img ? `<img src="${esc(img)}" alt="" decoding="async">` : ""}</div>`;
+    }
+    el.innerHTML = html;
     document.body.appendChild(el);
     return { el, dir };
   }
@@ -935,9 +928,14 @@ window.lvPdPrefetch = function (id) {
       if (pv) {
         // 4. once the preview has landed, the real page replaces it with a quick fade
         try { await Promise.all([a1?.finished, a2?.finished].filter(Boolean)); } catch (_) {}
+        // keep the preview over the page until the real photo has been painted, so the photo never blinks out
+        try {
+          const ri = now.querySelector(".product-gallery-main img, .product-gallery-carousel img, .product-detail-media img");
+          if (ri && !(ri.complete && ri.naturalWidth)) await Promise.race([ri.decode().catch(() => {}), new Promise((r) => setTimeout(r, 400))]);
+        } catch (_) {}
         now.style.opacity = ""; now.style.transform = "";
         snap.remove();
-        const f = pv.el.animate ? pv.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-out", fill: "forwards" }) : null;
+        const f = pv.el.animate ? pv.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: "linear", fill: "forwards" }) : null;
         if (f) { try { await f.finished; } catch (_) {} }
         pv.el.remove();
       } else {
