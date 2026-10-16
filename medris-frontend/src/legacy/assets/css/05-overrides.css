@@ -2129,3 +2129,23 @@ html:root body #app .search-page .lv-hero2-search{border-radius:24px!important;m
 /* Vendors view buttons: no fill at all; the active one is only coloured green */
 :root:root:root body #app .vd-page .vd-views button.vd-view,:root:root:root body #app .vd-page .vd-views button.vd-view.active{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important}
 :root:root:root body #app .vd-page .vd-views button.vd-view.active{color:#0f9d6a!important}
+
+/* ===== Round 9 ===== */
+/* Search results: rounder rows and thumbnails */
+html:root body #app .sr-row{border-radius:22px!important;border:1px solid color-mix(in srgb,var(--border) 70%,#8b6bff)!important;margin-bottom:.65rem!important;padding:.75rem!important}
+html:root body #app .sr-thumb{border-radius:18px!important}
+html:root body #app .sr-thumb img{border-radius:18px!important}
+/* Storefront banner "more" button: small, quiet, glass */
+html:root body #app .storefront-banner-more{width:2rem!important;height:2rem!important;min-width:0!important;border-radius:50%!important;border:0!important;background:rgba(0,0,0,.32)!important;color:rgba(255,255,255,.9)!important;box-shadow:none!important;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:.8rem!important;padding:0!important}
+/* Empty states with art */
+.lv-empty-state{display:flex;flex-direction:column;align-items:center;gap:.6rem;padding:2rem 1rem}
+.lv-empty-state strong{font-weight:700;color:var(--text-muted)}
+/* No internet screen: clean light/dark page instead of the green texture */
+html body #levromartOfflineOverlay{background:radial-gradient(520px 360px at 50% 20%,rgba(139,107,255,.18),transparent 70%),linear-gradient(180deg,#f7f3ff,#ffffff)!important;background-image:radial-gradient(520px 360px at 50% 20%,rgba(139,107,255,.18),transparent 70%),linear-gradient(180deg,#f7f3ff,#ffffff)!important}
+html:root[data-theme="dark"] body #levromartOfflineOverlay,html:root[data-theme="black"] body #levromartOfflineOverlay{background-image:radial-gradient(520px 360px at 50% 20%,rgba(139,107,255,.28),transparent 70%),linear-gradient(180deg,#14101f,#0b0b0f)!important}
+html body #levromartOfflineOverlay .levromart-offline-title{color:#1b0d3d!important;font-size:1.45rem!important;font-weight:900!important;letter-spacing:-.02em}
+html body #levromartOfflineOverlay .levromart-offline-text{color:#5b4a8a!important;font-size:.92rem!important}
+html:root[data-theme="dark"] body #levromartOfflineOverlay .levromart-offline-title,html:root[data-theme="black"] body #levromartOfflineOverlay .levromart-offline-title{color:#fff!important}
+html:root[data-theme="dark"] body #levromartOfflineOverlay .levromart-offline-text,html:root[data-theme="black"] body #levromartOfflineOverlay .levromart-offline-text{color:rgba(255,255,255,.72)!important}
+html body #levromartOfflineOverlay .lv-off-art{width:190px;height:154px}
+html body #levromartOfflineOverlay .levromart-offline-retry{background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;box-shadow:0 10px 22px rgba(11,107,71,.35)!important;padding:.8rem 2rem!important}
