@@ -4,6 +4,7 @@ window.lvPageHero = function (kind) {
   const C = {
     request: { img: "/lb/person-a.webp", t: "Can't find it?", em: "Request it.", p: "Post what you need and nearby vendors send you offers.", icons: ["fa-hand", "fa-box-open", "fa-tag"] },
     orders: { img: "/lb/person-f.webp", t: "Your orders,", em: "all in one place.", p: "Track every order from payment to delivery.", icons: ["fa-receipt", "fa-truck-fast", "fa-bag-shopping"] },
+    search: { img: "/lb/person-d.webp", t: "Find it", em: "fast.", p: "Products, services and vendors on your campus.", icons: ["fa-magnifying-glass", "fa-tag", "fa-store"] },
     vendors: { img: "/lb/person-e.webp", t: "Meet your", em: "campus vendors.", p: "Shops, services and rentals near you, all in one place.", icons: ["fa-store", "fa-bag-shopping", "fa-star"] },
   }[kind];
   if (!C) return "";

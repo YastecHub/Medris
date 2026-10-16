@@ -2030,3 +2030,25 @@ html:root body #app .product-card{border-radius:20px!important;border:1px solid 
 .lv-b3-copy em{margin-top:.5rem;font-style:normal;font-weight:800;font-size:.8rem;color:#ffd21f}
 .lv-b3-img{position:absolute;right:1rem;top:.9rem;width:4.4rem;height:4.4rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 8px 16px rgba(0,0,0,.3)}
 .lv-b3-ic{right:5.4rem;bottom:.7rem;width:2rem;height:2rem;border-radius:.65rem;background:#ffc83d;color:#1b0d3d;font-size:.9rem}
+
+/* ===== Follow buttons + Search page (lv-r3) ===== */
+html:root body #app .vendor-card-follow-btn,html:root body #app .vd-follow,html:root body #app .fn-follow,html:root body #app .sr-follow{display:inline-flex!important;align-items:center;justify-content:center;gap:.4rem;min-height:2.4rem;padding:0 1.2rem;border:0!important;border-radius:999px!important;font-weight:800!important;font-size:.88rem;color:#fff!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;box-shadow:0 8px 16px rgba(11,107,71,.3)!important}
+html:root body #app .vendor-card-follow-btn::before,html:root body #app .vd-follow::before,html:root body #app .fn-follow::before,html:root body #app .sr-follow::before{content:"\2b";font-family:"Font Awesome 6 Free";font-weight:900;font-size:.72rem}
+html:root body #app .vendor-card-follow-btn.following,html:root body #app .vd-follow.following,html:root body #app .fn-follow.following,html:root body #app .sr-follow.following,html:root body #app .vendors-list-mode .vendor-card-follow-btn.following{background:linear-gradient(135deg,#6a3df0,#4b2e83)!important;color:#fff!important;box-shadow:0 8px 16px rgba(75,46,131,.35)!important}
+html:root body #app .vendor-card-follow-btn.following::before,html:root body #app .vd-follow.following::before,html:root body #app .fn-follow.following::before,html:root body #app .sr-follow.following::before{content:"\f00c"}
+html:root body #app .vendor-card-follow-btn:active{transform:scale(.97)}
+/* Search page */
+.lv-hero2-search{min-height:6rem;padding:.8rem 1rem;margin-bottom:.7rem;background:linear-gradient(135deg,#6a3df0 0%,#4b2e83 60%,#0f9d6a 150%)}
+.lv-hero2-search .lv-hero2-img{width:4.2rem;height:4.2rem}
+.lv-hero2-search .lv-hero2-copy b{font-size:1.2rem}
+html:root body #app .search-page-input-wrap{border-radius:999px!important;border:1.5px solid color-mix(in srgb,#6a3df0 35%,var(--border))!important;background:color-mix(in srgb,#6a3df0 5%,var(--card))!important;box-shadow:0 8px 18px rgba(75,46,131,.12)}
+html:root body #app .search-page-input-wrap:focus-within{border-color:#6a3df0!important;box-shadow:0 0 0 4px color-mix(in srgb,#6a3df0 20%,transparent)}
+html:root body #app .search-page-input-wrap>i.fa-magnifying-glass{color:#6a3df0}
+html:root body #app .search-page-back{width:2.6rem;height:2.6rem;border-radius:50%;background:var(--card);border:1px solid var(--border)}
+html:root body #app .search-page-filters{display:flex;gap:.45rem;overflow-x:auto;scrollbar-width:none;padding:.4rem 0}
+html:root body #app .search-page-filters::-webkit-scrollbar{display:none}
+html:root body #app .search-page-filter{flex:0 0 auto;display:inline-flex;align-items:center;gap:.35rem;padding:.42rem .9rem;border-radius:999px;border:1.5px solid var(--border);background:var(--card);color:var(--text-muted);font-weight:800;font-size:.84rem;box-shadow:none}
+html:root body #app .search-page-filter.active{background:linear-gradient(135deg,#6a3df0,#4b2e83);border-color:transparent;color:#fff}
+html:root body #app .search-page-chip{border-radius:999px;padding:.4rem .85rem;border:1.5px solid color-mix(in srgb,#19c486 40%,var(--border));background:color-mix(in srgb,#19c486 8%,var(--card));color:var(--text);font-weight:700;font-size:.84rem}
+html:root body #app .search-page-history-head span,html:root body #app .search-page-section>h3,html:root body #app .search-page-section .section-title{font-size:.74rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6a3df0}
+html:root body #app .search-page-history-head button{color:#0f9d6a;font-weight:800}
