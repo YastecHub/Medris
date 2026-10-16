@@ -59,7 +59,7 @@ window.lvHomeBand = function () {
 window.lvFloatHero = function () {
   try {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    document.querySelectorAll(".lv-hero2 .lv-fl:not([data-fl]),.lv-band .lv-fl:not([data-fl])").forEach((el, i) => {
+    document.querySelectorAll(".lv-hero2 .lv-hero2-img:not([data-fl])").forEach((el, i) => {
       el.setAttribute("data-fl", "1");
       const dy = 4 + (i % 3) * 2, r = (i % 2 ? -1 : 1) * (2 + i);
       el.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(-${dy}px) rotate(${r}deg)` }, { transform: "translateY(0) rotate(0deg)" }], { duration: 2600 + i * 380, delay: i * 250, iterations: Infinity, easing: "ease-in-out" });
