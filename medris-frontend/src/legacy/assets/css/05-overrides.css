@@ -1946,7 +1946,7 @@ html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in 
 .lv-band-c .lv-bfl{left:auto;right:.8rem;top:50%;margin-top:-1.2rem;width:2.4rem;height:2.4rem;background:#fff;color:#128c4a;font-size:1.3rem}
 
 /* Levi mascot (robot head): glow on the antenna, floating mascot, modern speech bubbles */
-.lvc-ant{animation:lvcGlow 2.2s ease-in-out infinite;filter:drop-shadow(0 0 4px rgba(255,210,31,.9))}
+.lvc-ant{animation:lvcGlow 2.2s ease-in-out infinite;filter:drop-shadow(0 0 4px rgba(61,255,180,.9))}
 @keyframes lvcGlow{0%,100%{opacity:1}50%{opacity:.55}}
 #lvCampus .lvc-mascot,.vmp-buddy-m,.st-hero .m{filter:drop-shadow(0 10px 14px rgba(75,46,131,.4))}
 #lvCampus .lvc-bubble,.vmp-buddy-b,.st-hero .b{background:linear-gradient(135deg,color-mix(in srgb,#6a3df0 14%,var(--card,#fff)),color-mix(in srgb,#0f9d6a 12%,var(--card,#fff)))!important;border:1.5px solid color-mix(in srgb,#6a3df0 35%,var(--border,#ddd))!important;border-radius:20px!important;font-weight:700}
