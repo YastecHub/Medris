@@ -1275,8 +1275,16 @@ function hideLeviFromPanel() {
     } catch (_) {}
   }
 
+  // the two faces in the header drift up and down, out of step, like bubbles (WAAPI: CSS animation is off app-wide)
+  function floatFaces() {
+    if (reduced()) return;
+    document.querySelectorAll(".lb-hero-people img").forEach((img, i) => {
+      try { img.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(${i ? -5 : -7}px) rotate(${i ? -2 : 2}deg)` }, { transform: "translateY(0) rotate(0deg)" }], { duration: i ? 3400 : 2800, delay: i ? 600 : 0, iterations: Infinity, easing: "ease-in-out" }); } catch (_) {}
+    });
+  }
   window.initLeaderboardPage = async function () {
     const tok = ++LB.token;
+    floatFaces();
     startLive();
     const wantSummary = signedIn();
     const tasks = [loadBoard(LB.period), loadRules()];
