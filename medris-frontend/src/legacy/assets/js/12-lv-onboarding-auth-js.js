@@ -1961,6 +1961,8 @@ async function setVendorRequestPref(v){
   }
   window.lvApplyCampusScope=function(){ vmap().then(applyScope); };
   window.lvVendorMapReady=function(){ return vmap(); };
+  // exact home campus of a vendor ("" = none set, undefined = vendor list not loaded or vendor unknown); used by the leaderboard, which must not fail open
+  window.lvVendorHomeCampus=function(id){ var x=VMAP&&VMAP.get(String(id)); return x?(x.campus_id||""):undefined; };
   window.lvVendorInScope=function(id){
     var view=window.lvViewCampus&&window.lvViewCampus()||"all"; if(view==="all"||!id||!VMAP) return true;
     var x=VMAP.get(String(id)); if(!x) return true;
