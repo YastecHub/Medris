@@ -2396,3 +2396,6 @@ html:root body #lvCs .product-comment-compose-row .btn i{color:inherit!important
 html:root body #lvCs .product-comment-compose-row textarea:placeholder-shown+.btn{opacity:.3!important}
 html:root body #lvCs .product-comment-replying{background:color-mix(in srgb,var(--text,#111) 6%,transparent);border-radius:12px;padding:.4rem .7rem!important;margin-bottom:.45rem;font-size:.8rem}
 @media (prefers-reduced-motion:reduce){html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.lv-pop .lv-heart{animation:none}}
+
+/* Product page: the title always takes the same two-line space (longer names are cut with …), so the photo sits in exactly the same place on every product. That is what lets the next product slide in without any jump. */
+html:root body #app .product-detail-card .product-detail-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;min-height:2.4em!important}
