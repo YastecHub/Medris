@@ -702,8 +702,44 @@ async function sendAiChatMessage() {
   }
 }
 
+// Words Levi's quick rules look for. A misspelt word that is one or two letters away from one of these is read as that
+// word (so "closest vender that sels shrits" is understood), instead of being treated as something else.
+const LEVI_VOCAB = ("vendor vendors store stores shop shops seller sellers closest nearest nearby around location buy buying purchase rent rental rentals renting hire hiring " +
+  "sell sells selling cheap cheapest affordable budget best highest rated rating ratings stars open show take find visit need want price prices delivery pickup order orders cart wishlist " +
+  "messages message settings profile products product services service packages package marketplace request support catalogue catalog listings listing categories category " +
+  "shirt shirts shoes shoe sneakers trousers jeans dress dresses gown gowns bag bags phone phones laptop laptops watch watches jewelry jewellery perfume perfumes wig wigs hair " +
+  "food snacks drinks drink chicken rice cake cakes pastry laundry braiding makeup tailor tailoring photography printing repair").split(" ");
+const LEVI_VOCAB_SET = new Set(LEVI_VOCAB);
+function leviEditDistance(a, b) {
+  const al = a.length, bl = b.length;
+  if (Math.abs(al - bl) > 2) return 9;
+  const d = [];
+  for (let i = 0; i <= al; i++) { d[i] = [i]; }
+  for (let j = 1; j <= bl; j++) d[0][j] = j;
+  for (let i = 1; i <= al; i++) for (let j = 1; j <= bl; j++) {
+    const c = a[i - 1] === b[j - 1] ? 0 : 1;
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[al][bl];
+}
+const __leviFixCache = new Map();
+function leviFixWord(w) {
+  if (w.length < 4 || LEVI_VOCAB_SET.has(w) || /[^a-z]/.test(w)) return w;
+  if (__leviFixCache.has(w)) return __leviFixCache.get(w);
+  const max = w.length <= 7 ? 1 : 2;
+  let best = w, bestD = 9;
+  for (const v of LEVI_VOCAB) {
+    if (v[0] !== w[0] || Math.abs(v.length - w.length) > max) continue;
+    const dist = leviEditDistance(w, v);
+    if (dist <= max && dist < bestD) { best = v; bestD = dist; }
+  }
+  __leviFixCache.set(w, best);
+  return best;
+}
 function leviNormaliseText(text) {
-  return String(text || "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+  const t = String(text || "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+  return t.replace(/[a-z]{4,}/g, (w) => leviFixWord(w));
 }
 
 function leviExtractCartTarget(text, mode) {
@@ -1170,8 +1206,11 @@ async function resolveLeviLocalAction(text) {
   // entirely and fall through to product search instead of navigating --
   // try resolving the phrase as a vendor name regardless of wording, and
   // only fall through to product search when nothing matches.
-  const vendorMatch = q.match(/^(?:take|open|show|go to|find|visit)\s+(?:me\s+)?(?:to\s+)?(?:the\s+)?(.+?)(?:\s+(?:vendor|store|shop|seller))?$/);
-  if (vendorMatch) {
+  // Try the words exactly as typed first (a business name must not be "corrected"), then the spell-corrected text.
+  const qRaw = String(text || "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+  for (const phrase of [...new Set([qRaw, q])]) {
+    const vendorMatch = phrase.match(/^(?:take|open|show|go to|find|visit)\s+(?:me\s+)?(?:to\s+)?(?:the\s+)?(.+?)(?:\s+(?:vendor|store|shop|seller))?$/);
+    if (!vendorMatch) continue;
     const vendorTarget = vendorMatch[1].trim();
     if (vendorTarget.length >= 2) {
       const vr = await resolveLeviVendor(vendorTarget);
@@ -1192,7 +1231,8 @@ async function resolveLeviLocalAction(text) {
   // A short standalone search such as "Penne", "sleeves", or "ECG machine"
   // is still an actionable request. Resolve it directly instead of forcing
   // the user to phrase it as "I need ...".
-  if (q.length >= 2 && q.length <= 60 && !/^(hi|hello|hey|thanks|thank you|okay|ok|yes|no|help|settings|cart|orders?|vendors?)$/.test(q)) {
+  // (only for a short phrase, never a full question such as "closest vendor that sells shirts")
+  if (q.length >= 2 && q.length <= 60 && q.split(" ").length <= 4 && !/^(hi|hello|hey|thanks|thank you|okay|ok|yes|no|help|settings|cart|orders?|vendors?)$/.test(q)) {
     const result = await resolveLeviProduct(q);
     if (result.product && (result.exact || (result.matches || []).length === 1)) {
       return { handled:true, reply:`I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""}. I’m taking you there now. [[NAV:productDetail|productId=${result.product.id}]]` };

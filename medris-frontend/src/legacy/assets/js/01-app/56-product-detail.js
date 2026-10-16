@@ -825,12 +825,40 @@ window.lvPdPrefetch = function (id) {
   }
   function buildPeek(d, dir) {
     const host = app(); if (!host) return null;
-    const r = host.getBoundingClientRect(), top = Math.max(0, r.top);
+    const r0 = host.getBoundingClientRect(), sy = window.scrollY || 0;
+    // the page is being dragged sideways when the preview is built: measure it where it would rest
+    const tx = parseFloat((host.style.transform.match(/translateX\(([-0-9.]+)px/) || [])[1]) || 0;
+    const r = { left: r0.left - tx, top: r0.top, width: r0.width };
+    const top = Math.max(0, r.top);
+    // The preview copies the exact place and size of the current page's photo, so when the real page replaces it
+    // the photo stays put (no pop up / down).
+    const gi = document.querySelector("#app .product-gallery-main img, #app .product-gallery-carousel img, #app .product-detail-card img");
     const el = document.createElement("div");
     el.className = "lv-swipe-peek";
     const img = Array.isArray(d.photos) ? d.photos[0] : "";
-    el.innerHTML = `<div class="lvp-img">${img ? `<img src="${esc(img)}" alt="" decoding="async">` : ""}</div><div class="lvp-body"><div class="lvp-name">${esc(d.name || "")}</div><div class="lvp-shop">${esc(d.vendor?.business_name || "")}</div></div>`;
-    Object.assign(el.style, { position: "fixed", left: r.left + "px", top: top + "px", width: r.width + "px", height: (innerHeight - top) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: `translate3d(${dir * innerWidth}px,0,0)`, willChange: "transform" });
+    let imgBox = "";
+    if (gi) {
+      const gr0 = gi.getBoundingClientRect(), cs = getComputedStyle(gi);
+      const gr = { left: gr0.left - tx, top: gr0.top, width: gr0.width, height: gr0.height };
+      // a longer or shorter product name moves the photo down or up: measure the next name the same way the page will
+      let delta = 0;
+      try {
+        const h2 = document.querySelector("#app .product-detail-title");
+        if (h2 && h2.parentNode) {
+          const c = h2.cloneNode(false); c.textContent = d.name || "";
+          c.style.cssText += `;position:absolute;visibility:hidden;left:0;top:-9999px;width:${h2.getBoundingClientRect().width}px`;
+          h2.parentNode.appendChild(c); delta = c.getBoundingClientRect().height - h2.getBoundingClientRect().height; c.remove();
+        }
+      } catch (_) {}
+      gr.top += delta;
+      // where the photo will sit once the next page is at the top of the screen
+      const topInApp = Math.max(0, (gr.top + sy) - (sy > 0 ? 0 : top));
+      imgBox = `<div class="lvp-name" style="height:${Math.max(0, Math.round(topInApp))}px">${esc(d.name || "")}</div><div style="margin-left:${Math.round(gr.left - r.left)}px;width:${Math.round(gr.width)}px;height:${Math.round(gr.height)}px;border-radius:${esc(cs.borderRadius || "24px")};overflow:hidden;background:color-mix(in srgb,var(--text,#111) 6%,transparent)">${img ? `<img src="${esc(img)}" alt="" decoding="async" style="width:100%;height:100%;object-fit:${esc(cs.objectFit || "cover")};display:block">` : ""}</div>`;
+    } else {
+      imgBox = `<div class="lvp-img">${img ? `<img src="${esc(img)}" alt="" decoding="async">` : ""}</div><div class="lvp-body"><div class="lvp-name">${esc(d.name || "")}</div><div class="lvp-shop">${esc(d.vendor?.business_name || "")}</div></div>`;
+    }
+    el.innerHTML = imgBox;
+    Object.assign(el.style, { position: "fixed", left: r.left + "px", top: (sy > 0 ? 0 : top) + "px", width: r.width + "px", height: (innerHeight - (sy > 0 ? 0 : top)) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: `translate3d(${dir * innerWidth}px,0,0)`, willChange: "transform" });
     document.body.appendChild(el);
     return { el, dir };
   }

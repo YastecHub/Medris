@@ -233,7 +233,7 @@ async function renderHome() {
   // last list that was verified against real listings (or none) -- never
   // every sector, since categories nobody has listed under must not show.
   let html = "";
-  if (railCategories.length) html += homeCategoryRailHtml(railCategories);
+  // the home category rail was removed (nobody used it); the campus bar now sits right under the search bar
   html += `<div class="hero levro-home-hero">
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;

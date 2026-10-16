@@ -594,3 +594,24 @@ async function buyPackage(packageId) {
   window.__closeLevromartReviewPrompt?.();
   navigate("orderDetail", { orderId });
 }
+
+// Swipe sideways on a storefront to move between Products, Services and Packages (not when the finger starts on a scrolling row or a field).
+(function () {
+  let sx = 0, sy = 0, ok = false;
+  const skip = "input,textarea,select,.hscroll,.storefront-category-chips,.storefront-banner,[class*='carousel'],.modal,.drawer,[role=dialog]";
+  document.addEventListener("touchstart", (e) => {
+    ok = false;
+    if (e.touches.length !== 1 || !document.querySelector("#app .storefront-catalog-tabs") || e.target.closest?.(skip)) return;
+    if (!e.target.closest?.("#app")) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; ok = true;
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (!ok) return; ok = false;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > 45 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    const order = ["products", "services", "packages"], i = order.indexOf(storefrontCatalogTab);
+    const n = i + (dx < 0 ? 1 : -1);
+    if (i < 0 || n < 0 || n >= order.length) return;
+    switchStorefrontCatalogTab(order[n]);
+  }, { passive: true });
+})();
