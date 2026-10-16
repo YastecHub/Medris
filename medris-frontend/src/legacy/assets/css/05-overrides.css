@@ -1957,10 +1957,6 @@ html:root body #app .request-equipment-page input:not([type=radio]):not([type=fi
 html:root body #app .request-equipment-page input:focus,html:root body #app .request-equipment-page textarea:focus{outline:0;border-color:var(--lv-g1)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--lv-g1) 22%,transparent)!important}
 html:root body #app .request-equipment-page .theme-option{position:relative;justify-content:center;min-height:3.3rem;border-radius:16px!important;border:1.5px solid var(--border)!important;background:var(--card)!important;font-weight:800;transition:all .15s}
 html:root body #app .request-equipment-page .theme-option input{position:absolute;opacity:0;pointer-events:none}
-html:root body #app .request-equipment-page .theme-option:has(input:checked){background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important;color:#fff!important;box-shadow:0 10px 22px rgba(11,107,71,.35)}
-html:root body #app .request-equipment-page .theme-option:has(input:checked) *{color:#fff!important}
-html:root body #app .request-equipment-page .theme-option:nth-of-type(1)::before{content:"\f290";font-family:"Font Awesome 6 Free";font-weight:900;margin-right:.5rem}
-html:root body #app .request-equipment-page .theme-option:nth-of-type(2)::before{content:"\f084";font-family:"Font Awesome 6 Free";font-weight:900;margin-right:.5rem}
 html:root body #app .request-equipment-page .req-drop{border-radius:22px;border-width:2px;background:linear-gradient(160deg,color-mix(in srgb,var(--lv-y) 18%,var(--card)),color-mix(in srgb,var(--lv-g1) 10%,var(--card)))}
 html:root body #app .request-equipment-page .req-drop .rd-ico{background:linear-gradient(135deg,var(--lv-y),#ff9a3d);color:#1b0d3d}
 html:root body #app #postEquipmentRequestBtn{width:100%;min-height:3.3rem;margin-top:1.2rem!important;border:0!important;border-radius:999px!important;font-size:1.02rem!important;font-weight:900!important;letter-spacing:.01em;color:#fff!important;background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;box-shadow:0 14px 26px rgba(11,107,71,.4)!important}
@@ -1972,15 +1968,7 @@ html:root body #app .vd-page .vd-title{gap:0}
 html:root body #app .vd-page .vd-title h2,html:root body #app .vd-page .vd-title strong{font-size:1.4rem!important;font-weight:900!important;letter-spacing:-.03em}
 html:root body #app .vd-page .vd-views{display:inline-flex;gap:.2rem;padding:.22rem;border-radius:999px;background:color-mix(in srgb,var(--lv-p1) 10%,var(--card));border:1px solid color-mix(in srgb,var(--lv-p1) 18%,var(--border))}
 html:root body #app .vd-page .vd-views button.vd-view{width:2.2rem!important;height:2.2rem!important;border-radius:50%!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;box-shadow:none!important}
-html:root body #app .vd-page .vd-views button.vd-view.active{background:linear-gradient(135deg,var(--lv-p1),var(--lv-p2))!important;color:#fff!important;box-shadow:0 6px 14px rgba(75,46,131,.4)!important}
-html:root body #app .vd-page .vd-seg{display:flex;gap:.45rem;overflow-x:auto;border:0!important;scrollbar-width:none;padding:.15rem 0 .25rem}
-html:root body #app .vd-page .vd-seg::-webkit-scrollbar{display:none}
-html:root body #app .vd-page .vd-tab{flex:0 0 auto;padding:.5rem 1rem!important;border-radius:999px!important;border:1.5px solid var(--border)!important;background:var(--card)!important;font-weight:800;font-size:.86rem;color:var(--text-muted)!important;box-shadow:none!important}
-html:root body #app .vd-page .vd-tab::after,html:root body #app .vd-page .vd-tab::before{display:none!important}
-html:root body #app .vd-page .vd-tab.active{background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important;color:#fff!important;box-shadow:0 8px 18px rgba(11,107,71,.35)!important}
-html:root body #app .vd-page .vd-search{border-radius:999px!important;min-height:2.8rem;border:1.5px solid color-mix(in srgb,var(--lv-g1) 25%,var(--border))!important;background:color-mix(in srgb,var(--lv-g1) 5%,var(--card))!important;box-shadow:0 8px 18px rgba(15,23,42,.08)}
-html:root body #app .vd-page .vd-filter-btn{width:2.8rem;height:2.8rem;border-radius:50%!important;border:0!important;background:linear-gradient(135deg,var(--lv-y),#ff9a3d)!important;color:#1b0d3d!important;box-shadow:0 8px 16px rgba(255,154,61,.4)}
-html:root body #app .vd-page{background:radial-gradient(520px 260px at 100% 0,color-mix(in srgb,var(--lv-p1) 14%,transparent),transparent 70%),radial-gradient(460px 240px at 0 18%,color-mix(in srgb,var(--lv-g1) 12%,transparent),transparent 70%)}
+html:root body #app .vd-page .vd-views button.vd-view.active{background:linear-gradient(135deg,var(--lv-p1),var(--lv-p2))!important;color:#fff!important;box-shadow:none!important}
 /* --- Vendor map: slimmer search, friendlier chips and buttons --- */
 html:root body #app .vmp-bar{padding:.05rem .6rem .05rem .2rem!important;border-radius:999px!important;border:1.5px solid color-mix(in srgb,var(--lv-g1) 30%,var(--border))!important;box-shadow:0 8px 20px rgba(15,23,42,.25)!important}
 html:root body #app .vmp-bar input{padding:.32rem .2rem!important;font-size:.9rem!important}
@@ -1989,8 +1977,6 @@ html:root body #app .vmp-chip{padding:.28rem .75rem!important;font-size:.8rem!im
 html:root body #app .vmp-chip.on{background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important}
 html:root body #app .vmp-fab{border:0!important;background:linear-gradient(135deg,#fff,#f1e8ff)!important;color:var(--lv-p2)!important;box-shadow:0 8px 18px rgba(75,46,131,.3)!important}
 /* --- Bottom bar: active tab gets a coloured bubble --- */
-html:root body #bottomNav .bottom-nav-item.active .bn-icon{display:grid;place-items:center;width:2.5rem;height:1.9rem;margin:-.1rem auto .05rem;border-radius:999px;background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2));color:#fff!important;box-shadow:0 6px 14px rgba(11,107,71,.45)}
-html:root body #bottomNav .bottom-nav-item.active{color:var(--lv-g1)!important;font-weight:800}
 /* Levi mascot (robot head): glow on the antenna, floating mascot, modern speech bubbles */
 .lvc-ant{animation:lvcGlow 2.2s ease-in-out infinite;filter:drop-shadow(0 0 4px rgba(61,255,180,.9))}
 @keyframes lvcGlow{0%,100%{opacity:1}50%{opacity:.55}}
@@ -2001,3 +1987,46 @@ html:root body #bottomNav .bottom-nav-item.active{color:var(--lv-g1)!important;f
 #lvCampus .lvc-chip.on{background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border-color:transparent!important}
 #lvCampus .lvc-foot button.pri,#lvCampus .lvc-foot button[data-a=all]{background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important}
 #lvCampus .lvc-eye,.vmp-buddy-m .lvc-eye{transform-box:fill-box;transform-origin:center}
+
+/* ===== Round 2 polish (lv-r2): flat, clean, brand colours ===== */
+/* Vendors tabs: original underline look, spread evenly so all four show */
+html:root body #app .vd-page .vd-seg{display:flex!important;justify-content:space-between;gap:0!important;overflow:visible!important}
+html:root body #app .vd-page .vd-seg .vd-tab{flex:1 1 0!important;min-width:0;text-align:center;padding-left:.2rem!important;padding-right:.2rem!important;font-size:.9rem;white-space:nowrap}
+html:root body #app .vd-page .vd-filter-btn{background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:none!important;border-radius:12px!important}
+html:root body #app .vd-page .vd-views button.vd-view,html:root body #app .vd-page .vd-views button.vd-view.active{box-shadow:none!important;text-shadow:none!important}
+/* Bottom bar: no bubble or emboss; a short bar on top of the active tab */
+html:root body #bottomNav .bottom-nav-item{position:relative}
+html:root body #bottomNav .bottom-nav-item.active,html:root body #bottomNav .bottom-nav-item.active .bn-icon{background:transparent!important;box-shadow:none!important;filter:none!important;border-color:transparent!important}
+html:root body #bottomNav .bottom-nav-item.active::before{content:"";position:absolute;top:0;left:50%;width:1.7rem;height:3px;margin-left:-.85rem;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#19c486,#6a3df0)}
+html:root body #bottomNav .bottom-nav-item.active{color:var(--lv-g1)!important;font-weight:800}
+/* Request: Buy/Rent as clean flat options */
+html:root body #app .request-equipment-page .theme-option{box-shadow:none!important}
+html:root body #app .request-equipment-page .theme-option:has(input:checked){border:2px solid var(--lv-g1)!important;background:color-mix(in srgb,var(--lv-g1) 14%,var(--card))!important;color:var(--lv-g1)!important}
+html:root body #app .request-equipment-page .theme-option:has(input:checked)::after{content:"\f00c";font-family:"Font Awesome 6 Free";font-weight:900;margin-left:.5rem;font-size:.8rem}
+/* Action buttons: lively brand gradient (flat, soft glow) */
+html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):not(.hidden){background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;border-radius:999px!important;font-weight:800!important;box-shadow:0 8px 18px rgba(11,107,71,.28)!important}
+html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):active{transform:scale(.97)}
+html:root body #app .btn.btn-outline{border-radius:999px!important;border:1.5px solid color-mix(in srgb,#0f9d6a 55%,var(--border))!important;color:#0f9d6a!important;font-weight:800!important}
+/* Crown (Vendor of the Week): flat gold badge, no glow or bounce */
+html:root body #lvCampusBar .lvcb-trophy{width:2.3rem!important;height:2.3rem!important;border-radius:14px!important;background:linear-gradient(135deg,#ffd21f,#ff9a3d)!important;color:#1b0d3d!important;box-shadow:0 6px 14px rgba(255,154,61,.35)!important;animation:none!important}
+html:root body #lvCampusBar .lvcb-trophy i{color:#1b0d3d!important;font-size:1rem!important;filter:none!important;animation:none!important}
+/* Vendor card banners: brand colours with a soft shine; avatar ring */
+#app .vc2-banner{background-size:cover}
+#app .vc2-logo{box-shadow:0 0 0 3px var(--card),0 6px 14px rgba(0,0,0,.25)!important}
+/* Browse everything: smaller, neater filter button; cleaner product cards */
+html:root body #app .browse-filter-trigger{width:auto!important;min-width:0!important;height:2.2rem!important;min-height:0!important;padding:0 .65rem!important;gap:.3rem;border-radius:999px!important;background:var(--card)!important;border:1.5px solid color-mix(in srgb,#6a3df0 35%,var(--border))!important;color:#6a3df0!important;box-shadow:none!important}
+html:root body #app .browse-filter-trigger svg{width:15px!important;height:15px!important}
+html:root body #app .browse-filter-trigger .browse-filter-chevron{font-size:.65rem!important}
+html:root body #app .product-card{border-radius:20px!important;border:1px solid color-mix(in srgb,var(--border) 80%,#6a3df0)!important;box-shadow:0 8px 20px rgba(15,23,42,.1)!important;overflow:hidden}
+/* All campuses button in the campus picker */
+#lvCampus .lvc-foot button[data-a=all],#lvCampus .lvc-foot button.pri{border-radius:999px!important;font-weight:800!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;box-shadow:0 8px 18px rgba(11,107,71,.3)!important}
+/* Home strips: second strip text-free titles; third strip */
+.lv-band-d .lv-band-t,.lv-band-e .lv-band-t{max-width:58%}
+.lv-band3{position:relative;display:flex;align-items:center;overflow:hidden;min-height:5.6rem;margin:.9rem 0;padding:.9rem 1rem;border-radius:22px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#6a3df0 0%,#4b2e83 60%,#0f9d6a 150%);box-shadow:0 12px 26px rgba(75,46,131,.3)}
+.lv-band3:before{content:"";position:absolute;right:-50px;top:-60px;width:170px;height:170px;border-radius:50%;background:rgba(255,200,61,.28)}
+.lv-b3-copy{position:relative;display:flex;flex-direction:column;max-width:62%}
+.lv-b3-copy b{font-size:1.1rem;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.lv-b3-copy span{font-size:.76rem;opacity:.9;margin-top:.25rem;line-height:1.3}
+.lv-b3-copy em{margin-top:.5rem;font-style:normal;font-weight:800;font-size:.8rem;color:#ffd21f}
+.lv-b3-img{position:absolute;right:1rem;top:.9rem;width:4.4rem;height:4.4rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 8px 16px rgba(0,0,0,.3)}
+.lv-b3-ic{right:5.4rem;bottom:.7rem;width:2rem;height:2rem;border-radius:.65rem;background:#ffc83d;color:#1b0d3d;font-size:.9rem}

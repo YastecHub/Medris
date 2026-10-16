@@ -3,8 +3,8 @@
 window.lvPageHero = function (kind) {
   const C = {
     request: { img: "/lb/person-a.webp", t: "Can't find it?", em: "Request it.", p: "Post what you need and nearby vendors send you offers.", icons: ["fa-hand", "fa-box-open", "fa-tag"] },
-    orders: { img: "/lb/person-b.webp", t: "Your orders,", em: "all in one place.", p: "Track every order from payment to delivery.", icons: ["fa-receipt", "fa-truck-fast", "fa-bag-shopping"] },
-    vendors: { img: "/lb/person-b.webp", t: "Meet your", em: "campus vendors.", p: "Shops, services and rentals near you, all in one place.", icons: ["fa-store", "fa-bag-shopping", "fa-star"] },
+    orders: { img: "/lb/person-f.webp", t: "Your orders,", em: "all in one place.", p: "Track every order from payment to delivery.", icons: ["fa-receipt", "fa-truck-fast", "fa-bag-shopping"] },
+    vendors: { img: "/lb/person-e.webp", t: "Meet your", em: "campus vendors.", p: "Shops, services and rentals near you, all in one place.", icons: ["fa-store", "fa-bag-shopping", "fa-star"] },
   }[kind];
   if (!C) return "";
   setTimeout(() => lvFloatHero(), 350); setTimeout(() => lvFloatHero(), 1200);
@@ -18,9 +18,14 @@ window.lvPageHero = function (kind) {
 window.lvHomeBand2 = function () {
   setTimeout(() => lvFloatHero(), 450); setTimeout(() => lvFloatHero(), 1400);
   return `<section class="lv-band lv-band2" aria-label="Sell or rent on Levromart">
-    <button type="button" class="lv-band-card lv-band-d" onclick="navigate('vendorApply')"><span class="lv-band-t">Got something to sell?<b>Open your shop</b></span><img class="lv-fl" src="/lb/person-c.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-store"></i></button>
-    <button type="button" class="lv-band-card lv-band-e" onclick="navigate('vendors')"><span class="lv-band-t">Need it for a while?<b>Rent from vendors</b></span><img class="lv-fl" src="/lb/person-d.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-key"></i></button>
+    <button type="button" class="lv-band-card lv-band-d" onclick="navigate('vendorApply')"><span class="lv-band-t"><b>Open your shop</b></span><img class="lv-fl" src="/lb/person-c.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-store"></i></button>
+    <button type="button" class="lv-band-card lv-band-e" onclick="navigate('vendors')"><span class="lv-band-t"><b>Rent from vendors</b></span><img class="lv-fl" src="/lb/person-d.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-key"></i></button>
   </section>`;
+};
+// Third Home strip, between Trending products and Trending services
+window.lvHomeBand3 = function () {
+  setTimeout(() => lvFloatHero(), 500); setTimeout(() => lvFloatHero(), 1500);
+  return `<section class="lv-band3" onclick="navigate('vendors')" role="link" tabindex="0" aria-label="Meet campus vendors"><div class="lv-b3-copy"><b>Shop from your campus</b><span>Follow your favourite vendors and never miss a drop.</span><em>See vendors <i class="fa-solid fa-arrow-right"></i></em></div><img class="lv-fl lv-b3-img" src="/lb/person-e.webp" alt="" width="72" height="72" loading="lazy" decoding="async"><i class="lv-fl lv-b3-ic fa-solid fa-bag-shopping"></i></section>`;
 };
 // Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
 window.lvHomeBand = function () {
@@ -28,7 +33,7 @@ window.lvHomeBand = function () {
   const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
   return `<section class="lv-band" aria-label="More on Levromart">
     <button type="button" class="lv-band-card lv-band-a" onclick="${req}"><span class="lv-band-t">Can't find it?<b>Request it</b></span><img class="lv-fl" src="/lb/person-a.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-hand"></i></button>
-    <button type="button" class="lv-band-card lv-band-b" onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><img class="lv-fl" src="/lb/person-b.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
+    <button type="button" class="lv-band-card lv-band-b" onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><img class="lv-fl" src="/lb/person-f.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
     <a class="lv-band-card lv-band-c" href="https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs" target="_blank" rel="noopener"><span class="lv-band-t">Join the family<b>WhatsApp community</b></span><i class="lv-fl lv-bfl lv-bwa fa-brands fa-whatsapp"></i></a>
   </section>`;
 };
