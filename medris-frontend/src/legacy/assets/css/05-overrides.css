@@ -2062,7 +2062,6 @@ html:root body #app .vd-page .vd-views button.vd-view.active{color:var(--text)!i
 html:root body #app .levro-quick-action{position:relative;overflow:hidden;border:0!important;box-shadow:0 10px 20px rgba(15,23,42,.18)!important;color:#fff!important}
 html:root body #app .levro-quick-action::after{content:"";position:absolute;right:-26px;top:-30px;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.18);pointer-events:none}
 html:root body #app .levro-quick-action *{color:#fff!important}
-html:root body #app .levro-quick-action .levro-quick-icon{background:rgba(255,255,255,.22)!important;border-radius:14px!important;box-shadow:none!important}
 html:root body #app .levro-quick-action small,html:root body #app .levro-quick-action .levro-quick-desc{opacity:.9}
 html:root body #app .levro-quick-mint{background:linear-gradient(135deg,#19c486,#0b6b47)!important}
 html:root body #app .levro-quick-peach{background:linear-gradient(135deg,#ffb12e,#ff7a3d)!important}
@@ -2103,8 +2102,6 @@ html:root body #app .levro-home-quick-actions .levro-quick-arrow{display:grid!im
 
 /* Round 6 */
 /* quick actions: original font icons, white on the gradient */
-html:root body #app .levro-quick-action .levro-quick-icon{background:rgba(255,255,255,.22)!important;box-shadow:none!important}
-html:root body #app .levro-quick-action .levro-quick-icon i{color:#fff!important}
 /* Round 7 */
 /* Vendor cards (loved): polka dots + soft corner circles */
 html:root body #app .vc2,html:root body #app .vd-card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.24) 0 44px,transparent 45px),radial-gradient(circle,rgba(106,61,240,.12) 1.5px,transparent 2px)!important;background-size:auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,repeat!important}
@@ -2113,13 +2110,6 @@ html:root body #app .vc2,html:root body #app .vd-card{position:relative;overflow
 html:root body #app .product-card,html:root body #app .package-card,html:root body #app .service-card,html:root body #app .sr-row{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.26) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(176,148,255,.24) 0 56px,transparent 57px),radial-gradient(circle at 78% 92%,rgba(255,200,61,.30) 0 12px,transparent 13px)!important;background-repeat:no-repeat!important;background-size:auto!important}
 :root[data-theme="dark"] body #app .product-card,:root[data-theme="dark"] body #app .package-card,:root[data-theme="dark"] body #app .service-card,:root[data-theme="dark"] body #app .sr-row,:root[data-theme="black"] body #app .product-card,:root[data-theme="black"] body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.24) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(139,107,255,.18) 0 56px,transparent 57px),radial-gradient(circle at 78% 92%,rgba(255,200,61,.20) 0 12px,transparent 13px)!important}
 /* Action tiles: coloured icons on the white chip (not black/white) */
-html:root body #app .levro-quick-action .levro-quick-icon{background:#fff!important;box-shadow:0 6px 12px rgba(0,0,0,.16)!important}
-html:root body #app .levro-quick-action .levro-quick-icon i{color:#0f9d6a!important;font-size:1.15rem}
-html:root body #app .levro-quick-peach .levro-quick-icon i{color:#ff7a3d!important}
-html:root body #app .levro-quick-lavender .levro-quick-icon i{color:#6a3df0!important}
-html:root body #app .levro-quick-pink .levro-quick-icon i{color:#c2379f!important}
-html:root body #app .levro-quick-aqua .levro-quick-icon i{color:#0e8f9c!important}
-html:root body #app .levro-quick-blue .levro-quick-icon i{color:#2f5fe0!important}
 /* Empty cart illustration */
 .lv-empty-illus{background:transparent!important;box-shadow:none!important;width:auto!important;height:auto!important}
 .lv-empty-illus svg{filter:drop-shadow(0 10px 12px rgba(11,107,71,.3))}
@@ -2129,3 +2119,8 @@ html:root body #app .search-page .lv-hero2-search{border-radius:24px!important;m
 /* Vendors view buttons: no fill at all; the active one is only coloured green */
 :root:root:root body #app .vd-page .vd-views button.vd-view,:root:root:root body #app .vd-page .vd-views button.vd-view.active{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important}
 :root:root:root body #app .vd-page .vd-views button.vd-view.active{color:#0f9d6a!important}
+
+/* Round 8: Home product/service cards get their own look (different from vendor cards): lilac + green + gold circles on the white info part */
+html:root body #app .product-card-wrap>.card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.30) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.34) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.30) 0 32px,transparent 33px),radial-gradient(circle at 18% 88%,rgba(106,61,240,.22) 0 5px,transparent 6px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.26) 0 4px,transparent 5px)!important;background-repeat:no-repeat!important;background-size:auto!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.26) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.26) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.20) 0 32px,transparent 33px),radial-gradient(circle at 18% 88%,rgba(255,255,255,.14) 0 5px,transparent 6px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.22) 0 4px,transparent 5px)!important}
+html:root body #app .product-card-wrap>.card>*{position:relative;z-index:1}
