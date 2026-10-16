@@ -51,12 +51,13 @@ a{color:inherit}
 .hero h1{position:relative;z-index:2;font-size:clamp(28px,8.4vw,38px);font-weight:900;letter-spacing:-.045em;line-height:.98;max-width:56%}
 .hero h1 em{font-style:normal;color:var(--green);background:linear-gradient(transparent 64%,#ffd84d 64%,#ffd84d 92%,transparent 92%)}
 .hero p{position:relative;z-index:2;margin-top:10px;font-size:14.5px;font-weight:600;color:var(--muted);line-height:1.35;max-width:54%}
+.shopchips{position:relative;z-index:2;display:flex;gap:8px;margin-top:12px}.shopchips span{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;transform:rotate(var(--r));box-shadow:0 6px 12px rgba(30,10,80,.25),inset 0 2px 3px rgba(255,255,255,.45)}.shopchips svg{width:21px;height:21px}
 .same-row{margin:12px 0 0;text-align:center;font-size:14.5px;font-weight:700;color:var(--muted)}
 .same-row b{color:var(--purple);font-weight:900}
 .chars{position:absolute;right:12px;bottom:0;width:42%;height:100%;z-index:1;pointer-events:none}
 .chars img{position:absolute;display:block}
-.chars .man{width:68%;right:0;top:12px;filter:drop-shadow(0 10px 10px rgba(30,10,80,.3));animation:bob 5s ease-in-out infinite}
-.chars .girl{width:64%;left:0;bottom:-4px;filter:drop-shadow(0 10px 10px rgba(30,10,80,.3));animation:bob 6s ease-in-out -2s infinite}
+.chars .smile{width:74%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:50%;border:5px solid #fff;right:0;top:14px;box-shadow:0 14px 24px rgba(60,20,150,.35);animation:bob 5s ease-in-out infinite}
+.chars .man{width:40%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:50%;border:4px solid #fff;left:-2%;bottom:6px;box-shadow:0 10px 18px rgba(60,20,150,.35);animation:bob 6s ease-in-out -2s infinite;z-index:2}
 .star{position:absolute;z-index:1;width:26px;height:26px;animation:twinkle 3.2s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes twinkle{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.18) rotate(12deg)}}
@@ -87,7 +88,8 @@ a{color:inherit}
 .tile.wide{grid-column:1/-1;min-height:96px;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px}
 .tile.wide strong{font-size:20px}
 .ig{background:linear-gradient(135deg,#ff9a4d,#f2594a 45%,#c2379f 80%,#6b4fd6)}
-.tt{background:linear-gradient(135deg,#2a2a33,#0c0c10)}
+.tt{background:radial-gradient(120px 90px at 12% 100%,rgba(37,244,238,.55),transparent 70%),radial-gradient(130px 100px at 100% 0%,rgba(254,44,85,.65),transparent 70%),linear-gradient(135deg,#1c1030,#0a0714)}
+.tt .ic svg{filter:drop-shadow(2px 2px 0 #fe2c55) drop-shadow(-2px -2px 0 #25f4ee)}
 .fb{background:linear-gradient(135deg,#4c9bff,#1877f2 55%,#0b4cc2)}
 .x{background:linear-gradient(135deg,#3a3a44,#000)}
 .li{background:linear-gradient(135deg,#3b8fe0,#0a66c2 55%,#064a8f)}
@@ -114,11 +116,12 @@ footer a{color:var(--green);font-weight:800;text-decoration:none}
 
   <section class="hero">
     <h1>Find us <em>everywhere.</em></h1>
+    <div class="shopchips" aria-hidden="true"><span style="--r:-10deg;background:#0f9d6a"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h3l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.2a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.2"/><circle cx="10" cy="20" r="1.6" fill="#fff"/><circle cx="17" cy="20" r="1.6" fill="#fff"/></svg></span><span style="--r:8deg;background:#ffc83d"><svg viewBox="0 0 24 24" fill="none" stroke="#1b0d3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l1 12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg></span><span style="--r:-6deg;background:#6a3df0"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.4" fill="#fff"/></svg></span></div>
     <p>New brands, vendor spotlights and everything happening on levromart.</p>
         <svg class="star" style="right:44%;top:16px" viewBox="0 0 24 24"><path d="M12 2l2.6 6.4L21 9l-5 4.4L17.2 20 12 16.6 6.8 20 8 13.4 3 9l6.4-.6z" fill="#fff" stroke="#8b7bff" stroke-width="1.6" stroke-linejoin="round"/></svg>
     <div class="chars" aria-hidden="true">
-      <img class="girl" src="/links/girl.webp" alt="" width="230" height="238" loading="eager">
-      <img class="man" src="/links/man.webp" alt="" width="230" height="230" loading="eager">
+      <img class="man" src="/links/man.webp" alt="" width="150" height="150" loading="eager">
+      <img class="smile" src="/links/smile.webp" alt="" width="220" height="220" loading="eager">
     </div>
   </section>
   <p class="same-row">Same name on every platform: <b>@levromart</b></p>
