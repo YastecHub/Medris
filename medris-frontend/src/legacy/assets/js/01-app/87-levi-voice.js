@@ -93,7 +93,7 @@ if ("speechSynthesis" in window) {
 const AiSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 try { localStorage.removeItem("levromart-levi-wake"); } catch (_) {}
 function syncSystemBarColor() {
-  const theme = localStorage.getItem("medris-theme") || (document.documentElement.dataset.theme === "dark" ? "dark" : document.documentElement.dataset.theme === "black" ? "black" : "light");
+  const theme = localStorage.getItem("medris-theme") || (document.documentElement.dataset.theme === "dark" ? "dark" : document.documentElement.dataset.theme === "black" ? "black" : "black");
   syncSystemBarColorForTheme(theme);
 }
 syncSystemBarColor();
