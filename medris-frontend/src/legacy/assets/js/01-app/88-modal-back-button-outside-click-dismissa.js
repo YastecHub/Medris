@@ -142,7 +142,7 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","leaderboard","vendorApply","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
       const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
       if (!session && authViews.includes(deepView)) { showLogin(); return; }
