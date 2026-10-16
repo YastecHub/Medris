@@ -1,7 +1,7 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "e331bccff5778e1ffd3557f0b6a75be9e311d9ee2b96f426543704956c96d68a",
+    "index.html": "c1834ff8a9bcc65ca69c1dfe223d1c0963a8c930847ee18cc37e83543927ca2b",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
@@ -17,11 +17,11 @@
     "assets/js/08-levromart-chat-viewport-stabilizer-20260.js": "8bec249ab266aea3e02126e84aac16285f0239a44ba720745c109611728e83ad",
     "assets/js/09-part.js": "c1f6b675ff51867a17b4793710b77068261d3a431a59a5591cbcdf52e619a58d",
     "assets/js/10-levromart-admin-reject-inventory-fix-js-.js": "4af25527cefd715aee95762454e30ba6462f49efc42b9a940d9482b24eb377a1",
-    "assets/js/11-levromart-global-broken-image-fallback.js": "c57c4986a3f7dcf5cb1b433873c1766a1ead9375fdcfc9147510eb13a51bd59f",
-    "assets/js/12-lv-onboarding-auth-js.js": "72077bb3e95405382c7b5fd43abea8b89b29fffd799616bc823b9d029f104f59",
+    "assets/js/11-levromart-global-broken-image-fallback.js": "f016dcb7e229ed2a709251e57e5f89d22e3388d70b533950bb8ff9bd308978c9",
+    "assets/js/12-lv-onboarding-auth-js.js": "7b576a3467a6b95d6538638139e02e25b41bbe36e311f788cdb68d1a5cce897c",
     "assets/js/13-face-verify.js": "3a75cb24a727f537e21d256021093af7b284f929161b534209f5edc7ae14775b",
     "assets/js/14-motion.js": "92a9a5fd1f60409d77b4b28567a357da6f6b944c081df336ea41cc5d2a47521f",
     "assets/js/15-autosave.js": "d006bb511a42c50dc6f15999ebba27c228c6cbf9821e3a8b229aba2d8b82bf74",
-    "sw.js": "aa6a3dd9b3ae2b14ddfde4bcb4249562dc3fa3a64c05a47d6c7db3f7d7850cd0"
+    "sw.js": "88a324fdd33a9fe50f93f18561b5b3d8e732c7e691adb55b1e7fa93855ae8cb2"
   }
 }

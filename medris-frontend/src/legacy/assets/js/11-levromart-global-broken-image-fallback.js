@@ -848,7 +848,7 @@ function hideLeviFromPanel() {
     const want = params?.tab === "activity" ? "mine" : params?.tab;
     LB.tab = want && tabsNow().some((t) => t[0] === want) ? want : "ranking";
     LB.filter = "all";
-    try { window.lvVendorMapReady && window.lvVendorMapReady().then(() => { if ($("lbBody")) window.lbRerender(); }); } catch (_) {}
+    LB.mapReady = false; try { window.lvVendorMapReady ? window.lvVendorMapReady().then(() => { LB.mapReady = true; if ($("lbBody")) window.lbRerender(); }, () => { LB.mapReady = true; if ($("lbBody")) window.lbRerender(); }) : (LB.mapReady = true); } catch (_) { LB.mapReady = true; }
     return `<div class="lb-page">
       <div class="lb-hero">
         <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
@@ -864,7 +864,14 @@ function hideLeviFromPanel() {
 
   // Campus view: "Mine" limits the board to vendors of that campus (and those who sell on it); "All" shows everyone.
   function viewCampus() { try { return window.lvViewCampus ? window.lvViewCampus() : "all"; } catch (_) { return "all"; } }
-  function inView(vendorId) { try { return viewCampus() === "all" || !window.lvVendorInScope || window.lvVendorInScope(vendorId) !== false; } catch (_) { return true; } }
+  // A campus board lists only vendors whose home campus is that campus (plus you). A vendor we cannot place is left out, never shown by default.
+  function inView(vendorId) {
+    try {
+      const v = viewCampus(); if (v === "all") return true;
+      try { if (typeof isOwnVendorId === "function" && isOwnVendorId(vendorId)) return true; } catch (_) {}
+      return !!window.lvVendorHomeCampus && window.lvVendorHomeCampus(vendorId) === v;
+    } catch (_) { return false; }
+  }
   function scopeRows(rows) {
     if (viewCampus() === "all") return rows;
     const kept = (rows || []).filter((r) => r.is_me || inView(r.vendor_id));
@@ -947,7 +954,7 @@ function hideLeviFromPanel() {
     const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" title="Vendors I follow" aria-label="Vendors I follow" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i></button></div>`;
     const reward = `<p class="lb-note"><i class="fa-solid fa-gift"></i> Finish first to win a free week of promotion</p>`;
     const b = LB.boards[LB.period];
-    if (!b) return chips + skeleton(7);
+    if (!b || (viewCampus() !== "all" && LB.mapReady === false)) return chips + skeleton(7);   // wait for the vendor list so a campus board never flashes other campuses
     const rows = scopeRows(b.rows || []);
     if (!rows.length) return chips + `<div class="lb-card lb-empty"><i class="fa-solid fa-ranking-star"></i><strong>No vendors on the board yet</strong><p>Check back soon.</p></div>`;
     const followed = (window.followedVendorSet && window.followedVendorSet()) || new Set();
