@@ -1944,3 +1944,50 @@ html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in 
 .lv-band-card img.lv-fl{position:absolute;right:.6rem;top:.6rem;width:3.4rem;height:3.4rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.3)}
 .lv-band-card .lv-bfl{width:1.8rem;height:1.8rem;border-radius:.6rem;left:.8rem;top:.7rem;background:#ffc83d;color:#1b0d3d;font-size:.8rem}
 .lv-band-c .lv-bfl{left:auto;right:.8rem;top:50%;margin-top:-1.2rem;width:2.4rem;height:2.4rem;background:#fff;color:#128c4a;font-size:1.3rem}
+
+/* ===== Restyle pass: Request an item, Vendors, vendor map, Home strips, bottom bar (lv-rs) ===== */
+:root{--lv-g1:#19c486;--lv-g2:#0b6b47;--lv-p1:#6a3df0;--lv-p2:#4b2e83;--lv-y:#ffc83d}
+.lv-band-d{background:linear-gradient(135deg,#ff9a3d,#f2594a 70%,#c2379f 140%)}
+.lv-band-e{background:linear-gradient(135deg,#2f7df6,#6a3df0 80%)}
+.lv-band2{margin:.2rem 0 .9rem}
+/* --- Request an item form --- */
+html:root body #app .request-equipment-page{max-width:560px!important;padding:1rem!important;border-radius:24px!important;background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 16px 36px rgba(15,23,42,.12)!important}
+html:root body #app .request-equipment-page>label,html:root body #app .request-equipment-page .flex>div>label{display:block;margin:.95rem 0 .35rem;font-size:.74rem!important;font-weight:800!important;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)!important}
+html:root body #app .request-equipment-page input:not([type=radio]):not([type=file]),html:root body #app .request-equipment-page textarea,html:root body #app .request-equipment-page .req-sector-picker,html:root body #app .request-equipment-page .req-category-picker{min-height:3rem;border-radius:16px!important;border:1.5px solid color-mix(in srgb,var(--lv-g1) 22%,var(--border))!important;background:color-mix(in srgb,var(--lv-g1) 5%,var(--card))!important;font-size:.98rem!important;padding:.7rem .95rem!important;transition:border-color .15s,box-shadow .15s}
+html:root body #app .request-equipment-page input:focus,html:root body #app .request-equipment-page textarea:focus{outline:0;border-color:var(--lv-g1)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--lv-g1) 22%,transparent)!important}
+html:root body #app .request-equipment-page .theme-option{position:relative;justify-content:center;min-height:3.3rem;border-radius:16px!important;border:1.5px solid var(--border)!important;background:var(--card)!important;font-weight:800;transition:all .15s}
+html:root body #app .request-equipment-page .theme-option input{position:absolute;opacity:0;pointer-events:none}
+html:root body #app .request-equipment-page .theme-option:has(input:checked){background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important;color:#fff!important;box-shadow:0 10px 22px rgba(11,107,71,.35)}
+html:root body #app .request-equipment-page .theme-option:has(input:checked) *{color:#fff!important}
+html:root body #app .request-equipment-page .theme-option:nth-of-type(1)::before{content:"\f290";font-family:"Font Awesome 6 Free";font-weight:900;margin-right:.5rem}
+html:root body #app .request-equipment-page .theme-option:nth-of-type(2)::before{content:"\f084";font-family:"Font Awesome 6 Free";font-weight:900;margin-right:.5rem}
+html:root body #app .request-equipment-page .req-drop{border-radius:22px;border-width:2px;background:linear-gradient(160deg,color-mix(in srgb,var(--lv-y) 18%,var(--card)),color-mix(in srgb,var(--lv-g1) 10%,var(--card)))}
+html:root body #app .request-equipment-page .req-drop .rd-ico{background:linear-gradient(135deg,var(--lv-y),#ff9a3d);color:#1b0d3d}
+html:root body #app #postEquipmentRequestBtn{width:100%;min-height:3.3rem;margin-top:1.2rem!important;border:0!important;border-radius:999px!important;font-size:1.02rem!important;font-weight:900!important;letter-spacing:.01em;color:#fff!important;background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;box-shadow:0 14px 26px rgba(11,107,71,.4)!important}
+html:root body #app #postEquipmentRequestBtn:active{transform:scale(.98)}
+html:root body #app #myRequestsAccordion .accordion-trigger{font-weight:800}
+/* --- Vendors page --- */
+html:root body #app .vd-page .vd-title-ico{display:none!important}
+html:root body #app .vd-page .vd-title{gap:0}
+html:root body #app .vd-page .vd-title h2,html:root body #app .vd-page .vd-title strong{font-size:1.4rem!important;font-weight:900!important;letter-spacing:-.03em}
+html:root body #app .vd-page .vd-views{display:inline-flex;gap:.2rem;padding:.22rem;border-radius:999px;background:color-mix(in srgb,var(--lv-p1) 10%,var(--card));border:1px solid color-mix(in srgb,var(--lv-p1) 18%,var(--border))}
+html:root body #app .vd-page .vd-views button.vd-view{width:2.2rem!important;height:2.2rem!important;border-radius:50%!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;box-shadow:none!important}
+html:root body #app .vd-page .vd-views button.vd-view.active{background:linear-gradient(135deg,var(--lv-p1),var(--lv-p2))!important;color:#fff!important;box-shadow:0 6px 14px rgba(75,46,131,.4)!important}
+html:root body #app .vd-page .vd-seg{display:flex;gap:.45rem;overflow-x:auto;border:0!important;scrollbar-width:none;padding:.15rem 0 .25rem}
+html:root body #app .vd-page .vd-seg::-webkit-scrollbar{display:none}
+html:root body #app .vd-page .vd-tab{flex:0 0 auto;padding:.5rem 1rem!important;border-radius:999px!important;border:1.5px solid var(--border)!important;background:var(--card)!important;font-weight:800;font-size:.86rem;color:var(--text-muted)!important;box-shadow:none!important}
+html:root body #app .vd-page .vd-tab::after,html:root body #app .vd-page .vd-tab::before{display:none!important}
+html:root body #app .vd-page .vd-tab.active{background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important;color:#fff!important;box-shadow:0 8px 18px rgba(11,107,71,.35)!important}
+html:root body #app .vd-page .vd-search{border-radius:999px!important;min-height:2.8rem;border:1.5px solid color-mix(in srgb,var(--lv-g1) 25%,var(--border))!important;background:color-mix(in srgb,var(--lv-g1) 5%,var(--card))!important;box-shadow:0 8px 18px rgba(15,23,42,.08)}
+html:root body #app .vd-page .vd-filter-btn{width:2.8rem;height:2.8rem;border-radius:50%!important;border:0!important;background:linear-gradient(135deg,var(--lv-y),#ff9a3d)!important;color:#1b0d3d!important;box-shadow:0 8px 16px rgba(255,154,61,.4)}
+html:root body #app .vd-page{background:radial-gradient(520px 260px at 100% 0,color-mix(in srgb,var(--lv-p1) 14%,transparent),transparent 70%),radial-gradient(460px 240px at 0 18%,color-mix(in srgb,var(--lv-g1) 12%,transparent),transparent 70%)}
+/* --- Vendor map: slimmer search, friendlier chips and buttons --- */
+html:root body #app .vmp-bar{padding:.05rem .6rem .05rem .2rem!important;border-radius:999px!important;border:1.5px solid color-mix(in srgb,var(--lv-g1) 30%,var(--border))!important;box-shadow:0 8px 20px rgba(15,23,42,.25)!important}
+html:root body #app .vmp-bar input{padding:.32rem .2rem!important;font-size:.9rem!important}
+html:root body #app .vmp-back{width:30px!important;height:30px!important;flex-basis:30px!important}
+html:root body #app .vmp-chip{padding:.28rem .75rem!important;font-size:.8rem!important;font-weight:800;box-shadow:0 4px 10px rgba(15,23,42,.18)}
+html:root body #app .vmp-chip.on{background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important}
+html:root body #app .vmp-fab{border:0!important;background:linear-gradient(135deg,#fff,#f1e8ff)!important;color:var(--lv-p2)!important;box-shadow:0 8px 18px rgba(75,46,131,.3)!important}
+/* --- Bottom bar: active tab gets a coloured bubble --- */
+html:root body #bottomNav .bottom-nav-item.active .bn-icon{display:grid;place-items:center;width:2.5rem;height:1.9rem;margin:-.1rem auto .05rem;border-radius:999px;background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2));color:#fff!important;box-shadow:0 6px 14px rgba(11,107,71,.45)}
+html:root body #bottomNav .bottom-nav-item.active{color:var(--lv-g1)!important;font-weight:800}
