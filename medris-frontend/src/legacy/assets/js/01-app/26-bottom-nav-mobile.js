@@ -79,8 +79,9 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
   }
 
-  const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
+  const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"${it.view && it.view === currentView ? ' aria-current="page"' : ""}>${it.view && it.view === currentView ? '<span class="bn-pill" aria-hidden="true"></span>' : ""}<span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
 
+  const prevPill = nav.querySelector(".bn-pill")?.getBoundingClientRect();
   if (isVendorUser) {
     nav.classList.remove("buyer-no-add");
     nav.classList.add("has-add");
@@ -100,6 +101,17 @@ function renderBottomNav() {
     nav.classList.remove("has-add", "buyer-no-add");
     nav.innerHTML = items.map(itemHtml).join("");
   }
+  lvSlideNavPill(nav, prevPill);
+}
+// The mint highlight glides from the previous tab to the new one (a short transform, skipped for reduced motion).
+function lvSlideNavPill(nav, prev) {
+  const pill = nav.querySelector(".bn-pill");
+  if (!pill || !prev || !pill.animate) return;
+  try { if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (_) {}
+  const now = pill.getBoundingClientRect();
+  const dx = prev.left - now.left;
+  if (Math.abs(dx) < 2) return;
+  pill.animate([{ transform: `translateX(${dx}px)` }, { transform: "translateX(0)" }], { duration: 240, easing: "cubic-bezier(.22,.9,.3,1)" });
 }
 
 const LEVRO_MOTION_KEY="levromart-motion-preference-v1";
