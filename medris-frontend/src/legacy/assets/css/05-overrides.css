@@ -2210,3 +2210,36 @@ html body #aiChatFab.directing .lv-fab-badge{opacity:0}
 .lvt-pri{background:linear-gradient(135deg,#19c486,#0b6b47);color:#fff}
 .lvt-ghost{background:transparent;color:#0f9d6a;border-color:#19c486}
 .lvt-btn.lvt-hide{display:none}
+
+/* ===== Premium floating bottom bar (phones and tablets; the desktop side rail is unchanged) ===== */
+@media (max-width:899px){
+  html:root body #bottomNav.bottom-nav.bottom-nav{left:.7rem!important;right:.7rem!important;bottom:calc(.55rem + env(safe-area-inset-bottom,0px))!important;width:auto!important;max-width:560px!important;margin-inline:auto!important;height:auto!important;min-height:0!important;padding:.38rem!important;border-radius:26px!important;background:color-mix(in srgb,var(--card,#fff) 96%,transparent)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:1px solid color-mix(in srgb,var(--text,#0f172a) 7%,transparent)!important;box-shadow:0 12px 32px rgba(15,23,42,.14),0 2px 8px rgba(15,23,42,.06)!important;align-items:center!important;gap:.1rem!important}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav{border-color:rgba(255,255,255,.09)!important;box-shadow:0 12px 34px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4)!important}
+  html:root body #bottomNav.bottom-nav.nav-scroll-hide{transform:translate3d(0,calc(100% + 1.6rem + env(safe-area-inset-bottom,0px)),0)!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bn-group{gap:.1rem!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item{position:relative!important;height:54px!important;min-height:54px!important;max-width:none!important;border-radius:20px!important;background:transparent!important;color:#475569!important;gap:2px!important;padding:4px 2px!important;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .12s ease,color .18s ease}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item{color:#9aa7b4!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item:active{transform:scale(.94)}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item .bn-icon{position:relative!important;z-index:1;width:auto!important;height:24px!important;font-size:1.16rem!important;color:inherit!important;background:transparent!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item .bn-icon i{color:inherit!important;background:transparent!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item>span:last-child{position:relative;z-index:1;font-size:clamp(.5rem,2.55vw,.66rem)!important;text-overflow:clip!important;line-height:1.1!important;font-weight:600!important;letter-spacing:-.01em;color:inherit!important;white-space:nowrap;max-width:100%;overflow:visible}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item span,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item i{-webkit-text-fill-color:currentColor!important}
+  /* active: mint pill + green icon and label (follows the real current page) */
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active{color:#0f9d6a!important;background:transparent!important}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active{color:#34d399!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active>span:last-child{font-weight:800!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active .bn-icon{transform:scale(1.06)}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active::before,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active::after{content:none!important;display:none!important}
+  html:root body #bottomNav .bn-pill{position:absolute;inset:0;z-index:0;border-radius:20px;background:linear-gradient(180deg,#e3f8ee,#d3f3e5);box-shadow:inset 0 0 0 1px rgba(15,157,106,.14),0 4px 12px -4px rgba(15,157,106,.3);pointer-events:none}
+  html:root[data-theme="dark"] body #bottomNav .bn-pill,html:root[data-theme="black"] body #bottomNav .bn-pill{background:linear-gradient(180deg,rgba(52,211,153,.2),rgba(52,211,153,.12));box-shadow:inset 0 0 0 1px rgba(52,211,153,.22)}
+  /* badge sits on the icon corner, ringed in the bar colour */
+  html:root body #bottomNav.bottom-nav.bottom-nav .bn-badge{top:-.45rem!important;right:-.85rem!important;left:auto!important;min-width:1rem!important;width:1rem!important;height:1rem!important;font-size:.55rem!important;box-shadow:0 0 0 2px var(--card,#fff)!important}
+  /* vendor "+" button: a brand-green circle (the label stays under it) */
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add{background:transparent!important;border:0!important;box-shadow:none!important;width:auto!important;min-width:0!important;height:54px!important;min-height:54px!important;top:0!important;flex-direction:column!important;gap:2px!important;padding:4px 2px!important;color:#475569!important}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add{color:#9aa7b4!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add .bn-icon{width:34px!important;height:34px!important;border-radius:12px!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;box-shadow:0 6px 14px -4px rgba(15,157,106,.6)!important;display:inline-grid!important;place-items:center!important;margin-top:-2px}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add .bn-icon i{color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:1rem!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add>span:last-child{color:inherit!important;-webkit-text-fill-color:currentColor!important;font-size:clamp(.5rem,2.55vw,.66rem)!important;font-weight:600!important;white-space:nowrap}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add:active{transform:scale(.94)}
+}
+@media (prefers-reduced-motion:reduce){html:root body #bottomNav .bottom-nav-item{transition:none!important}html:root body #bottomNav .bottom-nav-item:active{transform:none!important}}
