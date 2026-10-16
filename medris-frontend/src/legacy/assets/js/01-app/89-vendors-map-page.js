@@ -75,8 +75,9 @@ async function initVendorsMapPage(tries = 0) {
   if (buyerLocation) { center = [buyerLocation.lat, buyerLocation.lng]; zoom = 13; }
   vmpMap = window.L.map("vmpMap", { zoomControl: false, attributionControl: true, zoomSnap: 0.5, zoomDelta: 0.5, inertia: true, worldCopyJump: true }).setView(center, zoom);
   vmpMap.attributionControl.setPrefix(false);
-  let st = ""; try { st = localStorage.getItem("levromart-vmp-style") || ""; } catch (_) {}
-  vmpSetStyle(VMP_STYLES[st] ? st : vmpTheme());
+  // The map always opens in the light "Map" style; only a style the person picked themselves is remembered.
+  let st = ""; try { st = localStorage.getItem("levromart-vmp-style-v2") || ""; } catch (_) {}
+  vmpSetStyle(VMP_STYLES[st] ? st : "streets", false);
   vmpLayer = window.L.layerGroup().addTo(vmpMap);
   vmpMap.on("zoomend moveend", () => { vmpDrawPins(); vmpDrawRail(); });
   vmpMap.on("click", () => { vmpClearRoute(); vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });
@@ -109,9 +110,9 @@ function vmpDestroy(keepListener) {
   vmpMap = null; vmpTiles = null; vmpLayer = null; vmpMe = null; vmpSelected = ""; vmpQuery = ""; vmpSector = "";
   if (!keepListener) window.removeEventListener("resize", vmpLayout);
 }
-function vmpSetStyle(key) {
+function vmpSetStyle(key, remember = true) {
   const s = VMP_STYLES[key] || VMP_STYLES.streets; vmpStyle = key;
-  try { localStorage.setItem("levromart-vmp-style", key); } catch (_) {}
+  if (remember) { try { localStorage.setItem("levromart-vmp-style-v2", key); } catch (_) {} }
   if (vmpTiles) vmpMap.removeLayer(vmpTiles);
   vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, subdomains: s.sub || "abc", updateWhenIdle: false, keepBuffer: 4, detectRetina: true }).addTo(vmpMap);
   byId("vmPage")?.setAttribute("data-style", key);

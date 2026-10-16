@@ -2250,3 +2250,31 @@ html body #aiChatFab.directing .lv-fab-badge{opacity:0}
 .lv-swipe-peek .lvp-name{font-size:1.15rem;font-weight:800;line-height:1.25;color:var(--text,#111)}
 .lv-swipe-peek .lvp-shop{margin-top:.3rem;font-size:.85rem;color:var(--text-muted,#667)}
 @media (prefers-reduced-motion:reduce){html:root body #bottomNav .bottom-nav-item{transition:none!important}html:root body #bottomNav .bottom-nav-item:active{transform:none!important}}
+
+/* ===== Round 11: categories, section icons, tabs, service tiles, map ===== */
+/* Home + Vendors category chips: tinted by their own colour, filled when selected */
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip,html:root body #app .vd-page .vd-chip.vd-chip{--cc2:var(--cat-color,var(--cc,var(--primary,#19c486)));background:linear-gradient(135deg,color-mix(in srgb,var(--cc2) 22%,var(--card,#fff)),color-mix(in srgb,var(--cc2) 7%,var(--card,#fff)))!important;border:1.5px solid color-mix(in srgb,var(--cc2) 40%,transparent)!important;box-shadow:0 5px 14px -8px color-mix(in srgb,var(--cc2) 70%,transparent)!important;color:var(--text,#111)!important;font-weight:700!important}
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip .levro-home-cat-label,html:root body #app .vd-page .vd-chip.vd-chip>span:last-child{color:inherit!important;-webkit-text-fill-color:currentColor!important;font-weight:700!important}
+html:root body #app .levro-home-cat-chip .levro-home-cat-thumb,html:root body #app .vd-page .vd-chip .vd-chip-art{background:color-mix(in srgb,var(--cc2) 18%,#fff)!important;border-radius:50%!important;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cc2) 35%,transparent)!important}
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip.active,html:root body #app .vd-page .vd-chip.vd-chip.active{background:linear-gradient(135deg,var(--cc2),color-mix(in srgb,var(--cc2) 62%,#000))!important;border-color:transparent!important;color:#fff!important;box-shadow:0 8px 18px -8px color-mix(in srgb,var(--cc2) 90%,transparent)!important}
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip.active .levro-home-cat-label,html:root body #app .vd-page .vd-chip.vd-chip.active>span:last-child{color:#fff!important;font-weight:800!important}
+/* section icon tiles: Featured Vendors = purple gem, Browse everything = teal grid */
+html body #app .section-title > span > i.fa-gem:first-child,html body #app .section-title > i.fa-gem:first-child{background:linear-gradient(135deg,#c4b5fd,#7c3aed)!important;box-shadow:0 4px 10px -4px rgba(124,58,237,.6)!important}
+html body #app .section-title > i.fa-table-cells-large:first-child{background:linear-gradient(135deg,#5eead4,#0d9488)!important;box-shadow:0 4px 10px -4px rgba(13,148,136,.6)!important}
+/* Products / Services / Packages tabs: keep the underline, give each tab a tinted icon tile */
+html:root body #app .home-catalog-type-tabs .catalog-type-tab{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.45rem!important;padding:.6rem .5rem .55rem!important;--tab-color:#19c486}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab[data-tab="services"]{--tab-color:#f59e0b}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab[data-tab="packages"]{--tab-color:#7c3aed}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab i{width:26px;height:26px;border-radius:9px;display:inline-grid;place-items:center;font-size:.78rem;color:var(--tab-color)!important;-webkit-text-fill-color:var(--tab-color)!important;background:color-mix(in srgb,var(--tab-color) 16%,transparent)}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab.active i{color:#fff!important;-webkit-text-fill-color:#fff!important;background:linear-gradient(135deg,color-mix(in srgb,var(--tab-color) 70%,#fff),var(--tab-color));box-shadow:0 4px 10px -4px var(--tab-color)}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab.active{border-bottom:3px solid var(--tab-color)!important;border-radius:0!important}
+/* embossed tile for services (and shops) that have no photo */
+.img-initials.img-embossed{background:linear-gradient(145deg,hsl(var(--ih,150) 60% 92%),hsl(var(--ih,150) 50% 80%))!important}
+.img-initials.img-embossed i{font-size:clamp(2rem,11vw,3rem);color:hsl(var(--ih,150) 45% 62%);text-shadow:-1.5px -1.5px 1px rgba(255,255,255,.9),2px 2px 3px hsl(var(--ih,150) 55% 30% / .45)}
+:root[data-theme="dark"] .img-initials.img-embossed,:root[data-theme="black"] .img-initials.img-embossed{background:linear-gradient(145deg,hsl(var(--ih,150) 30% 26%),hsl(var(--ih,150) 35% 16%))!important}
+:root[data-theme="dark"] .img-initials.img-embossed i,:root[data-theme="black"] .img-initials.img-embossed i{color:hsl(var(--ih,150) 40% 40%);text-shadow:-1px -1px 1px hsl(var(--ih,150) 50% 60% / .45),2px 2px 3px rgba(0,0,0,.7)}
+/* the service badge on cards: an embossed brand tile */
+html:root body .product-card-wrap .card .card-service-btn{background:linear-gradient(145deg,#34d399,#0f9d6a)!important;box-shadow:inset 1px 1px 2px rgba(255,255,255,.45),inset -1px -2px 3px rgba(0,0,0,.25),0 4px 10px -4px rgba(15,157,106,.6)!important}
+/* the vendors map tiles stay light in every theme */
+html:root[data-theme="dark"] body #vendorsMap .leaflet-tile-pane,html:root[data-theme="black"] body #vendorsMap .leaflet-tile-pane{filter:saturate(.85) contrast(.96) brightness(1.03) hue-rotate(-8deg)!important}
+html body #app #browseSection.section-title{justify-content:flex-start!important}
