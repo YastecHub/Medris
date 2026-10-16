@@ -2145,11 +2145,6 @@ html:root body #app .product-card-wrap>.card{position:relative;overflow:hidden;b
 :root:root:root:root body #app .product-card-wrap.product-card-compact>.card{display:flex!important;flex-direction:column!important}
 :root:root:root:root body #app .product-card-wrap.product-card-compact>.card>.product-card-compact-footer{margin-top:.45rem!important;min-height:0!important}
 :root:root:root:root body #app .product-card-wrap.product-card-compact>.card>.product-card-meta{margin-top:auto!important;padding-top:.3rem!important;padding-bottom:.1rem!important;align-items:flex-end!important}
-/* Add-to-cart button: green gradient with glow, press feel; service badge matches in lilac */
-html:root body #app .card-cart-btn:not(.added){background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;box-shadow:0 6px 14px rgba(11,107,71,.38),inset 0 1px 0 rgba(255,255,255,.35)!important;transition:transform .15s,box-shadow .15s}
-html:root body #app .card-cart-btn:not(.added):active{transform:scale(.88)}
-html:root body #app .card-cart-btn.added{background:#ffc83d!important;color:#1b0d3d!important;border:0!important;box-shadow:0 6px 14px rgba(255,200,61,.45)!important}
-html:root body #app .card-service-btn{background:linear-gradient(135deg,#8b6bff,#4b2e83)!important;color:#fff!important;border:0!important;box-shadow:0 6px 14px rgba(75,46,131,.35)!important}
 /* Store options sheet: coloured rounded icon tiles */
 #app .levro-storefront-sheet-item i{display:inline-grid!important;place-items:center;width:2.2rem!important;height:2.2rem!important;border-radius:12px!important;font-size:.95rem!important;color:#fff!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;margin-right:.7rem;flex:0 0 auto}
 #app .levro-storefront-sheet-item i.fa-share-nodes{background:linear-gradient(135deg,#4f9bff,#2f5fe0)!important}
@@ -2157,3 +2152,7 @@ html:root body #app .card-service-btn{background:linear-gradient(135deg,#8b6bff,
 #app .levro-storefront-sheet-item i.fa-clock{background:linear-gradient(135deg,#8b6bff,#4b2e83)!important}
 #app .levro-storefront-sheet-item i.fa-calendar-check{background:linear-gradient(135deg,#ff6aa8,#c2379f)!important}
 #app .levro-storefront-sheet-item i.fa-building-columns{background:linear-gradient(135deg,#1fd3c6,#0e8f9c)!important}
+
+/* Restore: Home product/service card watermarks as before (lilac bottom-right, green, gold bottom-left, tiny green dot); only the small lilac dot by the distance is gone */
+html:root body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.30) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.34) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.30) 0 32px,transparent 33px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.26) 0 4px,transparent 5px)!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.26) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.26) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.20) 0 32px,transparent 33px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.22) 0 4px,transparent 5px)!important}
