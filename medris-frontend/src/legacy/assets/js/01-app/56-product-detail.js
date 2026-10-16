@@ -793,6 +793,7 @@ window.lvPdPrefetch = function (id) {
   }
   document.addEventListener("touchstart", (e) => {
     t0 = null; lock = null; window.__lvSwipeWarm = null;
+    if (active) { try { active.a1.cancel(); active.a2.cancel(); } catch (_) {} try { active.done(); } catch (_) {} }
     if (currentView !== "productDetail" || e.touches.length !== 1) return;
     if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
@@ -847,7 +848,7 @@ window.lvPdPrefetch = function (id) {
       [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length], ids[(i + 2) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
     } catch (_) {}
   }, 600);
-  let busy = false;
+  let busy = false, active = null;
   document.addEventListener("touchend", async (e) => {
     const start = t0, was = lock; t0 = null; lock = null;
     if (!start || was !== "h") { clearHint(); return; }
@@ -864,9 +865,8 @@ window.lvPdPrefetch = function (id) {
       const snap = snapshotOf(el);
       snap.style.transform = `translateX(${dx * 0.85}px)`;
       snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
-      // 2. send the old page on its way right away; the next product loads behind it (usually already prefetched)
+      // 2. the old page stays put (never a blank gap) while the next product is built behind it, then both glide together
       el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
-      snap.style.transition = "transform .2s cubic-bezier(.3,.7,.3,1), opacity .2s"; snap.style.transform = `translateX(${-dir * innerWidth * 0.5}px)`; snap.style.opacity = "0.15";
       let ok = true;
       window.__lvSwipeNav = true; // the router must not paint a saved snapshot or a loading shell behind the slide
       try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
@@ -874,16 +874,17 @@ window.lvPdPrefetch = function (id) {
       window.__lvSwipeNav = false;
       const now = app();
       if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
-      // 3. both slide together, like one carousel
       try { window.scrollTo(0, 0); } catch (_) {}
-      now.style.transition = "none"; now.style.transform = `translateX(${dir * innerWidth}px)`; now.style.opacity = "1";
-      await new Promise((r) => requestAnimationFrame(r));
-      const ease = "transform .2s cubic-bezier(.22,.9,.3,1)";
-      snap.remove();
-      now.style.transition = ease; now.style.transform = "translateX(0)";
-      await new Promise((r) => setTimeout(r, 210));
-      snap.remove();
-      now.style.transition = ""; now.style.transform = ""; now.style.opacity = "";
+      const W = innerWidth, D = 190, E = "cubic-bezier(.22,.9,.3,1)";
+      now.style.opacity = "1"; now.style.transform = "translateX(0)"; now.style.willChange = "transform";
+      const from = parseFloat(snap.style.transform.replace(/[^0-9.\-]/g, "")) || 0;
+      const done = () => { try { snap.remove(); } catch (_) {} now.style.willChange = ""; now.style.transform = ""; now.style.opacity = ""; active = null; };
+      if (!now.animate || !snap.animate) { done(); return; }
+      const a1 = snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" });
+      const a2 = now.animate([{ transform: `translateX(${dir * W}px)` }, { transform: "translateX(0)" }], { duration: D, easing: E });
+      active = { a1, a2, done };
+      busy = false; // a new swipe may start right away; it will finish this one instantly
+      a2.onfinish = done; a2.oncancel = done;
     } finally { busy = false; window.__lvSwipeNav = false; }
   }, { passive: true });
   document.addEventListener("touchcancel", () => { if (lock === "h") reset(app(), true); t0 = null; lock = null; clearHint(); }, { passive: true });
