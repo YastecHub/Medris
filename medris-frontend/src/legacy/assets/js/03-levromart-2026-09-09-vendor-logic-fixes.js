@@ -172,7 +172,7 @@
     // quietly still was -- exactly what a page refresh (which resets this
     // variable along with everything else) happened to fix.
     vendorsListingFilter = "all";
-    let html = `<div class="vd-page"><div class="vd-head">
+    let html = `<div class="vd-page">${typeof lvPageHero === "function" ? lvPageHero("vendors") : ""}<div class="vd-head">
       <div class="vd-title"><span class="vd-title-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5 5.6 4.5h12.8L20 9.5"/><path d="M4 9.5a2.67 2.67 0 0 0 5.33 0 2.67 2.67 0 0 0 5.34 0 2.67 2.67 0 0 0 5.33 0"/><path d="M5.5 12.6V20h13v-7.4"/><path d="M10 20v-4.5h4V20"/></svg></span><h2>All vendors</h2></div>
       <div class="vd-views" role="group" aria-label="View mode">
         <button type="button" class="vd-view" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><svg class="vd-view-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>

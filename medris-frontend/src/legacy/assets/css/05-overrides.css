@@ -1913,3 +1913,19 @@ html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in 
 .lb-hero-people img{width:3.1rem;height:3.1rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 6px 14px rgba(20,10,80,.35)}
 .lb-hero-people img+img{margin-left:-.9rem;margin-top:.3rem}
 .lb-hero-top{padding-right:5.4rem}
+
+/* Friendly page header for Request an item and Vendors (lv-hero2) */
+.lv-hero2{position:relative;overflow:hidden;isolation:isolate;margin:0 0 1rem;padding:1rem 1rem 1rem;min-height:8.2rem;border-radius:22px;color:#fff;background:linear-gradient(135deg,#0f9d6a 0%,#0b6b47 55%,#4b2e83 135%);box-shadow:0 14px 30px rgba(11,107,71,.3)}
+.lv-hero2-vendors{background:linear-gradient(135deg,#4b2e83 0%,#6a3df0 60%,#0f9d6a 150%);box-shadow:0 14px 30px rgba(75,46,131,.32)}
+.lv-hero2:before{content:"";position:absolute;z-index:-1;right:-60px;top:-70px;width:200px;height:200px;border-radius:50%;background:rgba(255,200,61,.28)}
+.lv-hero2:after{content:"";position:absolute;z-index:-1;inset:0;background-image:radial-gradient(rgba(255,255,255,.16) 1.6px,transparent 2px);background-size:20px 20px}
+.lv-hero2-copy{position:relative;display:flex;flex-direction:column;max-width:62%}
+.lv-hero2-copy b{font-size:1.35rem;line-height:1.08;font-weight:900;letter-spacing:-.03em}
+.lv-hero2-copy b.em{color:#ffd21f}
+.lv-hero2-copy span{margin-top:.45rem;font-size:.82rem;font-weight:600;line-height:1.35;color:rgba(255,255,255,.9)}
+.lv-hero2-img{position:absolute;right:.9rem;top:.9rem;width:5.6rem;height:5.6rem;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 10px 20px rgba(0,0,0,.3)}
+.lv-fl{position:absolute;display:grid;place-items:center;width:2.1rem;height:2.1rem;border-radius:.7rem;font-size:.95rem;box-shadow:0 6px 12px rgba(0,0,0,.25),inset 0 2px 3px rgba(255,255,255,.4)}
+.lv-fl1{right:6.9rem;top:.8rem;background:#ffc83d;color:#1b0d3d}
+.lv-fl2{right:.7rem;bottom:.7rem;background:#fff;color:#0b6b47}
+.lv-fl3{right:6.4rem;bottom:.7rem;background:#14d68f;color:#05261c}
+.lv-hero2-img.lv-fl{width:5.6rem;height:5.6rem;border-radius:50%;font-size:0}
