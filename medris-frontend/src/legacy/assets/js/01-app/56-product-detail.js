@@ -793,7 +793,6 @@ window.lvPdPrefetch = function (id) {
   }
   document.addEventListener("touchstart", (e) => {
     t0 = null; lock = null; window.__lvSwipeWarm = null;
-    if (active) { try { active.a1.cancel(); active.a2.cancel(); } catch (_) {} try { active.done(); } catch (_) {} }
     if (currentView !== "productDetail" || e.touches.length !== 1) return;
     if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
@@ -805,12 +804,37 @@ window.lvPdPrefetch = function (id) {
     if (lock === null && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? "h" : "v";
     if (lock !== "h") return;
     if (e.cancelable) e.preventDefault();
+    if (busy) return;
     const el = app(); if (!el) return;
     el.style.transition = "none";
     el.style.transform = `translateX(${dx * 0.85}px)`;
     el.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
-    if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; target(d).then((id) => { if (id) window.lvPdPrefetch?.(id); }).catch(() => {}); }
+    if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; dropPeek(); target(d).then((id) => { if (id) { window.lvPdPrefetch?.(id); window.__lvSwipeWarm.id = id; } }).catch(() => {}); }
+    // the next product itself rides in beside the finger, so there is never an empty moment
+    const wd = dx < 0 ? 1 : -1;
+    if (!peek && window.__lvSwipeWarm?.id) { const d = peekFor(window.__lvSwipeWarm.id); if (d) peek = buildPeek(d, wd); }
+    if (peek) peek.el.style.transform = `translate3d(${wd * innerWidth + dx * 0.85}px,0,0)`;
   }, { passive: false });
+  // A light preview of the next product (its photo, name and shop) taken from the data already prefetched.
+  let peek = null;
+  const peekData = new Map();
+  function peekFor(id) {
+    const k = String(id), e = window.__lvPdPre?.get(k);
+    if (e && !peekData.has(k)) e.first.then((r) => { if (r?.data) peekData.set(k, r.data); });
+    return peekData.get(k) || null;
+  }
+  function buildPeek(d, dir) {
+    const host = app(); if (!host) return null;
+    const r = host.getBoundingClientRect(), top = Math.max(0, r.top);
+    const el = document.createElement("div");
+    el.className = "lv-swipe-peek";
+    const img = Array.isArray(d.photos) ? d.photos[0] : "";
+    el.innerHTML = `<div class="lvp-img">${img ? `<img src="${esc(img)}" alt="" decoding="async">` : ""}</div><div class="lvp-body"><div class="lvp-name">${esc(d.name || "")}</div><div class="lvp-shop">${esc(d.vendor?.business_name || "")}</div></div>`;
+    Object.assign(el.style, { position: "fixed", left: r.left + "px", top: top + "px", width: r.width + "px", height: (innerHeight - top) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: `translate3d(${dir * innerWidth}px,0,0)`, willChange: "transform" });
+    document.body.appendChild(el);
+    return { el, dir };
+  }
+  function dropPeek() { if (peek) { try { peek.el.remove(); } catch (_) {} peek = null; } }
   // Frozen picture of the page being left: it slides away while the next product is prepared behind it, so the person
   // never sees a loading state or a reload, only one product sliding out and the next sliding in.
   function snapshotOf(el) {
@@ -848,46 +872,78 @@ window.lvPdPrefetch = function (id) {
       [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length], ids[(i + 2) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
     } catch (_) {}
   }, 600);
-  let busy = false, active = null;
-  document.addEventListener("touchend", async (e) => {
+  let busy = false, active = null, queued = 0;
+  // Hand the page over to the next / previous product. With a preview ready the slide starts the instant the finger
+  // lifts; the real page is built behind it and quietly takes over, so there is no pause at all.
+  async function goToNeighbour(dir, dx) {
+    busy = true;
+    const el = app();
+    const pk = peek && peek.dir === dir ? peek : null; peek = pk ? null : (dropPeek(), null);
+    try {
+      const id = await target(dir);
+      if (!id) { if (pk) { try { pk.el.remove(); } catch (_) {} } reset(el, true); try { showToast("No other products from this vendor yet.", "info"); } catch (_) {} return; }
+      let pv = pk;
+      if (!pv) { const d = peekFor(id); if (d) { pv = buildPeek(d, dir); if (pv) pv.el.style.transform = `translate3d(${dir * innerWidth + dx * 0.85}px,0,0)`; } }
+      // 1. freeze what is on screen exactly where the finger left it
+      const snap = snapshotOf(el);
+      snap.style.transform = `translateX(${dx * 0.85}px)`;
+      snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+      el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
+      const W = innerWidth, D = 180, E = "cubic-bezier(.22,.9,.3,1)";
+      const from = parseFloat(snap.style.transform.replace(/[^0-9.\-]/g, "")) || 0;
+      const fromP = pv ? (parseFloat(pv.el.style.transform.replace(/translate3d\(([-0-9.]+)px.*/, "$1")) || dir * W) : 0;
+      // 2. the old page and the preview glide together straight away
+      const a1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" }) : null;
+      const a2 = pv && pv.el.animate ? pv.el.animate([{ transform: `translate3d(${fromP}px,0,0)` }, { transform: "translate3d(0,0,0)" }], { duration: D, easing: E, fill: "forwards" }) : null;
+      // 3. meanwhile the real page is built behind them
+      let ok = true;
+      window.__lvSwipeNav = true;
+      try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
+      ok = ok && await waitForProduct(id);
+      window.__lvSwipeNav = false;
+      const now = app();
+      if (!ok || !now) { snap.remove(); if (pv) pv.el.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
+      try { window.scrollTo(0, 0); } catch (_) {}
+      if (pv) {
+        // 4. once the preview has landed, the real page replaces it with a quick fade
+        try { await Promise.all([a1?.finished, a2?.finished].filter(Boolean)); } catch (_) {}
+        now.style.opacity = ""; now.style.transform = "";
+        snap.remove();
+        const f = pv.el.animate ? pv.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-out", fill: "forwards" }) : null;
+        if (f) { try { await f.finished; } catch (_) {} }
+        pv.el.remove();
+      } else {
+        // no preview yet (very fast swipe on a slow connection): slide the real page in as soon as it exists
+        const fromX = dir * W;
+        now.style.opacity = "1"; now.style.willChange = "transform";
+        const b1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" }) : null;
+        const b2 = now.animate ? now.animate([{ transform: `translateX(${fromX}px)` }, { transform: "translateX(0)" }], { duration: D, easing: E }) : null;
+        if (b2) { try { await b2.finished; } catch (_) {} }
+        snap.remove(); now.style.willChange = ""; now.style.transform = ""; now.style.opacity = "";
+      }
+    } finally {
+      busy = false; window.__lvSwipeNav = false;
+      document.querySelectorAll(".lv-swipe-snap").forEach((n) => n.remove());
+      if (queued) { const d = queued; queued = 0; goToNeighbour(d, 0); }
+    }
+  }
+  document.addEventListener("touchend", (e) => {
     const start = t0, was = lock; t0 = null; lock = null;
     if (!start || was !== "h") { clearHint(); return; }
     const el = app(), dx = e.changedTouches[0].clientX - start.x, dt = Date.now() - start.t;
     clearHint();
     const far = Math.abs(dx) > innerWidth * 0.25, flick = Math.abs(dx) > 45 && dt < 320;
-    if (!far && !flick || busy) { reset(el, true); return; }
+    if (!far && !flick) { dropPeekAnimated(); reset(el, true); return; }
     const dir = dx < 0 ? 1 : -1;
-    busy = true;
-    try {
-      const id = await target(dir);
-      if (!id) { reset(el, true); try { showToast("No other products from this vendor yet.", "info"); } catch (_) {} return; }
-      // 1. freeze what is on screen exactly where the finger left it
-      const snap = snapshotOf(el);
-      snap.style.transform = `translateX(${dx * 0.85}px)`;
-      snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
-      // 2. the old page stays put (never a blank gap) while the next product is built behind it, then both glide together
-      el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
-      let ok = true;
-      window.__lvSwipeNav = true; // the router must not paint a saved snapshot or a loading shell behind the slide
-      try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
-      ok = ok && await waitForProduct(id);
-      window.__lvSwipeNav = false;
-      const now = app();
-      if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
-      try { window.scrollTo(0, 0); } catch (_) {}
-      const W = innerWidth, D = 190, E = "cubic-bezier(.22,.9,.3,1)";
-      now.style.opacity = "1"; now.style.transform = "translateX(0)"; now.style.willChange = "transform";
-      const from = parseFloat(snap.style.transform.replace(/[^0-9.\-]/g, "")) || 0;
-      const done = () => { try { snap.remove(); } catch (_) {} now.style.willChange = ""; now.style.transform = ""; now.style.opacity = ""; active = null; };
-      if (!now.animate || !snap.animate) { done(); return; }
-      const a1 = snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" });
-      const a2 = now.animate([{ transform: `translateX(${dir * W}px)` }, { transform: "translateX(0)" }], { duration: D, easing: E });
-      active = { a1, a2, done };
-      busy = false; // a new swipe may start right away; it will finish this one instantly
-      a2.onfinish = done; a2.oncancel = done;
-    } finally { busy = false; window.__lvSwipeNav = false; }
+    // a swipe made while the last one is still settling is kept and played right after it, never lost
+    if (busy) { queued = dir; dropPeek(); return; }
+    goToNeighbour(dir, dx);
   }, { passive: true });
-  document.addEventListener("touchcancel", () => { if (lock === "h") reset(app(), true); t0 = null; lock = null; clearHint(); }, { passive: true });
+  function dropPeekAnimated() {
+    const pk = peek; peek = null; if (!pk) return;
+    try { pk.el.animate([{ transform: pk.el.style.transform }, { transform: `translate3d(${pk.dir * innerWidth}px,0,0)` }], { duration: 160, easing: "ease-out", fill: "forwards" }).finished.then(() => pk.el.remove(), () => pk.el.remove()); } catch (_) { pk.el.remove(); }
+  }
+  document.addEventListener("touchcancel", () => { if (lock === "h") { dropPeek(); reset(app(), true); } t0 = null; lock = null; clearHint(); }, { passive: true });
 })();
 
 /* the comment badge on the product page's top button only shows when there are comments */
