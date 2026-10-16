@@ -3,6 +3,7 @@
 window.lvPageHero = function (kind) {
   const C = {
     request: { img: "/lb/person-a.webp", t: "Can't find it?", em: "Request it.", p: "Post what you need and nearby vendors send you offers.", icons: ["fa-hand", "fa-box-open", "fa-tag"] },
+    orders: { img: "/lb/person-b.webp", t: "Your orders,", em: "all in one place.", p: "Track every order from payment to delivery.", icons: ["fa-receipt", "fa-truck-fast", "fa-bag-shopping"] },
     vendors: { img: "/lb/person-b.webp", t: "Meet your", em: "campus vendors.", p: "Shops, services and rentals near you, all in one place.", icons: ["fa-store", "fa-bag-shopping", "fa-star"] },
   }[kind];
   if (!C) return "";
@@ -13,10 +14,20 @@ window.lvPageHero = function (kind) {
     <img class="lv-fl lv-hero2-img" src="${C.img}" alt="" width="96" height="96" decoding="async">
   </section>`;
 };
+// Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
+window.lvHomeBand = function () {
+  setTimeout(() => lvFloatHero(), 400); setTimeout(() => lvFloatHero(), 1300);
+  const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
+  return `<section class="lv-band" aria-label="More on Levromart">
+    <button type="button" class="lv-band-card lv-band-a" onclick="${req}"><span class="lv-band-t">Can't find it?<b>Request it</b></span><img class="lv-fl" src="/lb/person-a.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-hand"></i></button>
+    <button type="button" class="lv-band-card lv-band-b" onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><img class="lv-fl" src="/lb/person-b.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
+    <a class="lv-band-card lv-band-c" href="https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs" target="_blank" rel="noopener"><span class="lv-band-t">Join the family<b>WhatsApp community</b></span><i class="lv-fl lv-bfl lv-bwa fa-brands fa-whatsapp"></i></a>
+  </section>`;
+};
 window.lvFloatHero = function () {
   try {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    document.querySelectorAll(".lv-hero2 .lv-fl:not([data-fl])").forEach((el, i) => {
+    document.querySelectorAll(".lv-hero2 .lv-fl:not([data-fl]),.lv-band .lv-fl:not([data-fl])").forEach((el, i) => {
       el.setAttribute("data-fl", "1");
       const dy = 4 + (i % 3) * 2, r = (i % 2 ? -1 : 1) * (2 + i);
       el.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(-${dy}px) rotate(${r}deg)` }, { transform: "translateY(0) rotate(0deg)" }], { duration: 2600 + i * 380, delay: i * 250, iterations: Infinity, easing: "ease-in-out" });
