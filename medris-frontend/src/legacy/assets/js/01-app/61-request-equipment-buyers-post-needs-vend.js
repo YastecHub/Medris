@@ -14,6 +14,14 @@ window.lvPageHero = function (kind) {
     <img class="lv-fl lv-hero2-img" src="${C.img}" alt="" width="96" height="96" decoding="async">
   </section>`;
 };
+// Second Home strip, between Trending and Featured Vendors: sell + rent
+window.lvHomeBand2 = function () {
+  setTimeout(() => lvFloatHero(), 450); setTimeout(() => lvFloatHero(), 1400);
+  return `<section class="lv-band lv-band2" aria-label="Sell or rent on Levromart">
+    <button type="button" class="lv-band-card lv-band-d" onclick="navigate('vendorApply')"><span class="lv-band-t">Got something to sell?<b>Open your shop</b></span><img class="lv-fl" src="/lb/person-c.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-store"></i></button>
+    <button type="button" class="lv-band-card lv-band-e" onclick="navigate('vendors')"><span class="lv-band-t">Need it for a while?<b>Rent from vendors</b></span><img class="lv-fl" src="/lb/person-d.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-key"></i></button>
+  </section>`;
+};
 // Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
 window.lvHomeBand = function () {
   setTimeout(() => lvFloatHero(), 400); setTimeout(() => lvFloatHero(), 1300);
