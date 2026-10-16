@@ -2179,3 +2179,27 @@ html body #levromartOfflineOverlay .levromart-offline-retry{background:linear-gr
 /* ===== Vendor cards (final): nothing at the bottom. Lilac circle near the top centre-right, gold top-left, a faint green circle mid-right, soft dots ===== */
 html:root body #app .vc2,html:root body #app .vd-card{background-image:radial-gradient(circle at 66% 0,rgba(139,107,255,.30) 0 50px,transparent 51px),radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 44px,transparent 45px),radial-gradient(circle at 104% 40%,rgba(25,196,134,.13) 0 34px,transparent 35px),radial-gradient(circle,rgba(106,61,240,.09) 1.5px,transparent 2px)!important;background-size:auto,auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,no-repeat,repeat!important}
 :root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 66% 0,rgba(139,107,255,.28) 0 50px,transparent 51px),radial-gradient(circle at 0 0,rgba(255,200,61,.18) 0 44px,transparent 45px),radial-gradient(circle at 104% 40%,rgba(25,196,134,.10) 0 34px,transparent 35px),radial-gradient(circle,rgba(255,255,255,.05) 1.5px,transparent 2px)!important}
+
+/* ===== App tour (lvt-): quick, never clipped, Levi badge ===== */
+.lvt{position:fixed;inset:0;z-index:150000;touch-action:none}
+.lvt.hidden{display:none}
+.lvt-hole{position:fixed;left:0;top:0;border-radius:16px;pointer-events:none;box-shadow:0 0 0 9999px rgba(8,6,20,.74),0 0 0 2px #19c486,0 0 22px rgba(25,196,134,.55);transition:transform .18s cubic-bezier(.22,.9,.3,1),width .18s cubic-bezier(.22,.9,.3,1),height .18s cubic-bezier(.22,.9,.3,1)}
+.lvt-hole.none{width:0!important;height:0!important;transform:translate(50vw,40vh)!important;box-shadow:0 0 0 9999px rgba(8,6,20,.74)}
+.lvt-sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 24px));max-height:46dvh;overflow:auto;box-sizing:border-box;padding:.85rem .95rem .9rem;border-radius:22px;background:var(--card,#fff);color:var(--text,#111);border:1.5px solid color-mix(in srgb,#6a3df0 30%,var(--border,#ddd));box-shadow:0 18px 44px rgba(0,0,0,.38)}
+.lvt-sheet.top{bottom:auto;top:calc(12px + env(safe-area-inset-top,0px))}
+.lvt-head{display:flex;align-items:center;gap:.65rem}
+.lvt-mascot{flex:0 0 52px;width:52px;height:52px;display:block;filter:drop-shadow(0 5px 8px rgba(75,46,131,.35))}
+.lvt-mascot svg{width:100%;height:100%;display:block}
+.lvt-titles{flex:1;min-width:0}
+.lvt-says{margin:0;font-size:.66rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted,#777)}
+.lvt-titles h3{margin:.1rem 0 0;font-size:1.05rem;line-height:1.2;font-weight:800}
+.lvt-skip{border:0;background:none;color:var(--text-muted,#777);font:inherit;font-size:.8rem;font-weight:700;padding:.4rem .5rem;cursor:pointer}
+.lvt-body{margin:.55rem 0 0;font-size:.88rem;line-height:1.45;color:var(--text-muted,#555)}
+.lvt-dots{display:flex;justify-content:center;gap:.3rem;margin:.65rem 0}
+.lvt-dot{width:.4rem;height:.4rem;border-radius:99px;background:color-mix(in srgb,var(--text,#111) 18%,transparent)}
+.lvt-dot.on{width:1.1rem;background:linear-gradient(90deg,#19c486,#0f9d6a)}
+.lvt-actions{display:flex;gap:.6rem}
+.lvt-btn{flex:1;min-height:46px;border-radius:14px;font:inherit;font-weight:800;font-size:.95rem;cursor:pointer;border:1.5px solid transparent;touch-action:manipulation}
+.lvt-pri{background:linear-gradient(135deg,#19c486,#0b6b47);color:#fff}
+.lvt-ghost{background:transparent;color:#0f9d6a;border-color:#19c486}
+.lvt-btn.lvt-hide{display:none}
