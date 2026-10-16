@@ -1261,13 +1261,17 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     return '<span class="ico">'+(r&&!r.none?(r.custom?'<i class="fa-solid fa-graduation-cap"></i>':logoHtml(r)):'<i class="fa-solid fa-graduation-cap"></i>')+'</span><span class="t">'+(r?esc2(r.name)+(r.state?'<small>'+esc2([r.city,r.state].filter(Boolean).join(", "))+'</small>':''):'<span style="color:var(--text-muted)">'+esc2(label||"Choose your campus")+'</span>')+'</span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i>';
   };
 
-  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#0f9d6a"/></linearGradient></defs>'
-   +'<ellipse cx="40" cy="74" rx="20" ry="4" fill="rgba(0,0,0,.12)"/><circle cx="40" cy="46" r="27" fill="url(#lvcg)"/><circle cx="40" cy="46" r="27" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>'
-   +'<g class="lvc-eye"><ellipse cx="31" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="32.3" cy="44" r="1.4" fill="#fff"/></g><g class="lvc-eye"><ellipse cx="49" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="50.3" cy="44" r="1.4" fill="#fff"/></g>'
-   +'<path d="M32 56q8 8 16 0" stroke="#073b2a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="54" r="4" fill="rgba(255,255,255,.28)"/><circle cx="56" cy="54" r="4" fill="rgba(255,255,255,.28)"/>'
-   +'<polygon points="40,12 68,24 40,36 12,24" fill="#0b2a20"/><path d="M26 29v9q14 8 28 0v-9l-14 6z" fill="#123d2e"/><g class="lvc-tassel"><path d="M62 22v14" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="38" r="3" fill="#fbbf24"/></g></svg>';
+  // Levi, the assistant: the Levromart app icon as a glassy badge (exact logo mark) with an "AI" spark and a live dot
+  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset=".55" stop-color="#0f9d6a"/><stop offset="1" stop-color="#065f46"/></linearGradient><linearGradient id="lvcr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6bff"/><stop offset="1" stop-color="#3dffb4"/></linearGradient></defs>'
+   +'<ellipse cx="40" cy="75" rx="19" ry="3" fill="rgba(0,0,0,.2)"/>'
+   +'<rect x="9" y="9" width="62" height="62" rx="20" fill="none" stroke="url(#lvcr)" stroke-width="2.2" opacity=".9"/>'
+   +'<rect x="13" y="13" width="54" height="54" rx="17" fill="url(#lvcg)"/>'
+   +'<path d="M13 30q0-17 17-17h20q17 0 17 17v1q-27 -9-54 0z" fill="#fff" opacity=".16"/>'
+   +'<g transform="translate(15 15) scale(.5)"><path d="M34.61 67.09A23 23 0 0 1 42.89 28.12" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><path d="M65.39 32.91A23 23 0 0 1 57.11 71.88" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><circle class="lvc-eye" cx="50" cy="50" r="9.8" fill="#fff"/></g>'
+   +'<g transform="translate(58 14)"><circle r="9.5" fill="#1b0d3d"/><circle r="9.5" fill="none" stroke="#ffd21f" stroke-width="1.6"/><path d="M0 -5l1.5 3.5 3.5 1.5-3.5 1.5L0 5l-1.5-3.5-3.5-1.5 3.5-1.5z" fill="#ffd21f"/></g>'
+   +'<circle class="lvc-ant" cx="16" cy="64" r="3.4" fill="#3dffb4"/></svg>';
   window.lvMascotSvg=MASCOT;
-  var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
+  var LINES=["Hi! I'm Levi. Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
 
   // ---- is this school already on the list (or already suggested)?
   var STOP={of:1,the:1,and:1,for:1,university:1,college:1,polytechnic:1,school:1,federal:1,state:1,institute:1,uni:1,univ:1,poly:1,"in":1,at:1,nigeria:1,science:1,sciences:1,technology:1,education:1};
