@@ -1,5 +1,7 @@
 # Levromart – Build Manual
 
+> **Code layout changed (Oct 2026):** the web app now lives in `medris-frontend/` (the old `index.html`, `assets/`, `sw.js` and static files are under `src/legacy/`, `src/service-worker/` and `public/`) and the API in `medris-backend/` (Express + TypeScript). Paths below such as `index.html`, `api/*.js` and `lib/` refer to the old layout; see [`ARCHITECTURE.md`](ARCHITECTURE.md) for where everything is now.
+
 > **Current manuals (7 Oct 2026):** [`LEVROMART_FRONTEND_BUILD_MANUAL.pdf`](LEVROMART_FRONTEND_BUILD_MANUAL.pdf) and [`LEVROMART_BACKEND_BUILD_MANUAL.pdf`](LEVROMART_BACKEND_BUILD_MANUAL.pdf), each with a table of contents. They replace this text file, which is kept only for history and has older numbers.
 
 

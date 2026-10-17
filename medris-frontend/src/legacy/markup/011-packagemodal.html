@@ -1,0 +1,76 @@
+<div id="packageModal" class="modal hidden lf-page">
+  <div class="modal-content" style="max-width:640px;">
+    <div class="lf-top"><button type="button" class="lf-back" onclick="closePackageModal()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="lf-top-copy"><h3 id="packageModalTitle">Add New Package</h3><p class="lf-sub">Bundle your products into one fixed-price deal.</p><p class="lf-saved" aria-live="polite"><i class="fa-solid fa-cloud-arrow-up"></i> <span>Auto-saves as you type</span></p></div><img class="lf-art" alt="" /></div>
+    <div id="packageError" class="error-text hidden"></div>
+    <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-box-open"></i></span><div><strong>Basics</strong><small>Name, story and price</small></div></div>
+    <label>Package name</label>
+    <input type="text" id="pkgName" placeholder="e.g. Basic Outreach Kit" />
+    <label>Description (optional)</label>
+    <textarea id="pkgDesc" rows="2" placeholder="What's included, who it's for…"></textarea>
+    <label>Package price (₦)</label>
+    <input type="number" id="pkgPrice" step="0.01" placeholder="e.g. 5000" />
+    </div>
+    <details class="lm-more"><summary><i class="fa-solid fa-sliders"></i> More options <small>likes and comments</small></summary><div class="listing-engagement-settings" id="pkgEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="pkgLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="pkgAllowComments" checked onchange="syncPackageEngagementSettingsUI()"></label><div id="pkgCommentAudienceWrap"><label>Who can comment</label><select id="pkgCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div></details>
+    <div class="lm-sec lm-green"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-receipt"></i></span><div><strong>Billing</strong></div></div>
+    <div class="listing-billing-choice">
+      <label>How do you want to pay Levromart for this package?</label>
+      <select id="pkgBillingModel" onchange="syncPackageBillingUI()">
+        <option value="commission">Commission based: pay Levromart from completed sales</option>
+        <option value="monthly">Monthly: ₦999 per package a month</option>
+      </select>
+      <p id="pkgBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
+    </div>
+    </div>
+
+    <div class="lm-sec lm-pink"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-image"></i></span><div><strong>Photos</strong><small>The first photo is the main image</small></div></div>
+    <div class="photo-grid" id="pkgExistingPhotos"></div>
+    <label class="photo-dropzone" id="packagePhotoDropzone" for="pkgPhotoFiles">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <strong>Add package photos</strong>
+      <span class="muted">Add photos that show what is inside</span>
+    </label>
+    <input type="file" id="pkgPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewPackagePhotos()" />
+    <div class="photo-grid" id="pkgNewPhotoPreviews"></div>
+    </div>
+    <div class="lm-sec lm-violet"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-list-check"></i></span><div><strong>What is inside</strong><small>Only products listed for sale can go in a package</small></div></div>
+    <div id="pkgItemsList" class="pkg-items-list"></div>
+    </div>
+    <div class="flex lm-actions">
+      <button type="button" class="btn btn-sm lf-cancel" onclick="clearNewListingDraft('package');closePackageModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="btn" id="savePackageBtn" onclick="savePackage()">Save Package</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog (replaces native confirm()) -->
+<div id="confirmModal" class="modal hidden">
+  <div class="modal-content" style="max-width:380px;">
+    <h3 id="confirmModalTitle">Please confirm</h3>
+    <div id="confirmModalMsg" class="muted" style="margin:0.8rem 0 1.2rem;max-height:50vh;overflow-y:auto;"></div>
+    <div class="flex" style="justify-content:flex-end;">
+      <button class="btn btn-sm" id="confirmModalCancel" style="background:#6b7280;">Cancel</button>
+      <button class="btn btn-sm" id="confirmModalOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="vendorReviewModal" class="modal hidden" onclick="if(event.target===this) closeVendorReviewModal()">
+  <div class="modal-content" style="max-width:420px;">
+    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.75rem;">
+      <div>
+        <h3 style="margin:0;">How was your order?</h3>
+        <p id="vendorReviewModalVendor" class="muted" style="margin:.25rem 0 0;">Rate your experience with this vendor.</p>
+      </div>
+      <button type="button" class="icon-btn" aria-label="Close review" onclick="closeVendorReviewModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="vendorReviewModalError" class="error-text hidden" style="margin-top:.65rem;"></div>
+    <div id="vendorReviewModalStars" style="display:flex;justify-content:center;"></div>
+    <input type="hidden" id="vendorReviewModalRating" value="5" />
+    <textarea id="vendorReviewModalComment" rows="3" placeholder="Tell us about the order or vendor (optional)"></textarea>
+    <div class="flex" style="justify-content:flex-end;gap:.6rem;margin-top:.75rem;">
+      <button type="button" class="btn btn-sm btn-outline" onclick="closeVendorReviewModal()">Not now</button>
+      <button type="button" class="btn btn-sm" id="vendorReviewModalSubmit">Submit review</button>
+    </div>
+  </div>
+</div>
+

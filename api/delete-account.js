@@ -3,6 +3,11 @@ const path = require("path");
 const { readBody, env } = require("./_util");
 const sharp = require("sharp");
 
+// The built web app (index.html, icons, fonts) is produced by `npm run build -w medris-frontend`
+// into medris-frontend/dist; vercel.json `includeFiles` ships those files with this function.
+// (Before the frontend/backend split they sat at the repository root.)
+const STATIC_ROOT = path.join(process.cwd(), "medris-frontend", "dist");
+
 // Vercel's Hobby plan caps deployments at 12 serverless functions, and this
 // file is already the shared landing spot for a couple of rewritten routes
 // (see vercel.json) -- so the vendor/product share-preview page rides along
@@ -33,7 +38,7 @@ let _ogFonts = null;
 function ogFonts() {
   if (_ogFonts) return _ogFonts;
   const opentype = require("opentype.js");
-  const load = (f) => { const b = fs.readFileSync(path.join(process.cwd(), "fonts", f)); return opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };
+  const load = (f) => { const b = fs.readFileSync(path.join(STATIC_ROOT, "fonts", f)); return opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };
   _ogFonts = { bold: load("Poppins-ExtraBold.ttf"), semi: load("Poppins-SemiBold.ttf"), med: load("Poppins-Medium.ttf") };
   return _ogFonts;
 }
@@ -90,7 +95,7 @@ async function ogCard(req, res) {
     const storeId = String(req.query?.ogstore || "").trim();
     const productId = String(req.query?.ogprod || "").trim();
     const packageId = String(req.query?.ogpkg || "").trim();
-    const root = process.cwd();
+    const root = STATIC_ROOT;
     const W = 1200, H = 630, CX = 880, CY = 315, D = 392;
     const SUPABASE_URL = env("SUPABASE_URL"), KEY = env("SUPABASE_SERVICE_ROLE_KEY");
     const hdr = { apikey: KEY, Authorization: `Bearer ${KEY}` };
@@ -178,7 +183,7 @@ async function ogCard(req, res) {
 
 async function shareMetaPreview(req, res) {
   const serveAsIs = () => {
-    const html = fs.readFileSync(path.join(process.cwd(), "index.html"), "utf8");
+    const html = fs.readFileSync(path.join(STATIC_ROOT, "index.html"), "utf8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(html);
   };
@@ -224,7 +229,7 @@ async function shareMetaPreview(req, res) {
       }
     }
 
-    let html = fs.readFileSync(path.join(process.cwd(), "index.html"), "utf8");
+    let html = fs.readFileSync(path.join(STATIC_ROOT, "index.html"), "utf8");
     if (title) {
       const t = escAttr(title), d = escAttr(description || ""), u = escAttr(pageUrl);
       html = html.replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`);
@@ -657,7 +662,7 @@ async function turnServers(req, res) {
 const NICON_KINDS = new Set(["admin", "follow", "heart", "message", "order", "payment", "review"]);
 async function notifIcon(req, res) {
   try {
-    const root = process.cwd(), S = 256, B = 100;
+    const root = STATIC_ROOT, S = 256, B = 100;
     const u = String(req.query?.u || ""), name = String(req.query?.n || "").slice(0, 60), k = String(req.query?.k || "");
     let host = ""; try { const pu = new URL(u); if (pu.protocol === "https:") host = pu.hostname; } catch (_) {}
     const safeHost = host && !/^(localhost|\d+\.\d+\.\d+\.\d+|\[.*\])$/i.test(host) && !/\.(local|internal)$/i.test(host);

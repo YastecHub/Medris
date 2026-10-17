@@ -1,0 +1,446 @@
+// Fixture rows for the end-to-end tests. Everything here is invented: no real person, shop,
+// phone number, order or payment. Rows only need the columns the first-wave screens read; add
+// more as later migration steps need them.
+
+export const FIXED_NOW = "2026-03-02T10:00:00.000Z";
+
+export const BUYER = {
+  id: "00000000-0000-4000-8000-0000000000b1",
+  email: "buyer@example.test",
+  full_name: "Test Buyer",
+};
+
+export const VENDOR = {
+  id: "00000000-0000-4000-8000-0000000000a1",
+  user_id: "00000000-0000-4000-8000-0000000000a2",
+  business_name: "Fixture Fresh Foods",
+  slug: "fixture-fresh-foods",
+  category: "Food",
+  city: "Lagos",
+  campus: "Fixture University",
+  description: "Invented vendor used by the end-to-end tests.",
+  is_active: true,
+  verification_status: "verified",
+  is_verified: true,
+  avg_rating: 4.5,
+  review_count: 2,
+  whatsapp_visible: false,
+  created_at: "2026-01-10T09:00:00.000Z",
+};
+
+const product = (n: number, name: string, price: number) => ({
+  id: `00000000-0000-4000-8000-0000000001${String(n).padStart(2, "0")}`,
+  vendor_id: VENDOR.id,
+  vendor: VENDOR,
+  listing_type: "sale",
+  photos: [],
+  name,
+  title: name,
+  description: `${name} (fixture product)`,
+  price,
+  category: "Food",
+  stock: 20,
+  status: "active",
+  is_active: true,
+  images: [],
+  created_at: `2026-02-0${n}T09:00:00.000Z`,
+});
+
+export const PRODUCTS = [product(1, "Jollof Rice Pack", 2500), product(2, "Zobo Drink", 800), product(3, "Meat Pie", 1200)];
+
+export const NOTIFICATIONS = [
+  {
+    id: "00000000-0000-4000-8000-0000000002a1",
+    user_id: BUYER.id,
+    title: "Welcome to Levromart",
+    message: "This is a fixture notification.",
+    type: "system",
+    is_read: false,
+    created_at: "2026-03-01T08:00:00.000Z",
+  },
+  {
+    id: "00000000-0000-4000-8000-0000000002a2",
+    user_id: BUYER.id,
+    title: "Your order was delivered",
+    message: "Another fixture notification.",
+    type: "order",
+    is_read: true,
+    created_at: "2026-02-28T08:00:00.000Z",
+  },
+];
+
+/** Table name -> rows returned for a read. Tables not listed answer with an empty list. */
+export const TABLES: Record<string, unknown[]> = {
+  products: PRODUCTS,
+  vendors: [VENDOR],
+  profiles: [{ id: BUYER.id, email: BUYER.email, full_name: BUYER.full_name, role: "buyer", campus: VENDOR.campus }],
+  notifications: NOTIFICATIONS,
+  // Legitimately empty for the first-wave screens; listed so a NEW unmapped table stands out.
+  categories: [],
+  sectors: [],
+  product_variants: [],
+  product_engagement_settings: [],
+  vendor_packages: [],
+  homepage_carousel_slides: [],
+};
+
+/** RPC name -> JSON result. RPCs not listed answer with null. */
+export const RPCS: Record<string, unknown> = {};
+
+// ---- Vendors a customer follows (used by pilot-customer-following.spec.ts; NOT part of the defaults,
+// so the first-wave reference pictures keep showing the empty state) ----
+
+const followedVendor = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000003${String(n).padStart(2, "0")}`,
+  business_name: `Vendor ${n}`,
+  logo_url: null,
+  cover_image_url: null,
+  bio: null,
+  city: "Lagos",
+  avg_rating: 4,
+  review_count: 3,
+  verification_status: "verified",
+  is_active: true,
+  sector_id: null,
+  ...over,
+});
+
+/** Rows as vendor_follows returns them (each embeds its vendor). Two of them must be hidden by the screen. */
+export const FOLLOWED_ROWS = [
+  { vendor: followedVendor(1, { business_name: "Ada's Kitchen", logo_url: "https://images.example.test/vendor-a.png", city: "Lagos", avg_rating: 4.6, review_count: 12 }) },
+  { vendor: followedVendor(2, { business_name: "Brisk Tech", city: null, avg_rating: null, review_count: null }) },
+  { vendor: followedVendor(3, { business_name: "Not Verified Yet", verification_status: "pending" }) },
+  { vendor: followedVendor(4, { business_name: "Paused Shop", is_active: false }) },
+  { vendor: followedVendor(5, { business_name: '<b>Bold</b> & "Quotes" Store', city: "Abuja", avg_rating: 3.25, review_count: 1 }) },
+];
+
+/** public.users row that makes the signed-in fixture user an administrator. */
+export const ADMIN_USER_ROW = { id: BUYER.id, email: BUYER.email, full_name: BUYER.full_name, role: "admin" };
+
+// ---- Saved products and packages (used by pilot-wishlist.spec.ts; NOT part of the defaults) ----
+
+const wVendor = (n: number, over: Record<string, unknown> = {}) => ({
+  id: `00000000-0000-4000-8000-0000000006${String(n).padStart(2, "0")}`,
+  business_name: `Shop ${n}`,
+  logo_url: null,
+  verification_status: "verified",
+  is_active: true,
+  ...over,
+});
+const wProduct = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000004${String(n).padStart(2, "0")}`,
+  name: `Item ${n}`,
+  listing_type: "sale",
+  sale_price: 1000 * n,
+  rental_rate: null,
+  rental_rate_unit: null,
+  photos: ["https://images.example.test/item.png"],
+  quantity_available: 5,
+  condition: "new",
+  is_service: false,
+  service_price_unit: null,
+  status: "active",
+  vendor: wVendor(n),
+  ...over,
+});
+
+/** Rows as favorites returns them (each embeds its product). Two must be hidden by the screen. */
+export const WISHLIST_PRODUCT_ROWS = [
+  { product_id: "00000000-0000-4000-8000-000000000401", product: wProduct(1, { name: "Jollof Party Pack", sale_price: 2500, discount_price: 2000, photos: ["https://images.example.test/a.png", "https://images.example.test/b.png"], vendor: wVendor(1, { business_name: "Ada's Kitchen", logo_url: "https://images.example.test/logo-a.png" }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000402", product: wProduct(2, { name: "Blender 500W", sale_price: 18000, vendor: wVendor(2, { business_name: "Brisk Tech", delivery_fee: 500, delivery_fee_mode: "flat" }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000403", product: wProduct(3, { name: "Camping Tent", listing_type: "rent", sale_price: null, rental_rate: 1500, rental_rate_unit: "day", photos: [], vendor: wVendor(3, { business_name: "Outdoor Co", logo_url: "https://images.example.test/logo-c.png" }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000404", product: wProduct(4, { name: "Logo Design", is_service: true, billing_model: "commission", sale_price: null, photos: [] }) },
+  { product_id: "00000000-0000-4000-8000-000000000405", product: wProduct(5, { name: '<i>Fancy</i> & "Quoted" Bag', photos: [], vendor: wVendor(5, { business_name: "", logo_url: null }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000406", product: wProduct(6, { name: "Paused Listing", status: "paused" }) },
+  { product_id: "00000000-0000-4000-8000-000000000407", product: wProduct(7, { name: "Far Away Fan", sale_price: 9000, vendor: wVendor(7, { business_name: "Distant Ltd", delivery_fee: 300, delivery_fee_mode: "distance", delivery_fee_per_km: 120 }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000408", product: wProduct(8, { name: "Unverified Seller Item", vendor: wVendor(8, { verification_status: "pending" }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000409", product: wProduct(9, { name: "Broken Photo Chair", sale_price: 4000, photos: ["https://broken.example.test/chair.png"], vendor: wVendor(9, { business_name: "Chairs Inc", logo_url: null }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000410", product: wProduct(10, { name: "Broken Logo Lamp", sale_price: 3000, photos: [], vendor: wVendor(10, { business_name: "Lamp House", logo_url: "https://broken.example.test/logo.png" }) }) },
+];
+
+const wPackage = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000005${String(n).padStart(2, "0")}`,
+  vendor_id: `00000000-0000-4000-8000-0000000007${String(n).padStart(2, "0")}`,
+  name: `Package ${n}`,
+  description: null,
+  price: 5000 * n,
+  photos: [],
+  created_at: "2026-02-01T09:00:00.000Z",
+  status: "active",
+  vendor: { id: `00000000-0000-4000-8000-0000000007${String(n).padStart(2, "0")}`, business_name: `Bundle Shop ${n}`, logo_url: null, delivery_fee: 0, verification_status: "verified", is_active: true },
+  items: [],
+  ...over,
+});
+
+export const WISHLIST_PACKAGE_ROWS = [
+  { package: wPackage(1, { name: "Student Starter Bundle", description: "Everything for the first week.", photos: ["https://images.example.test/pkg.png"], items: [{ quantity: 2, product: { id: "x1", name: "Notebook", photos: [] } }, { quantity: 1, product: { id: "x2", name: "Pen <set>", photos: [] } }], vendor: { id: "00000000-0000-4000-8000-000000000701", business_name: "Campus Mart", logo_url: null, delivery_fee: 700, verification_status: "verified", is_active: true } }) },
+  { package: wPackage(2, { name: "Mystery Box" }) },
+  { package: wPackage(3, { name: "Party Pack", vendor: { id: "00000000-0000-4000-8000-000000000703", business_name: "Fun Co", logo_url: null, delivery_fee: 0, delivery_fee_mode: "distance", delivery_fee_per_km: 90, verification_status: "verified", is_active: true } }) },
+  { package: wPackage(4, { name: "Hidden Bundle", vendor: { id: "x", business_name: "Nope", logo_url: null, delivery_fee: 0, verification_status: "pending", is_active: true } }) },
+];
+
+// ---- Notifications (used by pilot-notifications.spec.ts; NOT part of the defaults) ----
+
+const minutesAgo = (m: number) => new Date(new Date(FIXED_NOW).getTime() - m * 60_000).toISOString();
+const OTHER_VENDOR_ID = "00000000-0000-4000-8000-0000000009a1";
+export const MY_VENDOR_ID = "00000000-0000-4000-8000-0000000009b1";
+export const CONVERSATION_ID = "00000000-0000-4000-8000-0000000009c1";
+export const NOTIF_OTHER_PRODUCT_ID = "00000000-0000-4000-8000-0000000009d1";
+export const NOTIF_MY_PACKAGE_ID = "00000000-0000-4000-8000-0000000009d2";
+
+const note = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-00000000${String(800 + n).padStart(4, "0")}`,
+  user_id: BUYER.id,
+  title: `Notification ${n}`,
+  body: null,
+  type: "system",
+  notification_category: null,
+  read: true,
+  created_at: minutesAgo(10 * n),
+  target_view: null,
+  target_params: {},
+  metadata: {},
+  actor_id: null,
+  actor_name: null,
+  actor_avatar_url: null,
+  ...over,
+});
+
+export const NOTIFICATION_ROWS = [
+  note(1, { title: "New order received", body: "Order for Jollof Party Pack", type: "order_placed", target_view: "orderDetail", target_params: { orderId: "00000000-0000-4000-8000-0000000009e1" }, read: false, created_at: minutesAgo(0) }),
+  note(2, { title: "Payment confirmed", type: "payment_received", metadata: { order_id: "x" }, read: true }),
+  note(3, { title: "New comment on your product", body: "Nice item!", type: "product_comment", target_view: "productDetail", target_params: { productId: NOTIF_OTHER_PRODUCT_ID }, read: false }),
+  note(4, { title: "Someone saved your package", type: "package_wishlisted", metadata: { kind: "package" }, target_view: "packageDetail", target_params: { packageId: NOTIF_MY_PACKAGE_ID }, read: false }),
+  note(5, { title: "New follower", body: "Chidi Obi started following you", type: "vendor_follow", notification_category: "new_follower", actor_name: "Chidi Obi", read: false }),
+  note(6, { title: "Security notice", body: "Call us on 08012345678 if this wasn't you", type: "admin_alert", read: true }),
+  note(7, { title: "Ada sent you a message", body: "Is it still available?", type: "new_message", target_view: "messages", target_params: { conversationId: CONVERSATION_ID }, actor_name: "Ada Eze", actor_avatar_url: "https://images.example.test/ada.png", read: false, created_at: minutesAgo(60) }),
+  note(8, { title: "Ada sent you a message", body: "Hello?", type: "new_message", target_view: "messages", target_params: { conversationId: CONVERSATION_ID }, actor_name: "Ada Eze", actor_avatar_url: "https://images.example.test/ada.png", read: false, created_at: minutesAgo(70) }),
+  note(9, { title: "Ada sent you a message", body: "Thanks!", type: "new_message", target_view: "messages", target_params: { conversationId: CONVERSATION_ID }, actor_name: "Ada Eze", actor_avatar_url: "https://images.example.test/ada.png", read: true, created_at: minutesAgo(80) }),
+  note(10, { title: "Bola sent you a message", body: "See you tomorrow", type: "new_message", target_view: "messages", target_params: { conversationId: "00000000-0000-4000-8000-0000000009c2" }, actor_name: "Bola A.", read: true, created_at: minutesAgo(90) }),
+  note(11, { title: "<b>Big</b> sale & more", body: "Vendor news", type: "vendor_update", metadata: { kind: "vendor" }, vendor_id: OTHER_VENDOR_ID, read: false, created_at: minutesAgo(200) }),
+  note(12, { title: "Points earned", type: "points", read: true, created_at: minutesAgo(3000) }),
+];
+
+/** Who owns the listings the notifications above point at. */
+export const NOTIF_OWNER_TABLES = {
+  products: [{ id: NOTIF_OTHER_PRODUCT_ID, vendor_id: OTHER_VENDOR_ID }],
+  vendor_packages: [{ id: NOTIF_MY_PACKAGE_ID, vendor_id: MY_VENDOR_ID }],
+};
+
+/** Makes the signed-in fixture user a vendor (owner of MY_VENDOR_ID). */
+export const MY_VENDOR_TABLES = {
+  users: [{ id: BUYER.id, email: BUYER.email, full_name: BUYER.full_name, role: "vendor" }],
+  vendors: [{ id: MY_VENDOR_ID, user_id: BUYER.id, business_name: "My Fixture Shop", verification_status: "verified", is_active: true, deleted_at: null }],
+};
+
+// ---- The vendors directory (used by pilot-vendors.spec.ts; NOT part of the defaults, so the first-wave
+// reference pictures keep showing the one default vendor) ----
+
+const directoryVendor = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000004${String(n).padStart(2, "0")}`,
+  business_name: `Directory Vendor ${n}`,
+  city: "Lagos",
+  avg_rating: 4,
+  review_count: 3,
+  sector_id: "00000000-0000-4000-8000-000000000501",
+  logo_url: null,
+  cover_url: null,
+  cover_image_url: null,
+  lat: null,
+  lng: null,
+  verification_status: "verified",
+  is_active: true,
+  ...over,
+});
+
+export const DIRECTORY_VENDORS = [
+  directoryVendor(1, { business_name: "Ada's Kitchen", city: "Lagos", avg_rating: 4.6, review_count: 12, logo_url: "https://images.example.test/vendor-a.png" }),
+  directoryVendor(2, { business_name: "Brisk Tech", city: "Abuja", sector_id: "00000000-0000-4000-8000-000000000502", avg_rating: null, review_count: null }),
+  directoryVendor(3, { business_name: "Campus Rentals", city: "Lagos", sector_id: "00000000-0000-4000-8000-000000000502" }),
+  directoryVendor(4, { business_name: '<b>Bold</b> & "Quotes" Store', city: null, avg_rating: 3.25, review_count: 1 }),
+  directoryVendor(5, { business_name: "Not Verified Yet", verification_status: "pending" }),
+  directoryVendor(6, { business_name: "Paused Shop", is_active: false }),
+];
+
+const directoryProduct = (n: number, vendorN: number, name: string, listing: string, category: string) => ({
+  id: `00000000-0000-4000-8000-0000000006${String(n).padStart(2, "0")}`,
+  vendor_id: DIRECTORY_VENDORS[vendorN - 1]!.id,
+  name,
+  description: `${name} (fixture)`,
+  listing_type: listing,
+  is_service: false,
+  status: "active",
+  category: { name: category },
+});
+
+export const DIRECTORY_PRODUCTS = [
+  directoryProduct(1, 1, "Jollof Rice Pack", "sale", "Food"),
+  directoryProduct(2, 2, "Laptop Repair", "sale", "Electronics"),
+  directoryProduct(3, 3, "Projector", "rent", "Electronics"),
+  directoryProduct(4, 3, "Tent", "both", "Events"),
+  directoryProduct(5, 4, "Soap", "sale", "Beauty"),
+];
+
+export const DIRECTORY_SECTORS = [
+  { id: "00000000-0000-4000-8000-000000000501", name: "Food & Drinks", sort_order: 1 },
+  { id: "00000000-0000-4000-8000-000000000502", name: "Tech & Gadgets", sort_order: 2 },
+];
+
+// ---- A vendor's public storefront (used by pilot-storefront.spec.ts; NOT part of the defaults) ----
+
+export const STOREFRONT_OWNER_ID = "00000000-0000-4000-8000-0000000007a2";
+export const SHOP = {
+  id: "00000000-0000-4000-8000-0000000007a1",
+  user_id: STOREFRONT_OWNER_ID,
+  business_name: "Ada's Kitchen",
+  previous_business_name: "Ada Foods",
+  name_changed_at: "2026-02-25T09:00:00.000Z", // inside the 14-day "formerly" window of the frozen clock
+  logo_url: "https://images.example.test/shop-logo.png",
+  cover_url: "https://images.example.test/shop-cover.png",
+  bio: "Home-style cooking for students and offices. ".repeat(5).trim(),
+  address: "12 Fixture Road",
+  city: "Lagos",
+  cac_number: "RC-123456",
+  opening_hours: "Mon-Sat 8am-6pm",
+  created_at: "2023-01-10T09:00:00.000Z",
+  is_active: true,
+  verification_status: "verified",
+  lat: null,
+  lng: null,
+  delivery_fee: 500,
+  delivery_fee_mode: "flat",
+  delivery_fee_per_km: null,
+  sector: { name: "Food & Drinks", icon: "fa-utensils" },
+};
+
+const shopProduct = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000008${String(n).padStart(2, "0")}`,
+  vendor_id: SHOP.id,
+  name: `Shop item ${n}`,
+  listing_type: "sale",
+  sale_price: 1000 * n,
+  discount_price: null,
+  rental_rate: null,
+  rental_rate_unit: null,
+  photos: ["https://images.example.test/item.png"],
+  quantity_available: 12,
+  condition: "new",
+  is_service: false,
+  service_price_unit: null,
+  status: "active",
+  category: { name: "Meals" },
+  vendor: { id: SHOP.id, business_name: SHOP.business_name, verification_status: "verified", logo_url: SHOP.logo_url, delivery_fee: 500, delivery_fee_mode: "flat", delivery_fee_per_km: null, lat: null, lng: null },
+  created_at: `2026-02-0${n}T09:00:00.000Z`,
+  ...over,
+});
+
+export const SHOP_PRODUCTS = [
+  shopProduct(1, { name: "Jollof Party Pack", sale_price: 2500, discount_price: 2000, category: { name: "Meals" } }),
+  shopProduct(2, { name: "Chin Chin Tub", sale_price: 1800, category: { name: "Snacks" }, photos: [] }),
+  shopProduct(3, { name: "Party Tent", listing_type: "rent", sale_price: null, rental_rate: 15000, rental_rate_unit: "day", category: { name: "Rentals" } }),
+  shopProduct(4, { name: "Cake Decorating", is_service: true, sale_price: 8000, service_price_unit: "hour", category: { name: "Classes" }, photos: [] }),
+  shopProduct(5, { name: '<i>Fancy</i> & "Quoted" Cake', sale_price: 6500, category: { name: "Snacks" } }),
+  shopProduct(6, { name: "Mystery Item", sale_price: null, rental_rate: null, photos: [], category: null }),
+  shopProduct(7, { name: "Seventh Item", sale_price: 700 }),
+];
+
+export const SHOP_REVIEWS = [
+  { id: "r1", rating: 5, comment: "Lovely food <b>fast</b>", buyer_name: "Ngozi", buyer_avatar_url: null, created_at: "2026-02-20T10:00:00.000Z" },
+  { id: "r2", rating: 3, comment: null, buyer_name: null, buyer_avatar_url: "https://images.example.test/avatar.png", created_at: "2026-02-10T10:00:00.000Z" },
+];
+
+export const SHOP_PACKAGES = [
+  { id: "00000000-0000-4000-8000-0000000009a1", vendor_id: SHOP.id, name: "Office Lunch Bundle", description: "Lunch for five.", price: 12000, photos: ["https://images.example.test/pkg.png"], status: "active", created_at: "2026-02-01T09:00:00.000Z", items: [{ quantity: 5, product: { name: "Jollof Party Pack" } }] },
+];
+
+export const SHOP_RPCS = {
+  get_vendor_stats: [{ review_count: 2, avg_rating: 4 }],
+  get_vendor_follow_state: [{ following: false, follower_count: 1234 }],
+};
+
+// ---- A product's page (used by pilot-product-detail.spec.ts; NOT part of the defaults) ----
+
+export const PD_VENDOR = {
+  id: "00000000-0000-4000-8000-0000000007b1",
+  user_id: "00000000-0000-4000-8000-0000000007b2",
+  business_name: "Ada's Kitchen",
+  previous_business_name: "Ada Foods",
+  name_changed_at: "2026-02-25T09:00:00.000Z", // inside the 14-day "formerly" window of the frozen clock
+  logo_url: "https://images.example.test/shop-logo.png",
+  city: "Lagos",
+  address: "12 Fixture Road",
+  phone: null,
+  whatsapp_number: null,
+  whatsapp_visible: false,
+  avg_rating: 4.3,
+  review_count: 7,
+  verification_status: "verified",
+  is_active: true,
+  lat: 6.5244,
+  lng: 3.3792,
+  delivery_fee: 500,
+  delivery_fee_mode: "distance",
+  delivery_fee_per_km: 120,
+};
+
+const pdProduct = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000009${String(n).padStart(2, "0")}`,
+  vendor_id: PD_VENDOR.id,
+  name: `Product ${n}`,
+  description: `Product ${n} is an invented listing.`,
+  photos: ["https://images.example.test/p1.png"],
+  listing_type: "sale",
+  sale_price: 5000,
+  discount_price: null,
+  rental_rate: null,
+  rental_rate_unit: null,
+  is_service: false,
+  billing_model: "monthly",
+  service_price_unit: null,
+  condition: "new",
+  quantity_available: 8,
+  quantity_total: 10,
+  track_quantity: true,
+  payment_timing: "pay_before",
+  payment_deposit_percent: 20,
+  deposit_amount: null,
+  delivery_fee: 500,
+  delivery_fee_mode: "flat",
+  delivery_fee_per_km: null,
+  view_count: 42,
+  status: "active",
+  category: { name: "Snacks" },
+  vendor: PD_VENDOR,
+  created_at: `2026-02-0${n}T09:00:00.000Z`,
+  ...over,
+});
+
+export const PD_FULL = pdProduct(1, {
+  name: "Jollof Party Pack",
+  description: "Smoky party jollof for ten people, with chicken, plantain and coleslaw. ".repeat(4).trim() + " [variants: hidden]",
+  photos: ["https://images.example.test/p1.png", "https://images.example.test/p2.png", "https://images.example.test/p3.png"],
+  listing_type: "both",
+  sale_price: 25000,
+  discount_price: 20000,
+  rental_rate: 3000,
+  rental_rate_unit: "day",
+  deposit_amount: 5000,
+  payment_timing: "pay_after",
+  payment_deposit_percent: 30,
+  delivery_fee_mode: "distance", // asks for the buyer's location (the old page then switches to pickup when it is refused)
+  delivery_fee_per_km: 120,
+});
+export const PD_VARIANTS = [
+  { id: "00000000-0000-4000-8000-0000000009c2", product_id: PD_FULL.id, name: "Large tray", description: "Feeds fifteen.", photo_url: null, sale_price: 32000, discount_price: null, rental_rate: null, quantity_available: 3, sort_order: 2, created_at: "2026-02-01T09:00:00.000Z" },
+  { id: "00000000-0000-4000-8000-0000000009c1", product_id: PD_FULL.id, name: "Regular tray", description: null, photo_url: null, sale_price: 25000, discount_price: 20000, rental_rate: null, quantity_available: null, sort_order: 1, created_at: "2026-02-01T09:00:00.000Z" },
+  { id: "00000000-0000-4000-8000-0000000009c3", product_id: PD_FULL.id, name: "Photo variety", description: "With a photo.", photo_url: "https://images.example.test/p4.png", sale_price: 27000, discount_price: null, rental_rate: null, quantity_available: 0, sort_order: 3, created_at: "2026-02-01T09:00:00.000Z" },
+];
+export const PD_SIMPLE = pdProduct(2, { name: "Chin Chin Tub", description: "Crunchy.", sale_price: 1800, condition: null, track_quantity: false });
+export const PD_RENT = pdProduct(3, { name: "Party Tent", listing_type: "rent", sale_price: null, rental_rate: 15000, rental_rate_unit: "day", photos: [], condition: "like-new", vendor: { ...PD_VENDOR, logo_url: null, previous_business_name: null } });
+export const PD_SERVICE = pdProduct(4, { name: "Cake Decorating", is_service: true, sale_price: 8000, service_price_unit: "hour", photos: ["https://images.example.test/s1.png"], condition: null });
+export const PD_COMMISSION = pdProduct(5, { name: "Logo Design", is_service: true, billing_model: "commission", sale_price: null, photos: [] });
+export const PD_PAUSED = pdProduct(6, { name: "Paused Listing", status: "paused" });
+export const PD_HOSTILE = pdProduct(7, { name: '<i>Fancy</i> & "Quoted" Cake', description: '<b>bold</b> "quotes"', vendor: { ...PD_VENDOR, business_name: '<u>Shop</u> & "Co"', previous_business_name: null, logo_url: null } });
+// A listing in a category that has a "You may also need" shelf (the old table of related equipment).
+export const PD_RELATED = pdProduct(8, { name: "Blood Pressure Monitor", sale_price: 15000, category: { name: "Blood Pressure Machine" } });
+export const PD_ROWS = [PD_FULL, PD_SIMPLE, PD_RENT, PD_SERVICE, PD_COMMISSION, PD_PAUSED, PD_HOSTILE, PD_RELATED];

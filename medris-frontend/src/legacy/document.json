@@ -1,0 +1,402 @@
+{
+ "$comment": "Ordered pieces of the legacy document and the legacy asset files. Assembled by medris-frontend/build/legacy-document.ts. Order matters: later CSS and later function definitions win.",
+ "assetVersion": 181,
+ "pieces": [
+  {
+   "kind": "markup",
+   "file": "markup/001-stylesheet-link.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script>",
+   "closeTag": "</script>",
+   "file": "scripts/001-inline.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/002-levromart-real-fix-build-orders-live-202.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script>",
+   "closeTag": "</script>",
+   "file": "scripts/002-inline.js"
+  },
+  {
+   "kind": "text",
+   "value": "\n"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-flat-helpers\">",
+   "closeTag": "</script>",
+   "file": "scripts/003-levromart-flat-helpers.js"
+  },
+  {
+   "kind": "text",
+   "value": "\n"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-thumbs\">",
+   "closeTag": "</script>",
+   "file": "scripts/004-levromart-thumbs.js"
+  },
+  {
+   "kind": "text",
+   "value": "\n"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-friendly-errors\">",
+   "closeTag": "</script>",
+   "file": "scripts/005-levromart-friendly-errors.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/003-head.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"lv-keep-signed-in-early\">",
+   "closeTag": "</script>",
+   "file": "scripts/006-lv-keep-signed-in-early.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/004-script-includes.html"
+  },
+  {
+   "kind": "style",
+   "openTag": "<style>",
+   "closeTag": "</style>",
+   "file": "styles/001-clean-page-heading-rhythm-headings-must-never-vi.css"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/005-stylesheet-link.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"2026-09-08-chat-route-lock-js\">",
+   "closeTag": "</script>",
+   "file": "scripts/007-2026-09-08-chat-route-lock-js.js"
+  },
+  {
+   "kind": "text",
+   "value": "\n\n"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-20260910-final-ux-hooks\">",
+   "closeTag": "</script>",
+   "file": "scripts/008-levromart-20260910-final-ux-hooks.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/006-levromartsplash.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-splash-watchdog\">",
+   "closeTag": "</script>",
+   "file": "scripts/009-levromart-splash-watchdog.js"
+  },
+  {
+   "kind": "text",
+   "value": "\n"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/007-profilewrap.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/008-loginmodal.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/009-resetpasswordmodal.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/010-productmodal.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/011-packagemodal.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/012-aboutlevromartmodal.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/013-aichatpanel.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"profile-image-natural-ui-script\">",
+   "closeTag": "</script>",
+   "file": "scripts/010-profile-image-natural-ui-script.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/014-stray-style-close.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-payment-resolution-final-js-20260917\">",
+   "closeTag": "</script>",
+   "file": "scripts/011-levromart-payment-resolution-final-js-20260917.js"
+  },
+  {
+   "kind": "text",
+   "value": "\n\n"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-calm-final-state\">",
+   "closeTag": "</script>",
+   "file": "scripts/012-levromart-calm-final-state.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/015-html-close.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script>",
+   "closeTag": "</script>",
+   "file": "scripts/013-inline.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/016-final-notification-chat-realtime-stabili.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script id=\"levromart-profile-storefront-sheet-js\">",
+   "closeTag": "</script>",
+   "file": "scripts/014-levromart-profile-storefront-sheet-js.js"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/017-levromart-first-visit-onboarding.html"
+  },
+  {
+   "kind": "markup",
+   "file": "markup/018-lvonb.html"
+  }
+ ],
+ "external": [
+  {
+   "output": "assets/css/01-base.css",
+   "files": [
+    "assets/css/01-base.css"
+   ]
+  },
+  {
+   "output": "assets/css/02-components.css",
+   "files": [
+    "assets/css/02-components.css"
+   ]
+  },
+  {
+   "output": "assets/css/03-pages.css",
+   "files": [
+    "assets/css/03-pages.css"
+   ]
+  },
+  {
+   "output": "assets/css/04-shell.css",
+   "files": [
+    "assets/css/04-shell.css"
+   ]
+  },
+  {
+   "output": "assets/css/05-overrides.css",
+   "files": [
+    "assets/css/05-overrides.css"
+   ]
+  },
+  {
+   "output": "assets/js/01-app.js",
+   "files": [
+    "assets/js/01-app/01-prelude.js",
+    "assets/js/01-app/02-supabase.js",
+    "assets/js/01-app/03-account-integrity.js",
+    "assets/js/01-app/04-install-as-app-prompt.js",
+    "assets/js/01-app/05-push-notifications-on-top-of-email-not-i.js",
+    "assets/js/01-app/06-call-message-alerts-check-settings.js",
+    "assets/js/01-app/07-first-visit-app-tour-live-walks-the-real.js",
+    "assets/js/01-app/08-utils.js",
+    "assets/js/01-app/09-auth-identifier-helpers.js",
+    "assets/js/01-app/10-map-leaflet-openstreetmap-loaded-on-dema.js",
+    "assets/js/01-app/11-audio-compatibility.js",
+    "assets/js/01-app/12-accessibility-font-size.js",
+    "assets/js/01-app/13-levi-fab-size.js",
+    "assets/js/01-app/14-levi-visibility-hide-the-floating-chat-b.js",
+    "assets/js/01-app/15-toasts-confirm-dialog-replace-native-ale.js",
+    "assets/js/01-app/16-theme.js",
+    "assets/js/01-app/17-accent-color.js",
+    "assets/js/01-app/18-slide-in-drawers.js",
+    "assets/js/01-app/19-long-press-batch-selection.js",
+    "assets/js/01-app/20-notifications-real-persisted-realtime.js",
+    "assets/js/01-app/21-live-orders.js",
+    "assets/js/01-app/22-auth.js",
+    "assets/js/01-app/23-dedicated-levromart-settings-page.js",
+    "assets/js/01-app/24-my-details-any-logged-in-buyer-vendor-s.js",
+    "assets/js/01-app/25-profile-setup-first-screen-after-sign-up.js",
+    "assets/js/01-app/26-bottom-nav-mobile.js",
+    "assets/js/01-app/27-suspended-account-screen.js",
+    "assets/js/01-app/28-settings-extras.js",
+    "assets/js/01-app/29-dedicated-notifications-page.js",
+    "assets/js/01-app/30-navigation.js",
+    "assets/js/01-app/31-persistent-route-scroll-state.js",
+    "assets/js/01-app/32-swipe-product-package-galleries.js",
+    "assets/js/01-app/33-horizontal-browse-preference.js",
+    "assets/js/01-app/34-auto-sliding-carousels-category-row-hori.js",
+    "assets/js/01-app/35-offline-marketplace-cache.js",
+    "assets/js/01-app/36-home-search-scroll-motion.js",
+    "assets/js/01-app/37-homepage-promotional-carousel.js",
+    "assets/js/01-app/38-admin-link-library.js",
+    "assets/js/01-app/39-home-marketplace-browse.js",
+    "assets/js/01-app/40-dedicated-search-page.js",
+    "assets/js/01-app/41-instant-search-names-are-matched-on-the.js",
+    "assets/js/01-app/42-typo-tolerant-search-helpers.js",
+    "assets/js/01-app/43-browse-everything-data-light-index-24-at.js",
+    "assets/js/01-app/44-wishlist.js",
+    "assets/js/01-app/45-follower-network-vendors-only.js",
+    "assets/js/01-app/46-cart-buy-and-sale-items-only-grouped-by.js",
+    "assets/js/01-app/47-in-app-messaging.js",
+    "assets/js/01-app/48-suggestion-box.js",
+    "assets/js/01-app/49-chat-row-selection.js",
+    "assets/js/01-app/50-custom-chat-lists-whatsapp-style-user-ma.js",
+    "assets/js/01-app/51-chat-snapshots-instant-open-works-withou.js",
+    "assets/js/01-app/52-whatsapp-style-chat-date-separators-buye.js",
+    "assets/js/01-app/53-call-log-rows-in-the-chat-missed-outgoin.js",
+    "assets/js/01-app/54-whatsapp-style-message-actions-selection.js",
+    "assets/js/01-app/55-package-detail.js",
+    "assets/js/01-app/56-product-detail.js",
+    "assets/js/01-app/57-vendors-directory.js",
+    "assets/js/01-app/58-vendors-page-card-empty-state.js",
+    "assets/js/01-app/59-storefront-public-vendor-page.js",
+    "assets/js/01-app/60-request-form-handlers.js",
+    "assets/js/01-app/61-request-equipment-buyers-post-needs-vend.js",
+    "assets/js/01-app/62-product-package-social-interactions.js",
+    "assets/js/01-app/63-vendor-application.js",
+    "assets/js/01-app/64-vendor-dashboard.js",
+    "assets/js/01-app/65-vendor-earnings-payout-history-so-a-vend.js",
+    "assets/js/01-app/66-vendor-working-hours-structured-replaces.js",
+    "assets/js/01-app/67-vendor-edit-profile.js",
+    "assets/js/01-app/68-vendor-products.js",
+    "assets/js/01-app/69-my-listings-vendor-catalogue-page.js",
+    "assets/js/01-app/70-vendor-packages-bundle-deals-e-g-an-outr.js",
+    "assets/js/01-app/71-vendor-buyer-orders.js",
+    "assets/js/01-app/72-order-stats-today-week-month-all-time-co.js",
+    "assets/js/01-app/73-order-history-page.js",
+    "assets/js/01-app/74-order-notes.js",
+    "assets/js/01-app/75-order-detail.js",
+    "assets/js/01-app/76-customer-order-details-redesigned-page.js",
+    "assets/js/01-app/77-vendor-order-details-redesigned-page.js",
+    "assets/js/01-app/78-quantity-suggestions.js",
+    "assets/js/01-app/79-product-ratings.js",
+    "assets/js/01-app/80-admin.js",
+    "assets/js/01-app/81-admin-one-time-r2-migration.js",
+    "assets/js/01-app/82-admin-one-time-r2-image-size-pass.js",
+    "assets/js/01-app/83-admin-manage-admins.js",
+    "assets/js/01-app/84-init.js",
+    "assets/js/01-app/85-legal-pages.js",
+    "assets/js/01-app/86-floating-ai-chat-draggable.js",
+    "assets/js/01-app/87-levi-voice.js",
+    "assets/js/01-app/88-modal-back-button-outside-click-dismissa.js",
+    "assets/js/01-app/89-vendors-map-page.js"
+   ]
+  },
+  {
+   "output": "assets/js/02-levromart-legal-consent-final-js.js",
+   "files": [
+    "assets/js/02-levromart-legal-consent-final-js.js"
+   ]
+  },
+  {
+   "output": "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js",
+   "files": [
+    "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js"
+   ]
+  },
+  {
+   "output": "assets/js/04-levromart-vendor-location-auto-script.js",
+   "files": [
+    "assets/js/04-levromart-vendor-location-auto-script.js"
+   ]
+  },
+  {
+   "output": "assets/js/05-part.js",
+   "files": [
+    "assets/js/05-part.js"
+   ]
+  },
+  {
+   "output": "assets/js/06-part.js",
+   "files": [
+    "assets/js/06-part.js"
+   ]
+  },
+  {
+   "output": "assets/js/07-levromart-final-qa-20260909-js.js",
+   "files": [
+    "assets/js/07-levromart-final-qa-20260909-js.js"
+   ]
+  },
+  {
+   "output": "assets/js/08-levromart-chat-viewport-stabilizer-20260.js",
+   "files": [
+    "assets/js/08-levromart-chat-viewport-stabilizer-20260.js"
+   ]
+  },
+  {
+   "output": "assets/js/09-part.js",
+   "files": [
+    "assets/js/09-part.js"
+   ]
+  },
+  {
+   "output": "assets/js/10-levromart-admin-reject-inventory-fix-js-.js",
+   "files": [
+    "assets/js/10-levromart-admin-reject-inventory-fix-js-.js"
+   ]
+  },
+  {
+   "output": "assets/js/11-levromart-global-broken-image-fallback.js",
+   "files": [
+    "assets/js/11-levromart-global-broken-image-fallback.js"
+   ]
+  },
+  {
+   "output": "assets/js/12-lv-onboarding-auth-js.js",
+   "files": [
+    "assets/js/12-lv-onboarding-auth-js.js"
+   ]
+  },
+  {
+   "output": "assets/js/13-face-verify.js",
+   "files": [
+    "assets/js/13-face-verify.js"
+   ]
+  },
+  {
+   "output": "assets/js/15-autosave.js",
+   "files": [
+    "assets/js/15-autosave.js"
+   ]
+  },
+  {
+   "output": "assets/js/14-motion.js",
+   "files": [
+    "assets/js/14-motion.js"
+   ]
+  }
+ ]
+}

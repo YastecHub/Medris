@@ -1,0 +1,98 @@
+<div id="loginModal" class="modal hidden lv-auth" role="dialog" aria-modal="true" aria-labelledby="lvAuthHeadline">
+  <div class="modal-content">
+    <div class="lv-bgfx" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div>
+    <div class="lv-auth-wrap">
+      <div class="lv-auth-brand">
+        <span class="lv-logo" aria-label="LevroMart"><img class="lv-logo-img" src="{{inline-asset:lv-logo-img.webp}}" alt="" width="36" height="36" decoding="async"><span>LevroMart</span></span>
+        <img id="loginModalLogo" alt="" />
+      </div>
+
+      <section class="lv-auth-hero">
+        <div class="lv-auth-copy">
+          <p class="lv-eyebrow" id="lvAuthEyebrow">Welcome back</p>
+          <h1 id="lvAuthHeadline">Welcome <em>back.</em></h1>
+          <p class="lv-lead" id="lvAuthSub">Sign in to your LevroMart account and continue exploring great products, services and opportunities.</p>
+          <h3 id="authModalTitle" class="lv-sr">Welcome to Levromart</h3>
+        </div>
+        <div class="lv-auth-art">
+          <svg class="lv-draw" viewBox="0 0 240 260" aria-hidden="true" focusable="false">
+            <circle class="lv-ring" cx="120" cy="140" r="104" pathLength="100"/>
+            <path class="lv-sq" pathLength="100" d="M16 236C-6 190 4 120 30 84C56 46 100 22 150 20C190 18 220 40 228 84"/>
+            <circle class="lv-pt" cx="0" cy="0" r="5.5"/>
+            <g class="lv-spk"><line x1="196" y1="18" x2="206" y2="8"/><line x1="206" y1="34" x2="220" y2="30"/><line x1="188" y1="6" x2="188" y2="-6"/></g>
+          </svg>
+          <span class="lv-chip c1" aria-hidden="true"><i class="fa-solid fa-cart-shopping"></i></span>
+          <span class="lv-chip c2 y" aria-hidden="true"><i class="fa-solid fa-bag-shopping"></i></span>
+          <img class="lv-auth-char" alt="Smiling LevroMart shopper in a green hoodie giving a thumbs up while holding a laptop" src="{{inline-asset:lv-auth-char.webp}}" decoding="async" />
+        </div>
+      </section>
+
+      <div class="lv-formcol">
+        <div class="auth-mode-tabs" id="authModeTabs" role="tablist" aria-label="Authentication mode">
+          <button type="button" class="auth-mode-tab active" id="authSignInTab" role="tab" aria-selected="true" onclick="setAuthMode('login')">Sign In</button>
+          <button type="button" class="auth-mode-tab" id="authCreateAccountTab" role="tab" aria-selected="false" onclick="setAuthMode('register')">Create Account</button>
+        </div>
+        <div id="authError" class="error-text hidden" role="alert"></div>
+
+        <div class="lv-body" id="lvFormBody">
+          <div id="googleAuthWrap">
+            <button type="button" class="google-auth-btn" id="googleAuthBtn" onclick="signInWithGoogle()">
+              <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
+              <span>Continue with Google</span>
+            </button>
+            <div class="auth-or-divider">OR</div>
+          </div>
+
+          <div id="signupExtraFields" class="hidden">
+            <label for="loginName">Full name</label>
+            <input type="text" id="loginName" placeholder="Full name" autocomplete="name" />
+            <label>I'm signing up as</label>
+            <div class="lv-role-seg" id="loginRoleSeg" role="radiogroup" aria-label="Account type">
+              <button type="button" role="radio" aria-checked="true" data-r="buyer" class="on"><i class="fa-solid fa-bag-shopping"></i><b>Customer</b><small>Buy and rent</small></button>
+              <button type="button" role="radio" aria-checked="false" data-r="vendor"><i class="fa-solid fa-store"></i><b>Vendor</b><small>Sell your products</small></button>
+            </div>
+            <select id="loginRole" class="hidden" aria-hidden="true" tabindex="-1">
+              <option value="buyer">Customer</option>
+              <option value="vendor">Vendor</option>
+            </select>
+            <label for="loginCity">City</label>
+            <input type="text" id="loginCity" placeholder="City" value="Lagos" />
+            <label for="loginPhone">Phone</label>
+            <input type="tel" id="loginPhone" placeholder="Phone" autocomplete="tel" />
+            <label for="loginReferral">Referral code <span class="muted" style="font-weight:500">(optional)</span></label>
+            <input type="text" id="loginReferral" placeholder="Invited by a vendor? Enter their code" autocomplete="off" autocapitalize="characters" maxlength="16" />
+            <p id="loginReferralMsg" class="muted" style="font-size:.75rem;margin:.2rem 0 .3rem;min-height:1em;"></p>
+            <p class="muted" style="font-size:.75rem;margin:.15rem 0 .35rem;">Email is optional when registering. Your phone number can be used to sign in if you do not add an email.</p>
+          </div>
+
+          <label for="loginEmail">Email address</label>
+          <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email" />
+          <div id="loginPasswordWrap">
+            <label for="loginPassword">Password</label>
+            <div class="password-input-wrap"><input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" /><button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" title="Show password"><i class="fa-regular fa-eye"></i></button></div>
+          </div>
+          <div id="confirmPasswordWrap" class="hidden">
+            <label for="loginPasswordConfirm">Confirm password</label>
+            <input type="password" id="loginPasswordConfirm" placeholder="Retype your password" autocomplete="new-password" />
+          </div>
+          <p id="forgotPasswordMsg" class="muted hidden">Enter your account email and we'll send you a link to reset your password.</p>
+          <p id="authAgreementMsg" class="muted hidden">By creating an account you agree to Levromart's <a href="#" onclick="hideLogin();navigate('terms');return false;">Terms of Service</a> and <a href="#" onclick="hideLogin();navigate('privacy');return false;">Privacy Policy</a>.</p>
+
+          <div class="lv-row" id="lvLoginRow">
+            <label class="lv-check"><input type="checkbox" id="lvKeepSignedIn" checked /><span class="box" aria-hidden="true"></span>Keep me signed in</label>
+            <p id="forgotPasswordLinkWrap" style="margin:0"><a href="#" onclick="setAuthMode('forgot');return false;" id="forgotPasswordLink">Forgot password?</a></p>
+          </div>
+
+          <div class="lv-actions">
+            <button class="btn" id="authSubmitBtn" type="button" onclick="submitAuth()">Sign In</button>
+          </div>
+          <p class="lv-togglewrap"><a href="#" id="authToggleLink">Need an account? Register</a></p>
+          <p class="lv-switch" id="lvAuthSwitch"><span id="lvSwitchText">Don't have an account?</span> <a href="#" id="lvSwitchLink">Create Account</a></p>
+          <button type="button" class="lv-guest" onclick="hideLogin()">Browse as guest</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Set new password (opened automatically from the emailed reset link) -->

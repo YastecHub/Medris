@@ -1,0 +1,81 @@
+
+
+</style>
+<div id="storefrontShareModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="storefrontShareTitle" onclick="if(event.target===this){closeStorefrontShareModal(true);}">
+  <div class="storefront-share-sheet lv-share">
+    <div class="storefront-share-grabber" aria-hidden="true"></div>
+    <div class="lv-share-head"><strong id="storefrontShareTitle">Share</strong><button type="button" class="lv-share-x" onclick="closeStorefrontShareModal(true)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="lv-share-preview"><span class="lv-share-thumb" id="lvShareThumb"></span><span class="lv-share-meta"><b id="storefrontShareText">Share on Levromart</b><small id="lvShareUrl"></small></span></div>
+    <div class="lv-share-label">Share to</div>
+    <div class="lv-share-apps" role="list">
+      <button type="button" role="listitem" class="lv-app" style="--c:#25D366" onclick="lvShareTo('whatsapp')"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#1877F2" onclick="lvShareTo('facebook')"><i class="fa-brands fa-facebook-f"></i><span>Facebook</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#0099FF" onclick="lvShareTo('messenger')"><i class="fa-brands fa-facebook-messenger"></i><span>Messenger</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#111111" onclick="lvShareTo('x')"><i class="fa-brands fa-x-twitter"></i><span>X</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#229ED9" onclick="lvShareTo('telegram')"><i class="fa-brands fa-telegram"></i><span>Telegram</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#0A66C2" onclick="lvShareTo('linkedin')"><i class="fa-brands fa-linkedin-in"></i><span>LinkedIn</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#34C759" onclick="lvShareTo('sms')"><i class="fa-solid fa-message"></i><span>Message</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#EA4335" onclick="lvShareTo('email')"><i class="fa-solid fa-envelope"></i><span>Email</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#64748b" onclick="lvShareTo('more')"><i class="fa-solid fa-ellipsis"></i><span>More apps</span></button>
+    </div>
+    <button type="button" class="lv-share-copy" onclick="copyStorefrontShareLink()"><i class="fa-regular fa-copy"></i> Copy link</button>
+  </div>
+</div>
+
+<!-- LEVROMART 2026-09-09 UX/BUG PATCH
+     These overrides intentionally sit at the end so they win over older
+     styling/function declarations without disturbing the rest of the build. -->
+
+<script src="/assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js?v={{asset-version}}" charset="utf-8"></script>
+
+<!-- LEVROMART 2026-09-09 VENDOR LOCATION AUTO-CAPTURE -->
+
+<script src="/assets/js/04-levromart-vendor-location-auto-script.js?v={{asset-version}}" charset="utf-8"></script>
+
+<!-- LEVROMART 2026-09-09 CONSOLIDATED UX/REALTIME FIXES -->
+
+<script src="/assets/js/05-part.js?v={{asset-version}}" charset="utf-8"></script>
+
+<!-- ---------------------------------------------------------------
+     FAST VENDOR DIRECTORY LOADER
+     Paint verified vendors as soon as that small query returns. Product/package
+     search metadata is hydrated in the background, so the Vendors page no longer
+     waits for every product and package in the marketplace before becoming usable.
+     --------------------------------------------------------------- -->
+<script src="/assets/js/06-part.js?v={{asset-version}}" charset="utf-8"></script>
+
+<link rel="stylesheet" href="/assets/css/03-pages.css?v={{asset-version}}" charset="utf-8">
+
+<!-- LEVROMART FINAL QA / UX OVERRIDES, 2026-09-09 -->
+
+<!-- ================================================================
+     MOBILE FEEDBACK PASS, 2026-09-10
+     1) Top-rated vendor cards: force avatar-beside-details (row) layout
+        instead of avatar-above-details (column), at the top of the
+        cascade so no earlier !important rule can re-stack them.
+     2) Browse-everything cards (products/services/packages): stop
+        forcing every card in a grid row to match the tallest card's
+        height (that's what was leaving dead air under the cart icon on
+        shorter cards) and make the thumbnail a true square.
+     ================================================================ -->
+
+<script src="/assets/js/07-levromart-final-qa-20260909-js.js?v={{asset-version}}" charset="utf-8"></script>
+
+</body>
+
+<!-- 2026-09-10 PRECISION PATCH: request action sizing + chat viewport stability -->
+
+<script src="/assets/js/08-levromart-chat-viewport-stabilizer-20260.js?v={{asset-version}}" charset="utf-8"></script>
+
+<div id="levroPaymentReasonModal" class="payment-reason-modal hidden" role="dialog" aria-modal="true" aria-labelledby="levroPaymentReasonTitle">
+  <div class="payment-reason-card">
+    <h3 id="levroPaymentReasonTitle" style="margin:0;">Raise payment dispute</h3>
+    <p id="levroPaymentReasonMessage" class="muted" style="margin:.35rem 0 0;">Explain why you cannot confirm the customer's reported payment.</p>
+    <textarea id="levroPaymentReasonInput" maxlength="1200" placeholder="e.g. I have checked my account and no transfer matching this amount is showing."></textarea>
+    <div id="levroPaymentReasonError" class="error-text hidden"></div>
+    <div class="payment-reason-actions">
+      <button type="button" class="btn btn-sm btn-outline" id="levroPaymentReasonCancel">Cancel</button>
+      <button type="button" class="btn btn-sm btn-danger" id="levroPaymentReasonConfirm">Raise dispute</button>
+    </div>
+  </div>
+</div>

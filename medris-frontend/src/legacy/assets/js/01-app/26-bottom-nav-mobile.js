@@ -1,0 +1,500 @@
+// ---------- BOTTOM NAV (mobile) ----------
+// Mouse users can't swipe: let them drag horizontal rails (and shift-wheel still works natively).
+(function(){
+  let rail=null,startX=0,startLeft=0,moved=false;
+  document.addEventListener("mousedown",(e)=>{
+    if(e.button!==0)return; const r=e.target.closest?.(".hscroll"); if(!r)return;
+    rail=r;startX=e.pageX;startLeft=r.scrollLeft;moved=false;
+  });
+  document.addEventListener("mousemove",(e)=>{
+    if(!rail)return; const dx=e.pageX-startX;
+    if(!moved&&Math.abs(dx)>6){moved=true;rail.classList.add("is-dragging");}
+    if(moved){rail.scrollLeft=startLeft-dx;e.preventDefault();}
+  });
+  const end=()=>{ if(rail&&moved){const r=rail;setTimeout(()=>r.classList.remove("is-dragging"),0);} rail=null; };
+  document.addEventListener("mouseup",end); document.addEventListener("mouseleave",end);
+  document.addEventListener("click",(e)=>{ if(moved){e.stopPropagation();e.preventDefault();moved=false;} },true);
+})();
+// Tapping a bottom-nav tab you are already on does nothing (no reload, no flash).
+function lvTabSame(view) {
+  if (!view || currentView !== view) return false;
+  const p = currentViewParams || {};
+  if (view === "vendorOrders") return (p.perspective || "sales") === "sales" && (!p.status || p.status === "all");
+  if (view === "buyerOrders") return !p.status || p.status === "all";
+  return true;
+}
+// Tapping Home while already on a clean Home does nothing (no reload, no flash). With a category/search active it resets them.
+function lvHomeTap() {
+  const filtered = !!(currentHomeCategoryId || currentSectorId || (byId("searchInput")?.value || "").trim());
+  if (currentView === "home" && !filtered) return;
+  resetHomeFilters();
+  navigate("home");
+}
+// Line icons for the bottom bar (one family: 1.9 stroke, rounded)
+window.lvLineIcon = function (n) {
+  const P = {
+    home: "<path d='M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'/>",
+    store: "<path d='M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9M10 20v-5h4v5'/>",
+    request: "<circle cx='12' cy='12' r='9'/><path d='M12 8v8M8 12h8'/>",
+    bell: "<path d='M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9M10 19a2 2 0 0 0 4 0'/>",
+    orders: "<path d='M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'/>",
+    shield: "<path d='M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'/>",
+    coins: "<circle cx='12' cy='12' r='9'/><path d='M9 16V8l6 8V8'/>",
+    user: "<circle cx='12' cy='8' r='4'/><path d='M4 21c0-4 3.500-6 8-6s8 2 8 6'/>",
+  };
+  return `<svg class="lv-line-ic" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.home}</svg>`;
+};
+function renderBottomNav() {
+  const nav = byId("bottomNav");
+  if (!nav) return;
+
+  const isVendorUser = session && profile?.role !== "admin" && !!vendor;
+  const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
+  const notificationsTab = { icon: "<i class='fa-solid fa-bell'></i>", label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
+  const requestsTab = isVendorUser
+    ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
+    : { icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+  const ordersTab = isVendorUser
+    ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
+    : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "lvHomeTap()", view: "home" };
+
+  let items;
+  if (session && profile?.role === "admin") {
+    // Admin navigation remains unchanged; the centered + button is not used here.
+    items = [homeTab, vendorsTab,
+      { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
+      { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
+  } else if (isVendorUser) {
+    // Vendor navigation: Home, Vendors | + | Notifications, Orders.
+    // Messages moved to the header; My Shop moved into the vendor's
+    // profile page (tapping the header avatar opens it directly).
+    items = [homeTab, vendorsTab, notificationsTab, ordersTab];
+  } else if (session) {
+    // Buyer navigation: Home → Vendors → Request → Notifications → Orders (Home is always the first tab, same as every other account).
+    // Messages moved to the header, same as vendors.
+    items = [homeTab, vendorsTab, requestsTab, notificationsTab, ordersTab];
+  } else {
+    items = [homeTab, vendorsTab, requestsTab,
+      { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
+  }
+
+  const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"${it.view && it.view === currentView ? ' aria-current="page"' : ""}><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
+
+  if (isVendorUser) {
+    nav.classList.remove("buyer-no-add");
+    nav.classList.add("has-add");
+    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
+      <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><span class="bn-icon"><i class="fa-solid fa-plus"></i></span><span>Add listing</span></button>
+      <div class="bn-group bn-group-right">${items.slice(2, 4).map(itemHtml).join("")}</div>`;
+  } else if (session && profile?.role === "admin") {
+    nav.classList.remove("has-add", "buyer-no-add");
+    nav.innerHTML = items.map(itemHtml).join("");
+  } else if (session) {
+    // Buyers use a clean five-item rail. Home is the first slot and there is
+    // deliberately no + creation control on the buyer interface.
+    nav.classList.remove("has-add");
+    nav.classList.add("buyer-no-add");
+    nav.innerHTML = items.map(itemHtml).join("");
+  } else {
+    nav.classList.remove("has-add", "buyer-no-add");
+    nav.innerHTML = items.map(itemHtml).join("");
+  }
+}
+
+const LEVRO_MOTION_KEY="levromart-motion-preference-v1";
+function getLevromartMotionPreference(){try{return localStorage.getItem(LEVRO_MOTION_KEY)==="full"?"full":"calm";}catch(_){return "calm";}}
+function applyLevromartMotionPreference(value){const pref=value==="full"?"full":"calm";document.documentElement.dataset.levroMotion=pref;try{localStorage.setItem(LEVRO_MOTION_KEY,pref);}catch(_){}return pref;}
+function setLevromartMotionPreference(value){const pref=applyLevromartMotionPreference(value);try{hydrateSettingsPage?.();}catch(_){}showToast(pref==="calm"?"Calm mode enabled. Decorative motion is off.":"Full Motion enabled.","success");}
+applyLevromartMotionPreference(getLevromartMotionPreference());
+
+function initBottomNavScrollMotion(){
+  const nav = byId("bottomNav");
+  if (!nav || nav.dataset.scrollMotionReady === "1") return;
+  nav.dataset.scrollMotionReady = "1";
+  const getMetrics=()=>{
+    const chat=document.body.classList.contains("chat-full-page") ? document.querySelector(".chat-messages") : null;
+    if(chat) return {y:Math.max(0,chat.scrollTop||0),maxY:Math.max(0,chat.scrollHeight-chat.clientHeight)};
+    return {y:Math.max(0,window.scrollY||document.documentElement.scrollTop||0),maxY:Math.max(0,document.documentElement.scrollHeight-window.innerHeight)};
+  };
+  let lastY=getMetrics().y;
+  let raf=0, idleTimer=0;
+  const reduced=()=>window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const restore=()=>{nav.classList.remove("nav-scroll-hide","nav-scroll-shrink");nav.style.removeProperty("--bn-translate");};
+  const hide=()=>{if(reduced())return restore();nav.classList.remove("nav-scroll-shrink");nav.classList.add("nav-scroll-hide");};
+  const apply=()=>{
+    raf=0;
+    const {y,maxY}=getMetrics(), delta=y-lastY;
+    const chatOpen=document.body.classList.contains("chat-full-page");
+    if(chatOpen){ restore(); return; }
+    const special=document.body.classList.contains("profile-reveal-open")||document.body.classList.contains("profile-reveal-dragging")||nav.classList.contains("nav-hidden")||document.body.classList.contains("search-input-active");
+    if(special||reduced()){restore();lastY=y;return;}
+    if(Math.abs(delta)<3)return;
+    lastY=y;
+    if(delta>0 && y>16 && y<maxY-8) hide(); else if(delta<0 || y<=16 || y>=maxY-8) restore();
+    clearTimeout(idleTimer);
+    idleTimer=setTimeout(()=>{if(delta<0||y<=16||y>=maxY-8)restore();},420);
+  };
+  const onScroll=()=>{if(!raf)raf=requestAnimationFrame(apply);};
+  window.addEventListener("scroll",onScroll,{passive:true});
+  // Only the page itself (or the chat list) matters here. Rows that auto-scroll sideways fire "scroll" constantly, and each one
+  // used to force a full-page layout just to read the scroll position.
+  document.addEventListener("scroll",(e)=>{ const t=e.target; if(t!==document && t!==document.documentElement && !(t&&t.classList&&t.classList.contains("chat-messages"))) return; onScroll(); },{passive:true,capture:true});
+  window.addEventListener("resize",()=>{lastY=getMetrics().y;restore();},{passive:true});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastY=getMetrics().y;restore();}});
+}
+
+// A floating cart button, docked near Levi's FAB, is easier to notice
+// than a nav-tab would be without adding a 6th cramped item to the
+// already-full buyer bottom nav.
+function initFloatingScrollVisibility(){
+  if (window.__leviCartScrollReady) return;
+  if (getLevromartMotionPreference()==="calm") return;
+  window.__leviCartScrollReady = true;
+  let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  let timer = 0;
+  let raf = 0;
+  const apply = () => {
+    raf = 0;
+    const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    const delta = y - lastY;
+    if (Math.abs(delta) >= 2 && y > 20) {
+      byId('aiChatFab')?.classList.add('scroll-faded');
+      byId('cartFab')?.classList.add('scroll-faded');
+      lastY = y;
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      byId('aiChatFab')?.classList.remove('scroll-faded');
+      byId('cartFab')?.classList.remove('scroll-faded');
+      lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    }, 260);
+  };
+  window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(apply); }, {passive:true});
+  ['aiChatFab','cartFab'].forEach(id => byId(id)?.addEventListener('click', () => byId(id)?.classList.remove('scroll-faded'), {passive:true}));
+}
+
+function updateCartFab() {
+  // The cart lives in the header now (master UI/UX spec, Part 3: "the cart
+  // must NOT float over the homepage"), permanently beside Messages, for
+  // both buyers and vendors (a vendor is also a buyer). The floating
+  // draggable FAB is kept out of the render path rather than deleted
+  // outright, so its badge-count logic below stays the single source of
+  // truth for both surfaces without duplicating it.
+  const fab = byId("cartFab");
+  if (fab) fab.classList.add("hidden");
+
+  const showCart = !!session && profile?.role !== "admin";
+  const headerWrap = byId("headerCartWrap");
+  if (headerWrap) headerWrap.classList.toggle("hidden", !showCart);
+  const headerBadge = byId("headerCartBadge");
+  if (headerBadge) {
+    headerBadge.textContent = buyerCartCount > 9 ? "9+" : buyerCartCount;
+    headerBadge.classList.toggle("hidden", buyerCartCount === 0);
+  }
+
+  const badge = byId("cartFabBadge");
+  if (badge) {
+    badge.textContent = buyerCartCount > 9 ? "9+" : buyerCartCount;
+    badge.classList.toggle("hidden", buyerCartCount === 0);
+  }
+}
+function requireLoginThen(view) {
+  if (!session) { showLogin(); return; }
+  navigate(view);
+}
+
+function showLogin() { authMode = "login"; applyAuthMode(); byId("loginModal").classList.remove("hidden"); trackModalOpened("loginModal"); }
+function hideLogin() {
+  byId("loginModal").classList.add("hidden");
+  byId("authError").classList.add("hidden");
+  if (dismissibleModalId === "loginModal") dismissibleModalId = null;
+}
+function toggleAuthMode() { authMode = authMode === "login" ? "register" : "login"; applyAuthMode(); }
+function setAuthMode(mode) { authMode = mode; applyAuthMode(); }
+function applyAuthMode() {
+  const isRegister = authMode === "register";
+  const isForgot = authMode === "forgot";
+  const signInTab = byId("authSignInTab");
+  const createTab = byId("authCreateAccountTab");
+  if (signInTab && createTab) {
+    const signInActive = !isRegister;
+    signInTab.classList.toggle("active", signInActive);
+    createTab.classList.toggle("active", isRegister);
+    signInTab.setAttribute("aria-selected", signInActive ? "true" : "false");
+    createTab.setAttribute("aria-selected", isRegister ? "true" : "false");
+  }
+  byId("authModalTitle").innerHTML = isForgot
+    ? "<i class='fa-solid fa-key'></i> Reset your password"
+    : isRegister ? "<i class='fa-solid fa-user-plus'></i> Create your Levromart account" : "<i class='fa-solid fa-right-to-bracket'></i> Welcome back to Levromart";
+  byId("signupExtraFields").classList.toggle("hidden", !isRegister);
+  byId("googleAuthWrap").classList.toggle("hidden", isForgot);
+  byId("loginPasswordWrap").classList.toggle("hidden", isForgot);
+  byId("confirmPasswordWrap").classList.toggle("hidden", !isRegister);
+  byId("forgotPasswordMsg").classList.toggle("hidden", !isForgot);
+  byId("authAgreementMsg").classList.toggle("hidden", !isRegister);
+  byId("forgotPasswordLinkWrap").classList.toggle("hidden", isRegister || isForgot);
+  byId("authSubmitBtn").textContent = isForgot ? "Send reset link" : isRegister ? "Create account" : "Login";
+  byId("authToggleLink").textContent = "Back to login";
+  byId("authToggleLink").onclick = (e) => { e.preventDefault(); isForgot ? setAuthMode("login") : toggleAuthMode(); };
+  byId("authToggleLink").parentElement?.classList.toggle("hidden", !isForgot);
+  byId("authError").classList.add("hidden");
+}
+
+// Only one active login per account: right after a successful sign-in,
+// revoke every other device/browser's session for this user (their end
+// only actually logs out once it next tries to refresh its token - see
+// the onAuthStateChange listener below for the "signed out elsewhere"
+// message that fires when that happens).
+let manualLogout = false;
+
+// Redirects away to Google and back -- Supabase picks the returned session
+// up automatically (detectSessionInUrl is on by default), which fires the
+// same onAuthStateChange listener as any other login, so no separate
+// "handle the OAuth callback" code is needed here. First-time Google
+// sign-ins default to the customer role via the handle_new_user trigger,
+// same as leaving "I am a…" on its default during a normal signup --
+// anyone who actually wants to sell can still apply as a vendor
+// afterward, same as always.
+async function signInWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin + window.location.pathname },
+  });
+  if (error) showToast(error.message, "error");
+}
+function togglePasswordVisibility(inputId, button) {
+  const input = byId(inputId);
+  if (!input) return;
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  button?.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  button?.setAttribute("title", showing ? "Show password" : "Hide password");
+  const icon = button?.querySelector("i");
+  if (icon) icon.className = `fa-regular ${showing ? "fa-eye" : "fa-eye-slash"}`;
+}
+
+function friendlyAuthErrorMessage(err) {
+  const raw = String(err?.message || "").toLowerCase();
+  // The single biggest cause of a genuinely correct password still failing
+  // here is an account that has no password at all -- it was created via
+  // Google, which never sets one. The generic message left people typing
+  // the same (nonexistent) password over and over with no way to know why.
+  if (raw.includes("invalid login credentials")) return "Incorrect email/phone or password. If you signed up with Google, tap \"Continue with Google\" below instead, or use \"Forgot password?\" to set one for the first time.";
+  if (raw.includes("email not confirmed")) return "This email hasn't been confirmed yet.";
+  if (raw.includes("user already registered") || raw.includes("already registered")) return "An account with this email or phone already exists.";
+  const __f = window.__levroClassifyBackendError ? window.__levroClassifyBackendError(err?.message) : null;
+  if (__f) return __f.text;
+  return err?.message || "Something went wrong. Please try again.";
+}
+async function submitAuth() {
+  const email = byId("loginEmail").value.trim();
+  const password = byId("loginPassword").value;
+  const errorEl = byId("authError");
+  errorEl.classList.add("hidden");
+
+  if (authMode === "forgot") {
+    if (!email) { errorEl.textContent = "Enter your email address."; errorEl.classList.remove("hidden"); return; }
+    const btn = byId("authSubmitBtn");
+    btn.disabled = true;
+    try {
+      // Resend is now wired in as Supabase Auth's SMTP provider, so the
+      // native emailed-link flow (handled by the PASSWORD_RECOVERY listener
+      // above) is reliable again -- no more routing this through an admin
+      // for manual approval.
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname,
+      });
+      if (error) throw error;
+      hideLogin();
+      showToast("If an account exists for that email, we've sent a link to reset your password.", "success");
+    } catch (err) {
+      errorEl.textContent = err.message || "Could not send the password reset email.";
+      errorEl.classList.remove("hidden");
+    } finally {
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  if (!password) { errorEl.textContent = "Password is required."; errorEl.classList.remove("hidden"); return; }
+  if (authMode !== "register" && !email) { errorEl.textContent = "Enter your email address or phone number."; errorEl.classList.remove("hidden"); return; }
+
+  const btn = byId("authSubmitBtn");
+  btn.disabled = true;
+
+  try {
+    if (authMode === "register") {
+      const name = byId("loginName").value.trim();
+      const role = byId("loginRole").value;
+      const city = byId("loginCity").value.trim();
+      const phone = byId("loginPhone").value.trim();
+
+      if (!name) throw new Error("Full name is required.");
+      if (!phone) throw new Error("Phone is required.");
+      if (!window.__lvSignupCampus) throw new Error("Choose your campus (or pick \"Not on a campus\").");
+      if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+      if (password !== byId("loginPasswordConfirm").value) throw new Error("Passwords don't match.");
+
+      // Account creation is handled by the single existing Vercel function.
+      // The server creates the Auth user with email_confirm:true, so there is
+      // NO confirmation-email step: create the account and continue immediately.
+      const registerRes = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "register",
+          email,
+          password,
+          name,
+          phone,
+          city,
+          role,
+          referral_code: String(byId("loginReferral")?.value || "").trim()
+        })
+      });
+
+      const registerBody = await registerRes.json().catch(() => ({}));
+      if (!registerRes.ok) {
+        throw new Error(registerBody.error || "Could not create your account.");
+      }
+
+      // The account is already confirmed by the server, so sign in immediately.
+      try {
+        sessionStorage.setItem("levromart-just-registered", "1");
+        if (String(role).toLowerCase() === "vendor") sessionStorage.setItem("levromart-new-vendor-applicant", "1");
+      } catch (_) {}
+      const loginEmail = email || authAliasFromPhone(phone);
+      const { error: loginError } = await sb.auth.signInWithPassword({
+        email: loginEmail,
+        password
+      });
+      if (loginError) throw loginError;
+      try { const __cp = window.__lvSignupCampus; if (__cp) await window.lvSaveCampus(__cp); } catch (_) {}
+      if (registerBody?.referral?.ok) {
+        try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
+        setTimeout(() => showToast(`Referral applied. You joined with ${registerBody.referral.business_name}'s code.`, "success"), 1200);
+      }
+
+      await finishLoginSuccess(role === "vendor" ? "vendorApply" : "home");
+    } else {
+      let loginEmail = email;
+      if (looksLikePhoneIdentifier(email)) {
+        loginEmail = authAliasFromPhone(email);
+      }
+      const { error } = await sb.auth.signInWithPassword({ email: loginEmail, password });
+      if (error) throw error;
+      // The OTP check (and role-select / set-password, if either is still
+      // pending on this account) all now run from inside finishLoginSuccess
+      // -> refreshAuthStateOnce -> runPostAuthChecks, one shared sequence
+      // for every sign-in path (password, Google, and a returning session
+      // past its 7-day OTP window) instead of duplicating the check here.
+      await finishLoginSuccess("home");
+    }
+  } catch (err) {
+    // Every other validation branch in this function shows the inline
+    // authError box with .remove("hidden") -- this one instead did
+    // .add("hidden"), so a wrong password or bad email/phone silently hid
+    // the error box instead of showing it, leaving only a toast (easy to
+    // miss/auto-dismiss) as the sole feedback that login had failed.
+    errorEl.textContent = friendlyAuthErrorMessage(err);
+    errorEl.classList.remove("hidden");
+    showToast(friendlyAuthErrorMessage(err), "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function finishLoginSuccess(view) {
+  await refreshAuthStateOnce();
+
+  let justRegistered = false;
+  try { justRegistered = sessionStorage.getItem("levromart-just-registered") === "1"; if (justRegistered) sessionStorage.removeItem("levromart-just-registered"); } catch (_) {}
+  if (justRegistered) {
+    // New accounts start with Levromart's own location setting enabled. The
+    // browser/device still owns the real permission and will show its prompt
+    // when the request is made. If permission is denied, use our recovery UI.
+    locationSharingEnabled = true;
+    try { localStorage.setItem("medris-location-enabled", "1"); } catch (_) {}
+    setAutomaticDistancePreference(true);
+    setTimeout(async () => {
+      if (!session || !profile || !navigator.geolocation) return;
+      try {
+        await getCustomerLocation(true);
+        updateVendorsLocationUI();
+      } catch (err) {
+        const state = await getBrowserLocationPermission();
+        showLocationPrompt("recovery", state === "denied" ? locationRecoveryText("denied") : (err?.message || "Allow Levromart to access your location so nearby vendors can be shown automatically."));
+      }
+    }, 500);
+  }
+
+  // Only refresh buyer location automatically after the customer has explicitly
+  // opted into the one-time automatic-distance preference. This prevents a
+  // fresh login from unexpectedly triggering a browser location prompt.
+  if (buyerDistanceAutoEnabled && locationSharingEnabled && navigator.geolocation) {
+    scheduleAutomaticLocationRefresh();
+  }
+  hideLogin();
+  // Vendor applicants go directly into the existing application route after
+  // the authenticated account is established; the renderer itself checks for
+  // an existing vendor/application row and redirects to the dashboard instead.
+  let postSignupView = view;
+  try {
+    if (sessionStorage.getItem("levromart-new-vendor-applicant") === "1") {
+      postSignupView = "vendorApply";
+      sessionStorage.removeItem("levromart-new-vendor-applicant");
+    }
+  } catch (_) {}
+  try {
+    if (justRegistered && postSignupView === "home") postSignupView = "profileSetup";
+    else if (postSignupView === "home" && vendor && profile?.role !== "admin" && !lvSetupSeen() && !vendor.cover_url && !profile?.avatar_url) postSignupView = "profileSetup";
+  } catch (_) {}
+  navigate(postSignupView);
+  awaitingInstallPromptForLogin = true;
+  setTimeout(maybeShowInstallPrompt, 800);
+  setTimeout(maybeShowNotifPrompt, 1600);
+}
+
+// Admin-only email OTP, required after the password on every fresh login
+// (not on ordinary page reloads). See api/send-login-otp.js /
+// verify-login-otp.js - this account has real power (approve/delete
+// vendors, finance access), so it gets the extra step; buyer/vendor
+// accounts don't have anything worth adding that friction for.
+let pendingOtpAccessToken = null;
+
+async function submitLoginOtp() {
+  const code = byId("otpInput").value.trim();
+  const errorEl = byId("otpError");
+  errorEl.classList.add("hidden");
+  if (!code) { errorEl.textContent = "Enter the 6-digit code."; errorEl.classList.remove("hidden"); return; }
+  const btn = byId("otpSubmitBtn");
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/auth-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "verify", accessToken: pendingOtpAccessToken, code }),
+    });
+    const json = await res.json();
+    if (!json.ok) { errorEl.textContent = json.error || "That code didn't work."; errorEl.classList.remove("hidden"); return; }
+    byId("otpModal").classList.add("hidden");
+    pendingOtpAccessToken = null;
+    // Fresh sign-in still has the login modal up (and nothing rendered
+    // behind it worth keeping) -- send it to Home/adminPanel like any other
+    // login. A standing session that just hit its 7-day OTP window is
+    // already sitting on a real page, so just re-render exactly that page
+    // instead of yanking them somewhere else.
+    if (byId("loginModal") && !byId("loginModal").classList.contains("hidden")) {
+      await finishLoginSuccess(profile?.role === "admin" ? "adminPanel" : "home");
+    } else {
+      await refreshAuthStateOnce();
+      navigate(currentView || "home", currentViewParams || {}, false);
+    }
+  } catch (err) {
+    errorEl.textContent = "Couldn't verify that code. Try again.";
+    errorEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+  }
+}
+

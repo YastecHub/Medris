@@ -1,0 +1,171 @@
+<header>
+  <div class="header-top-row">
+    <div class="header-left">
+      <div class="icon-wrap" id="profileWrap">
+        <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
+        <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
+      </div>
+      <nav class="header-nav-links">
+        <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
+        <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
+        <a class="header-nav-link" data-view="leaderboard" href="#" onclick="navigate('leaderboard');return false;">Leaderboard</a>
+      </nav>
+    </div>
+    <button type="button" class="header-search-row" onclick="openSearchFromHeader()" aria-label="Search products, services, vendors">
+      <i class="fa-solid fa-magnifying-glass"></i><span>Search…</span>
+    </button>
+    <div class="header-right">
+      <div class="icon-wrap hidden" id="notifWrap">
+        <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
+      </div>
+      <div class="icon-wrap hidden lv-chat-off" id="messagesWrap">
+        <button class="icon-btn" onclick="navigate('messages')" title="Messages"><svg class="lv-line-ic" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg><span id="messagesDot" class="notif-dot hidden">0</span></button>
+      </div>
+      <div class="icon-wrap hidden" id="headerCartWrap">
+        <button class="icon-btn" onclick="requireLoginThen('cart')" title="Cart"><svg class="lv-line-ic" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10l2-8H7"/><circle cx="10" cy="20" r="1.2"/><circle cx="17" cy="20" r="1.2"/></svg><span id="headerCartBadge" class="notif-dot hidden">0</span></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeAllPanels()"></div>
+<div class="side-drawer right" id="notifPanel"></div>
+<div class="side-drawer right" id="settingsPanel">
+  <div class="drawer-header settings-drawer-header"><div><span class="settings-kicker">Preferences</span><h4>Settings</h4></div><div class="settings-header-actions"><button class="settings-more-btn" id="settingsMoreBtn" onclick="toggleSettingsMoreMenu(event)" title="More settings"><i class='fa-solid fa-ellipsis'></i></button><button class="drawer-close-btn" onclick="closeAllPanels()" title="Close settings"><i class='fa-solid fa-xmark'></i></button></div></div>
+  <div class="settings-more-menu hidden" id="settingsMoreMenu">
+    <button onclick="resetLevromartPreferences()"><i class='fa-solid fa-arrow-rotate-left'></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span></button>
+    <button onclick="showLevromartAbout()"><img class="about-row-logo" src="{{inline-asset:levromart-splash-img.webp}}" alt="" /><span><strong>About Levromart</strong><small>App version and platform information</small></span></button>
+    <button onclick="toggleSettingsMoreMenu(event)"><i class='fa-solid fa-sliders'></i><span><strong>Interface preferences</strong><small>Fine-tune the experience below</small></span></button>
+  </div>
+  <div class="accordion-section">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-palette'></i> Appearance</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
+    <div class="accordion-body">
+      <div class="theme-option" data-theme-choice="light" onclick="setTheme('light')"><i class='fa-solid fa-sun'></i> Light</div>
+      <div class="theme-option" data-theme-choice="dark" onclick="setTheme('dark')"><i class='fa-solid fa-moon'></i> Dark</div>
+      <div class="theme-option" data-theme-choice="black" onclick="setTheme('black')"><i class='fa-solid fa-circle'></i> Deep black</div>
+    </div>
+  </div>
+  <div class="accordion-section">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-mobile-screen-button'></i> App &amp; notifications</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
+    <div class="accordion-body">
+      <div id="settingsInstallRow" class="flex" style="justify-content:space-between;margin-bottom:0.6rem;"></div>
+      <div id="settingsNotifRow" class="flex" style="justify-content:space-between;"></div>
+    </div>
+  </div>
+  <div class="accordion-section">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-robot'></i> Levi &amp; your data</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
+    <div class="accordion-body">
+      <p class="muted" style="font-size:0.78rem;margin:0.2rem 0 0.7rem;">Your chats with Levi are saved to your account so they're there when you come back, and are never shared with other users or vendors. With your permission, our team may also review chat transcripts to improve Levi's answers over time.</p>
+      <div id="settingsAiConsentRow" class="flex" style="justify-content:space-between;"></div>
+    </div>
+  </div>
+  <div class="settings-row-card"><div class="theme-option" id="locationToggleOption" onclick="toggleLocationSetting()"></div></div>
+  <div class="settings-row-card"><div class="theme-option" id="leviVisibleToggleOption" onclick="toggleLeviVisible()"></div></div>
+  <div class="accordion-section hidden" id="changePasswordSection">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-key'></i> Security</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
+    <div class="accordion-body">
+      <button class="btn btn-sm btn-outline" style="width:100%;" onclick="showChangePassword()"><i class="fa-solid fa-key"></i> Change password</button>
+    </div>
+  </div>
+  <div class="settings-more-section" id="settingsMoreSection">
+    <button class="settings-more-row" type="button" onclick="toggleSettingsMoreSection()">
+      <span><i class="fa-solid fa-ellipsis"></i><span><strong>More settings</strong><small>Privacy, accessibility and app information</small></span></span>
+      <i class="fa-solid fa-chevron-down settings-more-chevron"></i>
+    </button>
+    <div class="settings-more-content hidden" id="settingsMoreContent">
+      <button type="button" class="settings-subrow" onclick="showLevromartAbout()"><img class="about-row-logo" src="{{inline-asset:levromart-splash-img.webp}}" alt="" /><span><strong>About Levromart</strong><small>Version and app information</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" class="settings-subrow" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore your local interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <div class="settings-info-note"><i class="fa-solid fa-shield-halved"></i><span>Your account data and marketplace permissions are controlled separately from these device preferences.</span></div>
+    </div>
+  </div>
+  <div class="accordion-section hidden" id="accountDangerSection">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-user-xmark' style="color:var(--danger);"></i> Account</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
+    <div class="accordion-body">
+      <p class="muted" style="font-size:0.8rem;margin:0.2rem 0 0.7rem;">Permanently closes this account. Vendor accounts must have no orders still in progress and no unsettled commission. Customer accounts may close even with pending orders.</p>
+      <button class="btn btn-sm btn-danger" onclick="startDeleteAccount()">Delete my account</button>
+    </div>
+  </div>
+</div>
+<div class="side-drawer left" id="profilePanel"></div>
+
+<div id="deleteAccountModal" class="modal hidden">
+  <div class="modal-content" style="max-width:380px;">
+    <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete your account?</h3>
+    <p class="muted" style="margin:0.6rem 0;">This can't be undone. Confirm your password, then type <strong>delete my account</strong> below to continue.</p>
+    <input type="password" id="deleteAccountPassword" placeholder="Your password" autocomplete="off" />
+    <input type="text" id="deleteAccountPhrase" placeholder="Type: delete my account" autocomplete="off" style="margin-top:0.5rem;" />
+    <p id="deleteAccountError" class="error-text hidden"></p>
+    <div class="flex" style="justify-content:flex-end;">
+      <button class="btn btn-sm" style="background:#6b7280;" onclick="byId('deleteAccountModal').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-sm btn-danger" id="deleteAccountConfirmBtn" onclick="confirmDeleteAccount()">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="app"></div>
+
+<footer class="site-footer" aria-hidden="true">
+  <a href="#" tabindex="-1" onclick="navigate('terms');return false;">Terms of Service</a>
+  <a href="#" tabindex="-1" onclick="navigate('privacy');return false;">Privacy Policy</a>
+  <a href="#" tabindex="-1" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation</a>
+  <span class="muted" style="font-size:0.78rem;">© <span id="footerYear"></span> Levromart</span>
+</footer>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<div id="installPromptModal" class="modal hidden">
+  <div class="modal-content install-modal-content">
+    <div class="install-modal-badge"><img id="installModalLogo" alt="" /></div>
+    <h3>Get the Levromart app</h3>
+    <p class="muted">Install it on your home screen for a faster, full-screen experience, even offline.</p>
+    <p id="installModalIosMsg" class="muted install-modal-ios hidden"><i class="fa-solid fa-arrow-up-from-bracket"></i> Tap the Share icon, then "Add to Home Screen".</p>
+    <div class="install-modal-actions">
+      <button class="btn btn-sm btn-outline" onclick="dismissInstallPrompt()">Not now</button>
+      <button class="btn" id="installModalActionBtn" onclick="runInstallPrompt()"><i class="fa-solid fa-arrow-down-to-line"></i> Install</button>
+    </div>
+  </div>
+</div>
+
+<div id="notifPromptModal" class="modal hidden">
+  <div class="modal-content install-modal-content">
+    <div class="install-modal-badge"><i class="fa-solid fa-bell" style="font-size:1.7rem;color:#fff;"></i></div>
+    <h3>Turn on notifications</h3>
+    <p class="muted">Get notified instantly on this device for new orders, offers, and updates, on top of email.</p>
+    <div class="install-modal-actions">
+      <button class="btn btn-sm btn-outline" onclick="dismissNotifPrompt()">Not now</button>
+      <button class="btn" onclick="enablePushNotifications()"><i class="fa-solid fa-bell"></i> Turn on</button>
+    </div>
+  </div>
+</div>
+
+<div id="locationPromptModal" class="modal hidden">
+  <div class="modal-content install-modal-content location-recovery-modal">
+    <div class="install-modal-badge"><i class="fa-solid fa-location-dot" style="font-size:1.7rem;color:#fff;"></i></div>
+    <h3 id="locationPromptTitle">Show distances automatically</h3>
+    <p class="muted" id="locationPromptCopy">Allow Levromart to use your current location. You only need to make this choice once. After that, vendor distances will refresh automatically whenever you refresh or return to Vendors.</p>
+    <p class="muted location-prompt-state" id="locationPromptState"></p>
+    <div class="install-modal-actions">
+      <button class="btn btn-sm btn-outline" id="locationPromptSecondary">Not now</button>
+      <button class="btn" id="locationPromptPrimary"><i class="fa-solid fa-location-crosshairs"></i> Enable distances</button>
+    </div>
+  </div>
+</div>
+
+<div id="lvTour" class="lvt hidden">
+  <div class="lvt-hole none" id="lvTourHole"></div>
+  <div class="lvt-sheet" id="lvTourSheet" role="dialog" aria-live="polite" aria-label="App tour">
+    <div class="lvt-head">
+      <span class="lvt-mascot" aria-hidden="true"></span>
+      <div class="lvt-titles"><p class="lvt-says"><i id="lvTourIcon" class="fa-solid fa-hand-sparkles"></i> Levi says</p><h3 id="lvTourTitle">Hi, I'm Levi</h3></div>
+      <button type="button" class="lvt-skip" onclick="skipTour()">Skip</button>
+    </div>
+    <p class="lvt-body" id="lvTourBody"></p>
+    <div class="lvt-dots" id="lvTourDots"></div>
+    <div class="lvt-actions">
+      <button type="button" class="lvt-btn lvt-ghost lvt-hide" id="lvTourBack" onclick="tourBack()">Back</button>
+      <button type="button" class="lvt-btn lvt-pri" id="lvTourNext" onclick="tourNext()">Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login / Signup, full-page authentication (existing ids and handlers preserved) -->

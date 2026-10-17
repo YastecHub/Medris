@@ -6,6 +6,11 @@
 > migration playbook. `01_tables.sql` and `02_cron_jobs.sql` below are older snapshots (64 tables, 4 cron jobs);
 > for an up-to-date schema dump run `export.sh`.
 
+> **Changing the database:** new changes are migrations in `medris-backend/src/database/migrations/`, applied with
+> `npm run db:migrate -w medris-backend` (process and rules: [`docs/DATABASE.md`](../docs/DATABASE.md#3-changing-the-database-migrations)).
+> The numbered files in this folder (`01`-`14`) are history - already applied by hand before that process. Do not
+> add new files here and do not re-run these.
+
 Live project: `ovklnoroyxobijgvsyfp`. Standby copy: `rtmnrdzmcnlhqfptgkkn` (kept in step by hand).
 
 | File | Contents |

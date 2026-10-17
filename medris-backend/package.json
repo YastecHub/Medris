@@ -1,0 +1,58 @@
+{
+  "name": "medris-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Levromart API: Hono + TypeScript on Node.js, deployed as one Vercel function.",
+  "type": "module",
+  "main": "dist/vercel.js",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts --dev",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:postgres": "vitest run --no-file-parallelism",
+    "db:introspect": "drizzle-kit pull --config drizzle.config.ts",
+    "db:dev": "tsx scripts/dev-database.ts",
+    "db:status": "tsx scripts/migrate.ts status",
+    "db:migrate": "tsx scripts/migrate.ts up",
+    "db:migration:new": "tsx scripts/migrate.ts new",
+    "db:migrations:check": "tsx scripts/migrate.ts check"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "@aws-sdk/client-s3": "^3.1139.0",
+    "@aws-sdk/s3-request-presigner": "^3.1139.0",
+    "arctic": "^3.7.0",
+    "bcryptjs": "^3.0.3",
+    "cookie": "^1.1.1",
+    "cors": "^2.8.6",
+    "drizzle-orm": "^0.45.4",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "jose": "^6.2.12",
+    "opentype.js": "^2.0.0",
+    "pg": "^8.23.1",
+    "sharp": "^0.33.5",
+    "swagger-ui-express": "^5.0.1",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.23.1",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/web-push": "^3.6.4",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

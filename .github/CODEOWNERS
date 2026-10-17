@@ -1,0 +1,4 @@
+# Who is asked to review a pull request automatically. GitHub requests a review from the
+# owner of any file a pull request changes. With branch protection on main ("Require review
+# from Code Owners"), nothing merges without that review.
+*  @YastecHub

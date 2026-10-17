@@ -1,1 +1,13 @@
 node_modules/
+dist/
+*.tsbuildinfo
+.env.local
+.env.*.local
+medris-backend/.env
+.vercel/
+coverage/
+medris-backend/drizzle/
+.antigravity/
+
+# Claude app output folder (local only)
+Claude outputs/

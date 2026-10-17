@@ -1,0 +1,190 @@
+name: CI
+
+# Runs on every pull request and on every push to main. A pull request should
+# only be merged when the jobs are green (GitHub: Settings > Branches > branch
+# protection for main > "Require status checks to pass": "Checks" and
+# "PostgreSQL 17"; the latter is skipped - counted as passed - when no backend
+# or database file changed).
+#
+# Nothing here talks to Supabase, Vercel, Paystack or any production system:
+# tests use an in-process PostgreSQL (PGlite) or the throwaway PostgreSQL
+# service below, and no secrets are used.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Decides whether the PostgreSQL job is needed. It runs only when something the
+  # backend or the database depends on changed; a frontend-only change (e.g.
+  # medris-frontend/, api/, docs/) skips it. A job skipped this way counts as
+  # passed, so it never blocks a merge. Manual runs always run everything.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.diff.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        name: Backend or database files changed?
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            base=$(git merge-base "origin/$BASE_REF" HEAD)
+          elif [ "$EVENT" = "push" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            base="$BEFORE"
+          else
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "No comparison point ($EVENT): running everything."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" HEAD)
+          printf 'Changed files:\n%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -qE '^(medris-backend/|supabase/|package\.json$|package-lock\.json$|\.github/workflows/ci\.yml$)'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing the backend or database depends on changed: the PostgreSQL job is skipped."
+          fi
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the migration check compares with the base branch.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Legacy script syntax
+        run: npm run legacy:check -w medris-frontend
+
+      - name: Vercel function syntax (api/)
+        run: npm run api:check
+
+      - name: Migration files
+        run: npm run db:migrations:check -w medris-backend
+
+      # A migration that is already on the base branch may have been applied to
+      # production, so it must never change; new changes go in a new file. If a
+      # merged migration has provably never been applied anywhere and must be
+      # fixed, add the label "migration-edit" to the pull request.
+      - name: Merged migrations are unchanged
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'migration-edit')
+        run: npm run db:migrations:check -w medris-backend -- --base "origin/${{ github.base_ref }}"
+
+      - name: Tests (PGlite)
+        run: npm test
+
+      # The whole repository (backend included), then the frontend-only build
+      # exactly as Vercel runs it (vercel.json buildCommand).
+      - name: Build
+        run: npm run build
+
+      - name: Vercel build (frontend only)
+        run: npm run build -w medris-frontend
+
+  # Browser tests of the built frontend for the React migration (docs/REACT_MIGRATION.md,
+  # section 6). Every request to Supabase and /api is answered by local fixtures and the app
+  # is built with FAKE public config, so this job never reaches the live project or Vercel.
+  # Only the browser download (Playwright's own CDN) and `npm ci` use the network.
+  e2e:
+    name: Frontend browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: medris-frontend
+
+      - name: Playwright tests
+        run: npm run test:e2e -w medris-frontend
+
+      - name: Keep the report when tests fail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            medris-frontend/playwright-report/
+            medris-frontend/test-results/
+          retention-days: 7
+
+  postgres:
+    name: PostgreSQL 17
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Same major version as production (Supabase).
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medris_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medris_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The whole backend suite on a real server, including the migration runner
+      # applying every file in src/database/migrations to the baseline schema.
+      - name: Backend tests on PostgreSQL 17
+        run: npm run test:postgres -w medris-backend
