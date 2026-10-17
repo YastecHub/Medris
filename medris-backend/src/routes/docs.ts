@@ -39,6 +39,8 @@ const TAGS = [
   { name: "Order actions", description: "After checkout: status changes, confirmation, notes, edits, quantity suggestions." },
   { name: "Checkout", description: "Placing orders: one product, a rental, a cart, a package." },
   { name: "Payment claims", description: "Direct bank-transfer payments: reporting, confirming, disputing; disputes about orders." },
+  { name: "Commission & billing", description: "Commission owed, deadlines and reminders; ₦1,000 monthly listings." },
+  { name: "Scheduled jobs", description: "The database's scheduled jobs (pg_cron), for the backend's scheduler after the switch." },
   { name: "Blocks", description: "Blocking people in chat." },
   { name: "Admin dashboard", description: "The admin dashboard's counts and logs." },
   { name: "Support", description: "Support requests." },
