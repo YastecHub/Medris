@@ -19,6 +19,9 @@ import { RequestsService } from "./modules/requests/requests.service.js";
 import { BlocksService } from "./modules/blocks/blocks.service.js";
 import { ServiceOffersService } from "./modules/service-offers/service-offers.service.js";
 import { PointsService } from "./modules/points/points.service.js";
+import { PresenceService } from "./modules/presence/presence.service.js";
+import { CallsService } from "./modules/calls/calls.service.js";
+import { ConversationsService } from "./modules/conversations/conversations.service.js";
 import { ProductsService } from "./modules/products/products.service.js";
 import { AssistantService } from "./modules/assistant/assistant.service.js";
 import { SuggestionsService } from "./modules/suggestions/suggestions.service.js";
@@ -57,6 +60,9 @@ export interface AppServices {
   blocks: BlocksService;
   serviceOffers: ServiceOffersService;
   points: PointsService;
+  presence: PresenceService;
+  calls: CallsService;
+  conversations: ConversationsService;
   products: ProductsService;
   assistant: AssistantService;
   suggestions: SuggestionsService;
@@ -101,6 +107,9 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     blocks: overrides.blocks ?? new BlocksService(data),
     serviceOffers: overrides.serviceOffers ?? new ServiceOffersService(data),
     points: overrides.points ?? new PointsService(data),
+    presence: overrides.presence ?? new PresenceService(data),
+    calls: overrides.calls ?? new CallsService(data),
+    conversations: overrides.conversations ?? new ConversationsService(data),
     products: overrides.products ?? new ProductsService(data),
     assistant: overrides.assistant ?? new AssistantService(data),
     suggestions: overrides.suggestions ?? new SuggestionsService(data),
