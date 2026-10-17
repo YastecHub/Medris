@@ -19,6 +19,7 @@ export const VIEW_LOADERS: Readonly<Record<string, () => Promise<ViewModule>>> =
   customerFollowing: () => import("./customer-following/CustomerFollowingPage"),
   wishlist: () => import("./wishlist/WishlistPage"),
   notifications: () => import("./notifications/NotificationsPage"),
+  sharedAiChat: () => import("./shared-ai-chat/SharedAiChatPage"),
   vendors: () => import("./vendors/VendorsPage"),
   storefront: () => import("./storefront/StorefrontPage"),
   productDetail: () => import("./product-detail/ProductDetailPage"),
