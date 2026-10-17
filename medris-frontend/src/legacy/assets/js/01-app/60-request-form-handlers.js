@@ -176,6 +176,7 @@ async function submitEquipmentRequest() {
       buyer_avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url || null,
     });
     if (error) throw error;
+    reqDraftClear();
     showToast(type === "buy" ? "Buy request posted successfully." : "Rental request posted successfully.", "success");
     await navigate("requestEquipment");
     // Keep dates/controls correct after the route re-renders.

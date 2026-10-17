@@ -41,7 +41,7 @@ async function renderCart() {
   const cartHead = (n) => `<div class="cart-head"><button type="button" class="cart-back" onclick="history.length>1?history.back():navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping cart-title-ico"></i> My Cart${n ? ` <span class="cart-count">(${n})</span>` : ""}</h2>${n ? `<button type="button" class="cart-ico cart-checkall" onclick="openCheckoutAllSheet()" aria-label="Checkout all" title="Checkout all"><i class="fa-solid fa-bag-shopping"></i></button><button type="button" class="cart-ico cart-clear" onclick="openClearCartSheet()" aria-label="Clear cart" title="Clear cart"><i class="fa-solid fa-trash-can"></i></button>` : ""}</div>`;
   let html = "";
   if (!items || items.length === 0) {
-    return `<div class="cart-page">${cartHead(0)}<div class="vd-empty"><span class="vd-empty-ico"><i class="fa-solid fa-cart-shopping"></i></span><strong>Your cart is empty</strong><p>Add items from any product page, or tell Levi what you want and it'll add them for you.</p><button type="button" class="vl-add" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Start shopping</button></div></div>`;
+    return `<div class="cart-page">${typeof lvPageHero === "function" ? lvPageHero("cart") : ""}${cartHead(0)}<div class="vd-empty"><span class="vd-empty-ico lv-empty-illus">${typeof lvIllus === "function" ? lvIllus("cart", 76) : '<i class="fa-solid fa-cart-shopping"></i>'}</span><strong>Your cart is empty</strong><p>Add items from any product page, or tell Levi what you want and it'll add them for you.</p><button type="button" class="vl-add" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Start shopping</button></div></div>`;
   }
 
   const valid = items.filter((it) => it.product && it.product.status === "active" && it.product.vendor?.verification_status === "verified" && it.product.vendor?.is_active);
@@ -68,7 +68,7 @@ async function renderCart() {
     const subtotal = vItems.reduce((s, it) => s + Number(it.variant?.discount_price ?? it.variant?.sale_price ?? it.product.discount_price ?? it.product.sale_price ?? 0) * it.quantity, 0);
     const ownCartVendor = isOwnVendorId(v.id);
     // The server adds each product's OWN delivery fee (create_cart_order), so the cart does too.
-    const feeLines = vItems.map((it) => ({ name: it.product.name, mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Number(it.product.delivery_fee_per_km) || 0 }));
+    const feeLines = vItems.map((it) => ({ name: it.product.name, mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Math.min(1000, Number(it.product.delivery_fee_per_km) || 0) }));
     const cartFlatFee = feeLines.reduce((n, l) => n + (l.mode === "flat" ? l.fee : 0), 0);
     const cartDistanceLine = feeLines.find((l) => l.mode === "distance" && l.perKm > 0);
     const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, cartFlatFee, v.lat, v.lng, cartDistanceLine ? "distance" : "flat", cartDistanceLine ? cartDistanceLine.perKm : 0, "", subtotal)

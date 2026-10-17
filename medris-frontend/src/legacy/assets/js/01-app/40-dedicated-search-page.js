@@ -10,9 +10,9 @@
 // ordinary list items with a plain onclick, not a floating dropdown that
 // has to survive an input's blur event.
 const SEARCH_HISTORY_KEY = "levromart-search-history-v1";
-const SEARCH_HISTORY_MAX = 8;
+const SEARCH_HISTORY_MAX = 7;
 function readSearchHistory() {
-  try { const list = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); return Array.isArray(list) ? list : []; } catch (_) { return []; }
+  try { const list = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); return Array.isArray(list) ? list.slice(0, SEARCH_HISTORY_MAX) : []; } catch (_) { return []; }
 }
 function writeSearchHistory(term) {
   const q = String(term || "").trim();
@@ -24,7 +24,7 @@ function writeSearchHistory(term) {
 }
 document.addEventListener("click", (e) => {
   try {
-    if (!e.target.closest || !e.target.closest("#searchPageResults .search-result-row")) return;
+    if (!e.target.closest || !e.target.closest("#searchPageResults .search-result-row, #searchPageResults .lv-svr-item")) return;
     const t = byId("searchPageInput")?.value.trim();
     if (t) writeSearchHistory(t);
   } catch (_) {}
@@ -40,6 +40,7 @@ function renderSearchPage() {
   const filterIcons = { all: "", products: "fa-bag-shopping", vendors: "fa-store", services: "fa-user-gear", packages: "fa-box-open" };
   const filterBtn = (id, label) => `<button type="button" class="search-page-filter ${id === "all" ? "active" : ""}" data-filter="${id}" role="tab" onclick="setSearchPageFilter('${id}')">${filterIcons[id] ? `<i class="fa-solid ${filterIcons[id]}" aria-hidden="true"></i>` : ""}${label}</button>`;
   return `<div class="search-page">
+    ${typeof lvPageHero === "function" ? lvPageHero("search") : ""}
     <div class="search-page-head">
     <div class="search-page-bar">
       <button type="button" class="search-page-back" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>

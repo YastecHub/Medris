@@ -7,7 +7,7 @@ async function lvLoadSearchIndex() {
     const rows = [];
     try {
       for (let off = 0; off < 6000; off += 1000) {
-        const r = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor_id,vendor:vendors!inner(business_name,lat,lng,avg_rating,review_count)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).order("id").range(off, off + 999);
+        const r = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor_id,vendor:vendors!inner(business_name,logo_url,lat,lng,avg_rating,review_count)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).order("id").range(off, off + 999);
         if (r.error) break;
         (r.data || []).forEach((p) => rows.push({ id: p.id, name: p.name, n: lvNorm(p.name), photos: p.photos, sale_price: p.sale_price, discount_price: p.discount_price, rental_rate: p.rental_rate, rental_rate_unit: p.rental_rate_unit, is_service: p.is_service, listing_type: p.listing_type, service_price_unit: p.service_price_unit, vendor_id: p.vendor_id, vendor_business_name: p.vendor?.business_name, vendor_lat: p.vendor?.lat, vendor_lng: p.vendor?.lng, vendor_avg_rating: p.vendor?.avg_rating, vendor_review_count: p.vendor?.review_count }));
         if (!r.data || r.data.length < 1000) break;
@@ -124,7 +124,7 @@ function searchProductRowHtml(p) {
   const canCart = !p.is_service && v.id && ["sale", "both"].includes(String(p.listing_type || "")) && !isOwnVendorId(v.id) && profile?.role !== "admin";
   const typeLabel = p.is_service ? "Service" : String(p.listing_type || "") === "rent" ? "Rental" : "Product";
   return `<div class="search-result-row sr-row" data-product-id="${esc(p.id)}" data-vendor-id="${esc(v.id || p.vendor_id || "")}" ${searchRowOpen(`navigate('productDetail',{productId:'${esc(p.id)}'})`)} aria-label="${esc(p.name)}">
-    ${searchThumbHtml(p.photos?.[0], p.is_service ? "fa-hand-holding-heart" : "fa-camera")}
+    ${searchThumbHtml(p.photos?.[0] || v.logo_url, p.is_service ? "fa-hand-holding-heart" : "fa-camera", !p.photos?.[0] && !!v.logo_url)}
     <div class="sr-main"><strong class="sr-name">${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong>
       <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
       <span class="sr-meta"><em class="sr-type${p.is_service ? " sr-type-service" : ""}">${typeLabel}</em>${searchRatingHtml(v.avg_rating, v.review_count)}</span></div>
@@ -212,7 +212,7 @@ function openSearchResultPreview(productId, rowEl) {
   backdrop.onclick = (e) => { if (e.target === backdrop) closeSearchResultPreview(); };
   backdrop.innerHTML = `<div class="search-preview-sheet">
     <button type="button" class="search-preview-close" onclick="closeSearchResultPreview()" aria-label="Close preview"><i class="fa-solid fa-xmark"></i></button>
-    <div class="search-preview-media">${img ? `<img src="${esc(lvThumb(img, 120))}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</div>
+    <div class="search-preview-media">${img || p.vendor?.logo_url ? `<img src="${esc(lvThumb(img || p.vendor.logo_url, 120))}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</div>
     <div class="search-preview-body">
       <strong class="search-preview-name">${esc(p.name)}</strong>
       <span class="muted">${esc(p.vendor?.business_name || "")}${searchDistanceMetaHtml(p.vendor)}</span>
@@ -250,7 +250,7 @@ async function renderSearchPageSuggestions(forceWithTerm) {
   // the same already-popular handful of listings owns this slot forever,
   // and everything else never gets a turn at it.
   const { data } = await sb.from("products")
-    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,category:categories(sector_id),vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count)")
+    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,category:categories(sector_id),vendor:vendors!inner(id,business_name,logo_url,verification_status,is_active,lat,lng,avg_rating,review_count)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
     .order("view_count", { ascending: false }).limit(60);
   if (!stillCurrent()) return; // typing moved on while this was in flight

@@ -172,12 +172,11 @@
     // quietly still was -- exactly what a page refresh (which resets this
     // variable along with everything else) happened to fix.
     vendorsListingFilter = "all";
-    let html = `<div class="vd-page"><div class="vd-head">
-      <div class="vd-title"><span class="vd-title-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5 5.6 4.5h12.8L20 9.5"/><path d="M4 9.5a2.67 2.67 0 0 0 5.33 0 2.67 2.67 0 0 0 5.34 0 2.67 2.67 0 0 0 5.33 0"/><path d="M5.5 12.6V20h13v-7.4"/><path d="M10 20v-4.5h4V20"/></svg></span><h2>All vendors</h2></div>
+    let html = `<div class="vd-page">${typeof lvPageHero === "function" ? lvPageHero("vendors") : ""}<div class="vd-head">
       <div class="vd-views" role="group" aria-label="View mode">
-        <button type="button" class="vd-view" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><svg class="vd-view-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
-        <button type="button" class="vd-view" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><svg class="vd-view-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg></button>
-        <button type="button" class="vd-view" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><svg class="vd-view-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6.5v13L9 17l6 3 5.5-2.5v-13L15 7z"/><path d="M9 4v13M15 7v13"/></svg></button>
+        <button type="button" class="vd-view" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/></svg></button>
+        <button type="button" class="vd-view" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.7" cy="6.5" r=".8"/><circle cx="4.7" cy="12" r=".8"/><circle cx="4.7" cy="17.5" r=".8"/></svg></button>
+        <button type="button" class="vd-view" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.5-5.6 6.5-11a6.5 6.5 0 1 0-13 0C5.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/></svg></button>
       </div>
     </div>
     <div class="vd-seg" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
@@ -188,7 +187,7 @@
     </div>
     <div class="vd-tools">
       <label class="vd-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorSearchInput" placeholder="Search vendors…" oninput="filterVendorsDirectory()" autocomplete="off" enterkeyhint="search" aria-label="Search vendors or products" /></label>
-      <button type="button" class="vd-filter-btn" id="vendorsFiltersToggle" aria-label="Filter" title="Filter" aria-expanded="false" onclick="toggleVendorsFilters()">${window.LV_FILTER_SVG}</button>
+      <button type="button" class="vd-filter-btn" id="vendorsFiltersToggle" aria-label="Filter" title="Filter" aria-expanded="false" onclick="toggleVendorsFilters()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
     </div>
     <div class="vendors-filters-panel vd-panel hidden" id="vendorsFiltersPanel">
       <div class="lm-sheet-head"><strong>Filter vendors</strong><button type="button" class="lm-x" onclick="toggleVendorsFilters(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>

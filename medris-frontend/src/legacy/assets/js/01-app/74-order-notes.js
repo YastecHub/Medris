@@ -92,7 +92,7 @@ function renderOrderListWrap() {
 function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
   if (!orders || orders.length === 0) {
     const onlyHistory = isCustomerView && window.__orderHistoryEmpty === false;
-    return `<div class="empty-state orders-empty"><span class="orders-empty-icon"><i class="fa-solid fa-box-open"></i></span><strong>${onlyHistory ? "No active orders" : "No orders yet"}</strong><span class="muted">${onlyHistory ? "Finished orders are under History." : "Orders you place will show up here."}</span></div>`;
+    return `<div class="empty-state orders-empty"><span class="orders-empty-icon">${typeof lvIllus === "function" ? lvIllus("box", 72) : '<i class="fa-solid fa-box-open"></i>'}</span><strong>${onlyHistory ? "No active orders" : "No orders yet"}</strong><span class="muted">${onlyHistory ? "Finished orders are under History." : "Orders you place will show up here."}</span></div>`;
   }
   const total = orders.length;
   const shown = orderListExpanded ? orders : orders.slice(0, ORDER_LIST_PAGE_SIZE);

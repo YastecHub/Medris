@@ -48,8 +48,16 @@ function addBasemapTileLayer(map) {
 }
 // Vendors page pins: the vendor's own round logo (or a shop icon) in a green ring with a little pointer.
 function vendorDirectoryMapIcon(v) {
-  const inner = v?.logo_url ? `<img src="${esc(v.logo_url)}" alt="" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-shop'}))">` : `<i class="fa-solid fa-shop"></i>`;
-  return window.L.divIcon({ className: "vmp", html: `<div class="vmp-pin">${inner}</div>`, iconSize: [44, 52], iconAnchor: [22, 50], popupAnchor: [0, -46] });
+  // No logo: the vendor's initials on a light colour that is stable per vendor, so pins are easy to tell apart.
+  const seed = String(v?.id || v?.business_name || "?");
+  let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 360;
+  const words = String(v?.business_name || "?").replace(/[^\p{L}\p{N} ]/gu, "").trim().split(/\s+/).filter(Boolean);
+  const ini = ((words[0]?.[0] || "?") + (words.length > 1 ? words[words.length - 1][0] : words[0]?.[1] || "")).toUpperCase();
+  const initials = `<span class="vmp-ini">${esc(ini)}</span>`;
+  const inner = v?.logo_url ? `<img src="${esc(v.logo_url)}" alt="" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vmp-ini',textContent:'${esc(ini)}'}))">` : initials;
+  const tint = v?.logo_url ? "" : ` style="--vmp-bg:hsl(${h} 70% 88%);--vmp-fg:hsl(${h} 55% 28%)"`;
+  const tick = v?.id ? `<i class="fa-solid fa-circle-check lv-svi vmp-tick" data-vt="${esc(v.id)}" aria-label="Verified vendor"></i>` : "";
+  return window.L.divIcon({ className: "vmp", html: `<div class="vmp-pin${v?.logo_url ? "" : " vmp-pin-ini"}"${tint}>${inner}${tick}</div>`, iconSize: [44, 52], iconAnchor: [22, 50], popupAnchor: [0, -46] });
 }
 // A rounded teardrop pin in the site's own accent color with a shop icon,
 // instead of Leaflet's default generic blue marker.
@@ -81,7 +89,8 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 // A distance-priced delivery is never free: the first kilometre is always charged, then rate x distance, to the nearest N50.
-function distanceDeliveryFee(perKm, km) { return Math.round((Number(perKm) * Math.max(1, Number(km) || 0)) / 50) * 50; }
+const MAX_DELIVERY_PER_KM = 1000; // no vendor can charge more than this per kilometre
+function distanceDeliveryFee(perKm, km) { return Math.round((Math.min(MAX_DELIVERY_PER_KM, Number(perKm) || 0) * Math.max(1, Number(km) || 0)) / 50) * 50; }
 function lvDistTier(km){ return km<5?0:km<=10?1:km<=30?2:km<=100?3:km<=300?4:5; }
 function lvDistTitle(km){ return ["Very close (within 5 km)","Same area (5-10 km)","Same city (10-30 km)","Nearby town (30-100 km)","Different region (100-300 km)","Interstate / far (over 300 km)"][lvDistTier(km)]; }
 function formatDistanceKm(km) {

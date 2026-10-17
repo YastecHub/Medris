@@ -156,7 +156,7 @@ async function renderNotifPanel(opts = {}) {
   // without unread badge counts yet (those need the fresh fetch below to
   // classify). Otherwise the tabs pop into existence a moment later once the
   // real render lands, which read as the tabs/stars "flickering" on open.
-  const cachedNotificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'?[['orders',vendor?.id?'Orders & Requests':'Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
+  const cachedNotificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'&&!vendor?.id?[['orders','Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
   if(!cachedNotificationTabs.some(([key])=>key===notifViewMode))notifViewMode='all';
   const cachedTabsHtml=`<div class="notif-tabs" role="tablist" aria-label="Notification categories">${cachedNotificationTabs.map(([key,label])=>`<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}</button>`).join('')}</div>`;
   // Switching tabs reuses the list that is already on screen (no repaint without badges, no refetch).
@@ -218,13 +218,13 @@ async function renderNotifPanel(opts = {}) {
     const p=n.target_params||{},m=n.metadata||{},type=String(n.type||n.notification_type||n.notification_category||'').toLowerCase();
     const kind=String(m.kind||m.entity_type||n.notification_category||type).toLowerCase();
     const owner=String(n.vendor_id||m.vendor_id||p.vendorId||p.vendor_id||owners.get(`product:${p.productId||p.product_id||m.product_id}`)||owners.get(`package:${p.packageId||p.package_id||m.package_id}`)||'');
-    if(m.order_id||p.orderId||p.order_id||/^(order|payment|request|offer)(_|$)/.test(type)||['orderDetail','buyerOrders','vendorOrders'].includes(n.target_view))return 'orders';
+    if(m.order_id||p.orderId||p.order_id||/^(order|payment|request|offer)(_|$)/.test(type)||['orderDetail','buyerOrders','vendorOrders'].includes(n.target_view))return currentVendorId?'myListings':'orders';
     const listing=/product|listing|package|service|variant|variety|comment|like|save|wishlist/.test(kind)||!!p.productId||!!p.packageId;
     if(listing&&owner&&owner===currentVendorId)return 'myListings';
     if(owner&&owner!==currentVendorId&&(listing||/vendor/.test(kind)))return 'vendors';
     return 'personal';
   };
-  const notificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'?[['orders',vendor?.id?'Orders & Requests':'Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
+  const notificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'&&!vendor?.id?[['orders','Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
   if(!notificationTabs.some(([key])=>key===notifViewMode))notifViewMode='all';
   const unreadByCategory={personal:0,orders:0,myListings:0,vendors:0};(rawItems||[]).forEach(n=>{if(!n.read){const c=classifyNotification(n);if(c in unreadByCategory)unreadByCategory[c]++;}});
   const tabHtml=(key,label)=>{const count=key==="all"?(rawItems||[]).filter(n=>!n.read).length:Number(unreadByCategory[key]||0);return `<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}${count?`<span class="notif-tab-badge">${count>9?"9+":count}</span>`:""}</button>`};
@@ -339,6 +339,7 @@ function switchNotifView(mode) {
   const allowed = new Set(["all","personal","orders","myListings","vendors"]);
   if (!allowed.has(mode)) mode = "all";
   if (mode === "myListings" && !vendor?.id) mode = "personal";
+  if (mode === "orders" && vendor?.id) mode = "myListings";
   notifViewMode = mode;
   exitNotifSelectMode(false);
   renderNotifPanel({ reuse: true });

@@ -35,17 +35,28 @@ function vlMenu(items) {
   return `<div class="vl-more-wrap"><button type="button" class="vl-card-more" aria-haspopup="menu" aria-expanded="false" aria-label="More actions" onclick="event.stopPropagation();vlToggleMenu(this)"><i class="fa-solid fa-ellipsis-vertical"></i></button><div class="vl-menu hidden" role="menu">${items.join("")}</div></div>`;
 }
 function vlToggleMenu(btn) {
-  const menu = btn.nextElementSibling;
+  const wrap = btn.closest(".vl-more-wrap");
+  const menu = wrap?.querySelector(".vl-menu") || btn.nextElementSibling;
   const open = menu.classList.contains("hidden");
   vlCloseMenus();
-  if (open) { menu.classList.remove("hidden"); btn.setAttribute("aria-expanded", "true"); btn.closest(".vl-card")?.classList.add("vl-menu-open"); }
+  if (open) {
+    // The drawer lives on <body> while it is open: inside the page it would sit under the bottom bar. The bottom bar is
+    // hidden while the drawer is up and comes back when it closes.
+    menu.classList.remove("hidden"); btn.setAttribute("aria-expanded", "true"); btn.closest(".vl-card")?.classList.add("vl-menu-open");
+    menu.__lvHome = wrap; document.body.appendChild(menu); menu.classList.add("vl-sheet");
+    const back = document.createElement("div"); back.className = "lv-sheet-backdrop"; back.onclick = (e) => { e.stopPropagation(); vlCloseMenus(); };
+    document.body.appendChild(back);
+    document.body.classList.add("lv-sheet-open");
+  }
 }
 function vlCloseMenus() {
-  document.querySelectorAll(".vl-menu").forEach((m) => m.classList.add("hidden"));
+  document.querySelectorAll(".vl-menu").forEach((m) => { m.classList.add("hidden"); m.classList.remove("vl-sheet"); if (m.__lvHome && m.parentElement === document.body) { m.__lvHome.appendChild(m); } });
   document.querySelectorAll(".vl-card-more").forEach((b) => b.setAttribute("aria-expanded", "false"));
   document.querySelectorAll(".vl-menu-open").forEach((c) => c.classList.remove("vl-menu-open"));
+  document.querySelectorAll(".lv-sheet-backdrop").forEach((b) => b.remove());
+  document.body.classList.remove("lv-sheet-open");
 }
-document.addEventListener("click", (e) => { if (!e.target.closest?.(".vl-more-wrap")) vlCloseMenus(); });
+document.addEventListener("click", (e) => { if (!e.target.closest?.(".vl-more-wrap, .vl-sheet")) vlCloseMenus(); });
 function vlProductCardHtml(p, ctx) {
   const catName = p.category?.name || "Uncategorized";
   const hasPendingOrder = ctx.pendingProductIds.has(p.id);
@@ -1425,7 +1436,7 @@ async function saveProduct() {
     const rental_rate = is_service ? null : (byId("prodRentalRate").value ? Number(byId("prodRentalRate").value) : null);
     const delivery_fee_mode = is_service ? "free" : (byId("prodDeliveryMode").value || "free");
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
-    const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0);
+    const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.min(1000, Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0));
     const payment_timing = is_service ? "pay_before" : (byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before");
     const paymentDepositRaw = String(byId("prodPaymentDepositPercent")?.value ?? "").trim();
     const payment_deposit_percent = paymentDepositRaw === "" ? null : Math.max(1, Math.min(99, Number(paymentDepositRaw)));

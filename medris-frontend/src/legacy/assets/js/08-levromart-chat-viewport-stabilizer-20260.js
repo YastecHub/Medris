@@ -1709,7 +1709,10 @@
       children.get(k).push(r);
     });
     return roots.map(root=>{
-      const replies=(children.get(String(root.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+      /* every reply under this comment, including replies to replies, oldest first (they were dropped before: only direct replies showed) */
+      const replies=[],seen=new Set([String(root.id)]),queue=[String(root.id)];
+      while(queue.length){const k=queue.shift();(children.get(k)||[]).forEach(r=>{const id=String(r.id);if(seen.has(id))return;seen.add(id);replies.push(r);queue.push(id)})}
+      replies.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
       const replyId=`levro-replies-${kind}-${root.id}`;
       return commentRow(root,likeMap,myLiked,0,kind)+
         (replies.length?`<button type="button" class="comment-replies-toggle" onclick="toggleInlineCommentReplies('${escSafe(root.id)}','${kind}')" aria-expanded="false" data-replies-for="${escSafe(root.id)}"><span class="cr-line"></span><span class="cr-label">View ${replies.length} ${replies.length===1?"reply":"replies"}</span></button><div id="${replyId}" class="comment-replies-dropdown hidden">${replies.map(r=>commentRow(r,likeMap,myLiked,1,kind)).join("")}</div>`:"");
@@ -1728,20 +1731,16 @@
     }
   };
 
-  async function loadInlineComments(kind,id,{preserveDraft=true,showLoading=true}={}){
-    const panel=$(kind==="package"?"packageCommentsPanel":"productCommentsPanel");
+  // Draws a comments result into the panel (also used for instant, optimistic updates, with no waiting on the network).
+  window.__lvCmtCache=window.__lvCmtCache||{};
+  function paintInline(kind,id,result){
+    const panel=$(kind==="package"?"packageCommentsPanel":"productCommentsPanel")||window.__commentSheetPanel;
     if(!panel)return;
     const inputId=kind==="package"?"packageCommentInput":"productCommentInput";
-    const draft=preserveDraft?($(inputId)?.value||""):"";
-    // Never replace the visible comment area with a loading banner. Render the
-    // composer/empty shell immediately, then hydrate comments when the request
-    // returns. Realtime/background refreshes remain completely silent.
-    if(!panel.dataset.loaded){
-      const composer=`<div class="product-comment-composer"><div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}></textarea><button type="button" class="btn btn-sm" aria-label="Send comment" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
-      panel.innerHTML="<div class=\"comment-fetch-placeholder\"></div>"+composer;
-    }
-    try{
-      const result=kind==="package"?await fetchPackageComments(id):await fetchProductComments(id);
+    const draft=($(inputId)?.value)||"";
+      // a repaint must not collapse the replies you opened or jump the list back to the top
+      const __openIds=[...panel.querySelectorAll(".comment-replies-dropdown:not(.hidden)")].map(e=>e.id);
+      const __sc=[panel,panel.parentElement].filter(Boolean).map(e=>e.scrollTop);
       panel.dataset.loaded="1";
       const rows=result.rows||[];
       if(kind==="package"){
@@ -1764,6 +1763,29 @@
         __newComposer?.remove();
         while(__tmp.firstChild)panel.insertBefore(__tmp.firstChild,__oldComposer);
       }else panel.innerHTML=thread+composer;
+      __openIds.forEach(rid=>{const dd=document.getElementById(rid);if(dd&&dd.classList.contains("hidden")){dd.classList.remove("hidden");const b=document.querySelector(`[data-replies-for="${CSS.escape(rid.replace(/^levro-replies-(product|package)-/,""))}"]`);if(b){b.setAttribute("aria-expanded","true");b.innerHTML='<span class="cr-line"></span><span class="cr-label">Hide replies</span>'}}});
+      [panel,panel.parentElement].filter(Boolean).forEach((e,i)=>{if(__sc[i])e.scrollTop=__sc[i]});
+    try{
+      const n=(result.rows||[]).length;
+      const t=document.querySelector("#lvCs .lv-cs-head strong"); if(t)t.textContent=n>0?(n+(n===1?" comment":" comments")):"Comments";
+    }catch(_){}
+  }
+  async function loadInlineComments(kind,id,{preserveDraft=true,showLoading=true}={}){
+    const panel=$(kind==="package"?"packageCommentsPanel":"productCommentsPanel");
+    if(!panel)return;
+    const inputId=kind==="package"?"packageCommentInput":"productCommentInput";
+    const draft=preserveDraft?($(inputId)?.value||""):"";
+    // Never replace the visible comment area with a loading banner. Render the
+    // composer/empty shell immediately, then hydrate comments when the request
+    // returns. Realtime/background refreshes remain completely silent.
+    if(!panel.dataset.loaded){
+      const composer=`<div class="product-comment-composer"><div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}></textarea><button type="button" class="btn btn-sm" aria-label="Send comment" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
+      panel.innerHTML="<div class=\"comment-fetch-placeholder\"></div>"+composer;
+    }
+    try{
+      const result=kind==="package"?await fetchPackageComments(id):await fetchProductComments(id);
+      window.__lvCmtCache[kind+id]=result;
+      paintInline(kind,id,result);
     }catch(_){
       if(!panel.dataset.loaded)panel.innerHTML='<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>';
     }
@@ -1793,44 +1815,74 @@
   window.replyToPackageComment=function(id){window.__levroActivePackageReply=String(id);const i=$("packageCommentInput");if(i)i.focus();if(currentViewParams?.packageId)loadInlineComments("package",currentViewParams.packageId,{showLoading:false})};
   window.cancelPackageCommentReply=function(){window.__levroActivePackageReply=null;if(currentViewParams?.packageId)loadInlineComments("package",currentViewParams.packageId,{showLoading:false})};
 
-  window.submitProductComment=async function(id){
+  // Posting: the comment shows up the instant you tap send; the checks and the save happen behind it, and it is taken back only if they fail.
+  async function submitComment(kind,id){
     if(!session){showLogin();return}
-    const content=String($("productCommentInput")?.value||"").trim();
+    const inputId=kind==="package"?"packageCommentInput":"productCommentInput";
+    const content=String($(inputId)?.value||"").trim();
     if(!content){showToast("Write a comment first.","error");return}
-    const __in=$("productCommentInput");const __restore=()=>{const i=$("productCommentInput");if(i&&!i.value){i.value=content;i.style.height=""}};if(__in){__in.value="";__in.style.height=""}
-    const {data:st}=await sb.from("product_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("product_id",id).maybeSingle();
-    if(st?.allow_comments===false){showToast("Comments are disabled for this listing.","error");__restore();return}
-    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await levroData.follows.isFollowing(session.user.id,st.vendor_id);if(!f){showToast("Only followers can comment on this listing.","error");__restore();return}}
-    const {error}=await sb.from("product_comments").insert({product_id:id,user_id:session.user.id,parent_comment_id:window.__levroActiveProductReply||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
-    if(error){showToast(error.message||"Could not post that comment.","error");__restore();return}
-    window.__levroActiveProductReply=null;await loadInlineComments("product",id,{preserveDraft:false,showLoading:false});hydrateProductCommentCountsInView();
-  };
-  window.submitPackageComment=async function(id){
+    const activeKey=kind==="package"?"__levroActivePackageReply":"__levroActiveProductReply";
+    const parent=window[activeKey]||null;
+    const fk=kind==="package"?"package_id":"product_id", table=kind==="package"?"package_comments":"product_comments", settingsTable=kind==="package"?"package_engagement_settings":"product_engagement_settings";
+    const inp=$(inputId); if(inp){inp.value="";inp.style.height=""}
+    const restore=()=>{const i=$(inputId);if(i&&!i.value){i.value=content;i.style.height=""}};
+    const now=new Date().toISOString(), tmpId="tmp-"+Date.now();
+    const temp={id:tmpId,[fk]:id,user_id:session.user.id,parent_comment_id:parent,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null,created_at:now,updated_at:now};
+    const cache=window.__lvCmtCache[kind+id]||{rows:[],likeMap:new Map(),myLiked:new Set()};
+    window.__lvCmtCache[kind+id]=cache;
+    cache.rows=[temp,...cache.rows];
+    window[activeKey]=null;
+    paintInline(kind,id,cache);
+    try{
+      const row=document.querySelector(`[data-comment-id="${tmpId}"]`);
+      const dd=row&&row.closest(".comment-replies-dropdown");
+      if(dd&&dd.classList.contains("hidden")){window.toggleInlineCommentReplies(dd.id.replace(`levro-replies-${kind}-`,""),kind)}
+      row&&row.scrollIntoView({block:"nearest"});
+    }catch(_){}
+    const undo=(msg)=>{cache.rows=cache.rows.filter(r=>r.id!==tmpId);paintInline(kind,id,cache);showToast(msg,"error");restore()};
+    try{
+      const {data:st}=await sb.from(settingsTable).select("allow_comments,comment_audience,vendor_id").eq(fk,id).maybeSingle();
+      if(st?.allow_comments===false){undo(kind==="package"?"Comments are disabled for this package.":"Comments are disabled for this listing.");return}
+      if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await levroData.follows.isFollowing(session.user.id,st.vendor_id);if(!f){undo(kind==="package"?"Only followers can comment on this package.":"Only followers can comment on this listing.");return}}
+      const {data,error}=await sb.from(table).insert({[fk]:id,user_id:session.user.id,parent_comment_id:parent,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null}).select("id,created_at,updated_at").maybeSingle();
+      if(error){undo(error.message||"Could not post that comment.");return}
+      if(data&&data.id){cache.rows=cache.rows.map(r=>r.id===tmpId?{...r,id:data.id,created_at:data.created_at||r.created_at,updated_at:data.updated_at||r.updated_at}:r);paintInline(kind,id,cache)}
+      else await loadInlineComments(kind,id,{preserveDraft:true,showLoading:false});
+      if(kind==="package")hydratePackageCommentCountsInView();else hydrateProductCommentCountsInView();
+    }catch(e){undo((e&&e.message)||"Could not post that comment.")}
+  }
+  window.submitProductComment=(id)=>submitComment("product",id);
+  window.submitPackageComment=(id)=>submitComment("package",id);
+  // Liking: the heart fills and the count changes at once; the save happens behind it and is undone only if it fails.
+  async function likeComment(kind,commentId){
     if(!session){showLogin();return}
-    const content=String($("packageCommentInput")?.value||"").trim();
-    if(!content){showToast("Write a comment first.","error");return}
-    const __in=$("packageCommentInput");const __restore=()=>{const i=$("packageCommentInput");if(i&&!i.value){i.value=content;i.style.height=""}};if(__in){__in.value="";__in.style.height=""}
-    const {data:st}=await sb.from("package_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("package_id",id).maybeSingle();
-    if(st?.allow_comments===false){showToast("Comments are disabled for this package.","error");__restore();return}
-    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await levroData.follows.isFollowing(session.user.id,st.vendor_id);if(!f){showToast("Only followers can comment on this package.","error");__restore();return}}
-    const {error}=await sb.from("package_comments").insert({package_id:id,user_id:session.user.id,parent_comment_id:window.__levroActivePackageReply||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
-    if(error){showToast(error.message||"Could not post that comment.","error");__restore();return}
-    window.__levroActivePackageReply=null;await loadInlineComments("package",id,{preserveDraft:false,showLoading:false});hydratePackageCommentCountsInView();
-  };
-  window.toggleProductCommentLike=async function(id){
-    if(!session){showLogin();return}
-    const {data:x}=await sb.from("product_comment_likes").select("id").eq("comment_id",id).eq("user_id",session.user.id).maybeSingle();
-    const r=x?.id?await sb.from("product_comment_likes").delete().eq("id",x.id).eq("user_id",session.user.id):await sb.from("product_comment_likes").insert({comment_id:id,user_id:session.user.id});
-    if(r.error&&!/duplicate/i.test(r.error.message||"")){showToast(r.error.message||"Could not update comment like.","error");return}
-    if(currentProductDetail?.id)loadInlineComments("product",currentProductDetail.id,{showLoading:false});
-  };
-  window.togglePackageCommentLike=async function(id){
-    if(!session){showLogin();return}
-    const {data:x}=await sb.from("package_comment_likes").select("id").eq("comment_id",id).eq("user_id",session.user.id).maybeSingle();
-    const r=x?.id?await sb.from("package_comment_likes").delete().eq("id",x.id).eq("user_id",session.user.id):await sb.from("package_comment_likes").insert({comment_id:id,user_id:session.user.id});
-    if(r.error&&!/duplicate/i.test(r.error.message||"")){showToast(r.error.message||"Could not update comment like.","error");return}
-    if(currentViewParams?.packageId)loadInlineComments("package",currentViewParams.packageId,{showLoading:false});
-  };
+    const pid=kind==="package"?currentViewParams?.packageId:currentProductDetail?.id;
+    const cache=pid?window.__lvCmtCache[kind+pid]:null;
+    const cid=String(commentId), uid=session.user.id, tbl=kind==="package"?"package_comment_likes":"product_comment_likes";
+    const was=cache?cache.myLiked.has(cid):false;
+    const apply=(liked)=>{
+      if(cache){const n=Number(cache.likeMap.get(cid)||0);if(liked){cache.myLiked.add(cid);cache.likeMap.set(cid,was===liked?n:n+1)}else{cache.myLiked.delete(cid);cache.likeMap.set(cid,Math.max(0,was===liked?n:n-1))}}
+      const row=document.querySelector(`.product-comment-row[data-comment-id="${CSS.escape(cid)}"]`);
+      const btn=row&&row.querySelector(":scope > .lv-cr-actions .lv-cr-act, .lv-cr-actions .lv-cr-act");
+      if(btn){btn.classList.toggle("active",liked);btn.setAttribute("aria-pressed",String(liked));if(liked){btn.classList.remove("lv-pop");void btn.offsetWidth;btn.classList.add("lv-pop")}}
+      const num=row&&row.querySelector(".lv-cr-n");
+      if(num){const n=cache?Number(cache.likeMap.get(cid)||0):0;num.textContent=n>0?String(n):""}
+    };
+    apply(!was);
+    try{
+      const r=was?await sb.from(tbl).delete().eq("comment_id",cid).eq("user_id",uid):await sb.from(tbl).insert({comment_id:cid,user_id:uid});
+      if(r.error&&!/duplicate/i.test(r.error.message||"")){throw r.error}
+    }catch(e){
+      // undo the change on screen
+      if(cache){const n=Number(cache.likeMap.get(cid)||0);if(was){cache.myLiked.add(cid);cache.likeMap.set(cid,n+1)}else{cache.myLiked.delete(cid);cache.likeMap.set(cid,Math.max(0,n-1))}}
+      const row=document.querySelector(`.product-comment-row[data-comment-id="${CSS.escape(cid)}"]`);
+      const btn=row&&row.querySelector(".lv-cr-actions .lv-cr-act");if(btn){btn.classList.toggle("active",was);btn.setAttribute("aria-pressed",String(was))}
+      const num=row&&row.querySelector(".lv-cr-n");if(num){const n=cache?Number(cache.likeMap.get(cid)||0):0;num.textContent=n>0?String(n):""}
+      showToast((e&&e.message)||"Could not update comment like.","error");
+    }
+  }
+  window.toggleProductCommentLike=(id)=>likeComment("product",id);
+  window.togglePackageCommentLike=(id)=>likeComment("package",id);
   window.deleteProductComment=async function(id){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("product_comments").delete().eq("id",id).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return}if(currentProductDetail?.id){await loadInlineComments("product",currentProductDetail.id,{showLoading:false});hydrateProductCommentCountsInView()}};
   window.deletePackageComment=async function(id){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("package_comments").delete().eq("id",id).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return}if(currentViewParams?.packageId){await loadInlineComments("package",currentViewParams.packageId,{showLoading:false});hydratePackageCommentCountsInView()}};
 

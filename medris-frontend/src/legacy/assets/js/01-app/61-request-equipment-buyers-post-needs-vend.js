@@ -1,4 +1,71 @@
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
+// ---------- Colourful illustrated icons (flat, soft gradients) used on Home quick actions and empty states ----------
+window.lvIllus = function (kind, px) {
+  const g = (id, a, b) => `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+  const S = {
+    bag: g("lia", "#ffb12e", "#ff5d73") + "</defs><path d='M17 17a7 7 0 0 1 14 0' fill='none' stroke='#b4234a' stroke-width='3' stroke-linecap='round'/><path d='M9 17h30l2.5 24a3 3 0 0 1-3 3.3H9.5a3 3 0 0 1-3-3.3z' fill='url(#lia)'/><path d='M9 17h30l.6 6H8.4z' fill='#fff' opacity='.25'/><path d='M18 30q6 6 12 0' fill='none' stroke='#fff' stroke-width='3' stroke-linecap='round'/><defs>",
+    tools: g("lib", "#4f9bff", "#2f5fe0") + "</defs><path d='M10 38 30 18' stroke='#9aa7bd' stroke-width='6' stroke-linecap='round'/><path d='M33 8a8 8 0 0 0-8 10l-1 1 5 5 1-1a8 8 0 0 0 10-8l-5 3-4-4z' fill='url(#lib)'/><path d='M38 38 22 22' stroke='#ff8a3d' stroke-width='6' stroke-linecap='round'/><circle cx='38' cy='38' r='4' fill='#ffc83d'/><defs>",
+    key: g("lic", "#ffe27a", "#ff9a3d") + "</defs><circle cx='17' cy='20' r='11' fill='url(#lic)'/><circle cx='14' cy='17' r='3.6' fill='#fff' opacity='.9'/><path d='M25 27 41 43M33 35l5-5M38 40l4-4' stroke='#e08a1e' stroke-width='5' stroke-linecap='round'/><defs>",
+    store: g("lid", "#ff6aa8", "#c2379f") + "</defs><rect x='8' y='22' width='32' height='20' rx='3' fill='#fff'/><path d='M6 22 9 9h30l3 13z' fill='url(#lid)'/><path d='M14 9l-2 13M24 9v13M34 9l2 13' stroke='#fff' stroke-width='2.4' opacity='.7'/><rect x='19' y='29' width='10' height='13' rx='2' fill='#6a3df0'/><defs>",
+    hand: g("lie", "#ffe27a", "#ffb12e") + "</defs><path d='M16 24V12a3 3 0 0 1 6 0v10m0-12a3 3 0 0 1 6 0v12m0-9a3 3 0 0 1 6 0v14c0 9-5 15-13 15-6 0-9-3-12-8l-4-7a3 3 0 0 1 5-3l4 5z' fill='url(#lie)' stroke='#e08a1e' stroke-width='1.6' stroke-linejoin='round'/><defs>",
+    chat: g("lif", "#4f9bff", "#6a3df0") + "</defs><path d='M8 12a6 6 0 0 1 6-6h20a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22l-9 8v-8h-1a6 6 0 0 1-4-6z' fill='url(#lif)'/><circle cx='16' cy='19' r='2.6' fill='#fff'/><circle cx='24' cy='19' r='2.6' fill='#fff'/><circle cx='32' cy='19' r='2.6' fill='#fff'/><defs>",
+    box: g("lig", "#ffc58a", "#e08a3d") + "</defs><path d='M6 16 24 8l18 8v18L24 42 6 34z' fill='url(#lig)'/><path d='M6 16l18 8 18-8M24 24v18' fill='none' stroke='#fff' stroke-width='2.4' opacity='.7'/><path d='M24 24 42 16l-4-3-18 8z' fill='#fff' opacity='.25'/><path d='M36 4l1.2 3 3 1.2-3 1.2L36 12.4l-1.2-3-3-1.2 3-1.2z' fill='#ffd21f'/><defs>",
+    cart: g("lih", "#19c486", "#0b6b47") + "</defs><path d='M4 7h6l5 24h22l4-17H13' fill='none' stroke='url(#lih)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/><circle cx='19' cy='39' r='3.6' fill='#ffc83d'/><circle cx='34' cy='39' r='3.6' fill='#ffc83d'/><defs>",
+    search: g("lii", "#6a3df0", "#4f9bff") + "</defs><circle cx='21' cy='21' r='13' fill='#fff' stroke='url(#lii)' stroke-width='5'/><path d='M31 31l12 12' stroke='#ff9a3d' stroke-width='6' stroke-linecap='round'/><path d='M15 17q3-5 8-3' fill='none' stroke='#9fd0ff' stroke-width='2.4' stroke-linecap='round'/><defs>",
+  };
+  const body = S[kind] || S.box, size = px || 40;
+  return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true" class="lv-illus"><defs>${body}</defs></svg>`.replace("<defs></defs>", "");
+};
+// ---------- Friendly page header (Request an item, Vendors): brand card, one person, floating icons ----------
+window.lvPageHero = function (kind) {
+  const C = {
+    request: { img: "/lb/person-a.webp", t: "Can't find it?", em: "Request it.", p: "Post what you need and nearby vendors send you offers.", icons: ["fa-hand", "fa-box-open", "fa-tag"] },
+    orders: { img: "/lb/person-f.webp", t: "Your orders,", em: "all in one place.", p: "Track every order from payment to delivery.", icons: ["fa-receipt", "fa-truck-fast", "fa-bag-shopping"] },
+    cart: { img: "/lb/person-c.webp", t: "Your cart is", em: "ready when you are.", p: "Add items and check out in a few taps.", icons: ["fa-cart-shopping", "fa-bag-shopping", "fa-tag"] },
+    search: { img: "/lb/person-d.webp", t: "Find it", em: "fast.", p: "Products, services and vendors on your campus.", icons: ["fa-magnifying-glass", "fa-tag", "fa-store"] },
+    vendors: { img: "/lb/person-e.webp", t: "Meet your", em: "campus vendors.", p: "Shops, services and rentals near you, all in one place.", icons: ["fa-store", "fa-bag-shopping", "fa-star"] },
+  }[kind];
+  if (!C) return "";
+  setTimeout(() => lvFloatHero(), 350); setTimeout(() => lvFloatHero(), 1200);
+  return `<section class="lv-hero2 lv-hero2-${kind}" aria-hidden="true">
+    <div class="lv-hero2-copy"><b>${C.t}</b><b class="em">${C.em}</b><span>${C.p}</span></div>
+    <i class="lv-fl lv-fl1 fa-solid ${C.icons[0]}"></i><i class="lv-fl lv-fl2 fa-solid ${C.icons[1]}"></i><i class="lv-fl lv-fl3 fa-solid ${C.icons[2]}"></i>
+    <img class="lv-fl lv-hero2-img" src="${C.img}" alt="" width="96" height="96" decoding="async">
+  </section>`;
+};
+// Second Home strip, between Trending and Featured Vendors: sell + rent
+window.lvHomeBand2 = function () {
+  setTimeout(() => lvFloatHero(), 450); setTimeout(() => lvFloatHero(), 1400);
+  return `<section class="lv-band lv-band2" aria-label="Sell or rent on Levromart">
+    <button type="button" class="lv-band-card lv-band-d" onclick="navigate('vendorApply')"><span class="lv-band-t"><b>Open your shop</b></span><img class="lv-fl" src="/lb/person-c.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-store"></i></button>
+    <button type="button" class="lv-band-card lv-band-e" onclick="navigate('vendors')"><span class="lv-band-t"><b>Rent from vendors</b></span><img class="lv-fl" src="/lb/person-d.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-key"></i></button>
+  </section>`;
+};
+// Third Home strip, between Trending products and Trending services
+window.lvHomeBand3 = function () {
+  setTimeout(() => lvFloatHero(), 500); setTimeout(() => lvFloatHero(), 1500);
+  return `<section class="lv-band3" onclick="navigate('vendors')" role="link" tabindex="0" aria-label="Meet campus vendors"><div class="lv-b3-copy"><b>Shop from your campus</b><span>Follow your favourite vendors and never miss a drop.</span><em>See vendors <i class="fa-solid fa-arrow-right"></i></em></div><img class="lv-fl lv-b3-img" src="/lb/person-e.webp" alt="" width="72" height="72" loading="lazy" decoding="async"><i class="lv-fl lv-b3-ic fa-solid fa-bag-shopping"></i></section>`;
+};
+// Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
+window.lvHomeBand = function () {
+  setTimeout(() => lvFloatHero(), 400); setTimeout(() => lvFloatHero(), 1300);
+  const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
+  return `<section class="lv-band" aria-label="More on Levromart">
+    <button type="button" class="lv-band-card lv-band-a" onclick="${req}"><span class="lv-band-t">Can't find it?<b>Request it</b></span><img class="lv-fl" src="/lb/person-a.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-hand"></i></button>
+    <button type="button" class="lv-band-card lv-band-b" onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><img class="lv-fl" src="/lb/person-f.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
+    <a class="lv-band-card lv-band-c" href="https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs" target="_blank" rel="noopener"><span class="lv-band-t">Join the family<b>WhatsApp community</b></span><i class="lv-fl lv-bfl lv-bwa fa-brands fa-whatsapp"></i></a>
+  </section>`;
+};
+window.lvFloatHero = function () {
+  try {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    document.querySelectorAll(".lv-hero2 .lv-hero2-img:not([data-fl])").forEach((el, i) => {
+      el.setAttribute("data-fl", "1");
+      const dy = 4 + (i % 3) * 2, r = (i % 2 ? -1 : 1) * (2 + i);
+      el.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(-${dy}px) rotate(${r}deg)` }, { transform: "translateY(0) rotate(0deg)" }], { duration: 2600 + i * 380, delay: i * 250, iterations: Infinity, easing: "ease-in-out" });
+    });
+  } catch (_) {}
+};
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
   const [{ data: myRequests, error: myRequestsError }] = await Promise.all([
@@ -8,7 +75,7 @@ async function renderRequestEquipment() {
     (async () => { if (!window.__categories?.length) { const { data } = await levroData.catalogue.categories(); window.__categories = data || []; } })(),
   ]);
 
-  let html = `<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
+  let html = `${lvPageHero("request")}<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
     <div class="card request-equipment-page" style="max-width:520px;">
       <div id="reqError" class="error-text hidden"></div>
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
@@ -69,7 +136,8 @@ async function renderRequestEquipment() {
   html += `</div></div>`;
   setTimeout(updateRequestFormFields, 0);
   window.__reqPhotos = [];
-  setTimeout(reqPhotosPaint, 0);
+  window.__reqDraftPhotos = [];
+  setTimeout(() => { reqPhotosPaint(); reqDraftRestore(); }, 0);
   return html;
 }
 
@@ -526,3 +594,24 @@ async function buyPackage(packageId) {
   window.__closeLevromartReviewPrompt?.();
   navigate("orderDetail", { orderId });
 }
+
+// Swipe sideways on a storefront to move between Products, Services and Packages (not when the finger starts on a scrolling row or a field).
+(function () {
+  let sx = 0, sy = 0, ok = false;
+  const skip = "input,textarea,select,.hscroll,.storefront-category-chips,.storefront-banner,[class*='carousel'],.modal,.drawer,[role=dialog]";
+  document.addEventListener("touchstart", (e) => {
+    ok = false;
+    if (e.touches.length !== 1 || !document.querySelector("#app .storefront-catalog-tabs") || e.target.closest?.(skip)) return;
+    if (!e.target.closest?.("#app")) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; ok = true;
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (!ok) return; ok = false;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > 45 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    const order = ["products", "services", "packages"], i = order.indexOf(storefrontCatalogTab);
+    const n = i + (dx < 0 ? 1 : -1);
+    if (i < 0 || n < 0 || n >= order.length) return;
+    switchStorefrontCatalogTab(order[n]);
+  }, { passive: true });
+})();

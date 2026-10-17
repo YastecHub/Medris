@@ -38,7 +38,10 @@ function openSearchFromHeader() {
   setTimeout(() => { try { temp?.remove(); } catch (_) {} }, 3000);
 }
 function servicePriceSuffix(p) { return p.is_service && p.service_price_unit && p.service_price_unit !== "flat" ? "/" + p.service_price_unit : ""; }
-function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+// Escapes text for HTML. Quotes are escaped too: this is used inside attribute values (aria-label="...", alt="...",
+// data-...='...'), and an unescaped " or ' in a name from the database would end the attribute and let the rest of the
+// text add attributes of its own (for example onmouseover=...). innerHTML already escapes & < >.
+function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
 // Swaps a plain <select>'s open state for a styled popup matching the rest
 // of the app, instead of the bare OS picker (the native list of radio

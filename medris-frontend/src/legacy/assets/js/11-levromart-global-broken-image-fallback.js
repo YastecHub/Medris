@@ -848,13 +848,14 @@ function hideLeviFromPanel() {
     const want = params?.tab === "activity" ? "mine" : params?.tab;
     LB.tab = want && tabsNow().some((t) => t[0] === want) ? want : "ranking";
     LB.filter = "all";
-    try { window.lvVendorMapReady && window.lvVendorMapReady().then(() => { if ($("lbBody")) window.lbRerender(); }); } catch (_) {}
+    LB.mapReady = false; try { window.lvVendorMapReady ? window.lvVendorMapReady().then(() => { LB.mapReady = true; if ($("lbBody")) window.lbRerender(); }, () => { LB.mapReady = true; if ($("lbBody")) window.lbRerender(); }) : (LB.mapReady = true); } catch (_) { LB.mapReady = true; }
     return `<div class="lb-page">
       <div class="lb-hero">
         <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
           <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left<span id="lbScope"></span></span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
+        <div class="lb-hero-people" aria-hidden="true"><img src="/lb/person-a.webp" alt="" width="52" height="52" decoding="async"><img src="/lb/person-c.webp" alt="" width="52" height="52" decoding="async"></div>
       </div>
       <div class="lb-scope-seg" id="lbScopeSeg" role="tablist" aria-label="Campus"></div>
       <div class="lb-tabs" role="tablist">${tabsNow().map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
@@ -864,7 +865,14 @@ function hideLeviFromPanel() {
 
   // Campus view: "Mine" limits the board to vendors of that campus (and those who sell on it); "All" shows everyone.
   function viewCampus() { try { return window.lvViewCampus ? window.lvViewCampus() : "all"; } catch (_) { return "all"; } }
-  function inView(vendorId) { try { return viewCampus() === "all" || !window.lvVendorInScope || window.lvVendorInScope(vendorId) !== false; } catch (_) { return true; } }
+  // A campus board lists only vendors whose home campus is that campus (plus you). A vendor we cannot place is left out, never shown by default.
+  function inView(vendorId) {
+    try {
+      const v = viewCampus(); if (v === "all") return true;
+      try { if (typeof isOwnVendorId === "function" && isOwnVendorId(vendorId)) return true; } catch (_) {}
+      return !!window.lvVendorHomeCampus && window.lvVendorHomeCampus(vendorId) === v;
+    } catch (_) { return false; }
+  }
   function scopeRows(rows) {
     if (viewCampus() === "all") return rows;
     const kept = (rows || []).filter((r) => r.is_me || inView(r.vendor_id));
@@ -939,7 +947,7 @@ function hideLeviFromPanel() {
     const isFol = followed.has(String(r.vendor_id));
     return `<div class="lb-row${r.is_me ? " me" : ""}" data-row onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
       <div class="lb-rank">${r.rank}</div>${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}
-      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<i class="fa-solid fa-heart lb-fol" role="img" aria-label="You follow this vendor" title="You follow this vendor"></i>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
+      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<span class="lb-tag fol" role="img" aria-label="You follow this vendor" title="You follow this vendor"><i class="fa-solid fa-user-check" aria-hidden="true"></i></span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
       <div class="lb-row-pts"><b>${num(r.points)}</b>pts</div></div>`;
   }
 
@@ -947,7 +955,7 @@ function hideLeviFromPanel() {
     const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" title="Vendors I follow" aria-label="Vendors I follow" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i></button></div>`;
     const reward = `<p class="lb-note"><i class="fa-solid fa-gift"></i> Finish first to win a free week of promotion</p>`;
     const b = LB.boards[LB.period];
-    if (!b) return chips + skeleton(7);
+    if (!b || (viewCampus() !== "all" && LB.mapReady === false)) return chips + skeleton(7);   // wait for the vendor list so a campus board never flashes other campuses
     const rows = scopeRows(b.rows || []);
     if (!rows.length) return chips + `<div class="lb-card lb-empty"><i class="fa-solid fa-ranking-star"></i><strong>No vendors on the board yet</strong><p>Check back soon.</p></div>`;
     const followed = (window.followedVendorSet && window.followedVendorSet()) || new Set();
@@ -1267,8 +1275,16 @@ function hideLeviFromPanel() {
     } catch (_) {}
   }
 
+  // the two faces in the header drift up and down, out of step, like bubbles (WAAPI: CSS animation is off app-wide)
+  function floatFaces() {
+    if (reduced()) return;
+    document.querySelectorAll(".lb-hero-people img").forEach((img, i) => {
+      try { img.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(${i ? -5 : -7}px) rotate(${i ? -2 : 2}deg)` }, { transform: "translateY(0) rotate(0deg)" }], { duration: i ? 3400 : 2800, delay: i ? 600 : 0, iterations: Infinity, easing: "ease-in-out" }); } catch (_) {}
+    });
+  }
   window.initLeaderboardPage = async function () {
     const tok = ++LB.token;
+    floatFaces();
     startLive();
     const wantSummary = signedIn();
     const tasks = [loadBoard(LB.period), loadRules()];

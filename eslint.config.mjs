@@ -22,7 +22,7 @@ export default tseslint.config(
     // byte-for-byte baseline test rather than by lint rules.
     // api/*.js are the original Vercel functions (CommonJS, restored unchanged); they are
     // guarded by `npm run api:check` (node --check), like the legacy runtime.
-    ignores: ["**/dist/**", "**/node_modules/**", "api/**", "medris-frontend/src/legacy/**", "medris-frontend/src/service-worker/**", "medris-frontend/public/**", "supabase/**", "docs/**"],
+    ignores: ["**/dist/**", "**/dist-e2e/**", "**/test-results/**", "**/playwright-report/**", "**/node_modules/**", "api/**", "medris-frontend/src/legacy/**", "medris-frontend/src/service-worker/**", "medris-frontend/public/**", "supabase/**", "docs/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

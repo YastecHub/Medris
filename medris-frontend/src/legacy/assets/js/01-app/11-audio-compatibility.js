@@ -10,13 +10,17 @@ function unlockNotificationAudio(){
   if(!audioCtx||audioCtx.state==='closed')audioCtx=new Ctx();
   if(audioCtx.state!=='running')audioCtx.resume().catch(()=>{});
 }
+// Soft bell: two warm, round notes ("bong, bong"), no sharp attack and no bright overtones.
+// [start seconds, frequency Hz]; each note is a sine with two quiet, short-lived partials.
+const BELL_NOTES=[[0,587.33],[.42,440]];
+const BELL_PARTIALS=[[1,1,1.5],[2.01,.12,.7],[3.02,.03,.35]]; // [frequency multiple, loudness, decay seconds]
 // Fallback chime for phones whose WebAudio context is locked or "interrupted":
 // the same three notes rendered once into a tiny WAV that plays through <audio>.
 let __chimeEl=null;
 function chimeWavUrl(){
   if(window.__chimeWavUrl)return window.__chimeWavUrl;
-  const rate=22050,len=Math.floor(rate*2.4),buf=new Int16Array(len);
-  [0,1.05].forEach(off=>[523.25,659.25,783.99].forEach((hz,i)=>{const start=Math.floor((off+i*.2)*rate);for(let n=start;n<Math.min(len,start+rate);n++){const t=(n-start)/rate;const env=Math.min(1,t/.02)*Math.exp(-t*4);buf[n]+=Math.round(Math.sin(2*Math.PI*hz*t)*env*11000);}}));
+  const rate=22050,len=Math.floor(rate*2.2),buf=new Int16Array(len);
+  BELL_NOTES.forEach(([off,hz])=>{const start=Math.floor(off*rate);for(let n=start;n<len;n++){const t=(n-start)/rate;if(t>1.8)break;const att=Math.min(1,t/.012);let v=0;BELL_PARTIALS.forEach(([m,g,d])=>{v+=g*Math.sin(2*Math.PI*hz*m*t)*Math.exp(-t*3.2/d);});buf[n]+=Math.round(att*v*9000);}});
   const hdr=new ArrayBuffer(44),v=new DataView(hdr),w=(o,str)=>{for(let k=0;k<str.length;k++)v.setUint8(o+k,str.charCodeAt(k));};
   w(0,'RIFF');v.setUint32(4,36+len*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,len*2,true);
   window.__chimeWavUrl=URL.createObjectURL(new Blob([hdr,buf.buffer],{type:'audio/wav'}));
@@ -35,21 +39,23 @@ function playNotificationSound(n){
   const go=()=>{
     const now=audioCtx.currentTime;
     if(now<notificationSoundUntil)return;
-    notificationSoundUntil=now+3.2;
-    // Levromart chime: three notes, repeated once, loud enough to hear in a busy room.
-    // Generated in-app so there is no audio file to download.
-    [0,1.05].forEach(off=>[523.25,659.25,783.99].forEach((hz,i)=>{
-      const at=now+off+i*.2;
-      ['sine','triangle'].forEach((type,k)=>{
+    notificationSoundUntil=now+2.2;
+    // Generated in-app (no audio file). A gentle low-pass keeps it smooth and easy on the ear.
+    const master=audioCtx.createGain(),soft=audioCtx.createBiquadFilter();
+    master.gain.value=.5;soft.type='lowpass';soft.frequency.value=2200;soft.Q.value=.5;
+    master.connect(soft);soft.connect(audioCtx.destination);
+    BELL_NOTES.forEach(([off,hz])=>{
+      const at=now+off;
+      BELL_PARTIALS.forEach(([m,g,d])=>{
         const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-        osc.type=type;osc.frequency.setValueAtTime(hz*(k?2:1),at);
+        osc.type='sine';osc.frequency.setValueAtTime(hz*m,at);
         gain.gain.setValueAtTime(0,at);
-        gain.gain.linearRampToValueAtTime(k?.18:.55,at+.02);
-        gain.gain.exponentialRampToValueAtTime(.0001,at+.95);
-        osc.connect(gain);gain.connect(audioCtx.destination);
-        osc.start(at);osc.stop(at+1);
+        gain.gain.linearRampToValueAtTime(.4*g,at+.012);
+        gain.gain.exponentialRampToValueAtTime(.0001,at+d+.3);
+        osc.connect(gain);gain.connect(master);
+        osc.start(at);osc.stop(at+d+.35);
       });
-    }));
+    });
   };
   if(audioCtx&&audioCtx.state==='running'){go();return;}
   if(audioCtx){

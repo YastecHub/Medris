@@ -96,14 +96,19 @@ window.submitServiceOffer=async function(listingId){
 window.confirmServiceOfferPayment=async function(id){if(!(await showConfirmDialog('Confirm that you have received the buyer’s bank transfer for this service?',{title:'Confirm payment received',okLabel:'Confirm payment'})))return;try{const {data,error}=await sb.rpc('confirm_service_offer_payment',{p_offer_id:id});if(error)throw error;showToast('Payment confirmed. The service booking is complete.','success');if(data?.order_id){await navigate('orderDetail',{orderId:data.order_id},false);}else{await navigate('productDetail',{productId:currentProductDetail?.id,serviceOfferId:id},false);}}catch(e){showToast(e.message||'Could not confirm payment.','error')}};
 window.disputeServiceOfferPayment=async function(id){if(!(await showConfirmDialog('Dispute this reported payment? No commission will be added while it is disputed.',{title:'Dispute payment',okLabel:'Dispute',danger:true})))return;try{const {error}=await sb.rpc('dispute_service_offer_payment',{p_offer_id:id});if(error)throw error;showToast('Payment disputed.','success');await navigate('productDetail',{productId:currentProductDetail?.id,serviceOfferId:id},false);}catch(e){showToast(e.message||'Could not dispute payment.','error')}};
 window.__levroBaseRenderProductDetail = __levroOriginalRenderProductDetail;
+// Product data fetched ahead of time for the neighbouring products (see the swipe script below), so swiping to one needs no waiting.
+window.__lvPdPre = new Map();
+window.__lvPdTake = function (id) { const k = String(id), e = window.__lvPdPre.get(k); if (!e) return null; window.__lvPdPre.delete(k); return Date.now() - e.at < 90000 ? e : null; };
 window.renderProductDetail = async function(productId){
-  const {data:p,error}=await sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id',productId).maybeSingle();
+  const __pre = window.__lvPdTake(productId);
+  const {data:p,error}= __pre ? await __pre.first : await sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id',productId).maybeSingle();
   if(!error&&p?.is_service&&p.billing_model==='commission'){
     const own=isOwnVendorId(p.vendor?.id);
     if(!own&&(p.status!=='active'||p.vendor?.verification_status!=='verified'||!p.vendor?.is_active))return '<div class="empty-state">This service is not currently available.</div>';
     const hint=await getServicePriceHint(productId); const offers=await loadServiceOffers(productId); currentProductDetail=p;
     return renderCommissionServiceDetail(p,hint,offers);
   }
+  window.__lvPdBase = __pre ? __pre.base : null;
   return window.__levroBaseRenderProductDetail(productId);
 };
 
@@ -111,7 +116,8 @@ async function __levroOriginalRenderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
-  const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
+  const __base = window.__lvPdBase; window.__lvPdBase = null;
+  const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = __base ? await __base : await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
   if(!product)return '<div class="empty-state">Product not found.</div>';
   const ownListing=isOwnVendorId(product.vendor?.id);
@@ -140,7 +146,6 @@ async function __levroOriginalRenderProductDetail(productId) {
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
         </div>
-        ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
@@ -171,7 +176,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><span class="lv-cbubble"><i class="fa-regular fa-comment"></i><b class="lv-ccount" data-product-id="${esc(product.id)}">${window.__productCommentCounts?.get?.(String(product.id)) ?? ""}</b></span></button>
+      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><span class="lv-cbubble"><i class="fa-solid fa-comment-dots"></i><b class="lv-ccount" data-product-id="${esc(product.id)}">${window.__productCommentCounts?.get?.(String(product.id)) ?? ""}</b></span></button>
       <button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share product" aria-label="Share product"><i class="fa-solid fa-share-nodes"></i></button>
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
@@ -181,7 +186,8 @@ async function __levroOriginalRenderProductDetail(productId) {
     <div class="product-detail-actions">
       ${(() => {
         if (profile?.role === "admin") return "";
-        // No Message vendor button on product pages at all: customers message a vendor only from an accepted order.
+        // No Message vendor button on product pages: customers message a vendor (in-app or, for now, WhatsApp) only
+        // from an order the vendor has confirmed. See the order pages.
         return "";
         if (!canMessageVendorNow(product.vendor)) {
           const hs = vendorHoursStatus(product.vendor);
@@ -284,6 +290,7 @@ const RELATED_EQUIPMENT = {
 };
 
 function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, perKm, pickupLabel, fixedItemTotal) {
+  perKm = Math.min(1000, Number(perKm) || 0);
   const fee = Number(deliveryFee) || 0;
   const isDistance = feeMode === "distance" && Number(perKm) > 0 && vendorLat != null && vendorLng != null;
   const hasVendorLoc = vendorLat != null && vendorLng != null;
@@ -312,7 +319,7 @@ function deliveryFeeCalcHtml(prefix) {
   const vLng = wrap.dataset.vendorLng !== "" ? Number(wrap.dataset.vendorLng) : null;
   let lines = [];
   if (wrap.dataset.feeLines) { try { lines = JSON.parse(wrap.dataset.feeLines); } catch (_) { lines = []; } }
-  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Number(wrap.dataset.perKm) || 0 }];
+  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Math.min(1000, Number(wrap.dataset.perKm) || 0) }];
   const rows = [];
   let km = null;
   if (buyerLocation && vLat != null && vLng != null) km = haversineKm(buyerLocation.lat, buyerLocation.lng, vLat, vLng);
@@ -711,3 +718,262 @@ async function buyNow(vendorId, productId) {
   await navigate("orderDetail", { orderId });
 }
 
+
+
+/* Fetch a product's data ahead of time (the same queries the page makes), so opening it, e.g. by swiping, is instant. */
+window.lvPdPrefetch = function (id) {
+  const k = String(id);
+  if (!id || window.__lvPdPre.has(k)) return;
+  const run = (b) => Promise.resolve(b.then((r) => r)).catch((e) => ({ data: null, error: e }));
+  const first = run(sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id', id).maybeSingle());
+  const base = Promise.all([
+    run(sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", id).maybeSingle()),
+    run(sb.from("product_variants").select("*").eq("product_id", id).order("sort_order", { ascending: true }).order("created_at", { ascending: true })),
+    run(sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id", id).maybeSingle()),
+  ]);
+  window.__lvPdPre.set(k, { at: Date.now(), first, base });
+  // the first picture too, so it is on screen the moment the page slides in
+  first.then(({ data }) => { try { const u = data?.photos?.[0]; if (u) { const im = new Image(); im.decoding = "async"; im.src = u; (window.__lvPdImgs = window.__lvPdImgs || []).push(im); if (window.__lvPdImgs.length > 14) window.__lvPdImgs.shift(); try { im.decode && im.decode().catch(() => {}); } catch (_) {} } } catch (_) {} });
+  if (window.__lvPdPre.size > 8) window.__lvPdPre.delete(window.__lvPdPre.keys().next().value);
+};
+
+/* ---- swipe the page sideways to move to the vendor's next / previous product ----
+   The page follows the finger (like a carousel) with a small arrow at the edge that grows as you drag; let go past
+   a third of the screen, or flick, and it slides away and the next product slides in. Let go early and it springs back. */
+(function () {
+  let t0 = null, lock = null, hint = null;
+  const blocked = "input,textarea,select,button,a,label,.product-gallery-carousel,.product-gallery-track,.product-gallery-main,.product-gallery-thumbs,.product-gallery-varieties,.product-comments-panel,.lv-cmt-sheet,.modal,.drawer,[role=dialog],.horizontal-scroll,.carousel,.hscroll,#lvCs,#mediaActionSheet";
+  const cache = new Map();
+  const app = () => document.getElementById("app");
+  async function siblings(vendorId) {
+    if (cache.has(vendorId)) return cache.get(vendorId);
+    const p = sb.from("products").select("id").eq("vendor_id", vendorId).eq("status", "active").order("created_at", { ascending: false }).limit(60)
+      .then(({ data }) => (data || []).map((r) => String(r.id))).catch(() => []);
+    cache.set(vendorId, p);
+    return p;
+  }
+  // One endless feed: the vendor's own products first, then products from other verified vendors (same category first), then back to the start.
+  let feed = null;
+  async function buildFeed(cur, vid) {
+    const own = await siblings(String(vid));
+    let more = [];
+    try {
+      const { data } = await sb.from("products").select("id, category_id, vendor:vendors!inner(id, verification_status, is_active)")
+        .eq("status", "active").neq("vendor_id", vid).eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+        .order("created_at", { ascending: false }).limit(80);
+      const cat = cur.category_id;
+      more = (data || []).map((r, i) => ({ id: String(r.id), k: (r.category_id && r.category_id === cat ? 0 : 1) * 1000 + i })).sort((a, b) => a.k - b.k).map((r) => r.id);
+    } catch (_) {}
+    const ids = [...own];
+    if (!ids.includes(String(cur.id))) ids.unshift(String(cur.id));
+    more.forEach((id) => { if (!ids.includes(id)) ids.push(id); });
+    feed = { ids, at: Date.now() };
+    return feed;
+  }
+  async function getFeed() {
+    const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
+    if (!cur?.id || !vid || currentView !== "productDetail") return null;
+    if (!feed || Date.now() - feed.at > 600000 || !feed.ids.includes(String(cur.id))) await buildFeed(cur, vid);
+    return feed;
+  }
+  async function target(dir) {
+    const f = await getFeed(), cur = currentProductDetail;
+    if (!f || !cur) return null;
+    const ids = f.ids, i = ids.indexOf(String(cur.id));
+    if (i < 0 || ids.length < 2) return null;
+    return ids[(i + dir + ids.length) % ids.length];
+  }
+  function showHint() { /* no edge arrow: the page itself follows the finger */ }
+  function clearHint() { if (hint) { hint.remove(); hint = null; } }
+  function reset(el, animate) {
+    if (!el) return;
+    el.style.transition = animate ? "transform .22s cubic-bezier(.2,.8,.2,1), opacity .22s" : "none";
+    el.style.transform = ""; el.style.opacity = "";
+    setTimeout(() => { el.style.transition = ""; }, 260);
+  }
+  document.addEventListener("touchstart", (e) => {
+    t0 = null; lock = null; window.__lvSwipeWarm = null;
+    if (currentView !== "productDetail" || e.touches.length !== 1) return;
+    if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
+    t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    getFeed().catch(() => {});
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!t0) return;
+    const dx = e.touches[0].clientX - t0.x, dy = e.touches[0].clientY - t0.y;
+    if (lock === null && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? "h" : "v";
+    if (lock !== "h") return;
+    if (e.cancelable) e.preventDefault();
+    if (busy) return;
+    const el = app(); if (!el) return;
+    el.style.transition = "none";
+    el.style.transform = `translateX(${dx * 0.85}px)`;
+    el.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+    if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; dropPeek(); target(d).then((id) => { if (id) { window.lvPdPrefetch?.(id); window.__lvSwipeWarm.id = id; } }).catch(() => {}); }
+    // the next product itself rides in beside the finger, so there is never an empty moment
+    const wd = dx < 0 ? 1 : -1;
+    if (!peek && window.__lvSwipeWarm?.id) { const d = peekFor(window.__lvSwipeWarm.id); if (d) peek = buildPeek(d, wd); }
+    if (peek) peek.el.style.transform = `translate3d(${wd * innerWidth + dx * 0.85}px,0,0)`;
+  }, { passive: false });
+  // A light preview of the next product (its photo, name and shop) taken from the data already prefetched.
+  let peek = null;
+  const peekData = new Map();
+  function peekFor(id) {
+    const k = String(id), e = window.__lvPdPre?.get(k);
+    if (e && !peekData.has(k)) e.first.then((r) => { if (r?.data) peekData.set(k, r.data); });
+    return peekData.get(k) || null;
+  }
+  // A light preview of the next product: its name and photo, in exactly the place and size they have on every product page
+  // (the page keeps the title in a fixed two-line space, so the photo is always in the same spot). When the real page takes
+  // over, nothing moves.
+  function buildPeek(d, dir) {
+    const host = app(); if (!host) return null;
+    const r0 = host.getBoundingClientRect(), sy = window.scrollY || 0;
+    // the page is being dragged sideways when the preview is built: measure it where it would rest
+    const tx = parseFloat((host.style.transform.match(/translateX\(([-0-9.]+)px/) || [])[1]) || 0;
+    const r = { left: r0.left - tx, top: r0.top, width: r0.width };
+    const top = sy > 0 ? 0 : Math.max(0, r.top);
+    const el = document.createElement("div");
+    el.className = "lv-swipe-peek";
+    Object.assign(el.style, { position: "fixed", left: r.left + "px", top: top + "px", width: r.width + "px", height: (innerHeight - top) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: `translate3d(${dir * innerWidth}px,0,0)`, willChange: "transform" });
+    const img = Array.isArray(d.photos) ? d.photos[0] : "";
+    const gi = document.querySelector("#app .product-gallery-main img, #app .product-gallery-carousel img, #app .product-detail-media img");
+    const h2 = document.querySelector("#app .product-detail-title");
+    const rel = (e) => { const b = e.getBoundingClientRect(); return { x: b.left - tx - r.left, y: b.top + sy - top, w: b.width, h: b.height }; };
+    let html = "";
+    if (h2) {
+      const b = rel(h2), cs = getComputedStyle(h2);
+      html += `<div style="position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;box-sizing:border-box;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;padding:${cs.padding};font-family:${cs.fontFamily};font-size:${cs.fontSize};font-weight:${cs.fontWeight};line-height:${cs.lineHeight};letter-spacing:${cs.letterSpacing};color:${cs.color};margin:0">${esc(d.name || "")}</div>`;
+    }
+    if (gi) {
+      const b = rel(gi), cs = getComputedStyle(gi);
+      html += `<div style="position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;border-radius:${cs.borderRadius};overflow:hidden;background:color-mix(in srgb,var(--text,#111) 6%,transparent)">${img ? `<img src="${esc(img)}" alt="" decoding="async" style="width:100%;height:100%;object-fit:${cs.objectFit || "cover"};display:block">` : ""}</div>`;
+    } else {
+      html += `<div class="lvp-img">${img ? `<img src="${esc(img)}" alt="" decoding="async">` : ""}</div>`;
+    }
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    return { el, dir };
+  }
+  function dropPeek() { if (peek) { try { peek.el.remove(); } catch (_) {} peek = null; } }
+  // Frozen picture of the page being left: it slides away while the next product is prepared behind it, so the person
+  // never sees a loading state or a reload, only one product sliding out and the next sliding in.
+  function snapshotOf(el) {
+    el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "";
+    const r = el.getBoundingClientRect();
+    const snap = el.cloneNode(true);
+    snap.removeAttribute("id");
+    snap.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    snap.querySelectorAll("video,audio").forEach((n) => n.remove());
+    Object.assign(snap.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0", overflow: "hidden", zIndex: "5", pointerEvents: "none", transition: "none", background: "var(--bg,transparent)" });
+    snap.classList.add("lv-swipe-snap");
+    document.body.appendChild(snap);
+    return snap;
+  }
+  async function waitForProduct(id) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 4000) {
+      const card = document.querySelector(`#app .product-detail-card[data-product-detail-id="${CSS.escape(String(id))}"]`);
+      if (card) return true;
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    return false;
+  }
+  // keep the neighbouring products fetched while a product page is open
+  let warmedFor = null;
+  setInterval(async () => {
+    try {
+      if (currentView !== "productDetail" || document.hidden) return;
+      const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
+      if (!cur?.id || !vid || warmedFor === String(cur.id)) return;
+      warmedFor = String(cur.id);
+      const f = await getFeed(); if (!f) return;
+      const ids = f.ids, i = ids.indexOf(String(cur.id));
+      if (i < 0 || ids.length < 2) return;
+      [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length], ids[(i + 2) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
+    } catch (_) {}
+  }, 600);
+  let busy = false, active = null, queued = 0;
+  // Hand the page over to the next / previous product. With a preview ready the slide starts the instant the finger
+  // lifts; the real page is built behind it and quietly takes over, so there is no pause at all.
+  async function goToNeighbour(dir, dx) {
+    busy = true;
+    const el = app();
+    const pk = peek && peek.dir === dir ? peek : null; peek = pk ? null : (dropPeek(), null);
+    try {
+      const id = await target(dir);
+      if (!id) { if (pk) { try { pk.el.remove(); } catch (_) {} } reset(el, true); try { showToast("No other products from this vendor yet.", "info"); } catch (_) {} return; }
+      let pv = pk;
+      if (!pv) { const d = peekFor(id); if (d) { pv = buildPeek(d, dir); if (pv) pv.el.style.transform = `translate3d(${dir * innerWidth + dx * 0.85}px,0,0)`; } }
+      // 1. freeze what is on screen exactly where the finger left it
+      const snap = snapshotOf(el);
+      snap.style.transform = `translateX(${dx * 0.85}px)`;
+      snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+      el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
+      const W = innerWidth, D = 180, E = "cubic-bezier(.22,.9,.3,1)";
+      const from = parseFloat(snap.style.transform.replace(/[^0-9.\-]/g, "")) || 0;
+      const fromP = pv ? (parseFloat(pv.el.style.transform.replace(/translate3d\(([-0-9.]+)px.*/, "$1")) || dir * W) : 0;
+      // 2. the old page and the preview glide together straight away
+      const a1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" }) : null;
+      const a2 = pv && pv.el.animate ? pv.el.animate([{ transform: `translate3d(${fromP}px,0,0)` }, { transform: "translate3d(0,0,0)" }], { duration: D, easing: E, fill: "forwards" }) : null;
+      // 3. meanwhile the real page is built behind them
+      let ok = true;
+      window.__lvSwipeNav = true;
+      try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
+      ok = ok && await waitForProduct(id);
+      window.__lvSwipeNav = false;
+      const now = app();
+      if (!ok || !now) { snap.remove(); if (pv) pv.el.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
+      try { window.scrollTo(0, 0); } catch (_) {}
+      if (pv) {
+        // 4. once the preview has landed, the real page replaces it with a quick fade
+        try { await Promise.all([a1?.finished, a2?.finished].filter(Boolean)); } catch (_) {}
+        // keep the preview over the page until the real photo has been painted, so the photo never blinks out
+        try {
+          const ri = now.querySelector(".product-gallery-main img, .product-gallery-carousel img, .product-detail-media img");
+          if (ri && !(ri.complete && ri.naturalWidth)) await Promise.race([ri.decode().catch(() => {}), new Promise((r) => setTimeout(r, 400))]);
+        } catch (_) {}
+        now.style.opacity = ""; now.style.transform = "";
+        snap.remove();
+        const f = pv.el.animate ? pv.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: "linear", fill: "forwards" }) : null;
+        if (f) { try { await f.finished; } catch (_) {} }
+        pv.el.remove();
+      } else {
+        // no preview yet (very fast swipe on a slow connection): slide the real page in as soon as it exists
+        const fromX = dir * W;
+        now.style.opacity = "1"; now.style.willChange = "transform";
+        const b1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" }) : null;
+        const b2 = now.animate ? now.animate([{ transform: `translateX(${fromX}px)` }, { transform: "translateX(0)" }], { duration: D, easing: E }) : null;
+        if (b2) { try { await b2.finished; } catch (_) {} }
+        snap.remove(); now.style.willChange = ""; now.style.transform = ""; now.style.opacity = "";
+      }
+    } finally {
+      busy = false; window.__lvSwipeNav = false;
+      document.querySelectorAll(".lv-swipe-snap").forEach((n) => n.remove());
+      if (queued) { const d = queued; queued = 0; goToNeighbour(d, 0); }
+    }
+  }
+  document.addEventListener("touchend", (e) => {
+    const start = t0, was = lock; t0 = null; lock = null;
+    if (!start || was !== "h") { clearHint(); return; }
+    const el = app(), dx = e.changedTouches[0].clientX - start.x, dt = Date.now() - start.t;
+    clearHint();
+    const far = Math.abs(dx) > innerWidth * 0.25, flick = Math.abs(dx) > 45 && dt < 320;
+    if (!far && !flick) { dropPeekAnimated(); reset(el, true); return; }
+    const dir = dx < 0 ? 1 : -1;
+    // a swipe made while the last one is still settling is kept and played right after it, never lost
+    if (busy) { queued = dir; dropPeek(); return; }
+    goToNeighbour(dir, dx);
+  }, { passive: true });
+  function dropPeekAnimated() {
+    const pk = peek; peek = null; if (!pk) return;
+    try { pk.el.animate([{ transform: pk.el.style.transform }, { transform: `translate3d(${pk.dir * innerWidth}px,0,0)` }], { duration: 160, easing: "ease-out", fill: "forwards" }).finished.then(() => pk.el.remove(), () => pk.el.remove()); } catch (_) { pk.el.remove(); }
+  }
+  document.addEventListener("touchcancel", () => { if (lock === "h") { dropPeek(); reset(app(), true); } t0 = null; lock = null; clearHint(); }, { passive: true });
+})();
+
+/* the comment badge on the product page's top button only shows when there are comments */
+(function () {
+  const mark = () => document.querySelectorAll(".product-detail-card .lv-ccount").forEach((b) => { const z = !Number(b.textContent); if (z !== (b.dataset.zero === "1")) b.dataset.zero = z ? "1" : ""; });
+  try { new MutationObserver(mark).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (_) {}
+})();

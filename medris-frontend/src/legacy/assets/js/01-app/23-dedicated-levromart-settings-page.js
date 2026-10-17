@@ -12,13 +12,12 @@ function renderSettingsPage(){
     <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><img class="about-row-logo" src="{{inline-asset:levromart-splash-img.webp}}" alt="" /><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-circle-question"></i> Help &amp; feedback</h3><button class="settings-action-row" onclick="showTour()"><i class="fa-solid fa-compass"></i><span><strong>Take the tour</strong><small>Replay the Levromart walkthrough</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showSuggestionModal('platform')"><i class="fa-solid fa-comment-dots"></i><span><strong>Send feedback</strong><small>Tell us what could be better</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <section class="settings-page-section"><button class="settings-action-row settings-logout-row" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i><span><strong>Log out</strong></span></button></section>
-    <p class="muted" style="text-align:center;font-size:.75rem;margin:1rem 0 .5rem">Levromart version 1.0</p>
   </div>`;
 }
 function hydrateSettingsPage(){
   setLevromartFontScale(getLevromartFontScale());
   levroPaintPushStatus();
-  const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"light";
+  const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"black";
   document.querySelectorAll("#settings-page .settings-choice").forEach(el=>{const on=el.dataset.themeChoice===theme;el.classList.toggle("active",on);el.dataset.active=String(on);});
   const motion=getLevromartMotionPreference(); document.querySelectorAll("#settings-page [data-motion-choice]").forEach(el=>{const on=el.dataset.motionChoice===motion;el.classList.toggle("active",on);el.dataset.active=String(on);});
   const vis=byId("leviVisibleSettingRow");

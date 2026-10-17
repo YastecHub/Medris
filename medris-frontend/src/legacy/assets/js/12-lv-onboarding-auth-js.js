@@ -315,7 +315,7 @@
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name"><span class="lv-svr-nm">'+ee(v.business_name||"Vendor")+'</span><i data-vt="'+ee(v.id)+'" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor" title="Verified vendor"></i></span></button>';
   }
   // remember vendors opened from the search page
   function hookNav(){
@@ -410,7 +410,7 @@
     });
   }
   var t=0;
-  function scan(){ t=0; document.querySelectorAll("#app .hscroll.trending-scroll:not(.service-trending-scroll)").forEach(setup); }
+  function scan(){ t=0; document.querySelectorAll("#app .hscroll.trending-scroll:not(.service-trending-scroll), #app .hscroll.top-rated-vendors-scroll").forEach(setup); }
   new MutationObserver(function(){ if(!t) t=setTimeout(scan,150); }).observe(document.documentElement,{childList:true,subtree:true});
 })();
 /* 30-second in-app reminders (while the app is open): unread chats, unfinished orders */
@@ -554,7 +554,7 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(nm)+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name"><span class="lv-svr-nm">'+ee(nm)+'</span><i data-vt="'+ee(v.id)+'" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor" title="Verified vendor"></i></span></button>';
   }
   function loadPool(){
     if(pool&&Date.now()-poolAt<300000) return Promise.resolve(pool);
@@ -1100,22 +1100,26 @@ document.addEventListener("click",function(e){
     var go=function(v){ if(v&&v.id) goStore(v.id); };
     if(CMV.has(uid)) go(CMV.get(uid)); else vendorOf(uid).then(go);
   };
+  // One comment, laid out like TikTok: avatar, name, the text, then time + Reply underneath; the heart and its count sit on the right.
+  var HEART='<svg class="lv-heart" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 20.6s-7.5-4.5-9.3-9.2C1.5 8.2 3.4 4.7 6.9 4.7c2 0 3.5 1 5.1 3 1.6-2 3.1-3 5.1-3 3.5 0 5.4 3.5 4.2 6.7-1.8 4.7-9.3 9.2-9.3 9.2z"/></svg>';
   window.lvCommentRowHtml=function(c,lm,ml,d,kind){
     var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");
     var liked=ml&&ml.has(id),n=Number((lm&&lm.get(id))||0);
     var nm=c.author_name||"Levromart user";
-    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:2.4rem;height:2.4rem;object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,"2.4rem","product-comment-avatar",nm,c.user_id||nm);
+    var sz=d?"1.9rem":"2.4rem";
+    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:'+sz+';height:'+sz+';object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,sz,"product-comment-avatar",nm,c.user_id||nm);
     var edited=c.updated_at&&new Date(c.updated_at)-new Date(c.created_at)>3000?'<span class="muted lv-edited">· edited</span>':"";
     var body=window.lvMentionHtml?window.lvMentionHtml(c.content,c.author_name):esc(c.content);
     var lf=k==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=k==="package"?"replyToPackageComment":"replyToProductComment";
-    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:1.1rem;':'')+'">'
+    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+(String(id).indexOf("tmp-")===0?' lv-cr-pending':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:2.6rem;':'')+'">'
       +'<span class="lv-cr-av" role="button" tabindex="0" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+av+'</span>'
-      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited
-      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>'
+      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button>'
+      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis"></i></button></div>'
       +'<div class="product-comment-body">'+body+'</div>'
-      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like"><i class="fa-'+(liked?'solid':'regular')+' fa-thumbs-up"></i>'+(n>0?'<span>'+n+'</span>':'')+'</button>'
-      +'<button type="button" class="lv-cr-act product-comment-action" onclick="'+rf+'(\''+esc(id)+'\')" aria-label="Reply"><i class="fa-regular fa-comment"></i></button></div>'
-      +'</div></div>';
+      +'<div class="lv-cr-meta"><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited+'<button type="button" class="lv-cr-reply" onclick="'+rf+'(\''+esc(id)+'\')">Reply</button></div>'
+      +'</div>'
+      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like" aria-pressed="'+(liked?'true':'false')+'">'+HEART+'</button><span class="lv-cr-n">'+(n>0?n:'')+'</span></div>'
+      +'</div>';
   };
   function openReport(kind,id){
     var R=["Spam or advert","Abusive or hateful","Misleading or scam","Something else"];
@@ -1261,13 +1265,17 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     return '<span class="ico">'+(r&&!r.none?(r.custom?'<i class="fa-solid fa-graduation-cap"></i>':logoHtml(r)):'<i class="fa-solid fa-graduation-cap"></i>')+'</span><span class="t">'+(r?esc2(r.name)+(r.state?'<small>'+esc2([r.city,r.state].filter(Boolean).join(", "))+'</small>':''):'<span style="color:var(--text-muted)">'+esc2(label||"Choose your campus")+'</span>')+'</span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i>';
   };
 
-  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#0f9d6a"/></linearGradient></defs>'
-   +'<ellipse cx="40" cy="74" rx="20" ry="4" fill="rgba(0,0,0,.12)"/><circle cx="40" cy="46" r="27" fill="url(#lvcg)"/><circle cx="40" cy="46" r="27" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>'
-   +'<g class="lvc-eye"><ellipse cx="31" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="32.3" cy="44" r="1.4" fill="#fff"/></g><g class="lvc-eye"><ellipse cx="49" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="50.3" cy="44" r="1.4" fill="#fff"/></g>'
-   +'<path d="M32 56q8 8 16 0" stroke="#073b2a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="54" r="4" fill="rgba(255,255,255,.28)"/><circle cx="56" cy="54" r="4" fill="rgba(255,255,255,.28)"/>'
-   +'<polygon points="40,12 68,24 40,36 12,24" fill="#0b2a20"/><path d="M26 29v9q14 8 28 0v-9l-14 6z" fill="#123d2e"/><g class="lvc-tassel"><path d="M62 22v14" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="38" r="3" fill="#fbbf24"/></g></svg>';
+  // Levi, the assistant: the Levromart app icon as a glassy badge (exact logo mark) with an "AI" spark and a live dot
+  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset=".55" stop-color="#0f9d6a"/><stop offset="1" stop-color="#065f46"/></linearGradient><linearGradient id="lvcr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6bff"/><stop offset="1" stop-color="#3dffb4"/></linearGradient></defs>'
+   +'<ellipse cx="40" cy="75" rx="19" ry="3" fill="rgba(0,0,0,.2)"/>'
+   +'<rect x="9" y="9" width="62" height="62" rx="20" fill="none" stroke="url(#lvcr)" stroke-width="2.2" opacity=".9"/>'
+   +'<rect x="13" y="13" width="54" height="54" rx="17" fill="url(#lvcg)"/>'
+   +'<path d="M13 30q0-17 17-17h20q17 0 17 17v1q-27 -9-54 0z" fill="#fff" opacity=".16"/>'
+   +'<g transform="translate(15 15) scale(.5)"><path d="M34.61 67.09A23 23 0 0 1 42.89 28.12" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><path d="M65.39 32.91A23 23 0 0 1 57.11 71.88" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><circle class="lvc-eye" cx="50" cy="50" r="9.8" fill="#fff"/></g>'
+   +'<g transform="translate(58 14)"><circle r="9.5" fill="#1b0d3d"/><circle r="9.5" fill="none" stroke="#ffd21f" stroke-width="1.6"/><path d="M0 -5l1.5 3.5 3.5 1.5-3.5 1.5L0 5l-1.5-3.5-3.5-1.5 3.5-1.5z" fill="#ffd21f"/></g>'
+   +'<circle class="lvc-ant" cx="16" cy="64" r="3.4" fill="#3dffb4"/></svg>';
   window.lvMascotSvg=MASCOT;
-  var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
+  var LINES=["Hi! I'm Levi. Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
 
   // ---- is this school already on the list (or already suggested)?
   var STOP={of:1,the:1,and:1,for:1,university:1,college:1,polytechnic:1,school:1,federal:1,state:1,institute:1,uni:1,univ:1,poly:1,"in":1,at:1,nigeria:1,science:1,sciences:1,technology:1,education:1};
@@ -1415,7 +1423,8 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var v=window.lvViewCampus(),mine=window.lvMyCampusId(),r=v==="all"?null:rec(v);
     var chev='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
     var pin='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
-    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):pin)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
+    var allArt='<svg class="lvcb-allart" width="28" height="28" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="38" fill="#e9edff"/><path d="M40 16L12 30l28 14 28-14z" fill="#5f6ff0"/><path d="M23 38v12c0 5 8 9 17 9s17-4 17-9V38L40 45z" fill="#8f7cf5"/><path d="M66 32v17" stroke="#f6c453" stroke-width="3.5" stroke-linecap="round"/><circle cx="66" cy="52" r="4" fill="#f6c453"/></svg>';
+    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):allArt)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
       +'<div class="seg" role="tablist"><button type="button" role="tab" data-m="mine" aria-selected="'+(mine&&v===mine)+'" class="'+(mine&&v===mine?'on':'')+'">Mine</button><button type="button" role="tab" data-m="all" aria-selected="'+(v==="all")+'" class="'+(v==="all"?'on':'')+'">All</button></div>'
       +'<button type="button" class="lvcb-trophy" data-lb="1" aria-label="Vendor of the Week" title="Vendor of the Week"><i class="fa-solid fa-trophy"></i></button>';
   }
@@ -1434,7 +1443,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(mem){ var slot=Math.floor(Date.now()/600000); raw=mem.get("levro-browse-idx3:"+slot+":all:all")||null; }
       var plainHome=!(typeof currentSectorId!=="undefined"&&currentSectorId)&&!(typeof currentHomeCategoryId!=="undefined"&&currentHomeCategoryId);
       if(grid&&raw&&plainHome&&typeof filterHomeProducts==="function"){
-        var idx=id==="all"?raw:raw.filter(function(x){return x.campus_id===id||x.ops_scope==="all"||(x.ops_scope==="multiple"&&Array.isArray(x.ops)&&x.ops.indexOf(id)>-1);});
+        var idx=id==="all"?raw:raw.filter(function(x){return x.campus_id===id;});
         window.__homeBrowseIndex=idx; window.__homeFullIndex=idx;
         try{
           var allCats=window.__levroAllCategories||[], rail=document.querySelector("#app .levro-home-cat-rail");
@@ -1505,11 +1514,17 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(pend){ window.lvSaveCampus(pend).catch(function(){}); asked=true; return; }
       var skipAt=0; try{skipAt=Number(sessionStorage.getItem("lv-campus-skip")||0);}catch(_){}
       if(skipAt) return;
+      // already chosen on this device (the choice just has not reached the account): use it quietly, never ask again
+      var saved=""; try{saved=localStorage.getItem("lv-campus")||"";}catch(_){}
+      if(saved&&saved!=="pending"){ asked=true; window.lvSaveCampus(saved).catch(function(){}); return; }
+      // said "not now" in the last two weeks: leave it
+      var laterAt=0; try{laterAt=Number(localStorage.getItem("lv-campus-later")||0);}catch(_){}
+      if(laterAt&&Date.now()-laterAt<14*24*3600*1000) return;
       if(profile.role==="admin") return;
       asked=true;
       load().then(function(){ window.lvOpenCampusPicker({title:"Which campus are you on?",current:"",allowNone:true,skippable:true,
         onPick:function(r){window.lvSaveCampus(r.id).then(function(){try{showToast("Campus saved.","success");}catch(_){}}).catch(function(){try{showToast("Couldn't save your campus.","error");}catch(_){}});},
-        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");}catch(_){}}}); });
+        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");localStorage.setItem("lv-campus-later",String(Date.now()));}catch(_){}}}); });
     }catch(_){}
   }
   try{ new MutationObserver(function(){ scan(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
@@ -1538,13 +1553,67 @@ async function reqPhotosPicked(e){
   var room=4-(window.__reqPhotos||[]).length;
   for(var i=0;i<files.length&&i<room;i++){
     var f=files[i]; if(!/^image\//.test(f.type)) continue;
-    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); }
+    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); (window.__reqDraftPhotos=window.__reqDraftPhotos||[]).push(await reqFileToDataUrl(small)); }
     catch(_){ showToast("Couldn't read one of the photos.","error"); }
   }
   if(files.length>room) showToast("You can add up to 4 photos.","info");
+  reqPhotosPaint(); reqDraftSave();
+}
+function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); reqDraftSave(); }
+/* A phone can reload the page while its photo picker is open (the camera / gallery takes the memory), which used to wipe the
+   form and drop the person back on the home page. The form and the picked photos are kept for a few minutes so they survive. */
+var REQ_DRAFT_KEY="lv-req-draft";
+function reqDraftRead(){ try{ var d=JSON.parse(sessionStorage.getItem(REQ_DRAFT_KEY)||"null"); return d&&Date.now()-d.t<30*60*1000?d:null; }catch(_){ return null; } }
+function reqDraftClear(){ try{ sessionStorage.removeItem(REQ_DRAFT_KEY); }catch(_){} }
+function reqDraftSave(){
+  if(!document.getElementById("reqTitle")) return;
+  var g=function(id){ var el=document.getElementById(id); return el?el.value:""; };
+  var typeEl=document.querySelector('input[name="reqType"]:checked');
+  var d={t:Date.now(),title:g("reqTitle"),desc:g("reqDesc"),city:g("reqCity"),type:typeEl?typeEl.value:"buy",sector:g("reqSector"),category:g("reqCategory"),photos:window.__reqDraftPhotos||[]};
+  try{ sessionStorage.setItem(REQ_DRAFT_KEY,JSON.stringify(d)); }
+  catch(_){ d.photos=[]; try{ sessionStorage.setItem(REQ_DRAFT_KEY,JSON.stringify(d)); }catch(__){} }
+}
+function reqFileToDataUrl(file){ return new Promise(function(res){ var r=new FileReader(); r.onload=function(){ res(String(r.result||"")); }; r.onerror=function(){ res(""); }; r.readAsDataURL(file); }); }
+async function reqDraftRestore(){
+  var d=reqDraftRead(); if(!d||!document.getElementById("reqTitle")) return;
+  var set=function(id,v){ var el=document.getElementById(id); if(el&&v!=null&&v!=="") el.value=v; };
+  set("reqTitle",d.title); set("reqDesc",d.desc); set("reqCity",d.city);
+  var radio=document.querySelector('input[name="reqType"][value="'+(d.type==="rent"?"rent":"buy")+'"]'); if(radio) radio.checked=true;
+  try{ updateRequestFormFields(); }catch(_){}
+  if(d.sector){ set("reqSector",d.sector); var sec=(typeof sectors!=="undefined"?sectors:[]).find(function(x){return String(x.id)===String(d.sector);}); var sl=document.getElementById("reqSectorLabel"); if(sl&&sec) sl.textContent=sec.name; try{ updateRequestCategoryOptions(); }catch(_){} }
+  if(d.category){ set("reqCategory",d.category); var cat=(window.__categories||[]).find(function(x){return String(x.id)===String(d.category);}); var cl=document.getElementById("reqCategoryLabel"); if(cl&&cat) cl.textContent=cat.name; }
+  window.__reqDraftPhotos=[];
+  for(var i=0;i<(d.photos||[]).length&&i<4;i++){
+    try{ var blob=await (await fetch(d.photos[i])).blob(); var f=new File([blob],"photo-"+i+".jpg",{type:blob.type||"image/jpeg"}); window.__reqPhotos.push({file:f,url:URL.createObjectURL(f)}); window.__reqDraftPhotos.push(d.photos[i]); }catch(_){}
+  }
   reqPhotosPaint();
 }
-function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); }
+document.addEventListener("input",function(e){ var id=e.target&&e.target.id; if(id==="reqTitle"||id==="reqDesc"||id==="reqCity") reqDraftSave(); },true);
+document.addEventListener("change",function(e){ if(e.target&&e.target.name==="reqType") reqDraftSave(); },true);
+document.addEventListener("click",function(e){
+  if(e.target.closest&&e.target.closest("#reqPhotoBox .req-drop, #reqPhotoBox .req-ph.add")) reqDraftSave();
+},true);
+/* A phone can reload the whole page while its photo picker is open. Remember where the person was when any file picker
+   opens; if the page comes back reloaded (the picker never reports back), open that screen again instead of the home page. */
+(function(){
+  var KEY="lv-picker-resume";
+  document.addEventListener("click",function(e){
+    var t=e.target; if(!t||t.tagName!=="INPUT"||t.type!=="file") return;
+    try{ sessionStorage.setItem(KEY,JSON.stringify({t:Date.now(),view:typeof currentView!=="undefined"?currentView:"",params:typeof currentViewParams!=="undefined"?currentViewParams:{}})); }catch(_){}
+  },true);
+  /* the page survived the picker (it got focus back and is still here): nothing to resume */
+  window.addEventListener("focus",function(){ setTimeout(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} },8000); });
+  var r=null; try{ r=JSON.parse(sessionStorage.getItem(KEY)||"null"); }catch(_){}
+  if(!r||!r.view||Date.now()-r.t>3*60*1000) return;
+  var tries=0, timer=setInterval(function(){
+    tries++;
+    if(tries>60){ clearInterval(timer); return; }
+    if(typeof session==="undefined"||!session||typeof navigate!=="function"||typeof currentView==="undefined"||!currentView) return;
+    clearInterval(timer);
+    try{ sessionStorage.removeItem(KEY); }catch(_){}
+    if(currentView!==r.view) navigate(r.view,r.params||{},false);
+  },250);
+})();
 function reqPhotosHtml(photos){
   var l=Array.isArray(photos)?photos.filter(Boolean):[]; if(!l.length) return "";
   window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(l)-1;
@@ -1854,7 +1923,7 @@ async function setVendorRequestPref(v){
     var el=document.createElement("span"); el.className="lv-camp-line";
     var inner="";
     if(r){ var logo=r.logo?'<img src="/campus-logos/'+e2(r.id)+'.webp" alt="" loading="lazy">':'<span style="width:100%;height:100%;display:grid;place-items:center;background:hsl('+((function(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h;})(r.id))+',55%,42%)">'+e2((r.abbr||r.name).slice(0,2).toUpperCase())+'</span>';
-      inner+='<span class="lcl-i">'+logo+'</span><span class="lcl-t">'+e2(full?r.name:(r.abbr&&r.abbr.length<=8?r.abbr:r.name))+'</span>'; }
+      inner+='<span class="lcl-i">'+logo+'</span><span class="lcl-t">'+e2(full?r.name:shortName(r))+'</span>'; }
     if(x.student_verified) inner+='<span class="lcl-v" title="Verified student"><i class="fa-solid fa-user-graduate"></i></span>';
     el.innerHTML=inner; return el;
   }
@@ -1876,7 +1945,7 @@ async function setVendorRequestPref(v){
   }
   function curVid(){ try{ if(typeof currentViewParams!=="undefined"&&currentViewParams&&currentViewParams.vendorId) return currentViewParams.vendorId; }catch(_){} try{ if(window.currentViewParams&&window.currentViewParams.vendorId) return window.currentViewParams.vendorId; }catch(_){} var el=document.querySelector("[data-vendor-id]"); return el&&el.dataset.vendorId||""; }
   var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.sr-row,.product-card-wrap,.vendors-map-vendor-chip";
-  function inScope(x,view){ return x.campus_id===view||x.operating_scope==="all"||(x.operating_scope==="multiple"&&Array.isArray(x.operating_campuses)&&x.operating_campuses.indexOf(view)>-1); }
+  function inScope(x,view){ return x.campus_id===view; }
   function applyScope(map){
     document.querySelectorAll(".lv-out-empty").forEach(function(n){n.classList.remove("lv-out-empty");});
     var view=window.lvViewCampus&&window.lvViewCampus()||"all";
@@ -1900,6 +1969,8 @@ async function setVendorRequestPref(v){
   }
   window.lvApplyCampusScope=function(){ vmap().then(applyScope); };
   window.lvVendorMapReady=function(){ return vmap(); };
+  // exact home campus of a vendor ("" = none set, undefined = vendor list not loaded or vendor unknown); used by the leaderboard, which must not fail open
+  window.lvVendorHomeCampus=function(id){ var x=VMAP&&VMAP.get(String(id)); return x?(x.campus_id||""):undefined; };
   window.lvVendorInScope=function(id){
     var view=window.lvViewCampus&&window.lvViewCampus()||"all"; if(view==="all"||!id||!VMAP) return true;
     var x=VMAP.get(String(id)); if(!x) return true;
@@ -2108,7 +2179,7 @@ async function setVendorRequestPref(v){
         var by={}; all.forEach(function(v){ var k=v.campus_id&&v.campus_id!=="none"?v.campus_id:"__none"; (by[k]=by[k]||[]).push(v); });
         ADM={all:all,by:by,mode:"review"};
         var total=all.length,set=all.length-(by.__none||[]).length,ver=all.filter(function(v){return v.student_verified;}).length,pend=all.filter(function(v){return v.svs==="pending";}).length;
-        host.innerHTML='<div id="acSubs"></div><div id="acTop"><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div>'
+        host.innerHTML='<div id="acSubs"></div><div id="acTop"><details class="ac-drawer"><summary><span class="ac-sum-t">Overview</span><span class="ac-sum-v"><b>'+total+'</b> vendors<i>·</i><b>'+(by.__none||[]).length+'</b> no campus<i>·</i><b>'+pend+'</b> to review</span><span class="ac-sum-chev" aria-hidden="true"></span></summary><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div></details>'
           +'<div class="ac-tools"><input type="search" placeholder="Search a vendor or campus…"><button type="button" class="ac-chip on" data-m="review">To review</button><button type="button" class="ac-chip" data-m="verified">Verified</button><button type="button" class="ac-chip" data-m="unverified">Unverified</button><button type="button" class="ac-chip" data-m="all">By campus</button></div></div><div id="acList"></div>';
         paintList(host); loadSubs(host);
         host.addEventListener("input",function(e){ if(e.target.matches("input")) paintList(host); });
@@ -2143,20 +2214,63 @@ async function setVendorRequestPref(v){
 
 /* Fully verified ticks: show a tick only when the vendor is admin-approved AND student-verified */
 (function(){
-  var SET=null,T=0,Q=0;
+  var SET=null,NAMES=null,T=0,Q=0;
+  function norm(t){ return String(t||"").replace(/\s+/g," ").trim().toLowerCase(); }
+  var TICKED=/(^|\s)(lv-svi|lv-cr-vtick|lv-cr-vbadge)(\s|$)/;
+  function hasTick(el){
+    var p=el.parentElement;
+    if(el.querySelector("[data-vt],.lv-svi,.lv-cr-vtick")) return true;
+    if(p&&p.querySelector(":scope > [data-vt], :scope > .lv-svi, :scope > .lv-cr-vtick, :scope > .lv-cr-vbadge")) return true;
+    return false;
+  }
+  // Any place that prints a verified vendor's name (leaderboard, podium, follower lists, cart, orders ...) gets the green tick
+  // right after it, so the tick does not depend on every page's template remembering to add one.
+  function scanNames(){
+    if(!NAMES||!NAMES.size) return;
+    var root=document.getElementById("app"); if(!root) return;
+    root.querySelectorAll("strong,h1,h2,h3,h4,b,.nm,[class*='-name']").forEach(function(el){
+      if(el.dataset.lvnt) return;
+      if(el.closest(".product-card-wrap,.product-comment-row,.search-page-chip,button,input,textarea,select")&&!el.closest(".lb-row,.lb-pod")) return;
+      var text="",ok=true;
+      el.childNodes.forEach(function(n){ if(n.nodeType===3) text+=n.nodeValue; else if(!(n.nodeType===1&&(TICKED.test(n.className||"")||n.hasAttribute("data-vt")))) ok=false; });
+      if(!ok||!text.trim()) return;
+      if(!NAMES.has(norm(text))) return;
+      el.dataset.lvnt="1";
+      if(hasTick(el)) return;
+      var i=document.createElement("i"); i.className="fa-solid fa-circle-check lv-svi"; i.title="Verified vendor"; i.setAttribute("aria-label","Verified vendor");
+      el.appendChild(document.createTextNode(" ")); el.appendChild(i);
+    });
+  }
   function paint(){
     Q=0; if(!SET) return;
     document.querySelectorAll("[data-vt]").forEach(function(el){
       var on=SET.has(String(el.getAttribute("data-vt")));
       if(on!==el.classList.contains("lv-on")) el.classList.toggle("lv-on",on);
     });
+    scanNames();
+    keepTicksVisible();
+  }
+  // A long name is cut with "..." and would swallow the tick printed after it: keep the name's text shrinkable and the tick always visible.
+  function keepTicksVisible(){
+    document.querySelectorAll("#app [data-vt].lv-on, #app .lv-svi, #app .lv-cr-vtick").forEach(function(t){
+      var h=t.parentElement; if(!h||h.dataset.lvfx||t.classList.contains("vmp-tick")||h.classList.contains("vmp-pin")) return;
+      if(!h.clientWidth) return;
+      var cs=getComputedStyle(h);
+      if(cs.textOverflow!=="ellipsis"||h.scrollWidth<=h.clientWidth+1) return;
+      h.dataset.lvfx="1";
+      var span=document.createElement("span"); span.className="lv-nm-t";
+      var n=h.firstChild, moved=false;
+      while(n&&n!==t){ var nx=n.nextSibling; if(n.nodeType===3||(n.nodeType===1&&n.tagName!=="I")){ span.appendChild(n); moved=true; } n=nx; }
+      if(!moved) return;
+      h.insertBefore(span,t); h.classList.add("lv-nm-flex");
+    });
   }
   function sched(){ if(!Q){ Q=requestAnimationFrame(paint); } }
   function load(){
     if(typeof sb==="undefined"||!sb||!sb.from){ setTimeout(load,400); return; }
     T=Date.now();
-    sb.from("vendors").select("id").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
-      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); sched(); } });
+    sb.from("vendors").select("id,business_name").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
+      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); NAMES=new Set(r.data.map(function(x){return norm(x.business_name);}).filter(Boolean)); sched(); } });
   }
   load();
   setInterval(function(){ if(Date.now()-T>180000) load(); },60000);
@@ -2210,3 +2324,35 @@ document.addEventListener("click",function(e){
   var sel=document.getElementById("loginRole"); if(sel) sel.value=b.dataset.r;
   b.parentNode.querySelectorAll("button").forEach(function(x){ var on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-checked",String(on)); });
 });
+
+
+/* The bell next to "Following" shows the chosen notification mode: All = blue bell, Most relevant = star, Off = bell with a slash. */
+(function(){
+  var ICON={all:"fa-solid fa-bell",relevant:"fa-solid fa-star",off:"fa-regular fa-bell-slash"};
+  var Q=0;
+  function paint(){
+    Q=0;
+    document.querySelectorAll(".storefront-follow-wrap").forEach(function(w){
+      var bell=w.querySelector(".follow-settings-btn"); if(!bell) return;
+      var vid=w.getAttribute("data-follow-vendor-id")||"";
+      var menu=w.querySelector(".follow-menu")||(vid&&document.querySelector('.follow-menu[data-follow-sheet-vendor-id="'+CSS.escape(vid)+'"]'));
+      var row=menu&&menu.querySelector('.follow-mode-row[aria-pressed="true"]');
+      var mode=(row&&row.getAttribute("data-notify-mode"))||"all";
+      bell.setAttribute("data-mode",mode);
+      var i=bell.querySelector("i"); if(i&&i.className!==ICON[mode]) i.className=ICON[mode];
+    });
+  }
+  function sched(){ if(!Q) Q=requestAnimationFrame(paint); }
+  try{ new MutationObserver(sched).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["aria-pressed","disabled"]}); }catch(_){}
+  sched();
+})();
+
+// "Map" button on the Vendors page (and everything that asks for the map view) opens this page; the first-visit tour keeps the small inline map.
+(function () {
+  const inline = window.switchVendorsView; if (typeof inline !== "function") return;
+  window.switchVendorsView = function (mode) {
+    if (mode === "map" && !window.__lvInlineMap) { try { return navigate("vendorsMap"); } catch (_) {} }
+    return inline.apply(this, arguments);
+  };
+})();
+

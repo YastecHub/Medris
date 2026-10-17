@@ -188,6 +188,9 @@ function openProfileOrShop() {
       return;
     }
 
+    // Swiping the page no longer opens the profile or notification panels (it fired by accident, e.g. while pinching or tapping);
+    // they open from their icons only. Dragging an already open panel closed still works (handled above).
+    return;
     // Opening: choose the drawer by which half of the background the drag
     // starts in. This intentionally avoids the extreme screen edge so Android
     // back gestures do not compete with Levromart's drawer gesture.

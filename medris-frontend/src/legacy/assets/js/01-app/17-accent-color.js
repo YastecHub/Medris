@@ -55,7 +55,7 @@ function accentLogoFilter(hex){
 function applyAccent(index) {
   /* Accent customization has been retired: Levromart uses one calm brand green everywhere. */
   const preset = { name: "Levromart Green", group: "Brand", base: "#3fb97f", light: "#3fb97f" };
-  const theme = localStorage.getItem("medris-theme") || "light";
+  const theme = localStorage.getItem("medris-theme") || "black";
   const root = document.documentElement;
   // Chat bubbles always use the accent's darker "base" tone, regardless of
   // theme -- unlike --primary (which intentionally brightens in dark mode

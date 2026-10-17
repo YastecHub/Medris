@@ -50,8 +50,25 @@ function odTone(order) {
   if (order.__paymentUnresolved) return "unresolved";
   return ({ pending: "pending", confirmed: "confirmed", handed_over: "handed", returned: "handed", completed: "done", cancelled: "cancelled", disputed: "disputed", payment_unresolved: "unresolved" })[order.status] || "pending";
 }
+// What a "confirmed" order is waiting on, so the badge says "Payment confirmed" / "Deposit confirmed · balance due"
+// instead of falling back to plain "Confirmed" after the vendor confirms a payment. Display only: statuses are unchanged.
+function lvOrderStageLabel(order) {
+  if (!order || order.__paymentUnresolved || order.status !== "confirmed") return "";
+  const rows = Array.isArray(order.payments) ? order.payments : [];
+  const paid = (t) => rows.some((p) => String(p.payment_type || "").trim().toLowerCase() === t && p.status === "paid");
+  const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
+  const payAfter = order.delivery_method === "delivery" && order.payment_timing === "pay_after";
+  if (payAfter) {
+    if (paid(feeType)) return "Payment confirmed";
+    if (paid("delivery_deposit_20")) return "Deposit confirmed · balance due";
+    return "";
+  }
+  return paid(feeType) ? "Payment confirmed" : "";
+}
 function odStatusLabel(order) {
   if (order.__paymentUnresolved) return "Payment unresolved";
+  const stage = lvOrderStageLabel(order);
+  if (stage) return stage;
   return String(order.status || "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 }
 function odInfoCard(order, isDelivery) {
