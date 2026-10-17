@@ -14,13 +14,21 @@ import { notificationsController } from "../modules/notifications/notifications.
 import { usersController } from "../modules/users/users.controller.js";
 import { listingsController } from "../modules/listings/listings.controller.js";
 import { requestsController } from "../modules/requests/requests.controller.js";
+import { carouselController } from "../modules/carousel/carousel.controller.js";
+import { supportController } from "../modules/support/support.controller.js";
+import { adminDashboardController } from "../modules/admin-dashboard/admin-dashboard.controller.js";
 import { blocksController } from "../modules/blocks/blocks.controller.js";
+import { campusController } from "../modules/campus/campus.controller.js";
+import { adminVendorsController } from "../modules/admin-vendors/admin-vendors.controller.js";
+import { shopsController } from "../modules/shops/shops.controller.js";
 import { serviceOffersController } from "../modules/service-offers/service-offers.controller.js";
 import { pointsController } from "../modules/points/points.controller.js";
 import { presenceController } from "../modules/presence/presence.controller.js";
 import { callsController } from "../modules/calls/calls.controller.js";
 import { conversationsController } from "../modules/conversations/conversations.controller.js";
 import { productsController } from "../modules/products/products.controller.js";
+import { adminUsersController } from "../modules/admin-users/admin-users.controller.js";
+import { accountController } from "../modules/account/account.controller.js";
 import { assistantController } from "../modules/assistant/assistant.controller.js";
 import { suggestionsController } from "../modules/suggestions/suggestions.controller.js";
 import { engagementController } from "../modules/engagement/engagement.controller.js";
@@ -30,7 +38,7 @@ import type { RouteDefinition } from "../shared/http/route.js";
 
 /** Every /api/v1 controller, in mounting order. Health comes first so probes never need a token. */
 const publicControllers = [healthController];
-const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, productsController, conversationsController, callsController, presenceController, pointsController, serviceOffersController, blocksController, requestsController, listingsController];
+const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, accountController, adminUsersController, productsController, conversationsController, callsController, presenceController, pointsController, serviceOffersController, shopsController, adminVendorsController, campusController, blocksController, adminDashboardController, supportController, carouselController, requestsController, listingsController];
 
 /** Route definitions of /api/v1 (paths relative to /api/v1), for the OpenAPI document. */
 export const v1Definitions: RouteDefinition[] = [...publicControllers, ...controllers].flatMap((c) => c.definitions);
