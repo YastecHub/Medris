@@ -24,7 +24,10 @@ const TAGS = [
   { name: "Follows", description: "Followed shops." },
   { name: "Notifications", description: "In-app notifications." },
   { name: "Engagement", description: "Counts, ratings and statistics shown on listings and shops." },
+  { name: "Suggestions", description: "The suggestion box (to a shop or to Levromart)." },
+  { name: "Assistant", description: "Levi's saved conversations: search, sharing, reactions." },
   { name: "Products", description: "Product varieties, the admin inventory and where a shop's products sell." },
+  { name: "Blocks", description: "Blocking people in chat." },
   { name: "Listings", description: "Marketplace listings and the shop owner's editing." },
   { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },
 ];
