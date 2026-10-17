@@ -15,6 +15,7 @@ import { HealthService } from "./modules/health/health.service.js";
 import { NotificationsService } from "./modules/notifications/notifications.service.js";
 import { UsersService } from "./modules/users/users.service.js";
 import { FilesService } from "./modules/files/files.service.js";
+import { LiveService } from "./modules/live/live.service.js";
 import { ListingsService } from "./modules/listings/listings.service.js";
 import { RequestsService } from "./modules/requests/requests.service.js";
 import { CarouselService } from "./modules/carousel/carousel.service.js";
@@ -70,6 +71,7 @@ export interface AppServices {
   follows: FollowsService;
   notifications: NotificationsService;
   files: FilesService;
+  live: LiveService;
   listings: ListingsService;
   requests: RequestsService;
   carousel: CarouselService;
@@ -131,6 +133,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     follows: overrides.follows ?? new FollowsService(data),
     notifications: overrides.notifications ?? new NotificationsService(data),
     files: overrides.files ?? new FilesService(data),
+    live: overrides.live ?? new LiveService(data, (token) => accessTokens.verify(token)),
     listings: overrides.listings ?? new ListingsService(data),
     requests: overrides.requests ?? new RequestsService(data),
     carousel: overrides.carousel ?? new CarouselService(data),

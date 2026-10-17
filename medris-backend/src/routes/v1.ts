@@ -37,13 +37,14 @@ import { adminUsersController } from "../modules/admin-users/admin-users.control
 import { accountController } from "../modules/account/account.controller.js";
 import { assistantController } from "../modules/assistant/assistant.controller.js";
 import { suggestionsController } from "../modules/suggestions/suggestions.controller.js";
+import { liveController } from "../modules/live/live.controller.js";
 import { engagementController } from "../modules/engagement/engagement.controller.js";
 import { AppError } from "../shared/errors/app-error.js";
 import { v1ErrorResponse } from "../shared/errors/handler.js";
 import type { RouteDefinition } from "../shared/http/route.js";
 
 /** Every /api/v1 controller, in mounting order. Health comes first so probes never need a token. */
-const publicControllers = [healthController];
+const publicControllers = [healthController, liveController];
 const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, accountController, adminUsersController, productsController, conversationsController, callsController, presenceController, pointsController, serviceOffersController, shopsController, adminVendorsController, campusController, orderActionsController, checkoutController, paymentClaimsController, commissionController, scheduledJobsController, blocksController, adminDashboardController, supportController, carouselController, requestsController, listingsController, filesController];
 
 /** Route definitions of /api/v1 (paths relative to /api/v1), for the OpenAPI document. */
