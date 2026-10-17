@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { loadStorefront, recordProfileView, type StorefrontExtras, type StorefrontProduct, type StorefrontVendor } from "@/services/storefront";
 import { legacy, legacyState, storefrontState } from "@/views/legacy-globals";
+import { inlineClick } from "@/views/inline-onclick";
 import type { ViewProps } from "@/views";
 import "@/views/legacy-navigate"; // declares window.navigate
 
@@ -227,15 +228,7 @@ function Storefront({ vendor: v, products, extras }: { vendor: StorefrontVendor;
         <i className="fa-solid fa-comment-medical"></i> Suggest something
       </button>
     ) : null,
-    <button
-      key="share"
-      type="button"
-      className="levro-storefront-sheet-item"
-      onClick={() => {
-        call("openStorefrontShare", v.id);
-        call("closeStorefrontMoreSheet");
-      }}
-    >
+    <button key="share" type="button" className="levro-storefront-sheet-item" ref={inlineClick(`openStorefrontShare('${v.id}');closeStorefrontMoreSheet()`)}>
       <i className="fa-solid fa-share-nodes"></i> Share storefront
     </button>,
   ];

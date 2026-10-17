@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type Rea
 import { InitialsTile, ProductCard, type CardProduct } from "@/components/ProductCard";
 import { loadProductDetail, loadVendorStatsRow, type PdProduct, type PdVariant, type ProductDetailResult } from "@/services/product-detail";
 import { legacy, legacyState } from "@/views/legacy-globals";
+import { inlineClick } from "@/views/inline-onclick";
 import type { ViewProps } from "@/views";
 import "@/views/legacy-navigate"; // declares window.navigate
 
@@ -737,7 +738,7 @@ function BuyCard({ product, variants, cleanDescription, depositPercent, remainin
             <i className="fa-solid fa-cart-plus"></i> Add to cart
           </button>
         ) : null}
-        <button className="btn" onClick={() => call("buyNow", product.vendor.id, product.id)}>
+        <button className="btn" ref={inlineClick(`buyNow('${product.vendor.id}','${product.id}')`)}>
           {buyLabel}
         </button>
       </div>
