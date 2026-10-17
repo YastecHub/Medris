@@ -23,6 +23,9 @@ const TAGS = [
   { name: "Favorites", description: "Saved products and packages." },
   { name: "Follows", description: "Followed shops." },
   { name: "Notifications", description: "In-app notifications." },
+  { name: "Engagement", description: "Counts, ratings and statistics shown on listings and shops." },
+  { name: "Products", description: "Product varieties, the admin inventory and where a shop's products sell." },
+  { name: "Listings", description: "Marketplace listings and the shop owner's editing." },
   { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },
 ];
 

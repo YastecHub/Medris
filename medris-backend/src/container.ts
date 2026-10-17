@@ -14,6 +14,9 @@ import { FollowsService } from "./modules/follows/follows.service.js";
 import { HealthService } from "./modules/health/health.service.js";
 import { NotificationsService } from "./modules/notifications/notifications.service.js";
 import { UsersService } from "./modules/users/users.service.js";
+import { ListingsService } from "./modules/listings/listings.service.js";
+import { ProductsService } from "./modules/products/products.service.js";
+import { EngagementService } from "./modules/engagement/engagement.service.js";
 
 /**
  * The application's services, created once per process and handed to every
@@ -43,6 +46,9 @@ export interface AppServices {
   favorites: FavoritesService;
   follows: FollowsService;
   notifications: NotificationsService;
+  listings: ListingsService;
+  products: ProductsService;
+  engagement: EngagementService;
 }
 
 export function createServices(overrides: Partial<AppServices> = {}): AppServices {
@@ -78,5 +84,8 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     favorites: overrides.favorites ?? new FavoritesService(data),
     follows: overrides.follows ?? new FollowsService(data),
     notifications: overrides.notifications ?? new NotificationsService(data),
+    listings: overrides.listings ?? new ListingsService(data),
+    products: overrides.products ?? new ProductsService(data),
+    engagement: overrides.engagement ?? new EngagementService(data),
   };
 }
