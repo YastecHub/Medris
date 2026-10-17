@@ -15,7 +15,9 @@ import { HealthService } from "./modules/health/health.service.js";
 import { NotificationsService } from "./modules/notifications/notifications.service.js";
 import { UsersService } from "./modules/users/users.service.js";
 import { ListingsService } from "./modules/listings/listings.service.js";
+import { RequestsService } from "./modules/requests/requests.service.js";
 import { BlocksService } from "./modules/blocks/blocks.service.js";
+import { ServiceOffersService } from "./modules/service-offers/service-offers.service.js";
 import { PointsService } from "./modules/points/points.service.js";
 import { ProductsService } from "./modules/products/products.service.js";
 import { AssistantService } from "./modules/assistant/assistant.service.js";
@@ -51,7 +53,9 @@ export interface AppServices {
   follows: FollowsService;
   notifications: NotificationsService;
   listings: ListingsService;
+  requests: RequestsService;
   blocks: BlocksService;
+  serviceOffers: ServiceOffersService;
   points: PointsService;
   products: ProductsService;
   assistant: AssistantService;
@@ -93,7 +97,9 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     follows: overrides.follows ?? new FollowsService(data),
     notifications: overrides.notifications ?? new NotificationsService(data),
     listings: overrides.listings ?? new ListingsService(data),
+    requests: overrides.requests ?? new RequestsService(data),
     blocks: overrides.blocks ?? new BlocksService(data),
+    serviceOffers: overrides.serviceOffers ?? new ServiceOffersService(data),
     points: overrides.points ?? new PointsService(data),
     products: overrides.products ?? new ProductsService(data),
     assistant: overrides.assistant ?? new AssistantService(data),

@@ -28,7 +28,9 @@ const TAGS = [
   { name: "Assistant", description: "Levi's saved conversations: search, sharing, reactions." },
   { name: "Products", description: "Product varieties, the admin inventory and where a shop's products sell." },
   { name: "Points", description: "Vendor points, the leaderboard, Vendor of the Week and referral codes." },
+  { name: "Service offers", description: "Negotiated service bookings: proposing, countering, accepting, reporting and confirming payment." },
   { name: "Blocks", description: "Blocking people in chat." },
+  { name: "Requests", description: "Buyers' requests and shops' offers." },
   { name: "Listings", description: "Marketplace listings and the shop owner's editing." },
   { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },
 ];
