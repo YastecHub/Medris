@@ -14,6 +14,7 @@ import { FollowsService } from "./modules/follows/follows.service.js";
 import { HealthService } from "./modules/health/health.service.js";
 import { NotificationsService } from "./modules/notifications/notifications.service.js";
 import { UsersService } from "./modules/users/users.service.js";
+import { FilesService } from "./modules/files/files.service.js";
 import { ListingsService } from "./modules/listings/listings.service.js";
 import { RequestsService } from "./modules/requests/requests.service.js";
 import { CarouselService } from "./modules/carousel/carousel.service.js";
@@ -68,6 +69,7 @@ export interface AppServices {
   favorites: FavoritesService;
   follows: FollowsService;
   notifications: NotificationsService;
+  files: FilesService;
   listings: ListingsService;
   requests: RequestsService;
   carousel: CarouselService;
@@ -128,6 +130,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     favorites: overrides.favorites ?? new FavoritesService(data),
     follows: overrides.follows ?? new FollowsService(data),
     notifications: overrides.notifications ?? new NotificationsService(data),
+    files: overrides.files ?? new FilesService(data),
     listings: overrides.listings ?? new ListingsService(data),
     requests: overrides.requests ?? new RequestsService(data),
     carousel: overrides.carousel ?? new CarouselService(data),

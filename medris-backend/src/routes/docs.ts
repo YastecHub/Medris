@@ -47,6 +47,7 @@ const TAGS = [
   { name: "Carousel", description: "The home page's banners." },
   { name: "Requests", description: "Buyers' requests and shops' offers." },
   { name: "Listings", description: "Marketplace listings and the shop owner's editing." },
+  { name: "Files", description: "Private files in Supabase Storage, brokered by the backend." },
   { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },
 ];
 
