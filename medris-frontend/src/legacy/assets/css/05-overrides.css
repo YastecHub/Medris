@@ -1464,6 +1464,8 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 :root:root:root:root body #app .product-card-dist[class*="dt"],:root:root:root:root body #app .search-result-distance[class*="dt"],:root:root:root:root body #app .vendor-distance[class*="dt"],:root:root:root:root body #app .storefront-distance-link[class*="dt"],
 :root:root:root:root body #app .search-result-distance[class*="dt"] *,:root:root:root:root body #app .product-card-dist[class*="dt"] *,:root:root:root:root body #app .vendor-distance[class*="dt"] *,:root:root:root:root body #app .storefront-distance-link[class*="dt"] *{color:var(--dtc)!important;-webkit-text-fill-color:var(--dtc)!important}
 :root:root:root:root body #app .product-card-dist[class*="dt"]{background:color-mix(in srgb,var(--dtc) 16%,transparent)!important}
+<<<<<<< HEAD:assets/css/05-overrides.css
+=======
 
 /* ===== UI overhaul: product page ===== */
 /* Heart / comments / share: three soft round buttons that match each other (no outline, no number inside a bubble).
@@ -2399,3 +2401,4 @@ html:root body #lvCs .product-comment-replying{background:color-mix(in srgb,var(
 
 /* Product page: the title always takes the same two-line space (longer names are cut with …), so the photo sits in exactly the same place on every product. That is what lets the next product slide in without any jump. */
 html:root body #app .product-detail-card .product-detail-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;min-height:2.4em!important}
+>>>>>>> origin/main:medris-frontend/src/legacy/assets/css/05-overrides.css
