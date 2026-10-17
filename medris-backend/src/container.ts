@@ -20,6 +20,9 @@ import { CarouselService } from "./modules/carousel/carousel.service.js";
 import { SupportService } from "./modules/support/support.service.js";
 import { AdminDashboardService } from "./modules/admin-dashboard/admin-dashboard.service.js";
 import { BlocksService } from "./modules/blocks/blocks.service.js";
+import { PaymentClaimsService } from "./modules/payment-claims/payment-claims.service.js";
+import { CheckoutService } from "./modules/checkout/checkout.service.js";
+import { OrderActionsService } from "./modules/order-actions/order-actions.service.js";
 import { CampusService } from "./modules/campus/campus.service.js";
 import { AdminVendorsService } from "./modules/admin-vendors/admin-vendors.service.js";
 import { ShopsService } from "./modules/shops/shops.service.js";
@@ -69,6 +72,9 @@ export interface AppServices {
   support: SupportService;
   adminDashboard: AdminDashboardService;
   blocks: BlocksService;
+  paymentClaims: PaymentClaimsService;
+  checkout: CheckoutService;
+  orderActions: OrderActionsService;
   campus: CampusService;
   adminVendors: AdminVendorsService;
   shops: ShopsService;
@@ -124,6 +130,9 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     support: overrides.support ?? new SupportService(data),
     adminDashboard: overrides.adminDashboard ?? new AdminDashboardService(data),
     blocks: overrides.blocks ?? new BlocksService(data),
+    paymentClaims: overrides.paymentClaims ?? new PaymentClaimsService(data),
+    checkout: overrides.checkout ?? new CheckoutService(data),
+    orderActions: overrides.orderActions ?? new OrderActionsService(data),
     campus: overrides.campus ?? new CampusService(data),
     adminVendors: overrides.adminVendors ?? new AdminVendorsService(data),
     shops: overrides.shops ?? new ShopsService(data),

@@ -18,6 +18,9 @@ import { carouselController } from "../modules/carousel/carousel.controller.js";
 import { supportController } from "../modules/support/support.controller.js";
 import { adminDashboardController } from "../modules/admin-dashboard/admin-dashboard.controller.js";
 import { blocksController } from "../modules/blocks/blocks.controller.js";
+import { paymentClaimsController } from "../modules/payment-claims/payment-claims.controller.js";
+import { checkoutController } from "../modules/checkout/checkout.controller.js";
+import { orderActionsController } from "../modules/order-actions/order-actions.controller.js";
 import { campusController } from "../modules/campus/campus.controller.js";
 import { adminVendorsController } from "../modules/admin-vendors/admin-vendors.controller.js";
 import { shopsController } from "../modules/shops/shops.controller.js";
@@ -38,7 +41,7 @@ import type { RouteDefinition } from "../shared/http/route.js";
 
 /** Every /api/v1 controller, in mounting order. Health comes first so probes never need a token. */
 const publicControllers = [healthController];
-const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, accountController, adminUsersController, productsController, conversationsController, callsController, presenceController, pointsController, serviceOffersController, shopsController, adminVendorsController, campusController, blocksController, adminDashboardController, supportController, carouselController, requestsController, listingsController];
+const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, accountController, adminUsersController, productsController, conversationsController, callsController, presenceController, pointsController, serviceOffersController, shopsController, adminVendorsController, campusController, orderActionsController, checkoutController, paymentClaimsController, blocksController, adminDashboardController, supportController, carouselController, requestsController, listingsController];
 
 /** Route definitions of /api/v1 (paths relative to /api/v1), for the OpenAPI document. */
 export const v1Definitions: RouteDefinition[] = [...publicControllers, ...controllers].flatMap((c) => c.definitions);
