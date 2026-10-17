@@ -27,6 +27,7 @@ const TAGS = [
   { name: "Suggestions", description: "The suggestion box (to a shop or to Levromart)." },
   { name: "Assistant", description: "Levi's saved conversations: search, sharing, reactions." },
   { name: "Products", description: "Product varieties, the admin inventory and where a shop's products sell." },
+  { name: "Points", description: "Vendor points, the leaderboard, Vendor of the Week and referral codes." },
   { name: "Blocks", description: "Blocking people in chat." },
   { name: "Listings", description: "Marketplace listings and the shop owner's editing." },
   { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },

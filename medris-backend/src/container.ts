@@ -16,6 +16,7 @@ import { NotificationsService } from "./modules/notifications/notifications.serv
 import { UsersService } from "./modules/users/users.service.js";
 import { ListingsService } from "./modules/listings/listings.service.js";
 import { BlocksService } from "./modules/blocks/blocks.service.js";
+import { PointsService } from "./modules/points/points.service.js";
 import { ProductsService } from "./modules/products/products.service.js";
 import { AssistantService } from "./modules/assistant/assistant.service.js";
 import { SuggestionsService } from "./modules/suggestions/suggestions.service.js";
@@ -51,6 +52,7 @@ export interface AppServices {
   notifications: NotificationsService;
   listings: ListingsService;
   blocks: BlocksService;
+  points: PointsService;
   products: ProductsService;
   assistant: AssistantService;
   suggestions: SuggestionsService;
@@ -92,6 +94,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     notifications: overrides.notifications ?? new NotificationsService(data),
     listings: overrides.listings ?? new ListingsService(data),
     blocks: overrides.blocks ?? new BlocksService(data),
+    points: overrides.points ?? new PointsService(data),
     products: overrides.products ?? new ProductsService(data),
     assistant: overrides.assistant ?? new AssistantService(data),
     suggestions: overrides.suggestions ?? new SuggestionsService(data),

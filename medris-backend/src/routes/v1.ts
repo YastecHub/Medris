@@ -14,6 +14,7 @@ import { notificationsController } from "../modules/notifications/notifications.
 import { usersController } from "../modules/users/users.controller.js";
 import { listingsController } from "../modules/listings/listings.controller.js";
 import { blocksController } from "../modules/blocks/blocks.controller.js";
+import { pointsController } from "../modules/points/points.controller.js";
 import { productsController } from "../modules/products/products.controller.js";
 import { assistantController } from "../modules/assistant/assistant.controller.js";
 import { suggestionsController } from "../modules/suggestions/suggestions.controller.js";
@@ -24,7 +25,7 @@ import type { RouteDefinition } from "../shared/http/route.js";
 
 /** Every /api/v1 controller, in mounting order. Health comes first so probes never need a token. */
 const publicControllers = [healthController];
-const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, productsController, blocksController, listingsController];
+const controllers = [authController, usersController, catalogueController, cartController, favoritesController, followsController, notificationsController, engagementController, suggestionsController, assistantController, productsController, pointsController, blocksController, listingsController];
 
 /** Route definitions of /api/v1 (paths relative to /api/v1), for the OpenAPI document. */
 export const v1Definitions: RouteDefinition[] = [...publicControllers, ...controllers].flatMap((c) => c.definitions);
