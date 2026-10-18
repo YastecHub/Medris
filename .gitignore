@@ -14,3 +14,6 @@ Claude outputs/
 
 # Output of supabase/export.sh: the live schema, may contain the webhook secret (never commit)
 supabase/export/
+
+# Installed packages, also as a symlink (never commit)
+node_modules
