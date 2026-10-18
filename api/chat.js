@@ -42,16 +42,42 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+// Number of single-letter edits (insert, delete, change, swap neighbours) between two words, or 9 if clearly far apart.
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = [];
+  for (let i = 0; i <= a.length; i++) d[i] = [i];
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    const c = a[i - 1] === b[j - 1] ? 0 : 1;
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[a.length][b.length];
+}
+// True when a word is within one (short words) or two (long words) typing slips of any word in the list.
+function fuzzyWordMatch(token, words) {
+  if (token.length < 4) return false;
+  const max = token.length <= 7 ? 1 : 2;
+  for (const w of words) {
+    if (w.length < 3 || w[0] !== token[0] || Math.abs(w.length - token.length) > max) continue;
+    if (editDistance(token, w) <= max) return true;
+  }
+  return false;
+}
 function scoreText(query, fields) {
   const q = normalize(query);
   if (!q) return 0;
   const tokens = q.split(/\s+/).filter(Boolean);
   const hay = fields.map(normalize).join(" ");
   const compact = hay.replace(/[^a-z0-9 ]/g, " ");
+  const words = [...new Set(compact.split(/\s+/).filter(Boolean))];
   let score = 0;
   if (hay.includes(q)) score += 20;
   for (const token of tokens) {
     if (compact.includes(token)) score += 5;
+    // a misspelt search word ("shrits") still finds "shirts", a little below an exact match
+    else if (fuzzyWordMatch(token, words)) score += 3;
   }
   return score;
 }

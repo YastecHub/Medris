@@ -17,7 +17,7 @@ function renderSettingsPage(){
 function hydrateSettingsPage(){
   setLevromartFontScale(getLevromartFontScale());
   levroPaintPushStatus();
-  const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"light";
+  const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"black";
   document.querySelectorAll("#settings-page .settings-choice").forEach(el=>{const on=el.dataset.themeChoice===theme;el.classList.toggle("active",on);el.dataset.active=String(on);});
   const motion=getLevromartMotionPreference(); document.querySelectorAll("#settings-page [data-motion-choice]").forEach(el=>{const on=el.dataset.motionChoice===motion;el.classList.toggle("active",on);el.dataset.active=String(on);});
   const vis=byId("leviVisibleSettingRow");

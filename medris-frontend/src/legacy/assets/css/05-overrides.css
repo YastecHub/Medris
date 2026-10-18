@@ -2121,8 +2121,6 @@ html:root body #app .search-page .lv-hero2-search{border-radius:24px!important;m
 :root:root:root body #app .vd-page .vd-views button.vd-view.active{color:#0f9d6a!important}
 
 /* Round 8: Home product/service cards get their own look (different from vendor cards): lilac + green + gold circles on the white info part */
-html:root body #app .product-card-wrap>.card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.30) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.34) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.30) 0 32px,transparent 33px),radial-gradient(circle at 18% 88%,rgba(106,61,240,.22) 0 5px,transparent 6px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.26) 0 4px,transparent 5px)!important;background-repeat:no-repeat!important;background-size:auto!important}
-:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.26) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.26) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.20) 0 32px,transparent 33px),radial-gradient(circle at 18% 88%,rgba(255,255,255,.14) 0 5px,transparent 6px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.22) 0 4px,transparent 5px)!important}
 html:root body #app .product-card-wrap>.card>*{position:relative;z-index:1}
 
 /* ===== Round 10 ===== */
