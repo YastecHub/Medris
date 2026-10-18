@@ -6,7 +6,7 @@ import { publicErrorMessage } from "./lib/http.js";
 import { requestContext } from "./middleware/request-context.js";
 import { sharePreviewHandler } from "./modules/accounts/accounts.controller.js";
 import { setAccessTokenVerifier } from "./modules/auth/caller.js";
-import { apiDocs } from "./routes/docs.js";
+import { apiDocs, DOCS_PATH } from "./routes/docs.js";
 import { legacyApi } from "./routes/legacy.js";
 import { v1Router } from "./routes/v1.js";
 import { v1ErrorResponse } from "./shared/errors/handler.js";
@@ -57,7 +57,12 @@ export function createApp(options: CreateAppOptions = {}): Express {
   // short links /s/<id>, /p/<id>, /k/<id> to /api/delete-account (handled there).
   // These routes answer the same URLs when a request arrives without the rewrite
   // applied to its URL (local server, other hosts).
-  app.get("/", (req, res) => sharePreviewHandler(req, res));
+  // The bare root of a backend-only host (Heroku) opens Swagger; a share link ("/?product=...") still gets its preview.
+  app.get("/", (req, res) => {
+    const isShareLink = ["storefront", "product", "package"].some((k) => req.query[k] !== undefined);
+    if (!isShareLink && services.config.docs.enabled) return res.redirect(302, `${DOCS_PATH}/`);
+    return sharePreviewHandler(req, res);
+  });
   app.get("/s/:id", (req, res) => sharePreviewHandler(req, res, { storefront: req.params.id }));
   app.get("/p/:id", (req, res) => sharePreviewHandler(req, res, { product: req.params.id }));
   app.get("/k/:id", (req, res) => sharePreviewHandler(req, res, { package: req.params.id }));

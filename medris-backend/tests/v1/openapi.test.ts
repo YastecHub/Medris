@@ -92,6 +92,17 @@ describe("OpenAPI document, Swagger UI and request bodies", () => {
     expect((await off.fetch(new Request("https://app.test/api/v1/docs"))).status).toBe(404);
   });
 
+  it("the bare root opens Swagger when the docs are on; share links and docs-off hosts keep the link preview", async () => {
+    const opted = buildTestApp(db, { env: { NODE_ENV: "production", API_DOCS_ENABLED: "true" } });
+    const root = await opted.fetch(new Request("https://api.test/"));
+    expect(root.status).toBe(302);
+    expect(root.headers.get("location")).toBe("/api/v1/docs/");
+    const share = await opted.fetch(new Request("https://api.test/?product=00000000-0000-0000-0000-000000000000"));
+    expect(share.status).not.toBe(302);
+    const prod = buildTestApp(db, { env: { NODE_ENV: "production" } });
+    expect((await prod.fetch(new Request("https://api.test/"))).status).not.toBe(302);
+  });
+
   describe("request bodies", () => {
     let token: string;
     let product: string;
