@@ -75,11 +75,12 @@ async function initVendorsMapPage(tries = 0) {
   if (buyerLocation) { center = [buyerLocation.lat, buyerLocation.lng]; zoom = 13; }
   vmpMap = window.L.map("vmpMap", { zoomControl: false, attributionControl: true, zoomSnap: 0.5, zoomDelta: 0.5, inertia: true, worldCopyJump: true }).setView(center, zoom);
   vmpMap.attributionControl.setPrefix(false);
-  let st = ""; try { st = localStorage.getItem("levromart-vmp-style") || ""; } catch (_) {}
-  vmpSetStyle(VMP_STYLES[st] ? st : vmpTheme());
+  // The map always opens in the light "Map" style; only a style the person picked themselves is remembered.
+  let st = ""; try { st = localStorage.getItem("levromart-vmp-style-v2") || ""; } catch (_) {}
+  vmpSetStyle(VMP_STYLES[st] ? st : "streets", false);
   vmpLayer = window.L.layerGroup().addTo(vmpMap);
   vmpMap.on("zoomend moveend", () => { vmpDrawPins(); vmpDrawRail(); });
-  vmpMap.on("click", () => { vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });
+  vmpMap.on("click", () => { vmpClearRoute(); vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });
   vmpDrawChips();
   vmpDrawMe();
   vmpLayout();
@@ -105,12 +106,13 @@ async function initVendorsMapPage(tries = 0) {
 }
 function vmpDestroy(keepListener) {
   try { vmpMap?.remove(); } catch (_) {}
+  try { vmpClearRoute(); } catch (_) {}
   vmpMap = null; vmpTiles = null; vmpLayer = null; vmpMe = null; vmpSelected = ""; vmpQuery = ""; vmpSector = "";
   if (!keepListener) window.removeEventListener("resize", vmpLayout);
 }
-function vmpSetStyle(key) {
+function vmpSetStyle(key, remember = true) {
   const s = VMP_STYLES[key] || VMP_STYLES.streets; vmpStyle = key;
-  try { localStorage.setItem("levromart-vmp-style", key); } catch (_) {}
+  if (remember) { try { localStorage.setItem("levromart-vmp-style-v2", key); } catch (_) {} }
   if (vmpTiles) vmpMap.removeLayer(vmpTiles);
   vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, subdomains: s.sub || "abc", updateWhenIdle: false, keepBuffer: 4, detectRetina: true }).addTo(vmpMap);
   byId("vmPage")?.setAttribute("data-style", key);
@@ -182,6 +184,46 @@ function vmpDrawRail() {
   const buddy = byId("vmpBuddy");
   if (buddy && !vmpSelected) buddy.textContent = n ? `${n} vendor${n === 1 ? "" : "s"} on the map${vmpQuery || vmpSector ? " for this search" : ""}. Tap a pin to meet them.` : "No vendors match that. Try another word.";
 }
+
+/* Green route from you to the picked vendor, traced in as an animation (the old directory map did this; this map lost it) */
+let vmpRoute = null, vmpRouteTimer = null, vmpRouteSeq = 0;
+function vmpClearRoute() {
+  clearTimeout(vmpRouteTimer); vmpRouteSeq++;
+  if (vmpRoute && vmpMap) { try { [vmpRoute.glow, vmpRoute.core, vmpRoute.a, vmpRoute.b].forEach((l) => l && vmpMap.removeLayer(l)); } catch (_) {} }
+  vmpRoute = null;
+}
+async function vmpTrace(v) {
+  vmpClearRoute();
+  if (!vmpMap || !v || v.lat == null || v.lng == null || !buyerLocation) return;
+  const seq = vmpRouteSeq;
+  let coords = [[Number(buyerLocation.lat), Number(buyerLocation.lng)], [Number(v.lat), Number(v.lng)]];
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${buyerLocation.lng},${buyerLocation.lat};${v.lng},${v.lat}?overview=full&geometries=geojson`;
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 5500);
+    const res = await fetch(url, { signal: ctl.signal }); clearTimeout(timer);
+    const route = (await res.json())?.routes?.[0]?.geometry?.coordinates;
+    if (Array.isArray(route) && route.length > 1) coords = route.map((c) => [Number(c[1]), Number(c[0])]);
+  } catch (_) { /* straight line */ }
+  if (seq !== vmpRouteSeq || !vmpMap) return;
+  const L = window.L, calm = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const glow = L.polyline(coords, { color: "#39ff88", weight: 8, opacity: 0.14, lineCap: "round", lineJoin: "round", interactive: false }).addTo(vmpMap);
+  const core = L.polyline(calm ? coords : [], { color: "#19c486", weight: 3.6, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(vmpMap);
+  const a = L.circleMarker(coords[0], { radius: 7, color: "#fff", weight: 2, fillColor: "#19c486", fillOpacity: 1, interactive: false }).addTo(vmpMap);
+  const b = L.circleMarker(coords[coords.length - 1], { radius: 8, color: "#fff", weight: 2, fillColor: "#19c486", fillOpacity: 1, interactive: false }).addTo(vmpMap);
+  vmpRoute = { glow, core, a, b };
+  try { vmpMap.fitBounds(L.latLngBounds(coords).pad(0.25), { animate: true, maxZoom: 16, paddingBottomRight: [0, 150] }); } catch (_) {}
+  if (calm) return;
+  let i = 1, drawing = true;
+  const step = () => {
+    if (seq !== vmpRouteSeq || !vmpRoute) return;
+    if (drawing) {
+      core.setLatLngs(coords.slice(0, Math.min(coords.length, i)));
+      i += Math.max(1, Math.ceil(coords.length / 28));
+      if (i >= coords.length) { core.setLatLngs(coords); drawing = false; vmpRouteTimer = setTimeout(step, 1400); } else vmpRouteTimer = setTimeout(step, 36);
+    } else { drawing = true; i = 1; core.setLatLngs([]); vmpRouteTimer = setTimeout(step, 500); }
+  };
+  step();
+}
 function vmpSelect(id, fly) {
   const v = vmpAll.find((x) => String(x.id) === String(id)); if (!v || !vmpMap) return;
   vmpSelected = v.id;
@@ -190,7 +232,7 @@ function vmpSelect(id, fly) {
   if (buddy) buddy.textContent = `${v.business_name || "This vendor"}${km != null ? ` is ${vmpDistText(km)} from you` : " is here"}. Tap View shop to see their things.`;
   vmpHideSugg();
   const target = vmpMap.getZoom() < 15 ? 15 : vmpMap.getZoom();
-  if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 }); else vmpMap.panTo([v.lat, v.lng], { animate: true });
+  if (buyerLocation) { vmpTrace(v); } else if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 }); else vmpMap.panTo([v.lat, v.lng], { animate: true });
   vmpDrawPins(); vmpDrawRail();
   setTimeout(() => byId("vmpRail")?.querySelector(".vmp-card.on")?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }), 60);
 }

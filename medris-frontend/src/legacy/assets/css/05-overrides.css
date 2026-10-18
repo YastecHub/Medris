@@ -1907,3 +1907,537 @@ html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in 
 .vmp-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vmp-card-name{overflow:visible!important;text-overflow:clip!important}
 @media (min-width:900px){html body #bottomNav::before{order:-2}}
+
+/* Vendor leaderboard: two friendly faces in the hero (decorative) */
+.lb-hero-people{position:absolute;right:.8rem;top:.5rem;display:flex;pointer-events:none;z-index:1}
+.lb-hero-people img{width:3.1rem;height:3.1rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 6px 14px rgba(20,10,80,.35)}
+.lb-hero-people img+img{margin-left:-.9rem;margin-top:.3rem}
+.lb-hero-top{padding-right:5.4rem}
+
+/* Friendly page header for Request an item and Vendors (lv-hero2) */
+.lv-hero2{position:relative;overflow:hidden;isolation:isolate;margin:0 0 1rem;padding:1rem 1rem 1rem;min-height:8.2rem;border-radius:22px;color:#fff;background:linear-gradient(135deg,#0f9d6a 0%,#0b6b47 55%,#4b2e83 135%);box-shadow:0 14px 30px rgba(11,107,71,.3)}
+.lv-hero2-vendors{background:linear-gradient(135deg,#4b2e83 0%,#6a3df0 60%,#0f9d6a 150%);box-shadow:0 14px 30px rgba(75,46,131,.32)}
+.lv-hero2:before{content:"";position:absolute;z-index:-1;right:-60px;top:-70px;width:200px;height:200px;border-radius:50%;background:rgba(255,200,61,.28)}
+.lv-hero2:after{content:"";position:absolute;z-index:-1;inset:0;background-image:radial-gradient(rgba(255,255,255,.16) 1.6px,transparent 2px);background-size:20px 20px}
+.lv-hero2-copy{position:relative;display:flex;flex-direction:column;max-width:62%}
+.lv-hero2-copy b{font-size:1.35rem;line-height:1.08;font-weight:900;letter-spacing:-.03em}
+.lv-hero2-copy b.em{color:#ffd21f}
+.lv-hero2-copy span{margin-top:.45rem;font-size:.82rem;font-weight:600;line-height:1.35;color:rgba(255,255,255,.9)}
+.lv-hero2-img{position:absolute;right:.9rem;top:.9rem;width:5.6rem;height:5.6rem;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 10px 20px rgba(0,0,0,.3)}
+.lv-fl{position:absolute;display:grid;place-items:center;width:2.1rem;height:2.1rem;border-radius:.7rem;font-size:.95rem;box-shadow:0 6px 12px rgba(0,0,0,.25),inset 0 2px 3px rgba(255,255,255,.4)}
+.lv-fl1{right:6.9rem;top:.8rem;background:#ffc83d;color:#1b0d3d}
+.lv-fl2{right:.7rem;bottom:.7rem;background:#fff;color:#0b6b47}
+.lv-fl3{right:6.4rem;bottom:.7rem;background:#14d68f;color:#05261c}
+.lv-hero2-img.lv-fl{width:5.6rem;height:5.6rem;border-radius:50%;font-size:0}
+
+/* Orders header + Home strip (lv-band) */
+.lv-hero2-orders{background:linear-gradient(135deg,#ff9a3d 0%,#f2594a 55%,#c2379f 130%);box-shadow:0 14px 30px rgba(242,89,74,.3)}
+.lv-band{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin:1.1rem 0 .4rem}
+.lv-band-card{position:relative;overflow:hidden;display:flex;align-items:flex-end;min-height:6.6rem;padding:.8rem;border:0;border-radius:20px;color:#fff;text-align:left;text-decoration:none;cursor:pointer;box-shadow:0 10px 22px rgba(0,0,0,.22);font:inherit}
+.lv-band-card:active{transform:scale(.98)}
+.lv-band-a{background:linear-gradient(135deg,#0f9d6a,#0b6b47)}
+.lv-band-b{background:linear-gradient(135deg,#6a3df0,#4b2e83)}
+.lv-band-c{grid-column:1/-1;min-height:4.6rem;background:linear-gradient(135deg,#25d366,#128c4a)}
+.lv-band-t{position:relative;z-index:1;display:flex;flex-direction:column;font-size:.74rem;font-weight:600;opacity:.95;max-width:62%}
+.lv-band-t b{font-size:1.02rem;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:#fff}
+.lv-band-a .lv-band-t b{color:#ffd21f}
+.lv-band-card img.lv-fl{position:absolute;right:.6rem;top:.6rem;width:3.4rem;height:3.4rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.3)}
+.lv-band-card .lv-bfl{width:1.8rem;height:1.8rem;border-radius:.6rem;left:.8rem;top:.7rem;background:#ffc83d;color:#1b0d3d;font-size:.8rem}
+.lv-band-c .lv-bfl{left:auto;right:.8rem;top:50%;margin-top:-1.2rem;width:2.4rem;height:2.4rem;background:#fff;color:#128c4a;font-size:1.3rem}
+
+/* ===== Restyle pass: Request an item, Vendors, vendor map, Home strips, bottom bar (lv-rs) ===== */
+:root{--lv-g1:#19c486;--lv-g2:#0b6b47;--lv-p1:#6a3df0;--lv-p2:#4b2e83;--lv-y:#ffc83d}
+.lv-band-d{background:linear-gradient(135deg,#ff9a3d,#f2594a 70%,#c2379f 140%)}
+.lv-band-e{background:linear-gradient(135deg,#2f7df6,#6a3df0 80%)}
+.lv-band2{margin:.2rem 0 .9rem}
+/* --- Request an item form --- */
+html:root body #app .request-equipment-page{max-width:560px!important;padding:1rem!important;border-radius:24px!important;background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 16px 36px rgba(15,23,42,.12)!important}
+html:root body #app .request-equipment-page>label,html:root body #app .request-equipment-page .flex>div>label{display:block;margin:.95rem 0 .35rem;font-size:.74rem!important;font-weight:800!important;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)!important}
+html:root body #app .request-equipment-page input:not([type=radio]):not([type=file]),html:root body #app .request-equipment-page textarea,html:root body #app .request-equipment-page .req-sector-picker,html:root body #app .request-equipment-page .req-category-picker{min-height:3rem;border-radius:16px!important;border:1.5px solid color-mix(in srgb,var(--lv-g1) 22%,var(--border))!important;background:color-mix(in srgb,var(--lv-g1) 5%,var(--card))!important;font-size:.98rem!important;padding:.7rem .95rem!important;transition:border-color .15s,box-shadow .15s}
+html:root body #app .request-equipment-page input:focus,html:root body #app .request-equipment-page textarea:focus{outline:0;border-color:var(--lv-g1)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--lv-g1) 22%,transparent)!important}
+html:root body #app .request-equipment-page .theme-option{position:relative;justify-content:center;min-height:3.3rem;border-radius:16px!important;border:1.5px solid var(--border)!important;background:var(--card)!important;font-weight:800;transition:all .15s}
+html:root body #app .request-equipment-page .theme-option input{position:absolute;opacity:0;pointer-events:none}
+html:root body #app .request-equipment-page .req-drop{border-radius:22px;border-width:2px;background:linear-gradient(160deg,color-mix(in srgb,var(--lv-y) 18%,var(--card)),color-mix(in srgb,var(--lv-g1) 10%,var(--card)))}
+html:root body #app .request-equipment-page .req-drop .rd-ico{background:linear-gradient(135deg,var(--lv-y),#ff9a3d);color:#1b0d3d}
+html:root body #app #postEquipmentRequestBtn{width:100%;min-height:3.3rem;margin-top:1.2rem!important;border:0!important;border-radius:999px!important;font-size:1.02rem!important;font-weight:900!important;letter-spacing:.01em;color:#fff!important;background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;box-shadow:0 14px 26px rgba(11,107,71,.4)!important}
+html:root body #app #postEquipmentRequestBtn:active{transform:scale(.98)}
+html:root body #app #myRequestsAccordion .accordion-trigger{font-weight:800}
+/* --- Vendors page --- */
+html:root body #app .vd-page .vd-title-ico{display:none!important}
+html:root body #app .vd-page .vd-title{gap:0}
+html:root body #app .vd-page .vd-title h2,html:root body #app .vd-page .vd-title strong{font-size:1.4rem!important;font-weight:900!important;letter-spacing:-.03em}
+html:root body #app .vd-page .vd-views{display:inline-flex;gap:.2rem;padding:.22rem;border-radius:999px;background:color-mix(in srgb,var(--lv-p1) 10%,var(--card));border:1px solid color-mix(in srgb,var(--lv-p1) 18%,var(--border))}
+html:root body #app .vd-page .vd-views button.vd-view{width:2.2rem!important;height:2.2rem!important;border-radius:50%!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;box-shadow:none!important}
+html:root body #app .vd-page .vd-views button.vd-view.active{background:linear-gradient(135deg,var(--lv-p1),var(--lv-p2))!important;color:#fff!important;box-shadow:none!important}
+/* --- Vendor map: slimmer search, friendlier chips and buttons --- */
+html:root body #app .vmp-bar{padding:.05rem .6rem .05rem .2rem!important;border-radius:999px!important;border:1.5px solid color-mix(in srgb,var(--lv-g1) 30%,var(--border))!important;box-shadow:0 8px 20px rgba(15,23,42,.25)!important}
+html:root body #app .vmp-bar input{padding:.32rem .2rem!important;font-size:.9rem!important}
+html:root body #app .vmp-back{width:30px!important;height:30px!important;flex-basis:30px!important}
+html:root body #app .vmp-chip{padding:.28rem .75rem!important;font-size:.8rem!important;font-weight:800;box-shadow:0 4px 10px rgba(15,23,42,.18)}
+html:root body #app .vmp-chip.on{background:linear-gradient(135deg,var(--lv-g1),var(--lv-g2))!important;border-color:transparent!important}
+html:root body #app .vmp-fab{border:0!important;background:linear-gradient(135deg,#fff,#f1e8ff)!important;color:var(--lv-p2)!important;box-shadow:0 8px 18px rgba(75,46,131,.3)!important}
+/* --- Bottom bar: active tab gets a coloured bubble --- */
+/* Levi mascot (robot head): glow on the antenna, floating mascot, modern speech bubbles */
+.lvc-ant{animation:lvcGlow 2.2s ease-in-out infinite;filter:drop-shadow(0 0 4px rgba(61,255,180,.9))}
+@keyframes lvcGlow{0%,100%{opacity:1}50%{opacity:.55}}
+#lvCampus .lvc-mascot,.vmp-buddy-m,.st-hero .m{filter:drop-shadow(0 10px 14px rgba(75,46,131,.4))}
+#lvCampus .lvc-bubble,.vmp-buddy-b,.st-hero .b{background:linear-gradient(135deg,color-mix(in srgb,#6a3df0 14%,var(--card,#fff)),color-mix(in srgb,#0f9d6a 12%,var(--card,#fff)))!important;border:1.5px solid color-mix(in srgb,#6a3df0 35%,var(--border,#ddd))!important;border-radius:20px!important;font-weight:700}
+#lvCampus .lvc-hero{background:radial-gradient(400px 160px at 0 0,color-mix(in srgb,#6a3df0 18%,transparent),transparent 70%);border-radius:24px;padding:.2rem .4rem}
+#lvCampus .lvc-sbox{border-radius:999px!important;border:1.5px solid color-mix(in srgb,#0f9d6a 30%,var(--border,#ddd))!important}
+#lvCampus .lvc-chip.on{background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border-color:transparent!important}
+#lvCampus .lvc-foot button.pri,#lvCampus .lvc-foot button[data-a=all]{background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important}
+#lvCampus .lvc-eye,.vmp-buddy-m .lvc-eye{transform-box:fill-box;transform-origin:center}
+
+/* ===== Round 2 polish (lv-r2): flat, clean, brand colours ===== */
+/* Vendors tabs: original underline look, spread evenly so all four show */
+html:root body #app .vd-page .vd-seg{display:flex!important;justify-content:space-between;gap:0!important;overflow:visible!important}
+html:root body #app .vd-page .vd-filter-btn{background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:none!important;border-radius:12px!important}
+html:root body #app .vd-page .vd-views button.vd-view,html:root body #app .vd-page .vd-views button.vd-view.active{box-shadow:none!important;text-shadow:none!important}
+/* Bottom bar: no bubble or emboss; a short bar on top of the active tab */
+html:root body #bottomNav .bottom-nav-item{position:relative}
+html:root body #bottomNav .bottom-nav-item.active,html:root body #bottomNav .bottom-nav-item.active .bn-icon{background:transparent!important;box-shadow:none!important;filter:none!important;border-color:transparent!important}
+html:root body #bottomNav .bottom-nav-item.active::before{content:"";position:absolute;top:0;left:50%;width:1.7rem;height:3px;margin-left:-.85rem;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#19c486,#6a3df0)}
+html:root body #bottomNav .bottom-nav-item.active{color:var(--lv-g1)!important;font-weight:800}
+/* Request: Buy/Rent as clean flat options */
+html:root body #app .request-equipment-page .theme-option{box-shadow:none!important}
+html:root body #app .request-equipment-page .theme-option:has(input:checked){border:2px solid var(--lv-g1)!important;background:color-mix(in srgb,var(--lv-g1) 14%,var(--card))!important;color:var(--lv-g1)!important}
+html:root body #app .request-equipment-page .theme-option:has(input:checked)::after{content:"\f00c";font-family:"Font Awesome 6 Free";font-weight:900;margin-left:.5rem;font-size:.8rem}
+/* Action buttons: lively brand gradient (flat, soft glow) */
+html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):not(.hidden):not(.follow-btn){background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;border-radius:999px!important;font-weight:800!important;box-shadow:0 8px 18px rgba(11,107,71,.28)!important}
+html:root body #app .btn:not(.btn-outline):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-link):not(.follow-btn):active{transform:scale(.97)}
+html:root body #app .btn.btn-outline:not(.follow-btn){border-radius:999px!important;border:1.5px solid color-mix(in srgb,#0f9d6a 55%,var(--border))!important;color:#0f9d6a!important;font-weight:800!important}
+/* Crown (Vendor of the Week): flat gold badge, no glow or bounce */
+/* Vendor card banners: brand colours with a soft shine; avatar ring */
+#app .vc2-banner{background-size:cover}
+#app .vc2-logo{box-shadow:0 0 0 3px var(--card),0 6px 14px rgba(0,0,0,.25)!important}
+/* Browse everything: smaller, neater filter button; cleaner product cards */
+html:root body #app .browse-filter-trigger{width:auto!important;min-width:0!important;height:2.2rem!important;min-height:0!important;padding:0 .65rem!important;gap:.3rem;border-radius:999px!important;background:var(--card)!important;border:1.5px solid color-mix(in srgb,#6a3df0 35%,var(--border))!important;color:#6a3df0!important;box-shadow:none!important}
+html:root body #app .browse-filter-trigger svg{width:15px!important;height:15px!important}
+html:root body #app .browse-filter-trigger .browse-filter-chevron{font-size:.65rem!important}
+html:root body #app .product-card{border-radius:20px!important;border:1px solid color-mix(in srgb,var(--border) 80%,#6a3df0)!important;box-shadow:0 8px 20px rgba(15,23,42,.1)!important;overflow:hidden}
+/* All campuses button in the campus picker */
+#lvCampus .lvc-foot button[data-a=all],#lvCampus .lvc-foot button.pri{border-radius:999px!important;font-weight:800!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;box-shadow:0 8px 18px rgba(11,107,71,.3)!important}
+/* Home strips: second strip text-free titles; third strip */
+.lv-band-d .lv-band-t,.lv-band-e .lv-band-t{max-width:58%}
+.lv-band3{position:relative;display:flex;align-items:center;overflow:hidden;min-height:5.6rem;margin:.9rem 0;padding:.9rem 1rem;border-radius:22px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#6a3df0 0%,#4b2e83 60%,#0f9d6a 150%);box-shadow:0 12px 26px rgba(75,46,131,.3)}
+.lv-band3:before{content:"";position:absolute;right:-50px;top:-60px;width:170px;height:170px;border-radius:50%;background:rgba(255,200,61,.28)}
+.lv-b3-copy{position:relative;display:flex;flex-direction:column;max-width:62%}
+.lv-b3-copy b{font-size:1.1rem;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.lv-b3-copy span{font-size:.76rem;opacity:.9;margin-top:.25rem;line-height:1.3}
+.lv-b3-copy em{margin-top:.5rem;font-style:normal;font-weight:800;font-size:.8rem;color:#ffd21f}
+.lv-b3-img{position:absolute;right:1rem;top:.9rem;width:4.4rem;height:4.4rem;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 8px 16px rgba(0,0,0,.3)}
+.lv-b3-ic{right:5.4rem;bottom:.7rem;width:2rem;height:2rem;border-radius:.65rem;background:#ffc83d;color:#1b0d3d;font-size:.9rem}
+
+/* ===== Follow buttons + Search page (lv-r3) ===== */
+html:root body #app .vendor-card-follow-btn,html:root body #app .vd-follow,html:root body #app .fn-follow,html:root body #app .sr-follow{display:inline-flex!important;align-items:center;justify-content:center;gap:.4rem;min-height:2.4rem;padding:0 1.2rem;border:0!important;border-radius:999px!important;font-weight:800!important;font-size:.88rem;color:#fff!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;box-shadow:0 8px 16px rgba(11,107,71,.3)!important}
+html:root body #app .vendor-card-follow-btn::before,html:root body #app .vd-follow::before,html:root body #app .fn-follow::before,html:root body #app .sr-follow::before{content:"\2b";font-family:"Font Awesome 6 Free";font-weight:900;font-size:.72rem}
+html:root body #app .vendor-card-follow-btn.following::before,html:root body #app .vd-follow.following::before,html:root body #app .fn-follow.following::before,html:root body #app .sr-follow.following::before{content:"\f00c"}
+html:root body #app .vendor-card-follow-btn:active{transform:scale(.97)}
+/* Search page */
+.lv-hero2-search{min-height:6rem;padding:.8rem 1rem;margin-bottom:.7rem;background:linear-gradient(135deg,#6a3df0 0%,#4b2e83 60%,#0f9d6a 150%)}
+.lv-hero2-search .lv-hero2-img{width:4.2rem;height:4.2rem}
+.lv-hero2-search .lv-hero2-copy b{font-size:1.2rem}
+html:root body #app .search-page-input-wrap{border-radius:999px!important;border:1.5px solid color-mix(in srgb,#6a3df0 35%,var(--border))!important;background:color-mix(in srgb,#6a3df0 5%,var(--card))!important;box-shadow:0 8px 18px rgba(75,46,131,.12)}
+html:root body #app .search-page-input-wrap:focus-within{border-color:#6a3df0!important;box-shadow:0 0 0 4px color-mix(in srgb,#6a3df0 20%,transparent)}
+html:root body #app .search-page-input-wrap>i.fa-magnifying-glass{color:#6a3df0}
+html:root body #app .search-page-back{width:2.6rem;height:2.6rem;border-radius:50%;background:var(--card);border:1px solid var(--border)}
+html:root body #app .search-page-filters{display:flex;gap:.45rem;overflow-x:auto;scrollbar-width:none;padding:.4rem 0}
+html:root body #app .search-page-filters::-webkit-scrollbar{display:none}
+html:root body #app .search-page-filter{flex:0 0 auto;display:inline-flex;align-items:center;gap:.35rem;padding:.42rem .9rem;border-radius:999px;border:1.5px solid var(--border);background:var(--card);color:var(--text-muted);font-weight:800;font-size:.84rem;box-shadow:none}
+html:root body #app .search-page-filter.active{background:linear-gradient(135deg,#6a3df0,#4b2e83);border-color:transparent;color:#fff}
+html:root body #app .search-page-chip{border-radius:999px;padding:.4rem .85rem;border:1.5px solid color-mix(in srgb,#19c486 40%,var(--border));background:color-mix(in srgb,#19c486 8%,var(--card));color:var(--text);font-weight:700;font-size:.84rem}
+html:root body #app .search-page-history-head span,html:root body #app .search-page-section>h3,html:root body #app .search-page-section .section-title{font-size:.74rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6a3df0}
+html:root body #app .search-page-history-head button{color:#0f9d6a;font-weight:800}
+
+/* ===== Round 3 (lv-r4): quieter nav/crown, plain view icons, bright quick actions, patterned cards, chips ===== */
+/* bottom bar: no line, no bubble; active = colour only */
+html:root body #bottomNav .bottom-nav-item.active::before,html:root body #bottomNav .bottom-nav-item.active::after{content:none!important;display:none!important}
+/* crown: quiet, soft gold tint */
+/* vendors: grid/list/map icons like the plain filter/search/history icons */
+html:root body #app .vd-page .vd-views{background:transparent!important;border:0!important;padding:0!important;gap:.1rem}
+html:root body #app .vd-page .vd-views button.vd-view,html:root body #app .vd-page .vd-views button.vd-view.active{width:2.3rem!important;height:2.3rem!important;border-radius:10px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--text-muted)!important}
+html:root body #app .vd-page .vd-views button.vd-view svg{width:20px!important;height:20px!important;stroke-width:1.8!important;stroke:currentColor!important}
+html:root body #app .vd-page .vd-views button.vd-view.active{color:var(--text)!important;background:color-mix(in srgb,var(--text) 8%,transparent)!important}
+/* Home quick actions: bright brand tiles */
+html:root body #app .levro-quick-action{position:relative;overflow:hidden;border:0!important;box-shadow:0 10px 20px rgba(15,23,42,.18)!important;color:#fff!important}
+html:root body #app .levro-quick-action::after{content:"";position:absolute;right:-26px;top:-30px;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.18);pointer-events:none}
+html:root body #app .levro-quick-action *{color:#fff!important}
+html:root body #app .levro-quick-action small,html:root body #app .levro-quick-action .levro-quick-desc{opacity:.9}
+html:root body #app .levro-quick-mint{background:linear-gradient(135deg,#19c486,#0b6b47)!important}
+html:root body #app .levro-quick-peach{background:linear-gradient(135deg,#ffb12e,#ff7a3d)!important}
+html:root body #app .levro-quick-lavender{background:linear-gradient(135deg,#8b6bff,#4b2e83)!important}
+html:root body #app .levro-quick-pink{background:linear-gradient(135deg,#ff6aa8,#c2379f)!important}
+html:root body #app .levro-quick-aqua{background:linear-gradient(135deg,#1fd3c6,#0e8f9c)!important}
+html:root body #app .levro-quick-blue{background:linear-gradient(135deg,#4f9bff,#2f5fe0)!important}
+/* product cards: soft circle patterns */
+/* category chips (Home rail + Vendors) */
+/* campus picker: All campuses button */
+#lvCampus .lvc-foot button[data-a=all]{display:inline-flex;align-items:center;justify-content:center;gap:.55rem}
+#lvCampus .lvc-foot button[data-a=all] i{display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:rgba(255,255,255,.25);font-size:.85rem}
+/* Request: Buy/Rent options, a bit richer */
+html:root body #app .request-equipment-page .theme-option{min-height:3.6rem;font-size:1rem;gap:.5rem}
+html:root body #app .request-equipment-page .theme-option:nth-of-type(1):has(input:checked){border-color:#19c486!important;background:color-mix(in srgb,#19c486 16%,var(--card))!important;color:#0f9d6a!important}
+html:root body #app .request-equipment-page .theme-option:nth-of-type(2):has(input:checked){border-color:#6a3df0!important;background:color-mix(in srgb,#6a3df0 14%,var(--card))!important;color:#6a3df0!important}
+/* Following buttons: flatter, calmer purple with a tick */
+
+/* ===== Round 4 (lv-r5) ===== */
+/* Follow / Following: bright green Follow; Following = clean white-card pill with green tick (works in light and dark) */
+html:root body #app .vendor-card-follow-btn.following,html:root body #app .vd-follow.following,html:root body #app .fn-follow.following,html:root body #app .sr-follow.following,html:root body #app .vendors-list-mode .vendor-card-follow-btn.following{background:color-mix(in srgb,#19c486 12%,var(--card))!important;color:#0b6b47!important;box-shadow:inset 0 0 0 1.5px #19c486!important}
+:root[data-theme="dark"] body #app .vendor-card-follow-btn.following,:root[data-theme="dark"] body #app .vd-follow.following,:root[data-theme="black"] body #app .vendor-card-follow-btn.following,:root[data-theme="black"] body #app .vd-follow.following{color:#3dffb4!important}
+/* Vendors tabs: content-sized, no huge gaps */
+html:root body #app .vd-page .vd-seg{justify-content:flex-start!important;gap:.15rem!important}
+html:root body #app .vd-page .vd-seg .vd-tab{flex:0 1 auto!important;padding-left:.8rem!important;padding-right:.8rem!important}
+/* View buttons: simple icons like the filter/search/history icons */
+html:root body #app .vd-page .vd-views button.vd-view i{font-size:1.05rem}
+/* Home quick actions: illustrated icons on a white chip */
+.orders-empty-icon{background:transparent!important;box-shadow:none!important;width:auto!important;height:auto!important}
+.orders-empty-icon svg{filter:drop-shadow(0 10px 12px rgba(224,138,61,.35))}
+/* Cards (products, services, vendors, packages): soft circular watermarks that show in light and dark */
+
+/* Round 5 */
+/* bottom bar + header line icons */
+.icon-btn .lv-line-ic{display:block}
+/* quick action arrows: small round chip */
+html:root body #app .levro-home-quick-actions .levro-quick-arrow{display:grid!important;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:rgba(255,255,255,.26)!important;color:#fff!important;font-size:.7rem;box-shadow:none!important}
+
+/* Round 6 */
+/* quick actions: original font icons, white on the gradient */
+/* Round 7 */
+/* Vendor cards (loved): polka dots + soft corner circles */
+html:root body #app .vc2,html:root body #app .vd-card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.24) 0 44px,transparent 45px),radial-gradient(circle,rgba(106,61,240,.12) 1.5px,transparent 2px)!important;background-size:auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,repeat!important}
+:root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 0 0,rgba(255,200,61,.18) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.18) 0 44px,transparent 45px),radial-gradient(circle,rgba(255,255,255,.07) 1.5px,transparent 2px)!important}
+/* Product, service, package cards and search result rows: lilac watermarks (two big soft circles + a small gold one), no dots */
+html:root body #app .product-card,html:root body #app .package-card,html:root body #app .service-card,html:root body #app .sr-row{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.26) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(176,148,255,.24) 0 56px,transparent 57px),radial-gradient(circle at 78% 92%,rgba(255,200,61,.30) 0 12px,transparent 13px)!important;background-repeat:no-repeat!important;background-size:auto!important}
+:root[data-theme="dark"] body #app .product-card,:root[data-theme="dark"] body #app .package-card,:root[data-theme="dark"] body #app .service-card,:root[data-theme="dark"] body #app .sr-row,:root[data-theme="black"] body #app .product-card,:root[data-theme="black"] body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.24) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(139,107,255,.18) 0 56px,transparent 57px),radial-gradient(circle at 78% 92%,rgba(255,200,61,.20) 0 12px,transparent 13px)!important}
+/* Action tiles: coloured icons on the white chip (not black/white) */
+/* Empty cart illustration */
+.lv-empty-illus{background:transparent!important;box-shadow:none!important;width:auto!important;height:auto!important}
+.lv-empty-illus svg{filter:drop-shadow(0 10px 12px rgba(11,107,71,.3))}
+/* Search page: clean rounded header block, no square strip under the banner */
+html:root body #app .search-page-head{background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-radius:22px!important;padding-top:.2rem!important}
+html:root body #app .search-page .lv-hero2-search{border-radius:24px!important;margin-bottom:.6rem!important}
+/* Vendors view buttons: no fill at all; the active one is only coloured green */
+:root:root:root body #app .vd-page .vd-views button.vd-view,:root:root:root body #app .vd-page .vd-views button.vd-view.active{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important}
+:root:root:root body #app .vd-page .vd-views button.vd-view.active{color:#0f9d6a!important}
+
+/* Round 8: Home product/service cards get their own look (different from vendor cards): lilac + green + gold circles on the white info part */
+html:root body #app .product-card-wrap>.card>*{position:relative;z-index:1}
+
+/* ===== Round 10 ===== */
+/* Bottom bar: shorter on phones (less empty space above/below the icons) */
+@media(max-width:720px){
+  html:root body #bottomNav,html:root body #bottomNav.buyer-no-add,html:root body #bottomNav.has-add,html:root body #bottomNav:not(.has-add):not(.buyer-no-add){height:auto!important;min-height:0!important;padding-top:5px!important;padding-bottom:max(5px,env(safe-area-inset-bottom,0px))!important}
+  html:root body #bottomNav .bottom-nav-item,html:root body #bottomNav.buyer-no-add .bottom-nav-item,html:root body #bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item{height:42px!important;min-height:42px!important;padding-top:2px!important;padding-bottom:2px!important;gap:1px!important}
+  html:root body #bottomNav .bn-icon{height:22px!important;font-size:1.02rem!important}
+  html:root body #bottomNav .bottom-nav-add{height:42px!important;min-height:42px!important}
+}
+/* Vendor cards + map cards: lilac watermark circles (top-right big, bottom-left small) on top of the existing dots */
+html:root body #app .vc2,html:root body #app .vd-card{background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.28) 0 40px,transparent 41px),radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.24) 0 44px,transparent 45px),radial-gradient(circle at 12% 94%,rgba(176,148,255,.30) 0 16px,transparent 17px),radial-gradient(circle,rgba(106,61,240,.10) 1.5px,transparent 2px)!important;background-size:auto,auto,auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,no-repeat,no-repeat,repeat!important}
+:root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.26) 0 40px,transparent 41px),radial-gradient(circle at 0 0,rgba(255,200,61,.18) 0 34px,transparent 35px),radial-gradient(circle at 100% 100%,rgba(25,196,134,.18) 0 44px,transparent 45px),radial-gradient(circle at 12% 94%,rgba(139,107,255,.26) 0 16px,transparent 17px),radial-gradient(circle,rgba(255,255,255,.06) 1.5px,transparent 2px)!important}
+html:root body #app .vmp-card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.30) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(25,196,134,.22) 0 36px,transparent 37px),radial-gradient(circle at 70% 100%,rgba(255,200,61,.30) 0 12px,transparent 13px)!important;background-repeat:no-repeat!important}
+html:root body #app .vmp-card>*{position:relative;z-index:1}
+
+/* ===== Round 11 ===== */
+/* Product/service card: decorations sit in the name/price band (never under the distance, cart or total line) */
+html:root body #app .product-card-wrap>.card{position:relative;overflow:hidden;background-color:var(--card)!important;background-image:radial-gradient(circle at 104% 46%,rgba(139,107,255,.26) 0 38px,transparent 39px),radial-gradient(circle at -4% 56%,rgba(255,200,61,.28) 0 26px,transparent 27px),radial-gradient(circle at 90% 58%,rgba(25,196,134,.30) 0 7px,transparent 8px)!important;background-repeat:no-repeat!important;background-size:auto!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 104% 46%,rgba(139,107,255,.26) 0 38px,transparent 39px),radial-gradient(circle at -4% 56%,rgba(255,200,61,.18) 0 26px,transparent 27px),radial-gradient(circle at 90% 58%,rgba(25,196,134,.26) 0 7px,transparent 8px)!important}
+/* Distance / service tag / cart icon sit low, right above the dividing line */
+:root:root:root:root body #app .product-card-wrap.product-card-compact>.card{display:flex!important;flex-direction:column!important}
+:root:root:root:root body #app .product-card-wrap.product-card-compact>.card>.product-card-compact-footer{margin-top:.45rem!important;min-height:0!important}
+:root:root:root:root body #app .product-card-wrap.product-card-compact>.card>.product-card-meta{margin-top:auto!important;padding-top:.3rem!important;padding-bottom:.1rem!important;align-items:flex-end!important}
+/* Store options sheet: coloured rounded icon tiles */
+#app .levro-storefront-sheet-item i{display:inline-grid!important;place-items:center;width:2.2rem!important;height:2.2rem!important;border-radius:12px!important;font-size:.95rem!important;color:#fff!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;margin-right:.7rem;flex:0 0 auto}
+#app .levro-storefront-sheet-item i.fa-share-nodes{background:linear-gradient(135deg,#4f9bff,#2f5fe0)!important}
+#app .levro-storefront-sheet-item i.fa-lightbulb{background:linear-gradient(135deg,#ffc83d,#ff9a3d)!important;color:#1b0d3d!important}
+#app .levro-storefront-sheet-item i.fa-clock{background:linear-gradient(135deg,#8b6bff,#4b2e83)!important}
+#app .levro-storefront-sheet-item i.fa-calendar-check{background:linear-gradient(135deg,#ff6aa8,#c2379f)!important}
+#app .levro-storefront-sheet-item i.fa-building-columns{background:linear-gradient(135deg,#1fd3c6,#0e8f9c)!important}
+
+/* Restore: Home product/service card watermarks as before (lilac bottom-right, green, gold bottom-left, tiny green dot); only the small lilac dot by the distance is gone */
+html:root body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.30) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.34) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.30) 0 32px,transparent 33px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.26) 0 4px,transparent 5px)!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(139,107,255,.26) 0 54px,transparent 55px),radial-gradient(circle at 90% 74%,rgba(25,196,134,.26) 0 12px,transparent 13px),radial-gradient(circle at 0 100%,rgba(255,200,61,.20) 0 32px,transparent 33px),radial-gradient(circle at 34% 96%,rgba(25,196,134,.22) 0 4px,transparent 5px)!important}
+/* ===== Round 9 ===== */
+/* Search results: rounder rows and thumbnails */
+html:root body #app .sr-row{border-radius:22px!important;border:1px solid color-mix(in srgb,var(--border) 70%,#8b6bff)!important;margin-bottom:.65rem!important;padding:.75rem!important}
+html:root body #app .sr-thumb{border-radius:18px!important}
+html:root body #app .sr-thumb img{border-radius:18px!important}
+/* Storefront banner "more" button: small, quiet, glass */
+html:root body #app .storefront-banner-more{width:2rem!important;height:2rem!important;min-width:0!important;border-radius:50%!important;border:0!important;background:rgba(0,0,0,.32)!important;color:rgba(255,255,255,.9)!important;box-shadow:none!important;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:.8rem!important;padding:0!important}
+/* Empty states with art */
+.lv-empty-state{display:flex;flex-direction:column;align-items:center;gap:.6rem;padding:2rem 1rem}
+.lv-empty-state strong{font-weight:700;color:var(--text-muted)}
+/* No internet screen: clean light/dark page instead of the green texture */
+html body #levromartOfflineOverlay{background:radial-gradient(520px 360px at 50% 20%,rgba(139,107,255,.18),transparent 70%),linear-gradient(180deg,#f7f3ff,#ffffff)!important;background-image:radial-gradient(520px 360px at 50% 20%,rgba(139,107,255,.18),transparent 70%),linear-gradient(180deg,#f7f3ff,#ffffff)!important}
+html:root[data-theme="dark"] body #levromartOfflineOverlay,html:root[data-theme="black"] body #levromartOfflineOverlay{background-image:radial-gradient(520px 360px at 50% 20%,rgba(139,107,255,.28),transparent 70%),linear-gradient(180deg,#14101f,#0b0b0f)!important}
+html body #levromartOfflineOverlay .levromart-offline-title{color:#1b0d3d!important;font-size:1.45rem!important;font-weight:900!important;letter-spacing:-.02em}
+html body #levromartOfflineOverlay .levromart-offline-text{color:#5b4a8a!important;font-size:.92rem!important}
+html:root[data-theme="dark"] body #levromartOfflineOverlay .levromart-offline-title,html:root[data-theme="black"] body #levromartOfflineOverlay .levromart-offline-title{color:#fff!important}
+html:root[data-theme="dark"] body #levromartOfflineOverlay .levromart-offline-text,html:root[data-theme="black"] body #levromartOfflineOverlay .levromart-offline-text{color:rgba(255,255,255,.72)!important}
+html body #levromartOfflineOverlay .lv-off-art{width:190px;height:154px}
+html body #levromartOfflineOverlay .levromart-offline-retry{background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;box-shadow:0 10px 22px rgba(11,107,71,.35)!important;padding:.8rem 2rem!important}
+
+/* ===== Vendor cards (final): nothing at the bottom. Lilac circle near the top centre-right, gold top-left, a faint green circle mid-right, soft dots ===== */
+html:root body #app .vc2,html:root body #app .vd-card{background-image:radial-gradient(circle at 66% 0,rgba(139,107,255,.30) 0 50px,transparent 51px),radial-gradient(circle at 0 0,rgba(255,200,61,.30) 0 44px,transparent 45px),radial-gradient(circle at 104% 40%,rgba(25,196,134,.13) 0 34px,transparent 35px),radial-gradient(circle,rgba(106,61,240,.09) 1.5px,transparent 2px)!important;background-size:auto,auto,auto,15px 15px!important;background-repeat:no-repeat,no-repeat,no-repeat,repeat!important}
+:root[data-theme="dark"] body #app .vc2,:root[data-theme="dark"] body #app .vd-card,:root[data-theme="black"] body #app .vc2,:root[data-theme="black"] body #app .vd-card{background-image:radial-gradient(circle at 66% 0,rgba(139,107,255,.28) 0 50px,transparent 51px),radial-gradient(circle at 0 0,rgba(255,200,61,.18) 0 44px,transparent 45px),radial-gradient(circle at 104% 40%,rgba(25,196,134,.10) 0 34px,transparent 35px),radial-gradient(circle,rgba(255,255,255,.05) 1.5px,transparent 2px)!important}
+
+/* ===== Levi floating button = the same glass badge as the map / campus picker ===== */
+html body #aiChatFab:has(.lv-fab-badge){background:transparent!important;box-shadow:none!important;border:0!important;overflow:visible!important}
+html body #aiChatFab:has(.lv-fab-badge)::before,html body #aiChatFab:has(.lv-fab-badge)::after{display:none!important;content:none!important}
+html body #aiChatFab .lv-fab-badge{position:absolute;inset:-12%;display:block;pointer-events:none;z-index:2;filter:drop-shadow(0 6px 10px rgba(75,46,131,.4));transition:opacity .15s}
+html body #aiChatFab .lv-fab-badge svg{width:100%;height:100%;display:block}
+html body #aiChatFab.directing .lv-fab-badge{opacity:0}
+
+/* ===== App tour (lvt-): quick, never clipped, Levi badge ===== */
+.lvt{position:fixed;inset:0;z-index:150000;touch-action:none}
+.lvt.hidden{display:none}
+.lvt-hole{position:fixed;left:0;top:0;border-radius:16px;pointer-events:none;box-shadow:0 0 0 9999px rgba(8,6,20,.74),0 0 0 2px #19c486,0 0 22px rgba(25,196,134,.55);transition:transform .18s cubic-bezier(.22,.9,.3,1),width .18s cubic-bezier(.22,.9,.3,1),height .18s cubic-bezier(.22,.9,.3,1)}
+.lvt-hole.none{width:0!important;height:0!important;transform:translate(50vw,40vh)!important;box-shadow:0 0 0 9999px rgba(8,6,20,.74)}
+.lvt-sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 24px));max-height:46dvh;overflow:auto;box-sizing:border-box;padding:.85rem .95rem .9rem;border-radius:22px;background:var(--card,#fff);color:var(--text,#111);border:1.5px solid color-mix(in srgb,#6a3df0 30%,var(--border,#ddd));box-shadow:0 18px 44px rgba(0,0,0,.38)}
+.lvt-sheet.top{bottom:auto;top:calc(12px + env(safe-area-inset-top,0px))}
+.lvt-head{display:flex;align-items:center;gap:.65rem}
+.lvt-mascot{flex:0 0 52px;width:52px;height:52px;display:block;filter:drop-shadow(0 5px 8px rgba(75,46,131,.35))}
+.lvt-mascot svg{width:100%;height:100%;display:block}
+.lvt-titles{flex:1;min-width:0}
+.lvt-says{margin:0;font-size:.66rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted,#777)}
+.lvt-titles h3{margin:.1rem 0 0;font-size:1.05rem;line-height:1.2;font-weight:800}
+.lvt-skip{border:0;background:none;color:var(--text-muted,#777);font:inherit;font-size:.8rem;font-weight:700;padding:.4rem .5rem;cursor:pointer}
+.lvt-body{margin:.55rem 0 0;font-size:.88rem;line-height:1.45;color:var(--text-muted,#555)}
+.lvt-dots{display:flex;justify-content:center;gap:.3rem;margin:.65rem 0}
+.lvt-dot{width:.4rem;height:.4rem;border-radius:99px;background:color-mix(in srgb,var(--text,#111) 18%,transparent)}
+.lvt-dot.on{width:1.1rem;background:linear-gradient(90deg,#19c486,#0f9d6a)}
+.lvt-actions{display:flex;gap:.6rem}
+.lvt-btn{flex:1;min-height:46px;border-radius:14px;font:inherit;font-weight:800;font-size:.95rem;cursor:pointer;border:1.5px solid transparent;touch-action:manipulation}
+.lvt-pri{background:linear-gradient(135deg,#19c486,#0b6b47);color:#fff}
+.lvt-ghost{background:transparent;color:#0f9d6a;border-color:#19c486}
+.lvt-btn.lvt-hide{display:none}
+
+/* ===== Premium bottom bar, docked to the bottom edge (phones and tablets; the desktop side rail is unchanged) ===== */
+@media (max-width:899px){
+  html:root body #bottomNav.bottom-nav.bottom-nav{left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;margin:0!important;height:auto!important;min-height:0!important;padding:.4rem .5rem max(.4rem,env(safe-area-inset-bottom,0px))!important;border-radius:24px 24px 0 0!important;background:color-mix(in srgb,var(--card,#fff) 96%,transparent)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:0!important;border-top:1px solid color-mix(in srgb,var(--text,#0f172a) 8%,transparent)!important;box-shadow:0 -8px 26px rgba(15,23,42,.10),0 -1px 4px rgba(15,23,42,.05)!important;align-items:center!important;gap:.1rem!important}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav{border-top-color:rgba(255,255,255,.09)!important;box-shadow:0 -8px 26px rgba(0,0,0,.6)!important}
+  html:root body #bottomNav.bottom-nav.nav-scroll-hide{transform:translate3d(0,calc(100% - 8px),0)!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bn-group{gap:.1rem!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item{position:relative!important;height:54px!important;min-height:54px!important;max-width:none!important;border-radius:20px!important;background:transparent!important;color:#475569!important;gap:2px!important;padding:4px 2px!important;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .12s ease,color .18s ease}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item{color:#9aa7b4!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item:active{transform:scale(.94)}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item .bn-icon{position:relative!important;z-index:1;width:auto!important;height:24px!important;font-size:1.16rem!important;color:inherit!important;background:transparent!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item .bn-icon i{color:inherit!important;background:transparent!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item>span:last-child{position:relative;z-index:1;font-size:clamp(.5rem,2.55vw,.66rem)!important;text-overflow:clip!important;line-height:1.1!important;font-weight:600!important;letter-spacing:-.01em;color:inherit!important;white-space:nowrap;max-width:100%;overflow:visible}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item span,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item i{-webkit-text-fill-color:currentColor!important}
+  /* active: mint pill + green icon and label (follows the real current page) */
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active{color:#0f9d6a!important;background:transparent!important}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active{color:#34d399!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active>span:last-child{font-weight:800!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active .bn-icon{transform:scale(1.06)}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active::before,html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-item.bottom-nav-item.active::after{content:none!important;display:none!important}
+  /* badge sits on the icon corner, ringed in the bar colour */
+  html:root body #bottomNav.bottom-nav.bottom-nav .bn-badge{top:-.45rem!important;right:-.85rem!important;left:auto!important;min-width:1rem!important;width:1rem!important;height:1rem!important;font-size:.55rem!important;box-shadow:0 0 0 2px var(--card,#fff)!important}
+  /* vendor "+" button: a brand-green circle (the label stays under it) */
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add{background:transparent!important;border:0!important;box-shadow:none!important;width:auto!important;min-width:0!important;height:54px!important;min-height:54px!important;top:0!important;flex-direction:column!important;gap:2px!important;padding:4px 2px!important;color:#475569!important}
+  html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add{color:#9aa7b4!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add .bn-icon{width:34px!important;height:34px!important;border-radius:12px!important;background:linear-gradient(135deg,#19c486,#0b6b47)!important;box-shadow:0 6px 14px -4px rgba(15,157,106,.6)!important;display:inline-grid!important;place-items:center!important;margin-top:-2px}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add .bn-icon i{color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:1rem!important}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add>span:last-child{color:inherit!important;-webkit-text-fill-color:currentColor!important;font-size:clamp(.5rem,2.55vw,.66rem)!important;font-weight:600!important;white-space:nowrap}
+  html:root body #bottomNav.bottom-nav.bottom-nav .bottom-nav-add.bottom-nav-add:active{transform:scale(.94)}
+}
+/* preview of the next product that rides in while swiping between products */
+.lv-swipe-peek{display:flex;flex-direction:column;contain:layout paint}
+.lv-swipe-peek .lvp-img{flex:0 0 auto;width:100%;aspect-ratio:1/1;max-height:52vh;background:color-mix(in srgb,var(--text,#111) 6%,transparent);overflow:hidden}
+.lv-swipe-peek .lvp-img img{width:100%;height:100%;object-fit:cover;display:block}
+.lv-swipe-peek .lvp-body{padding:.9rem 1rem}
+.lv-swipe-peek .lvp-name{font-size:1.15rem;font-weight:800;line-height:1.25;color:var(--text,#111)}
+.lv-swipe-peek .lvp-shop{margin-top:.3rem;font-size:.85rem;color:var(--text-muted,#667)}
+@media (prefers-reduced-motion:reduce){html:root body #bottomNav .bottom-nav-item{transition:none!important}html:root body #bottomNav .bottom-nav-item:active{transform:none!important}}
+
+/* ===== Round 11: categories, section icons, tabs, service tiles, map ===== */
+/* Home + Vendors category chips: tinted by their own colour, filled when selected */
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip,html:root body #app .vd-page .vd-chip.vd-chip{--cc2:var(--cat-color,var(--cc,var(--primary,#19c486)));background:color-mix(in srgb,var(--cc2) 9%,var(--card,#fff))!important;background-image:none!important;border:1px solid color-mix(in srgb,var(--cc2) 28%,transparent)!important;box-shadow:none!important;color:var(--text,#111)!important;font-weight:700!important}
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip .levro-home-cat-label,html:root body #app .vd-page .vd-chip.vd-chip>span:last-child{color:inherit!important;-webkit-text-fill-color:currentColor!important;font-weight:700!important}
+html:root body #app .levro-home-cat-chip .levro-home-cat-thumb,html:root body #app .vd-page .vd-chip .vd-chip-art{background:transparent!important;border-radius:50%!important;box-shadow:none!important;filter:none!important}
+html:root body #app .vd-page .vd-chip .vd-chip-art img{filter:none!important;box-shadow:none!important}
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip.active,html:root body #app .vd-page .vd-chip.vd-chip.active{background:color-mix(in srgb,var(--cc2) 10%,var(--card,#fff))!important;border:2px solid var(--cc2)!important;color:var(--text,#111)!important;box-shadow:none!important}
+html:root body #app .levro-home-cat-chip.levro-home-cat-chip.active .levro-home-cat-label,html:root body #app .vd-page .vd-chip.vd-chip.active>span:last-child{color:var(--text,#111)!important;font-weight:800!important}
+/* section icon tiles: Featured Vendors = purple gem, Browse everything = teal grid */
+html body #app .section-title > span > i.fa-gem:first-child,html body #app .section-title > i.fa-gem:first-child{background:linear-gradient(135deg,#c4b5fd,#7c3aed)!important;box-shadow:0 4px 10px -4px rgba(124,58,237,.6)!important}
+html body #app .section-title > i.fa-table-cells-large:first-child{background:linear-gradient(135deg,#5eead4,#0d9488)!important;box-shadow:0 4px 10px -4px rgba(13,148,136,.6)!important}
+/* Products / Services / Packages tabs: keep the underline, give each tab a tinted icon tile */
+html:root body #app .home-catalog-type-tabs .catalog-type-tab{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.45rem!important;padding:.6rem .5rem .55rem!important;--tab-color:#19c486}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab[data-tab="services"]{--tab-color:#f59e0b}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab[data-tab="packages"]{--tab-color:#7c3aed}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab i{width:26px;height:26px;border-radius:9px;display:inline-grid;place-items:center;font-size:.78rem;color:var(--tab-color)!important;-webkit-text-fill-color:var(--tab-color)!important;background:color-mix(in srgb,var(--tab-color) 16%,transparent)}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab.active i{color:#fff!important;-webkit-text-fill-color:#fff!important;background:linear-gradient(135deg,color-mix(in srgb,var(--tab-color) 70%,#fff),var(--tab-color));box-shadow:0 4px 10px -4px var(--tab-color)}
+html:root body #app .home-catalog-type-tabs .catalog-type-tab.active{border-bottom:3px solid var(--tab-color)!important;border-radius:0!important}
+/* embossed tile for services (and shops) that have no photo */
+.img-initials.img-embossed{background:linear-gradient(145deg,hsl(var(--ih,150) 60% 92%),hsl(var(--ih,150) 50% 80%))!important}
+.img-initials.img-embossed i{font-size:clamp(2rem,11vw,3rem);color:hsl(var(--ih,150) 45% 62%);text-shadow:-1.5px -1.5px 1px rgba(255,255,255,.9),2px 2px 3px hsl(var(--ih,150) 55% 30% / .45)}
+:root[data-theme="dark"] .img-initials.img-embossed,:root[data-theme="black"] .img-initials.img-embossed{background:linear-gradient(145deg,hsl(var(--ih,150) 30% 26%),hsl(var(--ih,150) 35% 16%))!important}
+:root[data-theme="dark"] .img-initials.img-embossed i,:root[data-theme="black"] .img-initials.img-embossed i{color:hsl(var(--ih,150) 40% 40%);text-shadow:-1px -1px 1px hsl(var(--ih,150) 50% 60% / .45),2px 2px 3px rgba(0,0,0,.7)}
+/* the service badge on cards: an embossed brand tile */
+html:root body .product-card-wrap .card .card-service-btn{background:linear-gradient(145deg,#34d399,#0f9d6a)!important;box-shadow:inset 1px 1px 2px rgba(255,255,255,.45),inset -1px -2px 3px rgba(0,0,0,.25),0 4px 10px -4px rgba(15,157,106,.6)!important}
+/* the vendors map tiles stay light in every theme */
+html:root[data-theme="dark"] body #vendorsMap .leaflet-tile-pane,html:root[data-theme="black"] body #vendorsMap .leaflet-tile-pane{filter:saturate(.85) contrast(.96) brightness(1.03) hue-rotate(-8deg)!important}
+html body #app #browseSection.section-title{justify-content:flex-start!important}
+/* Browse everything filter button: small, tidy, matches the search field */
+html:root body #app .browse-filter-toolbar>button#browseFilterTrigger.browse-filter-trigger{width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;align-self:center!important;display:inline-grid!important;place-items:center!important;border-radius:14px!important;background:var(--card,#fff)!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;color:var(--text,#111)!important;box-shadow:0 2px 8px -4px rgba(15,23,42,.25)!important}
+html:root body #app .browse-filter-trigger .browse-filter-chevron{display:none!important}
+html:root body #app .browse-filter-trigger svg{width:18px!important;height:18px!important}
+html:root body #app .browse-filter-trigger[aria-expanded="true"]{border-color:#19c486!important;color:#0f9d6a!important;background:color-mix(in srgb,#19c486 12%,var(--card,#fff))!important}
+
+/* ===== Declutter round: bottom bar icons just turn green, Browse heading hidden, Vendors toolbar ===== */
+/* the "Browse everything" heading stays in the page (links scroll to it) but takes no space */
+html body #app #browseSection.section-title{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;border:0!important;visibility:hidden}
+/* Vendors: view switch is one quiet segmented control; the selected view is a light chip with a green icon */
+:root:root:root:root body #app .vd-page .vd-head{justify-content:flex-end!important}
+:root:root:root:root body #app .vd-page .vd-views{display:inline-flex!important;gap:2px!important;padding:3px!important;border-radius:14px!important;background:color-mix(in srgb,var(--text,#111) 7%,transparent)!important;border:0!important;box-shadow:none!important}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn){width:2.5rem!important;height:2.2rem!important;min-width:0!important;border-radius:11px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:var(--text-muted,#667)!important;display:inline-grid!important;place-items:center!important;transition:background .15s,color .15s}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn) svg{width:19px!important;height:19px!important;stroke-width:1.9!important;stroke:currentColor!important;fill:none!important}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn).active{background:var(--card,#fff)!important;color:#0f9d6a!important;box-shadow:0 2px 8px -2px rgba(15,23,42,.22)!important}
+:root:root:root:root body #app .vd-views :is(#vendorsViewGridBtn,#vendorsViewListBtn,#vendorsViewMapBtn).active svg{stroke:currentColor!important;color:#0f9d6a!important}
+/* Vendors filter button: the same small tidy square as Browse everything */
+:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn{width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;align-self:center!important;display:inline-grid!important;place-items:center!important;border-radius:14px!important;background:var(--card,#fff)!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;color:var(--text,#111)!important;box-shadow:0 2px 8px -4px rgba(15,23,42,.25)!important}
+:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn svg{width:18px!important;height:18px!important;stroke:currentColor!important;fill:none!important}
+:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn[aria-expanded="true"]{border-color:#19c486!important;color:#0f9d6a!important;background:color-mix(in srgb,#19c486 12%,var(--card,#fff))!important}
+
+/* ===== Round 12: storefront icon tabs, quiet banner menu button ===== */
+/* storefront tabs: icons only (Instagram/TikTok style), neutral colour, swipe or tap */
+html:root body #app .storefront-catalog-tabs{display:flex!important;justify-content:space-around!important;align-items:stretch!important;gap:0!important;padding:0!important;background:transparent!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 12%,transparent)!important;border-radius:0!important;box-shadow:none!important}
+html:root body #app .storefront-catalog-tabs .storefront-catalog-tab{flex:1 1 0!important;min-width:0!important;height:48px!important;padding:0!important;margin:0 0 -1px!important;display:inline-grid!important;place-items:center!important;font-size:0!important;line-height:0!important;background:transparent!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;box-shadow:none!important;color:var(--text-muted,#8a8f98)!important;-webkit-text-fill-color:currentColor!important;transition:color .15s,border-color .15s}
+html:root body #app .storefront-catalog-tabs .storefront-catalog-tab i{font-size:1.3rem!important;line-height:1!important;color:inherit!important;-webkit-text-fill-color:currentColor!important;background:none!important;width:auto!important;height:auto!important}
+html:root body #app .storefront-catalog-tabs .storefront-catalog-tab .tab-count{display:none!important}
+html:root body #app .storefront-catalog-tabs .storefront-catalog-tab.active{color:var(--text,#111)!important;border-bottom-color:var(--text,#111)!important;background:transparent!important}
+html:root body #app .storefront-catalog-tabs .storefront-catalog-tab:active{transform:scale(.92)}
+/* the three dots on the storefront banner: no box, just a soft white icon */
+html:root body #app .storefront-banner-more{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;border:0!important;width:2.4rem!important;height:2.4rem!important;color:#fff!important}
+html:root body #app .storefront-banner-more i{font-size:1.15rem!important;filter:drop-shadow(0 1px 3px rgba(0,0,0,.65))}
+
+/* ===== Product page "Place order" card: clean, modern, one calm surface ===== */
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions){background:var(--card,#fff)!important;border:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)!important;border-top:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)!important;border-radius:22px!important;box-shadow:0 10px 30px -22px rgba(15,23,42,.35)!important;padding:1.1rem 1rem 1rem!important;margin-top:1rem!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions)>h3{display:flex;align-items:center;gap:.5rem;margin:0 0 .8rem!important;font-size:1.15rem!important;font-weight:800!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions)>h3 i{width:30px;height:30px;border-radius:10px;display:inline-grid;place-items:center;font-size:.8rem;color:#0f9d6a!important;background:color-mix(in srgb,#19c486 16%,transparent)}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-total-box{border:0!important;padding:0!important;margin:0 0 .4rem!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) #serviceTotalPreview{font-size:.95rem;color:var(--text-muted,#667)}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-step-title{margin:.9rem 0 .55rem!important;font-size:.78rem!important;font-weight:800!important;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted,#667)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-step-title i{display:none}
+/* delivery / pickup as two clean segments */
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:.5rem!important;margin:0 0 .8rem!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row label{display:flex!important;align-items:center!important;justify-content:center!important;gap:.4rem!important;min-height:48px!important;padding:.5rem .6rem!important;border-radius:14px!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;background:transparent!important;color:var(--text,#111)!important;font-weight:600!important;font-size:.92rem!important;text-align:center;white-space:normal!important;line-height:1.2;cursor:pointer;transition:border-color .15s,background .15s}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row label input[type=radio]{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row label:has(input:checked){border-color:#19c486!important;background:color-mix(in srgb,#19c486 12%,var(--card,#fff))!important;color:#0b6b47!important;font-weight:800!important}
+:root[data-theme="dark"] body #app .card:has(>.pd-buy-actions) .delivery-method-row label:has(input:checked),:root[data-theme="black"] body #app .card:has(>.pd-buy-actions) .delivery-method-row label:has(input:checked){color:#6ee7b7!important}
+/* fields */
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .dyn-delivery-fields{background:transparent!important;border:0!important;padding:0!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label{display:flex;align-items:center;gap:.4rem;margin:0 0 .35rem!important;font-size:.82rem!important;font-weight:700!important;color:var(--text-muted,#667)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .dyn-delivery-fields input[type=text],html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-note-box textarea{border-radius:14px!important;min-height:48px;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;background:var(--bg,transparent)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-fee-line{font-size:.82rem;color:var(--text-muted,#667)}
+/* price lines: plain rows */
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .price-breakdown-table{margin:.7rem 0 .2rem!important;padding:.2rem 0!important;background:transparent!important;border:0!important;border-top:1px dashed color-mix(in srgb,var(--text,#111) 18%,transparent)!important;border-radius:0!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .price-breakdown-row{padding:.4rem 0!important;font-size:.92rem}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .price-breakdown-total{font-size:1.05rem;font-weight:800;border-top:1px solid color-mix(in srgb,var(--text,#111) 10%,transparent)}
+/* pay before / after: a slim note, not a big coloured panel */
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-pay-notice{margin:.2rem 0 .8rem!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .product-payment-plan-notice{display:flex!important;flex-direction:column;gap:.15rem;padding:.7rem .9rem!important;border-radius:14px!important;background:color-mix(in srgb,#19c486 8%,var(--card,#fff))!important;border:1px solid color-mix(in srgb,#19c486 22%,transparent)!important;box-shadow:none!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .product-payment-plan-notice.pay-after{background:color-mix(in srgb,#f59e0b 9%,var(--card,#fff))!important;border-color:color-mix(in srgb,#f59e0b 28%,transparent)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .product-payment-plan-notice strong{font-size:.9rem;font-weight:800;color:var(--text,#111)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .product-payment-plan-notice span{font-size:.82rem;color:var(--text-muted,#667)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-note-box{border:0!important;padding:0!important;margin:.2rem 0 .9rem!important;background:transparent!important}
+/* buttons */
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-buy-actions{display:grid!important;grid-template-columns:1fr 1.25fr;gap:.6rem!important;margin-top:.3rem!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-buy-actions .btn{min-height:52px!important;border-radius:16px!important;font-weight:800!important;box-shadow:none!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-buy-actions .btn.btn-outline{background:transparent!important;color:var(--text,#111)!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 18%,transparent)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-buy-actions .btn:not(.btn-outline){background:linear-gradient(135deg,#19c486,#0b6b47)!important;color:#fff!important;border:0!important;box-shadow:0 10px 20px -10px rgba(15,157,106,.65)!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) :is(.pd-step-title,.delivery-method-row,.pd-note-box,.pd-pay-notice){background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .pd-step-title{padding:0!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .delivery-method-row{padding:0!important}
+html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label svg,html:root body #app .card:has(>.pd-buy-actions):has(#buyQty,.pd-buy-actions) .df-label i{background:transparent!important;width:auto!important;height:auto!important;padding:0!important;color:var(--text-muted,#667)!important}
+
+/* Suggested / recently viewed vendors on the search page: one-line name cut with "…", and the green tick stays visible after it for verified vendors */
+html body #app .lv-svr-item .lv-svr-name{display:flex!important;align-items:center;justify-content:center;gap:1px;max-width:100%;-webkit-line-clamp:unset!important;overflow:hidden}
+html body #app .lv-svr-item .lv-svr-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .lv-svr-item .lv-svr-name>i{flex:0 0 auto;margin-left:.15em!important}
+
+/* ===== Comments, TikTok-style: roomy rows, heart on the right, time + Reply under the text, pill composer ===== */
+html:root body #lvCs .lv-cs-card{border-radius:22px 22px 0 0!important}
+html:root body #lvCs .lv-cs-head{padding:1.25rem 1rem .85rem!important;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
+html:root body #lvCs .lv-cs-head strong{font-size:.95rem!important;font-weight:700!important;letter-spacing:.01em}
+html:root body #lvCs .lv-cs-x{color:var(--text,#111)!important;background:transparent!important;font-size:1rem!important}
+html:root body #lvCs .lv-cs-body>.product-comments-panel,html:root body #lvCs .lv-cs-body>#productCommentsPanel,html:root body #lvCs .lv-cs-body>#packageCommentsPanel{padding:.3rem 1.1rem 0!important}
+/* a comment */
+html:root body .product-comment-row.lv-cr{display:flex!important;align-items:flex-start;gap:.7rem!important;padding:.7rem 0!important;border:0!important;background:transparent!important}
+html:root body .product-comment-row.lv-cr .lv-cr-av img,html:root body .product-comment-row.lv-cr .lv-cr-av>*{border-radius:50%!important;flex:none}
+html:root body .product-comment-row.lv-cr .product-comment-main{flex:1 1 auto;min-width:0}
+html:root body .product-comment-row.lv-cr .lv-cr-head{display:flex!important;align-items:center;gap:.35rem;min-height:1.4rem}
+html:root body .product-comment-row.lv-cr .lv-cr-name{font-size:.8rem!important;font-weight:700!important;color:var(--text-muted,#6b7280)!important;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html:root body .product-comment-row.lv-cr .lv-cr-dots{order:99;margin-left:auto;width:1.6rem;height:1.6rem;color:var(--text-muted,#9ca3af)!important;font-size:.85rem;opacity:.85}
+html:root body .product-comment-row.lv-cr .product-comment-body{font-size:.95rem!important;line-height:1.38!important;color:var(--text,#111)!important;margin:.05rem 0 .2rem!important;overflow-wrap:anywhere}
+html:root body .product-comment-row.lv-cr .lv-cr-meta{display:flex;align-items:center;gap:.9rem;font-size:.76rem;color:var(--text-muted,#8b919c)}
+html:root body .product-comment-row.lv-cr .lv-cr-time{font-size:.76rem!important}
+html:root body .product-comment-row.lv-cr .lv-cr-reply{border:0;background:none;padding:.15rem 0;font:inherit;font-size:.78rem;font-weight:700;color:var(--text-muted,#6b7280);cursor:pointer}
+html:root body .product-comment-row.lv-cr .lv-cr-reply:active{opacity:.6}
+/* heart + count on the right */
+html:root body .product-comment-row.lv-cr .lv-cr-actions{flex:none;display:flex!important;flex-direction:column;align-items:center;gap:0;margin:.15rem 0 0!important;min-width:2rem}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act{padding:.2rem!important;min-width:0!important;width:auto!important;height:auto!important;background:transparent!important;border:0!important;color:var(--text-muted,#9ca3af)!important;display:grid!important;place-items:center;border-radius:50%!important;transition:transform .12s}
+html:root body .product-comment-row.lv-cr .lv-heart{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;transition:fill .12s,stroke .12s}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.active{color:#fe2c55!important}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.active .lv-heart{fill:#fe2c55;stroke:#fe2c55}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act:active{transform:scale(.85)}
+html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.lv-pop .lv-heart{animation:lvHeartPop .28s ease-out}
+@keyframes lvHeartPop{0%{transform:scale(.7)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+html:root body .product-comment-row.lv-cr .lv-cr-n{font-size:.72rem;font-weight:600;color:var(--text-muted,#8b919c);min-height:.9rem;line-height:.9rem}
+html:root body .product-comment-row.lv-cr.lv-cr-pending{opacity:.6}
+/* replies */
+html:root body .comment-replies-toggle{display:flex;align-items:center;gap:.6rem;margin:.1rem 0 .3rem 2.6rem;padding:.2rem 0;border:0;background:none;color:var(--text-muted,#6b7280);font-size:.78rem;font-weight:700;cursor:pointer}
+html:root body .comment-replies-toggle .cr-line{display:inline-block;width:1.5rem;height:1px;background:color-mix(in srgb,var(--text,#111) 25%,transparent)}
+/* composer: a soft pill and a round send button */
+html:root body #lvCs .product-comment-composer{background:var(--card,#fff)!important;border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important;padding:.6rem 1rem calc(.65rem + env(safe-area-inset-bottom,0px))!important}
+html:root body #lvCs .product-comment-compose-row textarea{background:color-mix(in srgb,var(--text,#111) 6%,transparent)!important;border:0!important;border-radius:999px!important;padding:.7rem 1.1rem!important;font-size:.95rem!important;min-height:2.75rem!important}
+html:root body #lvCs .product-comment-compose-row textarea:focus{box-shadow:none!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
+html:root body #lvCs .product-comment-compose-row .btn{width:2.75rem!important;height:2.75rem!important;min-width:2.75rem!important;border-radius:50%!important;background:var(--text,#111)!important;color:var(--card,#fff)!important;border:0!important;box-shadow:none!important}
+html:root body #lvCs .product-comment-compose-row .btn i{color:inherit!important;font-size:.95rem}
+html:root body #lvCs .product-comment-compose-row textarea:placeholder-shown+.btn{opacity:.3!important}
+html:root body #lvCs .product-comment-replying{background:color-mix(in srgb,var(--text,#111) 6%,transparent);border-radius:12px;padding:.4rem .7rem!important;margin-bottom:.45rem;font-size:.8rem}
+@media (prefers-reduced-motion:reduce){html:root body .product-comment-row.lv-cr .lv-cr-actions .lv-cr-act.lv-pop .lv-heart{animation:none}}
+
+/* Product page: the title always takes the same two-line space (longer names are cut with …), so the photo sits in exactly the same place on every product. That is what lets the next product slide in without any jump. */
+html:root body #app .product-detail-card .product-detail-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;min-height:2.4em!important}
+
+/* Home "Who's winning?" card: the leading vendor's logo (or their initials) instead of a stock photo. */
+html body #app .lv-band-card .lv-band-logo:not(.on){display:none}
+html body #app .lv-band-card .lv-band-logo.on{position:absolute;right:.6rem;top:.6rem;width:3.4rem;height:3.4rem;border-radius:50%;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.3);overflow:hidden;background:#fff;display:block}
+html body #app .lv-band-card .lv-band-logo .avatar-circle{width:100%!important;height:100%!important;display:block;object-fit:cover}
+html body #app .lv-band-card .lv-band-logo .avatar-fallback{display:flex!important;font-size:1.15rem!important;font-weight:900!important;letter-spacing:-.02em}
+
+/* Apply as a vendor: five lively sections, a modern document upload card, and a bolder submit button. */
+html body #app .va-page .va-sec{position:relative;margin-top:1rem;padding:1rem 1rem 1.1rem;border:1px solid var(--border);border-radius:22px;background:var(--card);box-shadow:0 8px 22px rgba(15,23,42,.06);overflow:hidden}
+html body #app .va-page .va-sec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--va-c,#12a266)}
+html body #app .va-page .va-s1{--va-c:#12a266}
+html body #app .va-page .va-s2{--va-c:#3b82f6}
+html body #app .va-page .va-s3{--va-c:#8b5cf6}
+html body #app .va-page .va-s4{--va-c:#f59e0b}
+html body #app .va-page .va-s5{--va-c:#ec4899}
+html body #app .va-page .va-sec-h{display:flex;align-items:center;gap:.7rem;margin-bottom:.2rem}
+html body #app .va-page .va-sec-h>div{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+html body #app .va-page .va-sec-h strong{font-size:1.02rem;font-weight:900;letter-spacing:-.01em}
+html body #app .va-page .va-sec-h small{color:var(--text-muted);font-size:.78rem;font-weight:600}
+html body #app .va-page .va-ico{flex:none;display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:14px;color:#fff;font-size:1.05rem;background:linear-gradient(135deg,var(--va-c),color-mix(in srgb,var(--va-c) 55%,#000));box-shadow:0 6px 14px color-mix(in srgb,var(--va-c) 35%,transparent)}
+html body #app .va-page .va-step{flex:none;display:grid;place-items:center;width:1.55rem;height:1.55rem;border-radius:50%;font-size:.74rem;font-weight:900;color:var(--va-c);background:color-mix(in srgb,var(--va-c) 14%,transparent)}
+html body #app .va-page .va-sec label{margin-top:.85rem;font-size:.84rem;font-weight:800}
+html body #app .va-page .va-sec .vendor-application-payout-section{margin:.2rem 0 0;padding:0;border:0;background:none;box-shadow:none}
+html body #app .va-page .va-sec .vendor-application-payout-heading{display:none}
+html body #app .va-page .va-sec input:focus,html body #app .va-page .va-sec select:focus,html body #app .va-page .va-sec textarea:focus{outline:0;border-color:var(--va-c);box-shadow:0 0 0 4px color-mix(in srgb,var(--va-c) 18%,transparent)}
+html body #app .va-page .va-file{display:none}
+html body #app .va-page .va-drop{display:flex;align-items:center;gap:.8rem;margin-top:.35rem;padding:.85rem .9rem;border:2px dashed color-mix(in srgb,var(--va-c) 55%,var(--border));border-radius:18px;background:color-mix(in srgb,var(--va-c) 7%,var(--card));cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+html body #app .va-page .va-drop:hover{background:color-mix(in srgb,var(--va-c) 12%,var(--card))}
+html body #app .va-page .va-drop:active{transform:scale(.985)}
+html body #app .va-page .va-drop:focus-visible{outline:3px solid color-mix(in srgb,var(--va-c) 45%,transparent);outline-offset:2px}
+html body #app .va-page .va-drop-ico{flex:none;display:grid;place-items:center;width:2.9rem;height:2.9rem;border-radius:16px;font-size:1.3rem;color:var(--va-c);background:color-mix(in srgb,var(--va-c) 16%,transparent)}
+html body #app .va-page .va-drop-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+html body #app .va-page .va-drop-txt b{font-size:.92rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .va-page .va-drop-txt small{color:var(--text-muted);font-size:.76rem;font-weight:600}
+html body #app .va-page .va-drop-btn{flex:none;padding:.45rem .85rem;border-radius:999px;font-size:.8rem;font-weight:800;color:#fff;background:var(--va-c);box-shadow:0 6px 12px color-mix(in srgb,var(--va-c) 30%,transparent)}
+html body #app .va-page .va-drop.has-file{border-style:solid;border-color:#12a266;background:color-mix(in srgb,#12a266 9%,var(--card))}
+html body #app .va-page .va-drop.has-file .va-drop-ico{color:#12a266;background:color-mix(in srgb,#12a266 18%,transparent)}
+html body #app .va-page .va-drop.has-file .va-drop-btn{background:#12a266}
+html body #app .va-page .vendor-application-actions{margin-top:1.3rem}
+html body #app .va-page #vendorApplySubmitBtn{width:100%;min-height:3.2rem;border-radius:999px;font-size:1rem;font-weight:900;letter-spacing:.01em;background:linear-gradient(135deg,#17b978,#0b7a4d)!important;box-shadow:0 12px 26px rgba(18,162,102,.35)}
+html body #app .va-page #vendorApplySubmitBtn:active{transform:scale(.985)}
+:root[data-theme="dark"] body #app .va-page .va-sec,:root[data-theme="black"] body #app .va-page .va-sec{box-shadow:0 8px 22px rgba(0,0,0,.35)}

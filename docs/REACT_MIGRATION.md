@@ -692,7 +692,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `terms` | 1 | React-off (pilot, in PR #9) | #9 | Chunk `TermsPage-*.js` 8.2 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=terms` / `VITE_REACT_VIEWS`. |
 | `privacy` | 1 | React-off | this PR (#10) | Same pattern as `terms`; chunk `PrivacyPage-*.js` 6.0 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=privacy` / `VITE_REACT_VIEWS`. |
 | `refundPolicy` | 1 | React-off | PR for refund policy (see below) | Same pattern as `terms`/`privacy`; no links; chunk `RefundPolicyPage-*.js`. Parity tests pass. Not on for anyone: `?react=refundPolicy` / `VITE_REACT_VIEWS`. |
-| `sharedAiChat` | 2 | legacy | — | |
+| `sharedAiChat` | 2 | React-off | PR for the shared AI chat | One-to-one: same RPC (`get_shared_ai_conversation`), markup, date separators and clean-up of Levi's hidden tags (the app's own parsers and date helpers are reused). Parity tests pass (markup, request, escaping, link, Home buttons, pixels). Not on for anyone: `?react=sharedAiChat`. **Lesson for later screens:** a few old style rules are keyed on inline `onclick` attributes (e.g. `#app button[onclick*="navigate('home')"].btn-sm` is the grey "back" button, `assets/css/03-pages.css:2369`); React sets that attribute on such buttons (as their only handler) so they look the same. |
 | `suspended` | 5 | legacy | — | |
 
 ---
@@ -727,3 +727,7 @@ Plain words, in the order they matter.
 
 Nothing in this plan requires changes to the database, `api/`, `medris-backend/`, `vercel.json`, payment code or the rules
 in `.agent/`. The only workflow file touched later is `.github/workflows/ci.yml` (PR 2, a new test step).
+
+### Style audit and the inline `onclick` rule (added with the style-audit PR)
+
+The markup, pixel and box tests do not see what is hidden or below the first screen, and a few old style rules depend on more than class names. `tests/e2e/style-audit.spec.ts` therefore compares **every element's computed look** (colours, borders, shadows, fonts, spacing, display; hidden menus and sheets included) between legacy and React for every migrated screen, in light and dark. It found two real gaps, now fixed: the product page's main "Place order" / "Book Now" button and the storefront share-sheet icon are styled by rules keyed on the button's inline `onclick` attribute (`assets/css/03-pages.css:2918`, `assets/css/02-components.css:3078`). **Rule for every later screen:** a button whose old markup has an inline `onclick` that matches one of these selectors must carry the same attribute as its only handler (`src/views/inline-onclick.ts`, `ref={inlineClick(code)}`); add the new screen to the audit. The selectors in use today: `navigate('home')` on a small button and `navigate('vendorDashboard')` on an outline button (grey back buttons), `buyNow` / `placeOrder` / `submitBuy` / `laceOrder` (green order button), `openStorefrontShare`, `toggleVendorProductsView`, `exportFinancePdf`, `startDeleteAccount`, and two header ones (`otification`, `rders`).

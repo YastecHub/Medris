@@ -40,6 +40,7 @@ function renderSearchPage() {
   const filterIcons = { all: "", products: "fa-bag-shopping", vendors: "fa-store", services: "fa-user-gear", packages: "fa-box-open" };
   const filterBtn = (id, label) => `<button type="button" class="search-page-filter ${id === "all" ? "active" : ""}" data-filter="${id}" role="tab" onclick="setSearchPageFilter('${id}')">${filterIcons[id] ? `<i class="fa-solid ${filterIcons[id]}" aria-hidden="true"></i>` : ""}${label}</button>`;
   return `<div class="search-page">
+    ${typeof lvPageHero === "function" ? lvPageHero("search") : ""}
     <div class="search-page-head">
     <div class="search-page-bar">
       <button type="button" class="search-page-back" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>

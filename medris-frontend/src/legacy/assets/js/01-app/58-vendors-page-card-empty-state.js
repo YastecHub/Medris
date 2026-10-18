@@ -63,7 +63,9 @@ function vendorPageCardHtml(v, feat) {
     : vdInitialsHtml(name, id);
  const coverSrc = v?.cover_url || v?.cover_image_url || "";
   let hue = 150; { const k = String(id || name); let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; hue = h % 360; }
-  const tint = `style="background:linear-gradient(135deg,hsl(${hue} 62% 86%),hsl(${(hue + 40) % 360} 58% 93%))"`;
+  const BRAND = [["#19c486", "#0b6b47"], ["#6a3df0", "#4b2e83"], ["#ffc83d", "#ff9a3d"], ["#2f7df6", "#6a3df0"], ["#f2594a", "#c2379f"], ["#0f9d6a", "#4b2e83"]];
+  const bc = BRAND[hue % BRAND.length];
+  const tint = `style="background:radial-gradient(circle at 85% 0%,rgba(255,255,255,.28),transparent 55%),linear-gradient(135deg,${bc[0]},${bc[1]})"`;
   const banner = coverSrc
     ? `<img src="${esc(coverSrc)}" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.remove()">`
     : "";

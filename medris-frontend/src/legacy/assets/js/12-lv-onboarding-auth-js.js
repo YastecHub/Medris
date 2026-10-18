@@ -315,7 +315,7 @@
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name"><span class="lv-svr-nm">'+ee(v.business_name||"Vendor")+'</span><i data-vt="'+ee(v.id)+'" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor" title="Verified vendor"></i></span></button>';
   }
   // remember vendors opened from the search page
   function hookNav(){
@@ -554,7 +554,7 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(nm)+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name"><span class="lv-svr-nm">'+ee(nm)+'</span><i data-vt="'+ee(v.id)+'" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor" title="Verified vendor"></i></span></button>';
   }
   function loadPool(){
     if(pool&&Date.now()-poolAt<300000) return Promise.resolve(pool);
@@ -1100,22 +1100,26 @@ document.addEventListener("click",function(e){
     var go=function(v){ if(v&&v.id) goStore(v.id); };
     if(CMV.has(uid)) go(CMV.get(uid)); else vendorOf(uid).then(go);
   };
+  // One comment, laid out like TikTok: avatar, name, the text, then time + Reply underneath; the heart and its count sit on the right.
+  var HEART='<svg class="lv-heart" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 20.6s-7.5-4.5-9.3-9.2C1.5 8.2 3.4 4.7 6.9 4.7c2 0 3.5 1 5.1 3 1.6-2 3.1-3 5.1-3 3.5 0 5.4 3.5 4.2 6.7-1.8 4.7-9.3 9.2-9.3 9.2z"/></svg>';
   window.lvCommentRowHtml=function(c,lm,ml,d,kind){
     var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");
     var liked=ml&&ml.has(id),n=Number((lm&&lm.get(id))||0);
     var nm=c.author_name||"Levromart user";
-    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:2.4rem;height:2.4rem;object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,"2.4rem","product-comment-avatar",nm,c.user_id||nm);
+    var sz=d?"1.9rem":"2.4rem";
+    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:'+sz+';height:'+sz+';object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,sz,"product-comment-avatar",nm,c.user_id||nm);
     var edited=c.updated_at&&new Date(c.updated_at)-new Date(c.created_at)>3000?'<span class="muted lv-edited">· edited</span>':"";
     var body=window.lvMentionHtml?window.lvMentionHtml(c.content,c.author_name):esc(c.content);
     var lf=k==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=k==="package"?"replyToPackageComment":"replyToProductComment";
-    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:1.1rem;':'')+'">'
+    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+(String(id).indexOf("tmp-")===0?' lv-cr-pending':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:2.6rem;':'')+'">'
       +'<span class="lv-cr-av" role="button" tabindex="0" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+av+'</span>'
-      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited
-      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>'
+      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button>'
+      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis"></i></button></div>'
       +'<div class="product-comment-body">'+body+'</div>'
-      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like"><i class="fa-'+(liked?'solid':'regular')+' fa-thumbs-up"></i>'+(n>0?'<span>'+n+'</span>':'')+'</button>'
-      +'<button type="button" class="lv-cr-act product-comment-action" onclick="'+rf+'(\''+esc(id)+'\')" aria-label="Reply"><i class="fa-regular fa-comment"></i></button></div>'
-      +'</div></div>';
+      +'<div class="lv-cr-meta"><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited+'<button type="button" class="lv-cr-reply" onclick="'+rf+'(\''+esc(id)+'\')">Reply</button></div>'
+      +'</div>'
+      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like" aria-pressed="'+(liked?'true':'false')+'">'+HEART+'</button><span class="lv-cr-n">'+(n>0?n:'')+'</span></div>'
+      +'</div>';
   };
   function openReport(kind,id){
     var R=["Spam or advert","Abusive or hateful","Misleading or scam","Something else"];
@@ -1261,13 +1265,17 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     return '<span class="ico">'+(r&&!r.none?(r.custom?'<i class="fa-solid fa-graduation-cap"></i>':logoHtml(r)):'<i class="fa-solid fa-graduation-cap"></i>')+'</span><span class="t">'+(r?esc2(r.name)+(r.state?'<small>'+esc2([r.city,r.state].filter(Boolean).join(", "))+'</small>':''):'<span style="color:var(--text-muted)">'+esc2(label||"Choose your campus")+'</span>')+'</span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i>';
   };
 
-  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#0f9d6a"/></linearGradient></defs>'
-   +'<ellipse cx="40" cy="74" rx="20" ry="4" fill="rgba(0,0,0,.12)"/><circle cx="40" cy="46" r="27" fill="url(#lvcg)"/><circle cx="40" cy="46" r="27" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>'
-   +'<g class="lvc-eye"><ellipse cx="31" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="32.3" cy="44" r="1.4" fill="#fff"/></g><g class="lvc-eye"><ellipse cx="49" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="50.3" cy="44" r="1.4" fill="#fff"/></g>'
-   +'<path d="M32 56q8 8 16 0" stroke="#073b2a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="54" r="4" fill="rgba(255,255,255,.28)"/><circle cx="56" cy="54" r="4" fill="rgba(255,255,255,.28)"/>'
-   +'<polygon points="40,12 68,24 40,36 12,24" fill="#0b2a20"/><path d="M26 29v9q14 8 28 0v-9l-14 6z" fill="#123d2e"/><g class="lvc-tassel"><path d="M62 22v14" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="38" r="3" fill="#fbbf24"/></g></svg>';
+  // Levi, the assistant: the Levromart app icon as a glassy badge (exact logo mark) with an "AI" spark and a live dot
+  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset=".55" stop-color="#0f9d6a"/><stop offset="1" stop-color="#065f46"/></linearGradient><linearGradient id="lvcr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6bff"/><stop offset="1" stop-color="#3dffb4"/></linearGradient></defs>'
+   +'<ellipse cx="40" cy="75" rx="19" ry="3" fill="rgba(0,0,0,.2)"/>'
+   +'<rect x="9" y="9" width="62" height="62" rx="20" fill="none" stroke="url(#lvcr)" stroke-width="2.2" opacity=".9"/>'
+   +'<rect x="13" y="13" width="54" height="54" rx="17" fill="url(#lvcg)"/>'
+   +'<path d="M13 30q0-17 17-17h20q17 0 17 17v1q-27 -9-54 0z" fill="#fff" opacity=".16"/>'
+   +'<g transform="translate(15 15) scale(.5)"><path d="M34.61 67.09A23 23 0 0 1 42.89 28.12" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><path d="M65.39 32.91A23 23 0 0 1 57.11 71.88" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><circle class="lvc-eye" cx="50" cy="50" r="9.8" fill="#fff"/></g>'
+   +'<g transform="translate(58 14)"><circle r="9.5" fill="#1b0d3d"/><circle r="9.5" fill="none" stroke="#ffd21f" stroke-width="1.6"/><path d="M0 -5l1.5 3.5 3.5 1.5-3.5 1.5L0 5l-1.5-3.5-3.5-1.5 3.5-1.5z" fill="#ffd21f"/></g>'
+   +'<circle class="lvc-ant" cx="16" cy="64" r="3.4" fill="#3dffb4"/></svg>';
   window.lvMascotSvg=MASCOT;
-  var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
+  var LINES=["Hi! I'm Levi. Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
 
   // ---- is this school already on the list (or already suggested)?
   var STOP={of:1,the:1,and:1,for:1,university:1,college:1,polytechnic:1,school:1,federal:1,state:1,institute:1,uni:1,univ:1,poly:1,"in":1,at:1,nigeria:1,science:1,sciences:1,technology:1,education:1};
@@ -1435,7 +1443,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(mem){ var slot=Math.floor(Date.now()/600000); raw=mem.get("levro-browse-idx3:"+slot+":all:all")||null; }
       var plainHome=!(typeof currentSectorId!=="undefined"&&currentSectorId)&&!(typeof currentHomeCategoryId!=="undefined"&&currentHomeCategoryId);
       if(grid&&raw&&plainHome&&typeof filterHomeProducts==="function"){
-        var idx=id==="all"?raw:raw.filter(function(x){return x.campus_id===id||x.ops_scope==="all"||(x.ops_scope==="multiple"&&Array.isArray(x.ops)&&x.ops.indexOf(id)>-1);});
+        var idx=id==="all"?raw:raw.filter(function(x){return x.campus_id===id;});
         window.__homeBrowseIndex=idx; window.__homeFullIndex=idx;
         try{
           var allCats=window.__levroAllCategories||[], rail=document.querySelector("#app .levro-home-cat-rail");
@@ -1937,7 +1945,7 @@ async function setVendorRequestPref(v){
   }
   function curVid(){ try{ if(typeof currentViewParams!=="undefined"&&currentViewParams&&currentViewParams.vendorId) return currentViewParams.vendorId; }catch(_){} try{ if(window.currentViewParams&&window.currentViewParams.vendorId) return window.currentViewParams.vendorId; }catch(_){} var el=document.querySelector("[data-vendor-id]"); return el&&el.dataset.vendorId||""; }
   var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.sr-row,.product-card-wrap,.vendors-map-vendor-chip";
-  function inScope(x,view){ return x.campus_id===view||x.operating_scope==="all"||(x.operating_scope==="multiple"&&Array.isArray(x.operating_campuses)&&x.operating_campuses.indexOf(view)>-1); }
+  function inScope(x,view){ return x.campus_id===view; }
   function applyScope(map){
     document.querySelectorAll(".lv-out-empty").forEach(function(n){n.classList.remove("lv-out-empty");});
     var view=window.lvViewCampus&&window.lvViewCampus()||"all";
@@ -1961,6 +1969,8 @@ async function setVendorRequestPref(v){
   }
   window.lvApplyCampusScope=function(){ vmap().then(applyScope); };
   window.lvVendorMapReady=function(){ return vmap(); };
+  // exact home campus of a vendor ("" = none set, undefined = vendor list not loaded or vendor unknown); used by the leaderboard, which must not fail open
+  window.lvVendorHomeCampus=function(id){ var x=VMAP&&VMAP.get(String(id)); return x?(x.campus_id||""):undefined; };
   window.lvVendorInScope=function(id){
     var view=window.lvViewCampus&&window.lvViewCampus()||"all"; if(view==="all"||!id||!VMAP) return true;
     var x=VMAP.get(String(id)); if(!x) return true;

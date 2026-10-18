@@ -6,6 +6,8 @@ const ADMIN_LINK_LIBRARY_ENTRIES = [
   { label: "Browse Everything", description: "Open the main marketplace catalogue.", url: () => buildLevromartDeepLink("home", {}, "browse") },
   { label: "Cart", description: "Open the shopping cart.", url: () => buildLevromartDeepLink("cart") },
   { label: "Featured Products", description: "Open the homepage product discovery area.", url: () => buildLevromartDeepLink("home", {}, "products") },
+  { label: "Vendor Leaderboard", description: "Open the weekly vendor leaderboard.", url: () => buildLevromartDeepLink("leaderboard") },
+  { label: "Apply to be a Vendor", description: "Open the vendor application form.", url: () => buildLevromartDeepLink("vendorApply") },
   { label: "Messages", description: "Open the messages inbox.", url: () => buildLevromartDeepLink("messages") },
   { label: "My Shop", description: "Open the vendor's shop management area.", url: () => buildLevromartDeepLink("vendorDashboard") },
   { label: "Notifications", description: "Open the notifications panel.", url: () => buildLevromartDeepLink("notifications") },
@@ -119,7 +121,7 @@ function handleAdminDeepLinkClick(event, href) {
     }
     const routes = new Set([
       "cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders",
-      "vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist",
+      "vendorEditProfile","vendorRequests","settings","supportRequest","vendors","leaderboard","vendorApply","wishlist",
       "adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminCampuses",
       "adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog",
       "vendorSuggestionsInbox","requestEquipment","buyerOrders","orderHistory","productDetail","packageDetail","storefront"

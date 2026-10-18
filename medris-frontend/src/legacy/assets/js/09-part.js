@@ -973,6 +973,8 @@
 
       <div id="vendorApplyError" class="error-text hidden"></div>
 
+      <section class="va-sec va-s1">
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-store"></i></span><div><strong>Your business</strong><small>What you sell and where buyers find you</small></div><span class="va-step">1</span></div>
       <label>Which sector is your business in? *</label>
       <div class="vendor-application-sector-wrap">
         <button type="button" id="vaSectorPickerBtn" class="vendor-application-sector-trigger" onclick="openVendorApplySectorPicker()" aria-haspopup="dialog" aria-expanded="false">
@@ -997,13 +999,19 @@
 
       <label>City</label>
       <input id="vaCity" value="Lagos" autocomplete="address-level2" />
+      </section>
 
+      <section class="va-sec va-s2">
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-phone"></i></span><div><strong>How buyers reach you</strong><small>Orders and questions come to these numbers</small></div><span class="va-step">2</span></div>
       <label>Phone *</label>
       <input id="vaPhone" type="tel" autocomplete="tel" />
 
       <label>WhatsApp number <span class="muted">(optional)</span></label>
       <input id="vaWhatsapp" type="tel" autocomplete="tel" />
+      </section>
 
+      <section class="va-sec va-s3">
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-wallet"></i></span><div><strong>Get paid</strong><small>Where your earnings go</small></div><span class="va-step">3</span></div>
       <div class="vendor-application-payout-section">
         <div class="vendor-application-payout-heading">
           <strong>Payout account <span class="muted">(optional at application stage)</span></strong>
@@ -1025,13 +1033,24 @@
         <label>Account name *</label>
         <input id="vaAccountName" autocomplete="name" placeholder="Name on the bank account" />
       </div>
+      </section>
 
+      <section class="va-sec va-s4">
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-shield-halved"></i></span><div><strong>Verify your business</strong><small>Optional, but it builds buyer trust faster</small></div><span class="va-step">4</span></div>
       <label>CAC number <span class="muted">(optional)</span></label>
       <input id="vaCac" autocomplete="off" />
 
       <label>CAC document <span class="muted">(optional)</span></label>
-      <input id="vaDoc" type="file" accept="application/pdf,image/*" />
+      <div class="va-drop" id="vaDrop" role="button" tabindex="0" onclick="document.getElementById('vaDoc').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('vaDoc').click()}">
+        <span class="va-drop-ico"><i class="fa-solid fa-file-arrow-up"></i></span>
+        <span class="va-drop-txt"><b id="vaDocName">Upload document</b><small id="vaDocHint">PDF or a clear photo</small></span>
+        <span class="va-drop-btn" id="vaDocBtn">Choose file</span>
+      </div>
+      <input id="vaDoc" class="va-file" type="file" accept="application/pdf,image/*" onchange="vaDocPicked(this)" />
+      </section>
 
+      <section class="va-sec va-s5">
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><strong>Tell buyers more</strong><small>A short intro and when you are open</small></div><span class="va-step">5</span></div>
       <label>About your business <span class="muted">(optional)</span></label>
       <textarea id="vaBio" rows="3" placeholder="Tell buyers briefly what your business offers."></textarea>
 
@@ -1049,6 +1068,7 @@
         <div id="vaHoursRows">${HOURS_DAYS.map(d=>hoursDayRowHtml(d.key,d.label,{closed:false,open:"09:00",close:"18:00"})).join("")}</div>
         <button type="button" class="btn btn-sm btn-outline" style="margin-top:.5rem;" onclick="copyMondayHoursToAll()"><i class="fa-solid fa-copy"></i> Use Monday's hours for every day</button>
       </div>
+      </section>
 
       <div class="vendor-application-actions">
         <button type="button" class="btn" id="vendorApplySubmitBtn" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
@@ -1062,6 +1082,18 @@
   // day-by-day editor Edit Profile uses -- "Custom" reveals that same
   // editor (collectBusinessHoursFromForm etc., shared with Edit Profile)
   // only for the applicants who actually need it.
+  // Shows the chosen CAC document in the upload card instead of the browser's plain "Choose file" box.
+  window.vaDocPicked=function(inp){
+    const f=inp&&inp.files&&inp.files[0], box=byId("vaDrop");
+    if(!box) return;
+    if(!f){ box.classList.remove("has-file"); byId("vaDocName").textContent="Upload document"; byId("vaDocHint").textContent="PDF or a clear photo"; byId("vaDocBtn").textContent="Choose file"; box.querySelector(".va-drop-ico i").className="fa-solid fa-file-arrow-up"; return; }
+    const kb=f.size/1024, size=kb>=1024?(kb/1024).toFixed(1)+" MB":Math.max(1,Math.round(kb))+" KB";
+    box.classList.add("has-file");
+    byId("vaDocName").textContent=f.name;
+    byId("vaDocHint").textContent=size+" · ready to upload";
+    byId("vaDocBtn").textContent="Change";
+    box.querySelector(".va-drop-ico i").className=(/pdf$/i.test(f.name)||f.type==="application/pdf")?"fa-solid fa-file-pdf":"fa-solid fa-file-circle-check";
+  };
   window.toggleVendorApplyCustomHours=function(){
     const preset=byId("vaHoursPreset")?.value;
     byId("vaCustomHoursWrap")?.classList.toggle("hidden",preset!=="custom");
