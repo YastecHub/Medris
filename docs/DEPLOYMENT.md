@@ -42,11 +42,45 @@ receives anyway. Keep it that way: secrets live in Vercel environment variables 
 
 ---
 
-## Later: deploying medris-backend on its own host
+## The backend on Heroku
 
-Not done. The sections below were written when the plan was to run the new backend as the Vercel functions; that
-plan was dropped (the backend will get its own host, e.g. Heroku, with `/api` traffic forwarded to it). The variables,
-approval steps and behaviour changes still apply; the Vercel-specific steps will be rewritten for the chosen host.
+The backend (`medris-backend`) runs on Heroku as one web dyno. The repository is ready for it: `Procfile` starts
+`npm start -w medris-backend`, and `heroku-postbuild` in the root `package.json` builds only the backend (the frontend
+stays on Vercel). Deploying it changes nothing for users: the app does not call it until an area is switched over
+(`VITE_BACKEND_FEATURES`), and it runs no scheduled jobs and applies no migrations on its own.
+
+**First deploy (once):**
+
+1. Heroku dashboard -> **New** -> **Create new app** (e.g. `levromart-api`, region Europe).
+2. **Resources** -> dyno type **Basic** (an Eco dyno falls asleep, which drops live connections).
+3. **Settings** -> **Config Vars** -> add the variables below. Copy the values from Vercel / Supabase; never paste
+   them into chat, code or a pull request.
+4. **Deploy** -> Deployment method **GitHub** -> connect `kenniskalu18-prog/Medris` -> branch `main` ->
+   **Deploy Branch**. (Turn on Automatic Deploys later, once a manual deploy has worked.)
+5. Open `https://<app>.herokuapp.com/api/v1/health/ready`: it should say `"status":"ok"`.
+   Swagger: `https://<app>.herokuapp.com/api/v1/docs` (needs `API_DOCS_ENABLED=true`).
+
+| Config var | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | Supabase **transaction pooler** URL (port 6543) - required |
+| `DATABASE_POOL_MAX` | `5` |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | as on Vercel - required |
+| `SUPABASE_JWT_SECRET` | the project's legacy JWT secret, if it signs with HS256 (recommended) |
+| `APP_ORIGIN` | `https://levromart.vercel.app` (or the live domain) |
+| `CORS_ALLOWED_ORIGINS` | the app's origins, comma separated (e.g. `https://levromart.vercel.app,https://levromart.com`) |
+| `API_DOCS_ENABLED` | `true` to show Swagger |
+| `CRON_SECRET`, `EMAIL_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `VAPID_PRIVATE_KEY`, `GEMINI_API_KEY`, `R2_*` | as on Vercel (needed by the areas that use them) |
+| `LIVE_DATABASE_URL` | later, with migration 0004: the **session** pooler URL (port 5432) |
+
+Heroku sets `PORT`. A missing required variable stops the dyno at start-up with a clear message in the logs
+(**More** -> **View logs**), so a misconfigured deploy never runs half-configured. Roll back: **Activity** ->
+**Roll back to here** on the previous release.
+
+## Earlier plan: the backend as Vercel functions
+
+The sections below were written when the plan was to run the new backend as the Vercel functions; that plan was
+dropped for Heroku (above). The variables, approval steps and behaviour changes still apply.
 
 ### 1. Before the first deploy (required)
 
