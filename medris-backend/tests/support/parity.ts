@@ -92,8 +92,23 @@ function diff(
   return out;
 }
 
+/**
+ * One isolated run at a time per database. Tests start the original and the port together
+ * (`same(runOriginal(...), runIsolated(...))`); on PGlite that is one connection, so they queue anyway, but on real
+ * PostgreSQL (TEST_DATABASE_URL) they would run in two transactions at once and see each other's row locks - a job
+ * that takes rows `for update skip locked` would then skip the rows the other side is holding.
+ */
+const queues = new WeakMap<TestDatabase, Promise<unknown>>();
+
 /** Runs `work` on a DataContext bound to a transaction that is always rolled back; returns what it did. */
-export async function runIsolated<T>(testDb: TestDatabase, work: (ctx: DataContext) => Promise<T>, tables: string[] | "all" = "all"): Promise<RunOutcome<T>> {
+export function runIsolated<T>(testDb: TestDatabase, work: (ctx: DataContext) => Promise<T>, tables: string[] | "all" = "all"): Promise<RunOutcome<T>> {
+  const previous = queues.get(testDb) ?? Promise.resolve();
+  const run = previous.catch(() => {}).then(() => runIsolatedNow(testDb, work, tables));
+  queues.set(testDb, run);
+  return run;
+}
+
+async function runIsolatedNow<T>(testDb: TestDatabase, work: (ctx: DataContext) => Promise<T>, tables: string[] | "all"): Promise<RunOutcome<T>> {
   try {
     await testDb.db.transaction(async (outer) => {
       const tx = outer as unknown as Db;

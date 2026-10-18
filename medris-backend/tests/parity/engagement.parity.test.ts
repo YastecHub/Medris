@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Identity } from "../../src/database/context.js";
 import { EngagementService } from "../../src/modules/engagement/engagement.service.js";
 import { asUserSeed, identityOf, seedOrder, seedPackage, seedProduct, seedReview, seedUser, seedVendor } from "../support/fixtures.js";
-import { comparable, runIsolated, runOriginal, type RunOutcome } from "../support/parity.js";
+import { comparable, runIsolated, runOriginal, type RunOutcome, type CompareOptions } from "../support/parity.js";
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
 
 /** EngagementService replaces the listing counters and statistics functions. */
@@ -47,25 +47,31 @@ describe("parity: engagement", () => {
 
   const port = <T>(work: (s: EngagementService) => Promise<T>) => runIsolated(db, (ctx) => work(new EngagementService(() => ctx)));
   const me = (id: string | null): Identity | null => (id ? identityOf(id) : null);
-  async function same(original: Promise<RunOutcome>, ported: Promise<RunOutcome>) {
-    const { original: a, port: b } = comparable(await original, await ported);
+  async function same(original: Promise<RunOutcome>, ported: Promise<RunOutcome>, options?: CompareOptions) {
+    const { original: a, port: b } = comparable(await original, await ported, options);
     expect(b).toEqual(a);
     return a;
   }
 
+  /** The count functions group without an order: rows come back in any order (PGlite and PostgreSQL differ). */
+  const anyOrder: CompareOptions = {
+    result: (rows) => (Array.isArray(rows) ? [...rows].sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y))) : rows),
+  };
   it("get_favorite_counts", () =>
-    same(runOriginal(db, null, "get_favorite_counts", { p_product_ids: [lamp, fan, unsold, missing] }), port((s) => s.favoriteCounts([lamp, fan, unsold, missing]))));
+    same(runOriginal(db, null, "get_favorite_counts", { p_product_ids: [lamp, fan, unsold, missing] }), port((s) => s.favoriteCounts([lamp, fan, unsold, missing])), anyOrder));
   it("get_package_favorite_counts", () =>
     same(
       runOriginal(db, null, "get_package_favorite_counts", { p_package_ids: [bundle, emptyBundle, missing] }),
       port((s) => s.packageFavoriteCounts([bundle, emptyBundle, missing])),
+      anyOrder,
     ));
   it("get_product_comment_counts", () =>
-    same(runOriginal(db, null, "get_product_comment_counts", { p_product_ids: [lamp, fan] }), port((s) => s.productCommentCounts([lamp, fan]))));
+    same(runOriginal(db, null, "get_product_comment_counts", { p_product_ids: [lamp, fan] }), port((s) => s.productCommentCounts([lamp, fan])), anyOrder));
   it("get_package_comment_counts", () =>
     same(
       runOriginal(db, null, "get_package_comment_counts", { p_package_ids: [bundle, emptyBundle] }),
       port((s) => s.packageCommentCounts([bundle, emptyBundle])),
+      anyOrder,
     ));
   it("get_comment_authors (buyers and a shop owner)", () =>
     same(runOriginal(db, null, "get_comment_authors", { p_user_ids: [buyer, owner, missing] }), port((s) => s.commentAuthors([buyer, owner, missing]))));
