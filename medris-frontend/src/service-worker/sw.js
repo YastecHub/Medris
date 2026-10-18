@@ -1,8 +1,4 @@
-<<<<<<< HEAD:sw.js
-const CACHE = 'levromart-shell-v126';
-=======
 const CACHE = 'levromart-shell-v{{asset-version}}';
->>>>>>> origin/main:medris-frontend/src/service-worker/sw.js
 const RUNTIME = 'levromart-runtime-v9';
 const OFFLINE_FALLBACK = '/';
 

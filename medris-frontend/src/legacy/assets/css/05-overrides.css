@@ -1464,8 +1464,6 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 :root:root:root:root body #app .product-card-dist[class*="dt"],:root:root:root:root body #app .search-result-distance[class*="dt"],:root:root:root:root body #app .vendor-distance[class*="dt"],:root:root:root:root body #app .storefront-distance-link[class*="dt"],
 :root:root:root:root body #app .search-result-distance[class*="dt"] *,:root:root:root:root body #app .product-card-dist[class*="dt"] *,:root:root:root:root body #app .vendor-distance[class*="dt"] *,:root:root:root:root body #app .storefront-distance-link[class*="dt"] *{color:var(--dtc)!important;-webkit-text-fill-color:var(--dtc)!important}
 :root:root:root:root body #app .product-card-dist[class*="dt"]{background:color-mix(in srgb,var(--dtc) 16%,transparent)!important}
-<<<<<<< HEAD:assets/css/05-overrides.css
-=======
 
 /* ===== UI overhaul: product page ===== */
 /* Heart / comments / share: three soft round buttons that match each other (no outline, no number inside a bubble).
@@ -2401,4 +2399,45 @@ html:root body #lvCs .product-comment-replying{background:color-mix(in srgb,var(
 
 /* Product page: the title always takes the same two-line space (longer names are cut with …), so the photo sits in exactly the same place on every product. That is what lets the next product slide in without any jump. */
 html:root body #app .product-detail-card .product-detail-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;min-height:2.4em!important}
->>>>>>> origin/main:medris-frontend/src/legacy/assets/css/05-overrides.css
+
+/* Home "Who's winning?" card: the leading vendor's logo (or their initials) instead of a stock photo. */
+html body #app .lv-band-card .lv-band-logo:not(.on){display:none}
+html body #app .lv-band-card .lv-band-logo.on{position:absolute;right:.6rem;top:.6rem;width:3.4rem;height:3.4rem;border-radius:50%;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.3);overflow:hidden;background:#fff;display:block}
+html body #app .lv-band-card .lv-band-logo .avatar-circle{width:100%!important;height:100%!important;display:block;object-fit:cover}
+html body #app .lv-band-card .lv-band-logo .avatar-fallback{display:flex!important;font-size:1.15rem!important;font-weight:900!important;letter-spacing:-.02em}
+
+/* Apply as a vendor: five lively sections, a modern document upload card, and a bolder submit button. */
+html body #app .va-page .va-sec{position:relative;margin-top:1rem;padding:1rem 1rem 1.1rem;border:1px solid var(--border);border-radius:22px;background:var(--card);box-shadow:0 8px 22px rgba(15,23,42,.06);overflow:hidden}
+html body #app .va-page .va-sec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--va-c,#12a266)}
+html body #app .va-page .va-s1{--va-c:#12a266}
+html body #app .va-page .va-s2{--va-c:#3b82f6}
+html body #app .va-page .va-s3{--va-c:#8b5cf6}
+html body #app .va-page .va-s4{--va-c:#f59e0b}
+html body #app .va-page .va-s5{--va-c:#ec4899}
+html body #app .va-page .va-sec-h{display:flex;align-items:center;gap:.7rem;margin-bottom:.2rem}
+html body #app .va-page .va-sec-h>div{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+html body #app .va-page .va-sec-h strong{font-size:1.02rem;font-weight:900;letter-spacing:-.01em}
+html body #app .va-page .va-sec-h small{color:var(--text-muted);font-size:.78rem;font-weight:600}
+html body #app .va-page .va-ico{flex:none;display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:14px;color:#fff;font-size:1.05rem;background:linear-gradient(135deg,var(--va-c),color-mix(in srgb,var(--va-c) 55%,#000));box-shadow:0 6px 14px color-mix(in srgb,var(--va-c) 35%,transparent)}
+html body #app .va-page .va-step{flex:none;display:grid;place-items:center;width:1.55rem;height:1.55rem;border-radius:50%;font-size:.74rem;font-weight:900;color:var(--va-c);background:color-mix(in srgb,var(--va-c) 14%,transparent)}
+html body #app .va-page .va-sec label{margin-top:.85rem;font-size:.84rem;font-weight:800}
+html body #app .va-page .va-sec .vendor-application-payout-section{margin:.2rem 0 0;padding:0;border:0;background:none;box-shadow:none}
+html body #app .va-page .va-sec .vendor-application-payout-heading{display:none}
+html body #app .va-page .va-sec input:focus,html body #app .va-page .va-sec select:focus,html body #app .va-page .va-sec textarea:focus{outline:0;border-color:var(--va-c);box-shadow:0 0 0 4px color-mix(in srgb,var(--va-c) 18%,transparent)}
+html body #app .va-page .va-file{display:none}
+html body #app .va-page .va-drop{display:flex;align-items:center;gap:.8rem;margin-top:.35rem;padding:.85rem .9rem;border:2px dashed color-mix(in srgb,var(--va-c) 55%,var(--border));border-radius:18px;background:color-mix(in srgb,var(--va-c) 7%,var(--card));cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+html body #app .va-page .va-drop:hover{background:color-mix(in srgb,var(--va-c) 12%,var(--card))}
+html body #app .va-page .va-drop:active{transform:scale(.985)}
+html body #app .va-page .va-drop:focus-visible{outline:3px solid color-mix(in srgb,var(--va-c) 45%,transparent);outline-offset:2px}
+html body #app .va-page .va-drop-ico{flex:none;display:grid;place-items:center;width:2.9rem;height:2.9rem;border-radius:16px;font-size:1.3rem;color:var(--va-c);background:color-mix(in srgb,var(--va-c) 16%,transparent)}
+html body #app .va-page .va-drop-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+html body #app .va-page .va-drop-txt b{font-size:.92rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .va-page .va-drop-txt small{color:var(--text-muted);font-size:.76rem;font-weight:600}
+html body #app .va-page .va-drop-btn{flex:none;padding:.45rem .85rem;border-radius:999px;font-size:.8rem;font-weight:800;color:#fff;background:var(--va-c);box-shadow:0 6px 12px color-mix(in srgb,var(--va-c) 30%,transparent)}
+html body #app .va-page .va-drop.has-file{border-style:solid;border-color:#12a266;background:color-mix(in srgb,#12a266 9%,var(--card))}
+html body #app .va-page .va-drop.has-file .va-drop-ico{color:#12a266;background:color-mix(in srgb,#12a266 18%,transparent)}
+html body #app .va-page .va-drop.has-file .va-drop-btn{background:#12a266}
+html body #app .va-page .vendor-application-actions{margin-top:1.3rem}
+html body #app .va-page #vendorApplySubmitBtn{width:100%;min-height:3.2rem;border-radius:999px;font-size:1rem;font-weight:900;letter-spacing:.01em;background:linear-gradient(135deg,#17b978,#0b7a4d)!important;box-shadow:0 12px 26px rgba(18,162,102,.35)}
+html body #app .va-page #vendorApplySubmitBtn:active{transform:scale(.985)}
+:root[data-theme="dark"] body #app .va-page .va-sec,:root[data-theme="black"] body #app .va-page .va-sec{box-shadow:0 8px 22px rgba(0,0,0,.35)}
