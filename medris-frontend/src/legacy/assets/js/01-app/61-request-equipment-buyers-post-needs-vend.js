@@ -49,12 +49,28 @@ window.lvHomeBand3 = function () {
 // Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
 window.lvHomeBand = function () {
   setTimeout(() => lvFloatHero(), 400); setTimeout(() => lvFloatHero(), 1300);
+  setTimeout(() => lvBandWinner(), 200);
   const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
   return `<section class="lv-band" aria-label="More on Levromart">
     <button type="button" class="lv-band-card lv-band-a" onclick="${req}"><span class="lv-band-t">Can't find it?<b>Request it</b></span><img class="lv-fl" src="/lb/person-a.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-hand"></i></button>
-    <button type="button" class="lv-band-card lv-band-b" onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><img class="lv-fl" src="/lb/person-f.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
+    <button type="button" class="lv-band-card lv-band-b" data-lbw onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><span class="lv-fl lv-band-logo" aria-hidden="true"></span><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
     <a class="lv-band-card lv-band-c" href="https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs" target="_blank" rel="noopener"><span class="lv-band-t">Join the family<b>WhatsApp community</b></span><i class="lv-fl lv-bfl lv-bwa fa-brands fa-whatsapp"></i></a>
   </section>`;
+};
+// The "Who's winning?" card shows the logo of the vendor who is winning right now (their initials when they have no logo).
+window.lvBandWinner = async function () {
+  try {
+    const btn = document.querySelector(".lv-band-b[data-lbw]:not([data-lbw-done])");
+    const slot = btn && btn.querySelector(".lv-band-logo");
+    if (!slot || typeof window.lvVendorSpot !== "function") return;
+    const spot = await window.lvVendorSpot();
+    const w = (spot && spot.leaders && spot.leaders[0]) || (spot && spot.winner);
+    if (!w || !w.business_name) return;
+    btn.setAttribute("data-lbw-done", "1");
+    slot.innerHTML = profileAvatarHtml(w.logo_url, w.business_name, "100%", { extraClass: "lv-band-logo-img" });
+    slot.classList.add("on");
+    slot.setAttribute("title", w.business_name);
+  } catch (_) {}
 };
 window.lvFloatHero = function () {
   try {
