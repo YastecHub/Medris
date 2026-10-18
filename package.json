@@ -15,6 +15,7 @@
     "dev:backend": "npm run dev -w medris-backend",
     "build": "npm run build -w medris-backend && node scripts/check-deploy-env.mjs && npm run build -w medris-frontend",
     "heroku-postbuild": "npm run build -w medris-backend",
+    "start": "npm start -w medris-backend",
     "audit:supabase": "node scripts/supabase-audit.mjs",
     "api:check": "node scripts/check-api-syntax.mjs",
     "typecheck": "npm run typecheck --workspaces",

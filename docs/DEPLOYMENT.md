@@ -44,9 +44,9 @@ receives anyway. Keep it that way: secrets live in Vercel environment variables 
 
 ## The backend on Heroku
 
-The backend (`medris-backend`) runs on Heroku as one web dyno. The repository is ready for it: `Procfile` starts
-`npm start -w medris-backend`, and `heroku-postbuild` in the root `package.json` builds only the backend (the frontend
-stays on Vercel). Deploying it changes nothing for users: the app does not call it until an area is switched over
+The backend (`medris-backend`) runs on Heroku as one web dyno, deployed from the whole repository. The repository is
+ready for it: `heroku-postbuild` in the root `package.json` builds only the backend (the frontend stays on Vercel), and
+`Procfile` / the root `start` script run `npm start -w medris-backend`. Deploying it changes nothing for users: the app does not call it until an area is switched over
 (`VITE_BACKEND_FEATURES`), and it runs no scheduled jobs and applies no migrations on its own.
 
 **First deploy (once):**
@@ -57,8 +57,8 @@ stays on Vercel). Deploying it changes nothing for users: the app does not call 
    them into chat, code or a pull request.
 4. **Deploy** -> Deployment method **GitHub** -> connect `kenniskalu18-prog/Medris` -> branch `main` ->
    **Deploy Branch**. (Turn on Automatic Deploys later, once a manual deploy has worked.)
-5. Open `https://<app>.herokuapp.com/api/v1/health/ready`: it should say `"status":"ok"`.
-   Swagger: `https://<app>.herokuapp.com/api/v1/docs` (needs `API_DOCS_ENABLED=true`).
+5. Open `https://<app>.herokuapp.com/` - with `API_DOCS_ENABLED=true` it opens Swagger (`/api/v1/docs`).
+   `https://<app>.herokuapp.com/api/v1/health/ready` should say `"status":"ok"`.
 
 | Config var | Value |
 |---|---|
