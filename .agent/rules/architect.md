@@ -10,8 +10,8 @@ Current shape (see `docs/ARCHITECTURE.md`):
 - Browser (legacy runtime) -> Supabase directly for data, with business rules in SQL functions and RLS.
 - Browser -> `api/*.js` on Vercel for anything needing secrets.
 - Database -> `/api/notify` via triggers (pg_net) for email/push; pg_cron for scheduled jobs.
-- `medris-backend` (Express, layered, with Swagger) is the intended future home of server logic, built behind
-  feature flags (`levroData.useBackend`) and **not deployed yet**.
+- `medris-backend` (Express, layered, with Swagger) is the home of server logic: **live on Heroku** (`https://levromart-5212f03a7e44.herokuapp.com`, Swagger at `/api/v1/docs/`); the app sends its `sb.rpc()` calls and the data gateway there (`docs/DEPLOYMENT.md`). Table queries,
+  Storage and Realtime still go from the browser to Supabase and move next.
 
 Principles for decisions:
 

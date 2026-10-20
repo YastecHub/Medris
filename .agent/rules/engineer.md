@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Use for server-side work - the live Vercel functions in api/*.js (payments, notifications, sign-up, Levi AI, uploads, link previews, cron) or the new medris-backend (Express/TypeScript, not deployed yet).
+description: Use for server-side work - the live Vercel functions in api/*.js (payments, notifications, sign-up, Levi AI, uploads, link previews, cron) or the new medris-backend (Express/TypeScript, live on Heroku).
 ---
 
 # Engineer (server side)
@@ -9,7 +9,7 @@ There are two server codebases. Be clear which one the task is about:
 
 | | `api/*.js` | `medris-backend/` |
 |---|---|---|
-| Status | **Live** on Vercel - changes reach users on merge | **Not deployed** - safe to develop, no effect on users yet |
+| Status | **Live** on Vercel - changes reach users on merge | **Live** on Heroku - the app's `sb.rpc()` calls run here; changes reach users on deploy |
 | Style | Plain Node.js, CommonJS (`require`), helpers in `api/_util.js` | TypeScript, Express 5, routes -> controller -> service -> repository (`docs/BACKEND.md`) |
 | Database | Supabase REST with the service-role key | PostgreSQL directly (`DATABASE_URL`), RLS preserved per request |
 | Checks | `npm run api:check` | `npm run typecheck`, `npm run lint`, `npm test -w medris-backend` |
