@@ -14,6 +14,12 @@ export const appConfig = Object.freeze({
   vapidPublicKey: required("VITE_VAPID_PUBLIC_KEY"),
   /** Empty means same origin: requests go to /api/... */
   apiBaseUrl: String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, ""),
+  /**
+   * Where the new backend's own API (/api/v1) lives, e.g. https://levromart-api.herokuapp.com. Only /api/v1 calls go
+   * there; the app's original /api/* functions stay where VITE_API_BASE_URL says (same origin by default). Empty: the
+   * same place as /api.
+   */
+  backendUrl: String(import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, ""),
 });
 
 export type AppConfig = typeof appConfig;

@@ -40,7 +40,7 @@ export function v1Url(path: string, query?: V1RequestOptions["query"]): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== "") params.set(key, String(value));
   const qs = params.toString();
-  return `${appConfig.apiBaseUrl}/api/v1/${path.replace(/^\/+/, "")}${qs ? `?${qs}` : ""}`;
+  return `${appConfig.backendUrl}/api/v1/${path.replace(/^\/+/, "")}${qs ? `?${qs}` : ""}`;
 }
 
 export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, options: V1RequestOptions = {}): Promise<T> {
@@ -56,7 +56,7 @@ export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "D
       method,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      credentials: appConfig.apiBaseUrl ? "include" : "same-origin",
+      credentials: appConfig.backendUrl ? "include" : "same-origin",
       // AbortSignal.timeout is missing on some older mobile browsers; they simply get no client-side timeout.
       signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS) : undefined,
     });
