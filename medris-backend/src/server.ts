@@ -45,7 +45,14 @@ let stopLive: (() => Promise<void>) | null = null;
 if (config.database.liveUrl) {
   const { max: _max, idleTimeoutMillis: _idle, ...connection } = poolConfig({ ...config, database: { ...config.database, url: config.database.liveUrl } });
   services.live
-    .start(new PgChangeSource(connection, (state, err) => logger[state === "connected" ? "info" : "warn"](`live updates: database ${state}`, err ? { err } : {})))
+    .start(
+      new PgChangeSource(connection, (state, err) => {
+        logger[state === "connected" ? "info" : "warn"](`live updates: database ${state}`, err ? { err } : {});
+        void services.live.changeSourceState(state).then(() => {
+          if (state === "connected" && !services.live.changesReady) logger.warn("live updates: migration 0004 is not applied; the app keeps using Supabase Realtime");
+        });
+      }),
+    )
     .then((stop) => (stopLive = stop))
     .catch((err: unknown) => logger.warn("live updates: could not LISTEN; row changes will not be pushed", { err }));
 } else {

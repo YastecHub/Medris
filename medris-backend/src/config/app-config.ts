@@ -233,13 +233,10 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
       trustedOrigins: [...new Set([e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...e.AUTH_TRUSTED_ORIGINS])],
       google: google as AppConfig["auth"]["google"],
     },
-    // In production the app's own sites are always allowed (the app runs on Vercel, the backend elsewhere);
-    // CORS_ALLOWED_ORIGINS adds more (a custom domain, a fixed preview URL).
-    cors: {
-      allowedOrigins: [
-        ...new Set([...(e.NODE_ENV === "production" ? [e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...PRODUCTION_APP_ORIGINS] : []), ...e.CORS_ALLOWED_ORIGINS]),
-      ],
-    },
+    // The app's own sites are always allowed: the app runs on Vercel and the backend elsewhere, so every browser
+    // call is cross-origin. (It must not depend on NODE_ENV: a host that does not set it would block the whole app.)
+    // CORS_ALLOWED_ORIGINS adds more (a fixed preview URL, a new domain).
+    cors: { allowedOrigins: [...new Set([e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...PRODUCTION_APP_ORIGINS, ...e.CORS_ALLOWED_ORIGINS])] },
     rateLimit: { enabled: e.RATE_LIMIT_ENABLED },
     docs: { enabled: e.API_DOCS_ENABLED ?? e.NODE_ENV !== "production" },
     cloudinary: e.CLOUDINARY_CLOUD_NAME

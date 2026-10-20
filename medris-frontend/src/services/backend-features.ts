@@ -13,9 +13,10 @@
  *   localStorage.removeItem("medris:backend-features")       // back to the build default
  * or, from the console: levroData.useBackend("cart,notifications"), levroData.useBackend("none").
  *
- * "rpc" is the app's sb.rpc() calls (bridge/rpc-shim.ts); the others are the data gateway's table queries.
+ * "rpc" is the app's sb.rpc() calls (bridge/rpc-shim.ts), "live" its sb.channel() subscriptions
+ * (bridge/live-shim.ts); the others are the data gateway's table queries.
  */
-export const BACKEND_FEATURES = ["catalogue", "cart", "favorites", "follows", "notifications", "rpc"] as const;
+export const BACKEND_FEATURES = ["catalogue", "cart", "favorites", "follows", "notifications", "rpc", "live"] as const;
 export type BackendFeature = (typeof BACKEND_FEATURES)[number];
 
 export const FEATURE_OVERRIDE_KEY = "medris:backend-features";

@@ -96,6 +96,27 @@ export class LiveService {
     });
   }
 
+  private listening = false;
+  private triggersInstalled = false;
+
+  /**
+   * True when row changes are really delivered: the LISTEN connection is up and migration 0004's triggers exist.
+   * The app checks this (GET /api/v1/live) before moving its subscriptions off Supabase Realtime.
+   */
+  get changesReady(): boolean {
+    return this.listening && this.triggersInstalled;
+  }
+
+  /** Called by the change source's state callback (server.ts). */
+  async changeSourceState(state: "connected" | "disconnected"): Promise<void> {
+    this.listening = state === "connected";
+    if (this.listening && !this.triggersInstalled) {
+      this.triggersInstalled = await this.db()
+        .asService((tx) => new LiveRepository(tx).changeTriggersInstalled())
+        .catch(() => false);
+    }
+  }
+
   /** Resolves once every announcement received so far has been delivered (tests). */
   idle(): Promise<void> {
     return this.queue;

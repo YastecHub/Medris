@@ -97,6 +97,22 @@ Heroku sets.
 - **Switch it off in one browser** (to compare): `levroData.useBackend("none")` in the console, reload;
   `levroData.useBackend(null)` returns to normal. For everyone: Vercel variable `VITE_BACKEND_FEATURES=none`, redeploy.
 
+### Live updates (switch on once)
+
+The app's live subscriptions (new messages, typing, calls, orders, notifications) move from Supabase Realtime to the
+backend's socket (`/api/v1/live`, `medris-frontend/src/bridge/live-shim.ts`) **by themselves** once the backend says
+it delivers row changes (`GET /api/v1/live` -> `"changes": true`). Until then the app keeps using Realtime. Two steps
+make it true:
+
+1. **Apply migration 0004** (adds the change signals; changes no data; roll back in the file's header), from a
+   terminal in the project folder, with the database's **session pooler** address (port 5432):
+   `MIGRATE_DATABASE_URL='<session pooler URL>' npm run db:migrate -w medris-backend -- --only 0004 --apply --confirm <host>`
+2. **Heroku** -> Settings -> Config Vars: `LIVE_DATABASE_URL` = the same session pooler URL (port 5432, not 6543).
+   Heroku restarts the app; its log then says `live updates: database connected`.
+
+Check: open `https://levromart-5212f03a7e44.herokuapp.com/api/v1/live` -> `"changes": true`. Off switch for everyone:
+remove `LIVE_DATABASE_URL` (the app returns to Realtime on the next page load).
+
 ## Earlier plan: the backend as Vercel functions
 
 The sections below were written when the plan was to run the new backend as the Vercel functions; that plan was

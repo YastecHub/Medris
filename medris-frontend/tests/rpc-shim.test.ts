@@ -63,7 +63,7 @@ const BACKEND = { VITE_BACKEND_URL: "https://api.example.dev" };
 describe("sb.rpc through the backend", () => {
   it("is on whenever the build knows the backend's address", async () => {
     const { levroData } = await setup(BACKEND);
-    expect(levroData.features).toEqual(["catalogue", "cart", "favorites", "follows", "notifications", "rpc"]);
+    expect(levroData.features).toEqual(["catalogue", "cart", "favorites", "follows", "notifications", "rpc", "live"]);
   });
 
   it("is off without a backend address (development, tests) - Supabase as before", async () => {
@@ -152,6 +152,17 @@ describe("sb.rpc through the backend", () => {
     expect(await sb.rpc("get_vendor_stats", { p_vendor_id: "v1" })).toEqual({ data: "from-supabase", error: null });
     const { error } = await sb.rpc("add_order_note", { p_order_id: "o1", p_body: "hi" });
     expect(error).toMatchObject({ code: "rate_limited" });
+  });
+
+  it("after a request the browser could not send, the backend is skipped for a while (no repeated failures)", async () => {
+    const fetchMock = vi.fn(async () => Promise.reject(new TypeError("Failed to fetch")));
+    vi.stubGlobal("fetch", fetchMock);
+    const { sb } = await setup(BACKEND);
+    await sb.rpc("get_vendor_stats", { p_vendor_id: "v1" });
+    await sb.rpc("get_vendor_stats", { p_vendor_id: "v2" });
+    await sb.rpc("add_order_note", { p_order_id: "o1", p_body: "hi" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(supabaseCalls.map(([n]) => n)).toEqual(["get_vendor_stats", "get_vendor_stats", "add_order_note"]);
   });
 
   it("functions the backend does not answer, and calls with options, go to Supabase", async () => {

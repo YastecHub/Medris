@@ -11,6 +11,7 @@ import { LIVE_TABLES } from "../../database/repositories/live.repository.js";
 const tags = ["Live updates"];
 
 export const LiveInfo = z.object({
+  changes: z.boolean().openapi({ description: "Row changes are delivered (LISTEN connected and migration 0004 applied). The app switches to this socket only when true." }),
   websocket: z.string(),
   protocol: z.string(),
   tables: z.array(z.string()),
@@ -37,7 +38,8 @@ export const liveInfo = defineRoute({
   responses: { 200: jsonResponse(LiveInfo, "How to connect (open a WebSocket, Upgrade: websocket, on this path).") },
 });
 
-export const liveSummary = (): z.infer<typeof LiveInfo> => ({
+export const liveSummary = (changes = false): z.infer<typeof LiveInfo> => ({
+  changes,
   websocket: "/api/v1/live",
   protocol: "docs/LIVE.md",
   tables: Object.keys(LIVE_TABLES),

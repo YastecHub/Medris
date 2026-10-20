@@ -63,6 +63,19 @@ function requestSignal(options: V1RequestOptions): AbortSignal | undefined {
   return typeof AbortSignal.any === "function" ? AbortSignal.any([options.signal, timeout]) : options.signal;
 }
 
+/**
+ * When a request cannot leave the browser (the backend refuses this site, it is not reachable, the phone is
+ * offline), the next ones would fail the same way and each would cost a round trip before the Supabase fallback.
+ * So the backend is skipped for a minute: requests fail at once as "not sent", and callers use Supabase.
+ */
+const PAUSE_AFTER_NETWORK_ERROR_MS = 60_000;
+let pausedUntil = 0;
+
+/** Skip the backend for `ms` (e.g. it answered that an endpoint does not exist yet). */
+export function pauseBackend(ms: number): void {
+  pausedUntil = Math.max(pausedUntil, Date.now() + ms);
+}
+
 export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, options: V1RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
@@ -70,6 +83,7 @@ export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "D
     const token = await getAccessToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
+  if (Date.now() < pausedUntil) throw new V1Error("Network problem. Please check your connection and try again.", 0, "network_error");
   let response: Response;
   try {
     response = await fetch(v1Url(path, options.query), {
@@ -83,6 +97,7 @@ export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "D
     if (options.signal?.aborted) throw new V1Error("AbortError: The operation was aborted.", 0, "aborted");
     const name = (err as { name?: string } | null)?.name;
     if (name === "TimeoutError" || name === "AbortError") throw new V1Error("The request took too long. Please try again.", 0, "timeout");
+    pauseBackend(PAUSE_AFTER_NETWORK_ERROR_MS);
     throw new V1Error("Network problem. Please check your connection and try again.", 0, "network_error");
   }
   if (response.status === 204) return undefined as T;

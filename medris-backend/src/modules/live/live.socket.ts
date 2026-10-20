@@ -73,9 +73,12 @@ function serve(ws: WebSocket, identity: Identity | null, services: AppServices):
   const conn = services.live.connect((message) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
   }, identity);
+  // One message at a time, in the order sent: a subscribe right after "auth" must see the signed-in user.
+  let queue: Promise<void> = Promise.resolve();
   ws.on("message", (data, isBinary) => {
     if (isBinary) return;
-    conn.handle(data.toString()).catch(() => {});
+    const raw = data.toString();
+    queue = queue.then(() => conn.handle(raw)).catch(() => {});
   });
   ws.on("close", () => conn.close());
   ws.on("error", () => conn.close());
