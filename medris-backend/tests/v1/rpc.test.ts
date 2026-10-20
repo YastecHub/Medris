@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { RPC_NAMES } from "../../src/modules/rpc/rpc.dispatch.js";
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
@@ -18,6 +19,12 @@ describe("/api/v1/rpc/{name}", () => {
     for (const serverOnly of ["increment_chat_usage", "apply_referral_internal", "delete_my_account", "process_listing_billing_reminders"]) {
       expect(RPC_NAMES).not.toContain(serverOnly);
     }
+  });
+
+  it("the app sends exactly these names to the backend (medris-frontend/src/services/api/rpc-functions.ts)", () => {
+    const listed = readFileSync(new URL("../../../medris-frontend/src/services/api/rpc-functions.ts", import.meta.url), "utf8");
+    const names = [...listed.matchAll(/"([a-z0-9_]+)"/g)].map((m) => m[1]).sort();
+    expect(names).toEqual(RPC_NAMES);
   });
 
   it("answers with what the original returned: rows, a boolean, null", async () => {

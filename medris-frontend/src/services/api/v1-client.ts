@@ -24,6 +24,15 @@ export class V1Error extends Error {
   get isUnavailable(): boolean {
     return this.status === 0 || this.status === 502 || this.status === 503 || this.status === 504;
   }
+
+  /**
+   * The request certainly never reached the backend (offline, the address could not be resolved, the browser
+   * refused it before sending - e.g. a site the backend does not allow). Unlike a timeout or a 5xx, a write in
+   * this state did not run, so it is safe to send it another way.
+   */
+  get notSent(): boolean {
+    return this.code === "network_error";
+  }
 }
 
 export interface V1RequestOptions {
@@ -32,6 +41,8 @@ export interface V1RequestOptions {
   /** Send the access token (default true). */
   auth?: boolean;
   timeoutMs?: number;
+  /** The caller's own cancel signal (e.g. a search replaced by a newer one). */
+  signal?: AbortSignal;
 }
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -41,6 +52,15 @@ export function v1Url(path: string, query?: V1RequestOptions["query"]): string {
   for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== "") params.set(key, String(value));
   const qs = params.toString();
   return `${appConfig.backendUrl}/api/v1/${path.replace(/^\/+/, "")}${qs ? `?${qs}` : ""}`;
+}
+
+/** The client-side timeout, joined with the caller's signal when there is one. */
+function requestSignal(options: V1RequestOptions): AbortSignal | undefined {
+  // AbortSignal.timeout / AbortSignal.any are missing on some older mobile browsers; they simply get no client-side timeout.
+  const timeout = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS) : undefined;
+  if (!options.signal) return timeout;
+  if (!timeout) return options.signal;
+  return typeof AbortSignal.any === "function" ? AbortSignal.any([options.signal, timeout]) : options.signal;
 }
 
 export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, options: V1RequestOptions = {}): Promise<T> {
@@ -57,10 +77,12 @@ export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "D
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       credentials: appConfig.backendUrl ? "include" : "same-origin",
-      // AbortSignal.timeout is missing on some older mobile browsers; they simply get no client-side timeout.
-      signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS) : undefined,
+      signal: requestSignal(options),
     });
-  } catch {
+  } catch (err) {
+    if (options.signal?.aborted) throw new V1Error("AbortError: The operation was aborted.", 0, "aborted");
+    const name = (err as { name?: string } | null)?.name;
+    if (name === "TimeoutError" || name === "AbortError") throw new V1Error("The request took too long. Please try again.", 0, "timeout");
     throw new V1Error("Network problem. Please check your connection and try again.", 0, "network_error");
   }
   if (response.status === 204) return undefined as T;
