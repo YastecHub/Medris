@@ -9,7 +9,8 @@
  *
  * Supabase is used only as a safety net, never for the same write twice:
  *   - a read goes to Supabase when the backend is unreachable, slow, down or busy (0, 429, 502, 503, 504);
- *   - a write goes there only when it certainly never left the browser (offline, a site the backend refuses).
+ *   - a write goes there only when it certainly never ran (offline, a site the backend refuses, a backend
+ *     deployed before this endpoint existed).
  * Any other function, or a call with options (head/count), goes straight to Supabase as before.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -50,7 +51,9 @@ class BackendRpcCall implements PromiseLike<RpcResult> {
     } catch (err) {
       if (!(err instanceof V1Error)) return failure("Something went wrong. Please try again.", "client_error", 0);
       if (err.code === "aborted") return failure(err.message, "20", 0);
-      const retry = RPC_READS.has(this.name) ? err.isUnavailable || err.status === 429 : err.notSent;
+      // A backend without this endpoint (deployed before it existed) answers the plain route-level 404: nothing ran.
+      const endpointMissing = err.status === 404 && err.code === "not_found" && err.message === "Not found.";
+      const retry = endpointMissing || (RPC_READS.has(this.name) ? err.isUnavailable || err.status === 429 : err.notSent);
       if (retry) {
         if (!warned.shown) {
           warned.shown = true;

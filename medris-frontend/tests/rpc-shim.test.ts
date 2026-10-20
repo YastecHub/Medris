@@ -139,6 +139,21 @@ describe("sb.rpc through the backend", () => {
     expect(supabaseCalls).toEqual([["add_order_note", { p_order_id: "o1", p_body: "hi" }]]);
   });
 
+  it("a backend deployed before this endpoint existed: everything goes to Supabase", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json(404, { error: { code: "not_found", message: "Not found." } })));
+    const { sb } = await setup(BACKEND);
+    expect(await sb.rpc("create_sale_order", { p_vendor_id: "v1" })).toEqual({ data: "from-supabase", error: null });
+    expect(supabaseCalls).toEqual([["create_sale_order", { p_vendor_id: "v1" }]]);
+  });
+
+  it("a busy backend (429): reads use Supabase", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json(429, { error: { code: "rate_limited", message: "Too many requests." } })));
+    const { sb } = await setup(BACKEND);
+    expect(await sb.rpc("get_vendor_stats", { p_vendor_id: "v1" })).toEqual({ data: "from-supabase", error: null });
+    const { error } = await sb.rpc("add_order_note", { p_order_id: "o1", p_body: "hi" });
+    expect(error).toMatchObject({ code: "rate_limited" });
+  });
+
   it("functions the backend does not answer, and calls with options, go to Supabase", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
