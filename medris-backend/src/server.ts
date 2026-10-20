@@ -3,6 +3,7 @@ import { createApp } from "./app.js";
 import { poolConfig } from "./config/database.js";
 import { createServices } from "./container.js";
 import { PgChangeSource } from "./integrations/live/change-source.js";
+import { PostgrestProcess } from "./integrations/data-api/postgrest.js";
 import { attachLiveSocket, LIVE_PATH } from "./modules/live/live.socket.js";
 import { loadConfig } from "./config/app-config.js";
 import { closeDatabase, getDataContext } from "./database/index.js";
@@ -35,7 +36,22 @@ const logger = createLogger({ level: config.logLevel, base: { service: "medris-b
 const port = Number(process.env.PORT || 8787);
 const graceMs = Number(process.env.SHUTDOWN_GRACE_MS || 10_000);
 
-const services = createServices({ config, logger });
+// The data API (/rest/v1, the app's table queries): PostgREST, started here when its binary and database URL exist.
+let dataApi: PostgrestProcess | null = null;
+if (config.database.dataApiUrl && PostgrestProcess.available(config.postgrestBin)) {
+  dataApi = new PostgrestProcess({
+    bin: config.postgrestBin,
+    databaseUrl: config.database.dataApiUrl,
+    sslMode: config.database.sslMode,
+    supabaseUrl: config.supabase.url,
+    jwtSecret: config.supabase.jwtSecret,
+    log: (level, message, extra) => logger[level](message, extra ?? {}),
+  });
+  dataApi.start().catch((err: unknown) => logger.warn("data API: could not start", { err }));
+} else {
+  logger.warn(`data API: off (${config.database.dataApiUrl ? `no PostgREST at ${config.postgrestBin}` : "DATA_API_DATABASE_URL / LIVE_DATABASE_URL not set"}); the app keeps using Supabase for table queries`);
+}
+const services = createServices({ config, logger, dataApi });
 const server = createServer(createApp({ services }));
 
 // Live updates (/api/v1/live): the socket, and the LISTEN connection that feeds it (needs migration 0004 on the
@@ -122,6 +138,7 @@ async function shutdown(signal: string): Promise<void> {
   force.unref();
   live.close();
   await stopLive?.().catch(() => {});
+  await dataApi?.stop().catch(() => {});
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await closeDatabase().catch((err: unknown) => logger.error("closing the database pool failed", { err }));
   logger.info("stopped");

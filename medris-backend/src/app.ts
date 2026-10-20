@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler, type Express, type Request } from "express";
 import { corsMiddleware } from "./config/cors.js";
+import { dataApiProxy } from "./modules/data-api/data-api.proxy.js";
 import { createServices, type AppServices } from "./container.js";
 import { setDataContextProvider } from "./database/index.js";
 import { publicErrorMessage } from "./lib/http.js";
@@ -49,7 +50,10 @@ export function createApp(options: CreateAppOptions = {}): Express {
 
   // Same origin in production: no CORS headers. CORS_ALLOWED_ORIGINS opts other origins in.
   const cors = corsMiddleware(services.config);
-  if (cors) app.use("/api", cors);
+  if (cors) app.use(["/api", "/rest"], cors);
+
+  // The data API (the app's sb.from() table queries): PostgREST behind this proxy, body streamed as is.
+  app.use("/rest/v1", dataApiProxy(() => services.dataApi));
 
   app.use(apiDocs(services));
   app.use("/api/v1", v1Router(services));

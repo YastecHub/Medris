@@ -50,6 +50,7 @@ const TAGS = [
   { name: "Files", description: "Private files in Supabase Storage, brokered by the backend." },
   { name: "Live updates", description: "The WebSocket that replaces Supabase Realtime (row changes, typing, presence, call signalling)." },
   { name: "Database functions", description: "The app's sb.rpc() calls, answered by the backend's ports (same arguments, same results)." },
+  { name: "Data API", description: "The app's table queries (sb.from()): PostgREST on this server at /rest/v1." },
   { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },
 ];
 

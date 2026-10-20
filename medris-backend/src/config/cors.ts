@@ -17,9 +17,13 @@ export function corsMiddleware(config: AppConfig): RequestHandler | null {
   if (!allowed.size) return null;
   return cors({
     origin: (origin, callback) => callback(null, origin && allowed.has(origin.replace(/\/$/, "")) ? origin : false),
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-cron-secret", "X-Request-Id", "X-Requested-With"],
-    exposedHeaders: ["X-Request-Id", "Retry-After"],
+    methods: ["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    // The second line: what supabase-js sends to the data API (/rest/v1), as Supabase's own API allows.
+    allowedHeaders: [
+      ...["Content-Type", "Authorization", "x-cron-secret", "X-Request-Id", "X-Requested-With"],
+      ...["apikey", "x-client-info", "Prefer", "Range", "Range-Unit", "Accept-Profile", "Content-Profile", "x-supabase-api-version", "Accept"],
+    ],
+    exposedHeaders: ["X-Request-Id", "Retry-After", "Content-Range", "Range", "Preference-Applied", "Content-Profile", "Content-Location", "Location"],
     credentials: true,
     maxAge: 600,
   });

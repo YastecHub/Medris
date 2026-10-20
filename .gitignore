@@ -7,6 +7,8 @@ medris-backend/.env
 .vercel/
 coverage/
 medris-backend/drizzle/
+# PostgREST binary, downloaded at build time (medris-backend/scripts/install-postgrest.mjs)
+medris-backend/bin/
 .antigravity/
 .DS_Store
 
