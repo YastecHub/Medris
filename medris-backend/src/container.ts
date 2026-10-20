@@ -41,6 +41,7 @@ import { AccountService } from "./modules/account/account.service.js";
 import { AssistantService } from "./modules/assistant/assistant.service.js";
 import { SuggestionsService } from "./modules/suggestions/suggestions.service.js";
 import { EngagementService } from "./modules/engagement/engagement.service.js";
+import type { DataApiUpstream } from "./modules/data-api/data-api.proxy.js";
 
 /**
  * The application's services, created once per process and handed to every
@@ -97,6 +98,8 @@ export interface AppServices {
   assistant: AssistantService;
   suggestions: SuggestionsService;
   engagement: EngagementService;
+  /** The data API's PostgREST (/rest/v1), when this server runs one (server.ts). */
+  dataApi: DataApiUpstream | null;
 }
 
 export function createServices(overrides: Partial<AppServices> = {}): AppServices {
@@ -161,5 +164,6 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     assistant: overrides.assistant ?? new AssistantService(data),
     suggestions: overrides.suggestions ?? new SuggestionsService(data),
     engagement: overrides.engagement ?? new EngagementService(data),
+    dataApi: overrides.dataApi ?? null,
   };
 }

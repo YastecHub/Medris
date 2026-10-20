@@ -66,6 +66,16 @@ const envSchema = z.object({
       .regex(/^postgres(ql)?:\/\//, "must be a postgres:// or postgresql:// connection string")
       .optional(),
   ),
+  // The data API (/rest/v1: the app's sb.from() table queries) is PostgREST run by this server. It needs a direct or
+  // session-mode URL (port 5432); unset = LIVE_DATABASE_URL. DATA_API_ENABLED=false turns it off.
+  DATA_API_DATABASE_URL: optionalString.pipe(
+    z
+      .string()
+      .regex(/^postgres(ql)?:\/\//, "must be a postgres:// or postgresql:// connection string")
+      .optional(),
+  ),
+  DATA_API_ENABLED: bool(true),
+  POSTGREST_BIN: optionalString,
   DATABASE_POOL_MAX: intInRange(5, 1, 100),
   DATABASE_SSL_MODE: z.enum(["disable", "require", "verify-full"]).default("require"),
   DATABASE_SSL_CA: optionalString,
@@ -132,6 +142,8 @@ export interface AppConfig {
     url?: string;
     /** For live updates' LISTEN connection (session mode; unset = no row changes pushed). */
     liveUrl?: string;
+    /** For the data API's PostgREST (session mode; unset = no data API). */
+    dataApiUrl?: string;
     poolMax: number;
     sslMode: "disable" | "require" | "verify-full";
     sslCa?: string;
@@ -158,6 +170,8 @@ export interface AppConfig {
     google?: { clientId: string; clientSecret: string; redirectUri: string };
   };
   cors: { allowedOrigins: string[] };
+  /** Where the PostgREST binary is (scripts/install-postgrest.mjs puts it in medris-backend/bin). */
+  postgrestBin: string;
   rateLimit: { enabled: boolean };
   docs: { enabled: boolean };
   cloudinary?: { cloudName: string; apiKey: string; apiSecret: string; folder: string };
@@ -208,6 +222,7 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
     database: {
       url: e.DATABASE_URL,
       liveUrl: e.LIVE_DATABASE_URL,
+      dataApiUrl: e.DATA_API_ENABLED ? (e.DATA_API_DATABASE_URL ?? e.LIVE_DATABASE_URL) : undefined,
       poolMax: e.DATABASE_POOL_MAX,
       sslMode: e.DATABASE_SSL_MODE,
       sslCa: e.DATABASE_SSL_CA?.replace(/\\n/g, "\n"),
@@ -237,6 +252,7 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
     // call is cross-origin. (It must not depend on NODE_ENV: a host that does not set it would block the whole app.)
     // CORS_ALLOWED_ORIGINS adds more (a fixed preview URL, a new domain).
     cors: { allowedOrigins: [...new Set([e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...PRODUCTION_APP_ORIGINS, ...e.CORS_ALLOWED_ORIGINS])] },
+    postgrestBin: e.POSTGREST_BIN ?? "bin/postgrest",
     rateLimit: { enabled: e.RATE_LIMIT_ENABLED },
     docs: { enabled: e.API_DOCS_ENABLED ?? e.NODE_ENV !== "production" },
     cloudinary: e.CLOUDINARY_CLOUD_NAME

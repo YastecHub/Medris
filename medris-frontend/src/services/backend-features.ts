@@ -14,9 +14,10 @@
  * or, from the console: levroData.useBackend("cart,notifications"), levroData.useBackend("none").
  *
  * "rpc" is the app's sb.rpc() calls (bridge/rpc-shim.ts), "live" its sb.channel() subscriptions
- * (bridge/live-shim.ts); the others are the data gateway's table queries.
+ * (bridge/live-shim.ts), "tables" every other sb.from() table query (bridge/table-shim.ts); the others are
+ * the data gateway's table queries.
  */
-export const BACKEND_FEATURES = ["catalogue", "cart", "favorites", "follows", "notifications", "rpc", "live"] as const;
+export const BACKEND_FEATURES = ["catalogue", "cart", "favorites", "follows", "notifications", "rpc", "live", "tables"] as const;
 export type BackendFeature = (typeof BACKEND_FEATURES)[number];
 
 export const FEATURE_OVERRIDE_KEY = "medris:backend-features";

@@ -53,6 +53,8 @@ export interface TestDatabase {
   sqlClient(): Promise<{ client: SqlClient; release(): void }>;
   close(): Promise<void>;
   kind: "pglite" | "postgres";
+  /** The scratch database's URL (real PostgreSQL only), e.g. for the data API's PostgREST. */
+  url?: string;
   /** A ChangeSource on this database (LISTEN), for the live-update tests. */
   changes: ChangeSource;
 }
@@ -128,6 +130,7 @@ async function createPostgresTestDatabase(url: string, chunks: string[]): Promis
     db,
     data: new DataContext(db),
     kind: "postgres",
+    url: scratchUrl.toString(),
     changes: {
       listen: async (channel, onMessage) => {
         const listener = new pg.Client({ connectionString: scratchUrl.toString() });
