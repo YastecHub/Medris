@@ -27,6 +27,7 @@ import { appConfig } from "@/config/env";
 import { BACKEND_FEATURES, defaultFeatureList, enabledFeatures, parseFeatureList, writeFeatureOverride, type BackendFeature } from "@/services/backend-features";
 import { installRpc, supabaseRpc } from "./rpc-shim";
 import { installLive } from "./live-shim";
+import { installTables } from "./table-shim";
 
 declare const sb: SupabaseClient;
 
@@ -332,6 +333,10 @@ const levroData = Object.freeze({
   /** Called once by the legacy runtime after it creates `sb`: its sb.channel() subscriptions then use the backend ("live"). */
   installLive(client: SupabaseClient): void {
     installLive(client, () => features.has("live"));
+  },
+  /** Called once by the legacy runtime after it creates `sb`: its sb.from() table queries then use the backend's data API ("tables"). */
+  installTables(client: SupabaseClient): void {
+    installTables(client, () => features.has("tables"));
   },
   /** Features currently routed through the backend. */
   get features(): BackendFeature[] {

@@ -63,7 +63,7 @@ const BACKEND = { VITE_BACKEND_URL: "https://api.example.dev" };
 describe("sb.rpc through the backend", () => {
   it("is on whenever the build knows the backend's address", async () => {
     const { levroData } = await setup(BACKEND);
-    expect(levroData.features).toEqual(["catalogue", "cart", "favorites", "follows", "notifications", "rpc", "live"]);
+    expect(levroData.features).toEqual(["catalogue", "cart", "favorites", "follows", "notifications", "rpc", "live", "tables"]);
   });
 
   it("is off without a backend address (development, tests) - Supabase as before", async () => {

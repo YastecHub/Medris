@@ -10,6 +10,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, window.__levro
 try { if (window.levroData && window.levroData.installRpc) window.levroData.installRpc(sb); } catch (_) {}
 // Live updates (sb.channel) go to the backend's socket once it delivers row changes; see src/bridge/live-shim.ts.
 try { if (window.levroData && window.levroData.installLive) window.levroData.installLive(sb); } catch (_) {}
+// Table queries (sb.from) go to the backend's data API once it is ready; see src/bridge/table-shim.ts.
+try { if (window.levroData && window.levroData.installTables) window.levroData.installTables(sb); } catch (_) {}
 // Any write to cart_items marks the cached cart count stale, so the badge still updates at once.
 try {
   const __sbFrom = sb.from.bind(sb);

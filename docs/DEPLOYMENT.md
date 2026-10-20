@@ -113,6 +113,20 @@ make it true:
 Check: open `https://levromart-5212f03a7e44.herokuapp.com/api/v1/live` -> `"changes": true`. Off switch for everyone:
 remove `LIVE_DATABASE_URL` (the app returns to Realtime on the next page load).
 
+### Table queries (the data API)
+
+The app's `sb.from()` table queries (about 450 places) go to `/rest/v1` on the backend instead of Supabase once
+`GET /api/v1/data-api` says `"ready": true`. That address is **PostgREST**, the same server Supabase runs behind its
+own `/rest/v1`, started by the backend on the same database with Supabase's settings (roles anon / authenticated,
+row-level security, 1000 rows at most, tokens checked against Supabase Auth's public keys). So the queries, and their
+answers, are unchanged. Heroku's build downloads it (`scripts/install-postgrest.mjs`, pinned version
+and checksum).
+
+It uses `DATA_API_DATABASE_URL`, or `LIVE_DATABASE_URL` when that is not set (session pooler, port 5432), so with
+live updates on it starts by itself. Off switch: Heroku config var `DATA_API_ENABLED=false` (the app returns to
+Supabase on the next page load). Safety net: reads go to Supabase whenever the backend cannot answer; writes only when
+they certainly did not run.
+
 ## Earlier plan: the backend as Vercel functions
 
 The sections below were written when the plan was to run the new backend as the Vercel functions; that plan was
