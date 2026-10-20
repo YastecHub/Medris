@@ -102,7 +102,9 @@ export interface AppServices {
 export function createServices(overrides: Partial<AppServices> = {}): AppServices {
   const config = overrides.config ?? loadConfig();
   const logger = overrides.logger ?? createLogger({ level: config.logLevel, base: { service: "medris-backend" } });
-  const data = overrides.data ?? (() => getDataContext(config));
+  const defaultData = (() => getDataContext(config)) as (() => DataContext) & { isDefault?: boolean };
+  defaultData.isDefault = true;
+  const data = overrides.data ?? defaultData;
   const accessTokens =
     overrides.accessTokens ??
     new SupabaseAccessTokenVerifier({

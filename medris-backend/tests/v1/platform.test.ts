@@ -10,6 +10,10 @@ import { SupabaseAccessTokenVerifier } from "../../src/modules/auth/access-token
 import { safeReturnPath } from "../../src/modules/auth/auth.service.js";
 import { restoreRewrittenUrl } from "../../src/vercel.js";
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
+import { createApp } from "../../src/app.js";
+import { createServices } from "../../src/container.js";
+import { silentLogger } from "../../src/lib/logger.js";
+import { asFetch } from "../support/http.js";
 import { ISSUER, JWT_SECRET, accessToken, buildTestApp, call, seedUser, testConfig, uuid } from "../support/fixtures.js";
 
 describe("platform", () => {
@@ -90,6 +94,16 @@ describe("platform", () => {
       expect(JSON.stringify(body)).not.toMatch(/unused-in-tests|anon-key|service-key|secret/);
     });
 
+    it("health endpoints do not recurse when full services are passed to createApp", async () => {
+      const config = testConfig();
+      const services = createServices({ config, logger: silentLogger, data: () => db.data });
+      const app = asFetch(createApp({ services }));
+      const ready = await call(app, "GET", "/api/v1/health/ready");
+      expect(ready.status).toBe(200);
+      const body = (await ready.json()) as { status: string };
+      expect(body.status).toBe("ok");
+    });
+
     it("answers unknown /api/v1 paths with the v1 error shape and keeps the legacy shape elsewhere", async () => {
       const app = buildTestApp(db);
       const v1 = await call(app, "GET", "/api/v1/nope");
@@ -168,6 +182,17 @@ describe("platform", () => {
       }
       expect(() => loadConfig({ GOOGLE_CLIENT_ID: "id" })).toThrow(/must be set together/);
       expect(() => loadConfig({ AUTH_BACKEND_SESSIONS: "true" })).toThrow(/requires DATABASE_URL/);
+    });
+
+    it("trims whitespace from environment variable values and keys", () => {
+      const config = loadConfig({
+        " API_DOCS_ENABLED ": " true ",
+        AUTH_BACKEND_SESSIONS: " false ",
+        LOG_LEVEL: " debug ",
+      });
+      expect(config.docs.enabled).toBe(true);
+      expect(config.auth.backendSessions).toBe(false);
+      expect(config.logLevel).toBe("debug");
     });
 
     it("applies safe defaults", () => {

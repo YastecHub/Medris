@@ -15,6 +15,7 @@ import { DataContext } from "./context.js";
 let installed: (() => DataContext) | null = null;
 let handle: DatabaseHandle | null = null;
 let fromEnv: DataContext | null = null;
+let inInstalled = false;
 
 /** Installs a provider used instead of DATABASE_URL (tests, createApp overrides). null restores the default. */
 export function setDataContextProvider(provider: (() => DataContext) | null): void {
@@ -22,7 +23,14 @@ export function setDataContextProvider(provider: (() => DataContext) | null): vo
 }
 
 export function getDataContext(config?: AppConfig): DataContext {
-  if (installed) return installed();
+  if (installed && !inInstalled) {
+    inInstalled = true;
+    try {
+      return installed();
+    } finally {
+      inInstalled = false;
+    }
+  }
   if (fromEnv) return fromEnv;
   const cfg = config ?? loadConfig();
   if (!cfg.database.url) throw serviceUnavailable("DATABASE_URL is not configured on this deployment.");

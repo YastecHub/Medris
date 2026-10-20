@@ -13,9 +13,15 @@ import { DEFAULT_APP_ORIGIN } from "./env.js";
 
 const bool = (fallback: boolean) =>
   z
-    .enum(["true", "false", "1", "0", "on", "off", "yes", "no"])
+    .string()
     .optional()
-    .transform((v) => (v === undefined ? fallback : ["true", "1", "on", "yes"].includes(v)));
+    .transform((v) => (v ? v.trim().toLowerCase() : undefined))
+    .pipe(
+      z
+        .enum(["true", "false", "1", "0", "on", "off", "yes", "no"])
+        .optional()
+        .transform((v) => (v === undefined ? fallback : ["true", "1", "on", "yes"].includes(v))),
+    );
 
 const optionalString = z
   .string()
@@ -64,7 +70,7 @@ const envSchema = z.object({
   DATABASE_SSL_MODE: z.enum(["disable", "require", "verify-full"]).default("require"),
   DATABASE_SSL_CA: optionalString,
   DATABASE_STATEMENT_TIMEOUT_MS: intInRange(10_000, 100, 300_000),
-  DATABASE_CONNECTION_TIMEOUT_MS: intInRange(5_000, 100, 60_000),
+  DATABASE_CONNECTION_TIMEOUT_MS: intInRange(15_000, 100, 60_000),
   DATABASE_IDLE_TIMEOUT_MS: intInRange(10_000, 1_000, 600_000),
 
   REQUEST_TIMEOUT_MS: intInRange(25_000, 1_000, 300_000),
@@ -98,9 +104,15 @@ const envSchema = z.object({
   // Swagger UI (/api/v1/docs) and the OpenAPI document (/api/v1/openapi.json).
   // Unset: on everywhere except NODE_ENV=production.
   API_DOCS_ENABLED: z
-    .enum(["true", "false", "1", "0", "on", "off", "yes", "no"])
+    .string()
     .optional()
-    .transform((v) => (v === undefined ? undefined : ["true", "1", "on", "yes"].includes(v))),
+    .transform((v) => (v ? v.trim().toLowerCase() : undefined))
+    .pipe(
+      z
+        .enum(["true", "false", "1", "0", "on", "off", "yes", "no"])
+        .optional()
+        .transform((v) => (v === undefined ? undefined : ["true", "1", "on", "yes"].includes(v))),
+    ),
 
   // Image storage: Cloudinary is optional; R2 and Supabase Storage stay as they are
   CLOUDINARY_CLOUD_NAME: optionalString,
@@ -161,7 +173,11 @@ export class ConfigError extends Error {
 
 export function loadConfig(env: RawEnv = process.env): AppConfig {
   // Empty strings count as "not set" (Vercel and .env files often hold blanks).
-  const cleaned = Object.fromEntries(Object.entries(env).filter(([, v]) => v !== undefined && v !== ""));
+  const cleaned = Object.fromEntries(
+    Object.entries(env)
+      .map(([k, v]) => [k.trim(), typeof v === "string" ? v.trim() : v])
+      .filter(([, v]) => v !== undefined && v !== ""),
+  );
   const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     throw new ConfigError(parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`));
