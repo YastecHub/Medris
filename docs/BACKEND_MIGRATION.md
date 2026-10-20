@@ -256,6 +256,6 @@ Update this table in the pull request that completes each step.
 | Helpers and policy checks (called only by other functions or by RLS) | parity (`helpers.parity`) | yes, 22 + 3 | - | - | - | - |
 | The browser's direct table queries (456, `docs/TABLE_QUERIES.md`) | parity (`tables-*.parity`, browser query vs endpoint as the same user) | all 456 have an endpoint (fixes S5-S13, B12-B14) | - | - | - | - |
 | File storage (30 `sb.storage` calls, 9 buckets, `docs/TABLE_QUERIES.md`) | parity (`storage-access.parity`: every bucket, caller, path and operation vs the real policies) | all 30 mapped to `/api/v1/files`; files stay in Supabase Storage | - | - | - | - |
-| Live updates (12 `sb.channel` subscriptions) | parity (`live.parity`: each channel vs the same row read as the same user; `live-socket` over a real WebSocket) | all 12 on `/api/v1/live` (fixes B15, S14); needs migration 0004 | - | - | - | - |
+| Live updates (12 `sb.channel` subscriptions) | parity (`live.parity`: each channel vs the same row read as the same user; `live-socket` over a real WebSocket) | all 12 on `/api/v1/live` (fixes B15, S14); needs migration 0004 | skipped (switched directly) | switches itself when 0004 is applied and `LIVE_DATABASE_URL` is set (`GET /api/v1/live` -> `changes: true`) | - | - |
 | Phase 3 Sign-in | - | built, off | - | - | - | - |
 | Phase 4 Switch-off | - | - | - | - | - | - |

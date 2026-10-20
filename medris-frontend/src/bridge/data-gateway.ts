@@ -26,6 +26,7 @@ import { V1Error } from "@/services/api/v1-client";
 import { appConfig } from "@/config/env";
 import { BACKEND_FEATURES, defaultFeatureList, enabledFeatures, parseFeatureList, writeFeatureOverride, type BackendFeature } from "@/services/backend-features";
 import { installRpc, supabaseRpc } from "./rpc-shim";
+import { installLive } from "./live-shim";
 
 declare const sb: SupabaseClient;
 
@@ -327,6 +328,10 @@ const levroData = Object.freeze({
   /** Called once by the legacy runtime right after it creates `sb`: its sb.rpc() calls then go to the backend ("rpc"). */
   installRpc(client: SupabaseClient): void {
     installRpc(client, () => features.has("rpc"));
+  },
+  /** Called once by the legacy runtime after it creates `sb`: its sb.channel() subscriptions then use the backend ("live"). */
+  installLive(client: SupabaseClient): void {
+    installLive(client, () => features.has("live"));
   },
   /** Features currently routed through the backend. */
   get features(): BackendFeature[] {
