@@ -8,6 +8,7 @@ medris-backend/.env
 coverage/
 medris-backend/drizzle/
 .antigravity/
+.DS_Store
 
 # Claude app output folder (local only)
 Claude outputs/
@@ -17,3 +18,5 @@ supabase/export/
 
 # Installed packages, also as a symlink (never commit)
 node_modules
+.DS_Store
+.DS_Store
