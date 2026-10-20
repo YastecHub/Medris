@@ -3,15 +3,19 @@
  * instead of calling Supabase directly from the browser.
  *
  * Build-time default: VITE_BACKEND_FEATURES, a comma-separated list
- * ("cart,notifications"), "all" or empty (= none, today's behaviour).
+ * ("cart,notifications"), "all" or "none". Unset: everything goes through the
+ * backend whenever the build knows where it is (VITE_BACKEND_URL, which a
+ * production build sets by default - config/env.ts), else nothing.
  *
  * Per-browser override, for trying a feature on a preview or production build
  * without redeploying (affects only that browser):
  *   localStorage.setItem("medris:backend-features", "all")   // then reload
  *   localStorage.removeItem("medris:backend-features")       // back to the build default
- * or, from the console: levroData.useBackend("cart,notifications").
+ * or, from the console: levroData.useBackend("cart,notifications"), levroData.useBackend("none").
+ *
+ * "rpc" is the app's sb.rpc() calls (bridge/rpc-shim.ts); the others are the data gateway's table queries.
  */
-export const BACKEND_FEATURES = ["catalogue", "cart", "favorites", "follows", "notifications"] as const;
+export const BACKEND_FEATURES = ["catalogue", "cart", "favorites", "follows", "notifications", "rpc"] as const;
 export type BackendFeature = (typeof BACKEND_FEATURES)[number];
 
 export const FEATURE_OVERRIDE_KEY = "medris:backend-features";
@@ -41,6 +45,13 @@ export function writeFeatureOverride(value: string | null): void {
   } catch {
     /* storage unavailable: the build default stays in force */
   }
+}
+
+/** The build's default list: VITE_BACKEND_FEATURES when given, else all when a backend URL is configured. */
+export function defaultFeatureList(buildList: string | undefined, backendUrl: string): string {
+  const list = String(buildList ?? "").trim();
+  if (list) return list;
+  return backendUrl ? "all" : "";
 }
 
 export function enabledFeatures(buildDefault: string | undefined): Set<BackendFeature> {

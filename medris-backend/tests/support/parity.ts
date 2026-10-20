@@ -5,6 +5,7 @@ import { DataContext, type Identity } from "../../src/database/context.js";
 import { callFunction } from "../../src/database/rpc.js";
 import { findPgError } from "../../src/database/errors.js";
 import type { TestDatabase } from "./test-db.js";
+import { crossCheckRpc } from "./rpc-crosscheck.js";
 
 /**
  * Parity kit: proves that a backend port behaves like the database function it
@@ -133,7 +134,9 @@ async function runIsolatedNow<T>(testDb: TestDatabase, work: (ctx: DataContext) 
 
 /** The original database function, run as the caller - what the browser's sb.rpc() did. */
 export function runOriginal(testDb: TestDatabase, caller: Identity | null, name: string, args: Record<string, unknown> = {}) {
-  return runIsolated(testDb, (ctx) => ctx.asCaller(caller, (tx) => callFunction(tx, name, args)));
+  const original = runIsolated(testDb, (ctx) => ctx.asCaller(caller, (tx) => callFunction(tx, name, args)));
+  // The same call through the backend's sb.rpc() endpoint table must give the same outcome (rpc.dispatch.ts).
+  return crossCheckRpc(testDb, original, caller, name, args);
 }
 
 /**

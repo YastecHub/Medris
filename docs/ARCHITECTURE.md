@@ -139,10 +139,14 @@ React component ───► v1.<area>.<method>()  (typed with @medris/contracts
 ```
 
 - `levroData` returns the `{ data, error, count }` shape supabase-js returned, so each call site changed by one line.
-- Features (`catalogue`, `cart`, `favorites`, `follows`, `notifications`) are switched by `VITE_BACKEND_FEATURES`
-  at build time, or per browser with `levroData.useBackend("…")`. Default: none (today's behaviour).
+- Features (`catalogue`, `cart`, `favorites`, `follows`, `notifications`, `rpc`) are switched by `VITE_BACKEND_FEATURES`
+  at build time, or per browser with `levroData.useBackend("…")`. Default: all when the build knows the backend's
+  address (production: the Heroku app), else none.
+- `rpc`: `sb.rpc(name, args)` is wrapped once (`src/bridge/rpc-shim.ts`) and sends the 153 functions the backend
+  answers to `POST /api/v1/rpc/{name}`, which returns what the original returned.
 - The client sends `Authorization: Bearer <Supabase access token>`; errors come back as `{ message, code, status }`.
-- Reads and idempotent writes fall back to Supabase when the backend is unreachable; non-idempotent writes do not.
+- Reads and idempotent writes fall back to Supabase when the backend is unreachable; other writes only when the
+  request never left the browser, so nothing runs twice.
 - Still direct to Supabase from the browser: sign-in/session (Auth), Realtime channels, Storage uploads/signed URLs,
   and the call sites not yet moved (SUPABASE_AUDIT.md).
 

@@ -30,7 +30,7 @@ fix a technical problem by hand.
 | `medris-frontend/public/` | Icons, images, fonts, `lib/compress-image.js` | Yes |
 | `medris-frontend/src/` (outside `legacy/`) | Small React/TypeScript entry and the data gateway (`window.levroData`) | Yes |
 | `api/*.js` | The 12 live server functions on Vercel (payments, notifications, sign-up, Levi AI, uploads, link previews, daily cron). Plain CommonJS. | Yes - Vercel |
-| `medris-backend/` | New Express + TypeScript backend (Swagger at `/api/v1/docs`). **Not deployed** - changing it does not change the live app | No |
+| `medris-backend/` | New Express + TypeScript backend (Swagger at `/api/v1/docs`). **Live on Heroku**: the app's `sb.rpc()` calls and the data gateway go there | Yes - Heroku |
 | `medris-backend/src/database/migrations/` | Every database change, as numbered SQL files | Applied by hand after approval |
 | `supabase/` | Database history (`01`-`14`, already applied - never re-run) and the export script | - |
 | `docs/` | Engineering docs: `ARCHITECTURE.md`, `DATABASE.md`, `DEPLOYMENT.md`, `CLEANUP.md`, the build manuals (PDF) | - |
@@ -93,7 +93,8 @@ After any change in `src/legacy/`: `legacy:check` -> `bump-version` -> `legacy:r
   (Vercel posts it on the pull request); `main` is production. Nobody deploys by hand.
 - **Database changes are never deployed automatically.** They are migration files reviewed in a pull request and
   applied to production by the engineer after approval (`docs/DATABASE.md`, section 3).
-- Keep `VITE_BACKEND_FEATURES` empty: the new backend (`/api/v1`) is not deployed.
+- The backend is switched on for everyone: production builds send `sb.rpc()` calls to `https://levromart-5212f03a7e44.herokuapp.com`
+  (`POST /api/v1/rpc/{name}`). `VITE_BACKEND_FEATURES=none` turns it off; see `docs/DEPLOYMENT.md`.
 
 ## Hard limits (no task overrides these)
 

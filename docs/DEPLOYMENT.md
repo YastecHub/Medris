@@ -77,19 +77,25 @@ Heroku sets `PORT`. A missing required variable stops the dyno at start-up with 
 (**More** -> **View logs**), so a misconfigured deploy never runs half-configured. Roll back: **Activity** ->
 **Roll back to here** on the previous release.
 
-### Connecting the app to it (per browser first, nobody else affected)
+### How the app uses it (switched on)
 
-1. **Heroku** -> Settings -> Config Vars: `CORS_ALLOWED_ORIGINS` = the app's addresses, comma separated
-   (`https://levromart.vercel.app` plus any custom domain). Without it the browser blocks the calls.
-2. **Vercel** -> Project -> Settings -> Environment Variables (Production and Preview):
-   `VITE_BACKEND_URL` = `https://<app>.herokuapp.com`, then redeploy. Leave `VITE_BACKEND_FEATURES` empty: users see no
-   change, only `/api/v1` would go to Heroku and nothing calls it yet. The original `/api/*` functions stay on Vercel.
-3. **Try it in your browser only:** open the live app, sign in with a test account, open the browser console and run
-   `levroData.useBackend("all")`, reload. Browse, open a product, add to and change the cart, save to the wishlist,
-   follow a shop, open notifications. In the Network tab those requests now go to `<app>.herokuapp.com/api/v1/...`.
-   Back to normal: `levroData.useBackend(null)` and reload.
-4. Everyone: set `VITE_BACKEND_FEATURES` (e.g. `catalogue,notifications`, later `all`) and redeploy. If the backend
-   is down, reads fall back to Supabase on their own.
+Nothing needs setting: a production build of the app talks to `https://levromart-5212f03a7e44.herokuapp.com`
+(`DEFAULT_BACKEND_URL` in `medris-frontend/src/config/env.ts`), and the backend accepts the app's own sites
+(`https://levromart.vercel.app`, `https://levromart.com`, `https://www.levromart.com`) when `NODE_ENV=production`, which
+Heroku sets.
+
+- **What goes to the backend:** the app's `sb.rpc(...)` calls (153 database functions, `POST /api/v1/rpc/{name}`,
+  see `medris-frontend/src/bridge/rpc-shim.ts`) and the data gateway's cart, wishlist, follows, notifications and
+  catalogue requests. Table queries (`sb.from`), file uploads and live updates still go to Supabase; they move next.
+- **If the backend is down or asleep:** reads go to Supabase on their own; a write goes there only when it certainly
+  never left the browser, so nothing runs twice. Otherwise the user sees the error and can try again.
+- **Another address** (e.g. a second Heroku app): Vercel variable `VITE_BACKEND_URL`, then redeploy. `same-origin`
+  means `/api/v1` on the app's own host.
+- **Another site that should call it** (a fixed preview URL, a new domain): Heroku config var
+  `CORS_ALLOWED_ORIGINS`, comma separated. Vercel preview links are not allowed by default: there the app quietly uses
+  Supabase as before.
+- **Switch it off in one browser** (to compare): `levroData.useBackend("none")` in the console, reload;
+  `levroData.useBackend(null)` returns to normal. For everyone: Vercel variable `VITE_BACKEND_FEATURES=none`, redeploy.
 
 ## Earlier plan: the backend as Vercel functions
 

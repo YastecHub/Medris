@@ -10,18 +10,22 @@
  *   on  -> the request goes to medris-backend (/api/v1), which validates it,
  *          authorises it and runs it against PostgreSQL under the user's
  *          identity (all RLS policies still apply);
- *   off -> the exact Supabase query the call site used before (the default,
- *          so a build without VITE_BACKEND_FEATURES behaves as today).
+ *   off -> the exact Supabase query the call site used before.
+ * A production build has them all on (it knows the backend's address); a
+ * build without a backend address has them off.
  *
  * Reads and idempotent writes fall back to the Supabase query when the
  * backend is unreachable (network error, 502/503/504) so a backend outage
- * during the roll-out never blocks users; non-idempotent writes (add to cart,
- * save to wishlist) never retry through a second path.
+ * never blocks users; non-idempotent writes (add to cart, save to wishlist)
+ * fall back only when the request certainly never left the browser, so they
+ * never run twice.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { v1 } from "@/services/api/v1-endpoints";
 import { V1Error } from "@/services/api/v1-client";
-import { BACKEND_FEATURES, enabledFeatures, parseFeatureList, writeFeatureOverride, type BackendFeature } from "@/services/backend-features";
+import { appConfig } from "@/config/env";
+import { BACKEND_FEATURES, defaultFeatureList, enabledFeatures, parseFeatureList, writeFeatureOverride, type BackendFeature } from "@/services/backend-features";
+import { installRpc, supabaseRpc } from "./rpc-shim";
 
 declare const sb: SupabaseClient;
 
@@ -40,7 +44,8 @@ export interface GatewayResult<T> {
 
 type Legacy<T> = () => PromiseLike<GatewayResult<T>>;
 
-let features = enabledFeatures(import.meta.env.VITE_BACKEND_FEATURES);
+const BUILD_FEATURES = defaultFeatureList(import.meta.env.VITE_BACKEND_FEATURES, appConfig.backendUrl);
+let features = enabledFeatures(BUILD_FEATURES);
 const warned = new Set<string>();
 
 function toGatewayError(err: unknown): GatewayError {
@@ -53,7 +58,8 @@ async function route<T>(feature: BackendFeature, backend: () => Promise<GatewayR
   try {
     return await backend();
   } catch (err) {
-    if (canFallBack && err instanceof V1Error && err.isUnavailable) {
+    // A read is retried on Supabase whenever the backend is unavailable; a write only when it never left the browser.
+    if (err instanceof V1Error && (canFallBack ? err.isUnavailable : err.notSent)) {
       if (!warned.has(feature)) {
         warned.add(feature);
         console.warn(`[levroData] backend unavailable for "${feature}" (${err.status}); using Supabase directly for now.`);
@@ -111,7 +117,7 @@ const cart = {
     write(
       "cart",
       async () => ok((await v1.cart.add({ productId, quantity, variantId })).result),
-      () => sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: quantity, p_variant_id: variantId }) as PromiseLike<GatewayResult<unknown>>,
+      () => supabaseRpc(sb)("add_to_cart", { p_product_id: productId, p_quantity: quantity, p_variant_id: variantId }) as PromiseLike<GatewayResult<unknown>>,
     ),
   setQuantity: (itemId: string, quantity: number) =>
     idempotentWrite(
@@ -266,7 +272,7 @@ const follows = {
     idempotentWrite(
       "follows",
       async () => (forget("follows"), ok((await v1.follows.set(vendorId, following)).result)),
-      () => sb.rpc("toggle_vendor_follow", { p_vendor_id: vendorId, p_following: following }) as PromiseLike<GatewayResult<unknown>>,
+      () => supabaseRpc(sb)("toggle_vendor_follow", { p_vendor_id: vendorId, p_following: following }) as PromiseLike<GatewayResult<unknown>>,
     ),
   unfollow: (userId: string, vendorId: string) =>
     idempotentWrite(
@@ -318,6 +324,10 @@ const levroData = Object.freeze({
   favorites,
   follows,
   catalogue,
+  /** Called once by the legacy runtime right after it creates `sb`: its sb.rpc() calls then go to the backend ("rpc"). */
+  installRpc(client: SupabaseClient): void {
+    installRpc(client, () => features.has("rpc"));
+  },
   /** Features currently routed through the backend. */
   get features(): BackendFeature[] {
     return BACKEND_FEATURES.filter((f) => features.has(f));
@@ -329,7 +339,7 @@ const levroData = Object.freeze({
    */
   useBackend(list: string | null): BackendFeature[] {
     writeFeatureOverride(list);
-    features = list === null ? enabledFeatures(import.meta.env.VITE_BACKEND_FEATURES) : parseFeatureList(list);
+    features = list === null ? enabledFeatures(BUILD_FEATURES) : parseFeatureList(list);
     return BACKEND_FEATURES.filter((f) => features.has(f));
   },
 });

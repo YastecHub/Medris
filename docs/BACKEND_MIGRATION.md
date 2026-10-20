@@ -161,6 +161,14 @@ the browser's, and they move with the database to any PostgreSQL host. Four run 
 or a session (Auth stays), and one sends email/push for new notifications through `pg_net` (it becomes an outbox only
 if the database ever leaves Supabase).
 
+**Switching the app over.** The app's `sb.rpc(name, args)` calls go to `POST /api/v1/rpc/{name}`
+(`medris-backend/src/modules/rpc/rpc.dispatch.ts`: 153 functions, each mapped to its port, answering with what the
+original returned). The browser wraps `sb.rpc` once (`medris-frontend/src/bridge/rpc-shim.ts`), so no call site
+changed. Proof: every `runOriginal()` in the parity suite also runs the same call through that table on the same rows
+and must agree (`tests/support/rpc-crosscheck.ts`); 152 of the 153 are exercised there, `create_notification` in
+`tests/v1/rpc.test.ts`. Only the server's own calls stay on Supabase (`increment_chat_usage`, `increment_tts_usage`,
+`apply_referral_internal`, `delete_my_account`, the two daily reminder jobs).
+
 ### 5.3 Realtime (12 channels)
 
 **Built:** the WebSocket `/api/v1/live` ([LIVE.md](LIVE.md)). Row changes reach it through migration 0004's NOTIFY
@@ -235,16 +243,16 @@ Update this table in the pull request that completes each step.
 |---|---|---|---|---|---|---|
 | Phase 0: export (0.1), baseline (0.2), tests on the real schema (0.3) | **done** | - | - | - | - | - |
 | Phase 0: parity kit (0.4), ratchet (0.5), Heroku (0.6), role 0001 (0.7) | parity kit + tracker (`docs/PORTING.md`) done | - | - | - | - | - |
-| Cart, favourites, follows, notifications, catalogue reference | yes (real schema) | yes | - | - | - | - |
-| 2.1 Catalogue & search | parity (`catalogue.parity`) | yes (fix B8) | - | - | - | - |
-| 2.2 Follows & social, suggestions, Levi, notifications | parity | yes | - | - | - | - |
-| 2.3 Points & referrals | parity (`points.parity`) | yes | - | - | - | - |
-| 2.4 Requests & offers | parity (`service-offers.parity`) | service bookings yes (fix B9); equipment requests: table endpoints | - | - | - | - |
-| 2.5 Messaging & calls (+ realtime) | parity (`conversations.parity`, `live.parity`) | functions yes (fix S4); realtime on `/api/v1/live` (fix S14) | - | - | - | - |
-| 2.6 Vendors, admin & accounts (+ storage) | parity (`shops.parity`, `account-data.parity`, `storage-access.parity`) | functions yes (fix B10, S2); storage brokered by `/api/v1/files` (files stay in Supabase) | - | - | - | - |
-| 2.7 Orders & checkout | parity (`order-actions.parity`, `checkout.parity`) | yes | - | - | - | - |
-| 2.8 Payments & disputes | parity (`payment-claims.parity`) | yes (fix B2, S4) | - | - | - | - |
-| 2.9 Commission & billing (+ jobs) | parity (`commission.parity`, `scheduled-jobs.parity`) | yes (fix B11); all 8 pg_cron jobs ported (`/api/v1/jobs`), pg_cron keeps running them until the switch | - | - | - | - |
+| Cart, favourites, follows, notifications, catalogue reference | yes (real schema) | yes | skipped (switched directly) | yes (data gateway) | - | - |
+| 2.1 Catalogue & search | parity (`catalogue.parity`) | yes (fix B8) | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.2 Follows & social, suggestions, Levi, notifications | parity | yes | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.3 Points & referrals | parity (`points.parity`) | yes | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.4 Requests & offers | parity (`service-offers.parity`) | service bookings yes (fix B9); equipment requests: table endpoints | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.5 Messaging & calls (+ realtime) | parity (`conversations.parity`, `live.parity`) | functions yes (fix S4); realtime on `/api/v1/live` (fix S14) | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.6 Vendors, admin & accounts (+ storage) | parity (`shops.parity`, `account-data.parity`, `storage-access.parity`) | functions yes (fix B10, S2); storage brokered by `/api/v1/files` (files stay in Supabase) | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.7 Orders & checkout | parity (`order-actions.parity`, `checkout.parity`) | yes | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.8 Payments & disputes | parity (`payment-claims.parity`) | yes (fix B2, S4) | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
+| 2.9 Commission & billing (+ jobs) | parity (`commission.parity`, `scheduled-jobs.parity`) | yes (fix B11); all 8 pg_cron jobs ported (`/api/v1/jobs`), pg_cron keeps running them until the switch | skipped (switched directly) | functions: yes (`/api/v1/rpc`, Supabase fallback for reads) | - | - |
 | Helpers and policy checks (called only by other functions or by RLS) | parity (`helpers.parity`) | yes, 22 + 3 | - | - | - | - |
 | The browser's direct table queries (456, `docs/TABLE_QUERIES.md`) | parity (`tables-*.parity`, browser query vs endpoint as the same user) | all 456 have an endpoint (fixes S5-S13, B12-B14) | - | - | - | - |
 | File storage (30 `sb.storage` calls, 9 buckets, `docs/TABLE_QUERIES.md`) | parity (`storage-access.parity`: every bucket, caller, path and operation vs the real policies) | all 30 mapped to `/api/v1/files`; files stay in Supabase Storage | - | - | - | - |

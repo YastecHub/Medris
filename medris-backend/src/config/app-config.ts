@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_APP_ORIGIN } from "./env.js";
+import { DEFAULT_APP_ORIGIN, PRODUCTION_APP_ORIGINS } from "./env.js";
 
 /**
  * Validated platform configuration.
@@ -233,7 +233,13 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
       trustedOrigins: [...new Set([e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...e.AUTH_TRUSTED_ORIGINS])],
       google: google as AppConfig["auth"]["google"],
     },
-    cors: { allowedOrigins: e.CORS_ALLOWED_ORIGINS },
+    // In production the app's own sites are always allowed (the app runs on Vercel, the backend elsewhere);
+    // CORS_ALLOWED_ORIGINS adds more (a custom domain, a fixed preview URL).
+    cors: {
+      allowedOrigins: [
+        ...new Set([...(e.NODE_ENV === "production" ? [e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...PRODUCTION_APP_ORIGINS] : []), ...e.CORS_ALLOWED_ORIGINS]),
+      ],
+    },
     rateLimit: { enabled: e.RATE_LIMIT_ENABLED },
     docs: { enabled: e.API_DOCS_ENABLED ?? e.NODE_ENV !== "production" },
     cloudinary: e.CLOUDINARY_CLOUD_NAME

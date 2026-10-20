@@ -8,8 +8,8 @@ description: Use for build, deployment, Vercel configuration, CI (GitHub Actions
 - **Vercel** (`vercel.json`): `npm ci`, `npm run build -w medris-frontend`, output `medris-frontend/dist`, the 12
   functions in `api/` (Hobby plan limit - do not add more), the original rewrites (`/api/register`, `/s/:id`, ...), and
   the daily cron `/api/daily-cron`. `main` deploys to production; other branches get preview links.
-- **The new backend (`medris-backend`) is not deployed**, and `/api/v1` must not be switched on in production. Plans
-  for its own host are in `docs/DEPLOYMENT.md`.
+- **The new backend (`medris-backend`) is live on Heroku** (`https://levromart-5212f03a7e44.herokuapp.com`, Swagger at `/api/v1/docs/`); the app sends its `sb.rpc()` calls and the data gateway there (`docs/DEPLOYMENT.md`). Deploys: `heroku-postbuild` builds only the backend,
+  `Procfile` starts it.
 - **CI** (`.github/workflows/ci.yml`): typecheck, lint, legacy and API syntax checks, migration checks, tests, both
   builds; a PostgreSQL 17 job runs only when backend/database files change. It needs no secrets - keep it that way.
 - **Environment variables** live in Vercel (server functions) and `medris-frontend/.env` (public browser values only).
