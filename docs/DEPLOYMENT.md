@@ -77,6 +77,20 @@ Heroku sets `PORT`. A missing required variable stops the dyno at start-up with 
 (**More** -> **View logs**), so a misconfigured deploy never runs half-configured. Roll back: **Activity** ->
 **Roll back to here** on the previous release.
 
+### Connecting the app to it (per browser first, nobody else affected)
+
+1. **Heroku** -> Settings -> Config Vars: `CORS_ALLOWED_ORIGINS` = the app's addresses, comma separated
+   (`https://levromart.vercel.app` plus any custom domain). Without it the browser blocks the calls.
+2. **Vercel** -> Project -> Settings -> Environment Variables (Production and Preview):
+   `VITE_BACKEND_URL` = `https://<app>.herokuapp.com`, then redeploy. Leave `VITE_BACKEND_FEATURES` empty: users see no
+   change, only `/api/v1` would go to Heroku and nothing calls it yet. The original `/api/*` functions stay on Vercel.
+3. **Try it in your browser only:** open the live app, sign in with a test account, open the browser console and run
+   `levroData.useBackend("all")`, reload. Browse, open a product, add to and change the cart, save to the wishlist,
+   follow a shop, open notifications. In the Network tab those requests now go to `<app>.herokuapp.com/api/v1/...`.
+   Back to normal: `levroData.useBackend(null)` and reload.
+4. Everyone: set `VITE_BACKEND_FEATURES` (e.g. `catalogue,notifications`, later `all`) and redeploy. If the backend
+   is down, reads fall back to Supabase on their own.
+
 ## Earlier plan: the backend as Vercel functions
 
 The sections below were written when the plan was to run the new backend as the Vercel functions; that plan was
