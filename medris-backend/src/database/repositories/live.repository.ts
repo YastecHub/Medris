@@ -72,6 +72,15 @@ export class LiveRepository {
     return found?.row ?? null;
   }
 
+  /** Is migration 0004 applied (the backend_live_notify trigger function exists)? */
+  async changeTriggersInstalled(): Promise<boolean> {
+    const row = await jsonRow<{ ok: boolean }>(
+      this.db,
+      sql`select exists (select 1 from pg_proc where proname = 'backend_live_notify' and pronamespace = 'public'::regnamespace) as ok`,
+    );
+    return Boolean(row?.ok);
+  }
+
   /** May this user join the room? Conversation: its buyer or the shop's owner. Call: its caller or callee. */
   async canJoin(userId: string, room: LiveRoom): Promise<boolean> {
     if (room.kind === "conversation") return new AccessRepository(this.db).isConversationParticipant(userId, room.id);
