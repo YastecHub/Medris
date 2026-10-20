@@ -32,7 +32,9 @@ const isV1 = (req: Request) => {
  */
 export function createApp(options: CreateAppOptions = {}): Express {
   const services = createServices(options.services);
-  if (options.services?.data) setDataContextProvider(options.services.data);
+  if (options.services?.data && !(options.services.data as { isDefault?: boolean }).isDefault) {
+    setDataContextProvider(options.services.data);
+  }
   // The original endpoints verify the body's accessToken with the same verifier as /api/v1.
   setAccessTokenVerifier(services.accessTokens);
 
