@@ -1,7 +1,7 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "74af1cb729bf89d52e638060d1420f84d3317743d3c832cb8d306dbc08c95f97",
+    "index.html": "0c54fd5c8270aba3006c2c3e625853313c3563346ece3f755ed5db7718861229",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
@@ -18,10 +18,10 @@
     "assets/js/09-part.js": "3734c5e41990c7fadeb894887b8aa84aa34f4642794632c6217935273e034da8",
     "assets/js/10-levromart-admin-reject-inventory-fix-js-.js": "4af25527cefd715aee95762454e30ba6462f49efc42b9a940d9482b24eb377a1",
     "assets/js/11-levromart-global-broken-image-fallback.js": "5b11a11a3d7de904d626605db4af6ef41128ee042b2d0f626920ba1c39e2efe9",
-    "assets/js/12-lv-onboarding-auth-js.js": "f53c35eb52069b336e8850fc6f58e5fc33aa5571c9917ecada12a62534a1bcac",
+    "assets/js/12-lv-onboarding-auth-js.js": "2e21b1a19a63f67f8054f29c5ccab6d28ece072e915b09c508810a2fd5064c1a",
     "assets/js/13-face-verify.js": "3a75cb24a727f537e21d256021093af7b284f929161b534209f5edc7ae14775b",
     "assets/js/14-motion.js": "92a9a5fd1f60409d77b4b28567a357da6f6b944c081df336ea41cc5d2a47521f",
     "assets/js/15-autosave.js": "d006bb511a42c50dc6f15999ebba27c228c6cbf9821e3a8b229aba2d8b82bf74",
-    "sw.js": "437d1738657651f53787919c5bc4fe13b4b84e5638a0a520a36b4605445b7ec1"
+    "sw.js": "23961c67ae42657b600a2af55a91d0e5f7456a9dfc561c3315e2bdc560fb4275"
   }
 }
