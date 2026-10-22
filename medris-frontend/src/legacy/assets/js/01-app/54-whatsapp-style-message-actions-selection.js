@@ -1153,3 +1153,28 @@ async function chatCatchUp() {
 setInterval(chatCatchUp, 3000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) chatCatchUp(); });
 window.addEventListener("online", chatCatchUp);
+
+// Chat list (inbox): a new message updates the list straight away, like WhatsApp. Live row changes trigger a refresh,
+// and a short check every 4 seconds covers a slow or dropped connection.
+let inboxLiveChannel = null;
+let inboxLiveTimer = null;
+function inboxIsOpen() {
+  return !!session && currentView === "messages" && !currentViewParams?.conversationId && !!byId("convListWrap");
+}
+function refreshInboxSoon() {
+  clearTimeout(inboxLiveTimer);
+  inboxLiveTimer = setTimeout(() => { if (inboxIsOpen() && !document.hidden) refreshConversationInboxInBackground(); }, 250);
+}
+function ensureInboxLive() {
+  if (!session || inboxLiveChannel) return;
+  try {
+    inboxLiveChannel = sb.channel(`inbox-${session.user.id}-${Date.now()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, refreshInboxSoon)
+      .subscribe();
+  } catch (_) { inboxLiveChannel = null; }
+}
+setInterval(() => {
+  if (session && !inboxLiveChannel) ensureInboxLive();
+  if (inboxIsOpen() && !document.hidden) refreshConversationInboxInBackground();
+}, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && inboxIsOpen()) refreshConversationInboxInBackground(); });

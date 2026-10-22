@@ -332,7 +332,7 @@ function lvPageStyled() {
 function hideLevromartSplash() {
   const splash = byId("levromartSplash");
   if (!splash || window.__levroSplashHidden) return;
-  const minVisibleMs = 500;
+  const minVisibleMs = 150;
   const elapsed = Date.now() - (window.__levroSplashShownAt || 0);
   if (elapsed < minVisibleMs) {
     setTimeout(() => hideLevromartSplash(), minVisibleMs - elapsed);
@@ -341,7 +341,7 @@ function hideLevromartSplash() {
   // Never reveal the app until the whole page has been parsed (the later style blocks are what make cards, buttons and
   // images look right) and the icon stylesheet has arrived; otherwise people briefly see grey, unstyled controls and
   // oversized images. A hard cap keeps a dead CDN from holding the splash forever.
-  if (!lvPageStyled() && elapsed < 2500) {
+  if (!lvPageStyled() && elapsed < 1200) {
     setTimeout(() => hideLevromartSplash(), 100);
     return;
   }
