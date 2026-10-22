@@ -78,11 +78,11 @@ window.addEventListener("popstate", (e) => {
   // Home can still render from the offline catalogue immediately.
   await Promise.race([
     refreshAuthStateOnce(),
-    new Promise(resolve => setTimeout(resolve, 900))
+    new Promise(resolve => setTimeout(resolve, 400))
   ]).catch(() => {});
   resumeManualResetWatcher();
 
-  if(session){const legalOk=await window.__levroCheckLegalConsent?.();if(legalOk===false){hideLevromartSplash();return;}}
+  if(session){const legalOk=await Promise.race([window.__levroCheckLegalConsent?.(),new Promise(r=>setTimeout(()=>r(true),600))]);if(legalOk===false){hideLevromartSplash();return;}}
   if(session) window.__levroCheckPayoutSetup?.();
   if(session) window.__levroCheckCommissionDueReminder?.();
 

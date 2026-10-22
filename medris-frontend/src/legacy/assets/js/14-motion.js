@@ -143,7 +143,8 @@
     cur.dy = Math.max(0, dy);
     var base = getComputedStyle(cur.el).transform; base = base && base !== "none" ? base : "";
     cur.el.style.transform = (base ? base + " " : "") + "translateY(" + cur.dy + "px)";
-  }, { passive: true });
+    if (e.cancelable) e.preventDefault(); // the page behind the sheet must not scroll while the sheet is being dragged
+  }, { passive: false });
   function end() {
     if (!cur) return;
     var c = cur; cur = null;

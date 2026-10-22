@@ -423,7 +423,7 @@ function hideLeviFromPanel() {
     {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turns:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}].concat(window.LEVROMART_TURN_SERVERS||[]);
   // Relay (TURN) servers come from /api/turn so phones on carrier NAT can still connect.
   let iceLoaded=null;
-  const loadIce=()=>iceLoaded||(iceLoaded=Promise.race([fetch("/api/turn").then(r=>r.json()).then(j=>{if(Array.isArray(j?.iceServers)&&j.iceServers.length)ICE=[{urls:["stun:stun.l.google.com:19302"]}].concat(j.iceServers,window.LEVROMART_TURN_SERVERS||[]);}).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]));
+  const loadIce=()=>iceLoaded||(iceLoaded=Promise.race([fetch("/api/turn").then(r=>r.json()).then(j=>{if(Array.isArray(j?.iceServers)&&j.iceServers.length)ICE=[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302","stun:stun.cloudflare.com:3478"]}].concat(j.iceServers,window.LEVROMART_TURN_SERVERS||[]);}).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]));
   setTimeout(()=>{try{loadIce();}catch(_){}},3000);
   const RING_TIMEOUT_MS=45000;
   let call=null, ringTimer=null, ringtone=null, pollTimer=null, tickTimer=null, ringAgainTimer=null;
@@ -535,7 +535,7 @@ function hideLeviFromPanel() {
     const pc=new RTCPeerConnection({iceServers:ICE,iceCandidatePoolSize:2});
     call.stream.getTracks().forEach(t=>pc.addTrack(t,call.stream));
     const audio=document.createElement("audio"); audio.id="levroCallAudio"; audio.autoplay=true; audio.playsInline=true; document.body.appendChild(audio);
-    pc.ontrack=(e)=>{audio.srcObject=e.streams[0]; audio.play?.().catch(()=>{}); setTimeout(()=>{ if(call&&call.pc===pc&&!document.getElementById('levroCallOverlay')?.classList.contains('lc-connected')&&['connected','completed'].includes(pc.iceConnectionState))showActive(); },300); };
+    pc.ontrack=(e)=>{audio.srcObject=e.streams[0]; audio.play?.().catch(()=>{ const again=()=>{ audio.play?.().catch(()=>{}); }; ["pointerdown","touchstart","click","keydown"].forEach((ev)=>document.addEventListener(ev,again,{once:true,capture:true})); }); setTimeout(()=>{ if(call&&call.pc===pc&&!document.getElementById('levroCallOverlay')?.classList.contains('lc-connected')&&['connected','completed'].includes(pc.iceConnectionState))showActive(); },300); };
     pc.oniceconnectionstatechange=()=>{ if(!call||call.pc!==pc)return; if(['connected','completed'].includes(pc.iceConnectionState)){ clearInterval(call.readyTimer); clearTimeout(ringTimer); ringStop(); if(!document.getElementById('levroCallOverlay')?.classList.contains('lc-connected'))showActive(); } };
     pc.onicecandidate=(e)=>{ if(e.candidate)sig({t:"ice",c:e.candidate.toJSON?e.candidate.toJSON():e.candidate}); };
     let lostTimer=null;
@@ -947,7 +947,7 @@ function hideLeviFromPanel() {
     const sub = [r.city, gap].filter(Boolean).join(" · ");
     const isFol = followed.has(String(r.vendor_id));
     return `<div class="lb-row${r.is_me ? " me" : ""}" data-row onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
-      <div class="lb-rank">${r.rank}</div><span class="lb-avwrap">${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}${!r.is_me && isFol ? '<i class="fa-solid fa-circle-check lb-folbadge" role="img" aria-label="You follow this vendor" title="You follow this vendor"></i>' : ""}</span>
+      <div class="lb-rank">${r.rank}</div><span class="lb-avwrap">${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}${!r.is_me && isFol ? '<i class="fa-solid fa-user-check lb-folbadge" role="img" aria-label="You follow this vendor" title="You follow this vendor"></i>' : ""}</span>
       <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
       <div class="lb-row-pts"><b>${num(r.points)}</b>pts</div></div>`;
   }

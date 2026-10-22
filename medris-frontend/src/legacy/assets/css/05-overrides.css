@@ -2492,3 +2492,20 @@ html body .ai-chat-panel.expanded{width:min(860px,100%)!important;height:94dvh!i
 html body .ai-chat-panel::before{content:"";position:absolute;top:.45rem;left:50%;width:2.6rem;height:.28rem;margin-left:-1.3rem;border-radius:9px;background:color-mix(in srgb,var(--text) 25%,transparent)}
 @keyframes leviDrawerUp{from{transform:translateY(100%)!important}to{transform:translateY(0)!important}}
 @media (prefers-reduced-motion:reduce){html body .ai-chat-panel{animation:none}}
+
+/* ===== Messages: stronger contrast in light mode ===== */
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item{background:#fff!important;border:1px solid #cfd6df!important;border-radius:16px!important;margin-bottom:.55rem;padding:.72rem .8rem!important;box-shadow:0 2px 8px rgba(20,30,50,.06)!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item *{color:#111827}
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item small,:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item .muted{color:#4b5563}
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .msg-search{background:#fff!important;border:1px solid #b9c2ce!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body:has(.messages-conversation-list){background:#eef1f5}
+/* ===== Sheets: the page behind never scrolls ===== */
+html:has(#aiChatPanel:not(.hidden)),html:has(.lv-cs-card),html:has(.lv-cm-card),html:has(#storefrontShareModal:not(.hidden)){overflow:hidden!important;overscroll-behavior:none}
+#aiChatMessages,.lv-cs-body,.lv-cm-card,.ai-chat-history-panel,#storefrontShareModal .storefront-share-sheet{overscroll-behavior:contain}
+/* ===== Vendor leaderboard: header photos stay top right; follow badge blue ===== */
+html body #app .lb-page .lb-hero>.lb-hero-people{position:absolute!important;right:.9rem;top:.8rem;left:auto;bottom:auto}
+.lb-folbadge{color:#fff!important;background:#1d7cf2!important;border:2px solid #fff!important;width:.95rem!important;height:.95rem!important;font-size:.5rem!important;border-radius:50%}
+/* ===== All vendors: list/map switch centred below the title ===== */
+#app .flex:has(>#vendorsViewListBtn){width:100%;justify-content:center;gap:0!important;margin-top:.15rem}
+#app #vendorsViewListBtn,#app #vendorsViewMapBtn{min-width:5rem;border-radius:0!important}
+#app #vendorsViewListBtn{border-radius:999px 0 0 999px!important}#app #vendorsViewMapBtn{border-radius:0 999px 999px 0!important}
