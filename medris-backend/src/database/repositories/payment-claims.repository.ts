@@ -288,10 +288,10 @@ export class PaymentClaimsRepository {
     const clear = sql`payment_unresolved_at = null, payment_escalated_at = null`;
     const changes: Record<typeof state, [SQL, SQL?]> = {
       reported: [sql`status = 'payment_unresolved'::public.order_status, payment_unresolved_at = coalesce(payment_unresolved_at, now()), payment_escalated_at = null, awaiting_confirmation_since = null`],
-      deposit_confirmed: [sql`status = 'confirmed'::public.order_status, ${clear}`],
-      await_buyer: [sql`status = case when status = 'payment_unresolved' then 'confirmed'::public.order_status else status end, ${clear}, awaiting_confirmation_since = now()`],
+      deposit_confirmed: [sql`status = case when status in ('pending', 'payment_unresolved') then 'confirmed'::public.order_status else status end, ${clear}`],
+      await_buyer: [sql`status = case when status = 'payment_unresolved' then (case when payment_timing = 'pay_after' then 'handed_over'::public.order_status else 'confirmed'::public.order_status end) else status end, ${clear}, awaiting_confirmation_since = now()`],
       completed: [sql`status = 'completed'::public.order_status, completed_at = coalesce(completed_at, now()), ${clear}, awaiting_confirmation_since = null`, sql`and status <> 'cancelled'`],
-      confirmed: [sql`status = 'confirmed'::public.order_status, ${clear}`],
+      confirmed: [sql`status = case when status in ('pending', 'payment_unresolved') then 'confirmed'::public.order_status else status end, ${clear}`],
       vendor_disputed: [sql`status = 'payment_unresolved'::public.order_status, payment_unresolved_at = coalesce(payment_unresolved_at, now())`, sql`and status <> 'completed'`],
       follow_up_disputed: [sql`status = 'payment_unresolved'::public.order_status, payment_unresolved_at = coalesce(payment_unresolved_at, now()), payment_escalated_at = null`],
       follow_up_cleared: [clear],
