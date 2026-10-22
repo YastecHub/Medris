@@ -2493,12 +2493,19 @@ html body .ai-chat-panel::before{content:"";position:absolute;top:.45rem;left:50
 @keyframes leviDrawerUp{from{transform:translateY(100%)!important}to{transform:translateY(0)!important}}
 @media (prefers-reduced-motion:reduce){html body .ai-chat-panel{animation:none}}
 
-/* ===== Messages: stronger contrast in light mode ===== */
-:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item{background:#fff!important;border:1px solid #cfd6df!important;border-radius:16px!important;margin-bottom:.55rem;padding:.72rem .8rem!important;box-shadow:0 2px 8px rgba(20,30,50,.06)!important}
+/* ===== Messages: flat rows divided by lines, clearer contrast in light mode ===== */
+:root:not([data-theme="dark"]):not([data-theme="black"]) body:has(.messages-conversation-list),:root:not([data-theme="dark"]):not([data-theme="black"]) body:has(.messages-conversation-list) #app{background:#eceff3!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item{border-bottom:1px solid #c5ccd6!important}
 :root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item *{color:#111827}
 :root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item small,:root:not([data-theme="dark"]):not([data-theme="black"]) #app .messages-conversation-list .conv-list-item .muted{color:#4b5563}
-:root:not([data-theme="dark"]):not([data-theme="black"]) #app .msg-search{background:#fff!important;border:1px solid #b9c2ce!important}
-:root:not([data-theme="dark"]):not([data-theme="black"]) body:has(.messages-conversation-list){background:#eef1f5}
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .msg-tabs-row,:root:not([data-theme="dark"]):not([data-theme="black"]) #app .msg-tabs{background:#dfe4ea!important;border-color:#c5ccd6!important;border-radius:12px;padding-left:.6rem;padding-right:.6rem}
+:root:not([data-theme="dark"]):not([data-theme="black"]) #app .msg-search{background:#f8f9fb!important;border:1px solid #b9c2ce!important}
+/* chat bubbles: calmer green, clearer ticks */
+:root{--chat-mine-bg:#2e8a63;--chat-mine-text:#fff}
+:root[data-theme="dark"],:root[data-theme="black"]{--chat-mine-bg:#1f6a4b}
+html body .chat-bubble.mine{background:var(--chat-mine-bg)!important;background-image:none!important}
+html body .chat-bubble.mine .chat-tick{color:rgba(255,255,255,.7)}
+html body .chat-bubble.mine .chat-tick.read{color:#7fd3ff!important;text-shadow:0 0 1px rgba(0,0,0,.25)}
 /* ===== Sheets: the page behind never scrolls ===== */
 html:has(#aiChatPanel:not(.hidden)),html:has(.lv-cs-card),html:has(.lv-cm-card),html:has(#storefrontShareModal:not(.hidden)){overflow:hidden!important;overscroll-behavior:none}
 #aiChatMessages,.lv-cs-body,.lv-cm-card,.ai-chat-history-panel,#storefrontShareModal .storefront-share-sheet{overscroll-behavior:contain}
