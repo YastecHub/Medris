@@ -54,7 +54,20 @@ async function refreshAuthState() {
     // account is actually gone -- a transient network/server hiccup talking to
     // Supabase must not be treated the same way, or a flaky connection forces
     // a perfectly valid session to sign out.
-    const status = verifyError?.status ?? verifyError?.originalError?.status;
+    let status = verifyError?.status ?? verifyError?.originalError?.status;
+    // A token that has just expired (or was renewed a moment ago by another tab) is rejected once. Renew the login and
+    // check again before treating the account as gone, so a person is never signed out in the middle of an order.
+    if (verifyError && (status === 401 || status === 403 || /jwt|invalid.*token/i.test(verifyError.message || ""))) {
+      try {
+        const renewed = await sb.auth.refreshSession();
+        if (renewed?.data?.session) {
+          session = renewed.data.session;
+          const again = await sb.auth.getUser();
+          if (!again.error && again.data?.user) { verifiedUser = again.data; verifyError = null; status = undefined; }
+          else { verifyError = again.error || verifyError; status = verifyError?.status ?? verifyError?.originalError?.status; }
+        }
+      } catch (_) {}
+    }
     const isAuthRejection = status === 401 || status === 403 || /user.?not.?found|session.?not.?found|invalid.*token|jwt/i.test(verifyError?.message || "");
     if (isAuthRejection || (!verifyError && !verifiedUser?.user)) {
       // Temporary diagnostic for a reported "logs in, then immediately logs

@@ -78,9 +78,14 @@ export interface LiveConnection {
   close(): void;
 }
 
+/** Subscribers re-read at the same time for one change (the database pool is small). */
+const LIVE_READ_CONCURRENCY = 4;
+
 export class LiveService {
   private readonly connections = new Map<string, Connection>();
-  private queue: Promise<void> = Promise.resolve();
+  // One queue per table: changes to the same table are delivered in commit order, but a busy table (products,
+  // vendors, favourites) no longer holds up messages, orders and notifications.
+  private readonly queues = new Map<string, Promise<void>>();
   private readonly columns = new Map<string, Promise<string[]>>();
 
   constructor(
@@ -91,8 +96,19 @@ export class LiveService {
   /** Starts listening for row changes. Returns the stop function. */
   start(source: ChangeSource): Promise<() => Promise<void>> {
     return source.listen(LIVE_CHANNEL, (payload) => {
-      // one at a time, in commit order
-      this.queue = this.queue.then(() => this.dispatch(payload)).catch(() => {});
+      // one at a time per table, in commit order
+      let table = "";
+      try {
+        table = String((JSON.parse(payload) as { t?: unknown }).t ?? "");
+      } catch {
+        return;
+      }
+      const prev = this.queues.get(table) ?? Promise.resolve();
+      const next = prev.then(() => this.dispatch(payload)).catch(() => {});
+      this.queues.set(table, next);
+      void next.then(() => {
+        if (this.queues.get(table) === next) this.queues.delete(table);
+      });
     });
   }
 
@@ -118,8 +134,8 @@ export class LiveService {
   }
 
   /** Resolves once every announcement received so far has been delivered (tests). */
-  idle(): Promise<void> {
-    return this.queue;
+  async idle(): Promise<void> {
+    while (this.queues.size) await Promise.all([...this.queues.values()]);
   }
 
   connect(send: (message: unknown) => void, identity: Identity | null = null): LiveConnection {
@@ -229,7 +245,10 @@ export class LiveService {
       group.list.push(t);
       byIdentity.set(key, group);
     }
-    for (const { identity, list } of byIdentity.values()) {
+    // Subscribers are read in small parallel batches, not one after another: with many open apps a single change
+    // used to wait for hundreds of database round trips in a row.
+    const groups = [...byIdentity.values()];
+    const deliver = async ({ identity, list }: { identity: Identity | null; list: typeof targets }) => {
       let row: Record<string, unknown> | null = null;
       try {
         const columns = await this.visibleColumns(table, identity);
@@ -237,10 +256,13 @@ export class LiveService {
       } catch {
         row = null;
       }
-      if (!row) continue;
+      if (!row) return;
       for (const { conn, sub, spec } of list) {
         if (matches(spec, row)) conn.send({ ...base, id: sub.id, new: row, old: notice.op === "UPDATE" ? pkOf(notice.old) : {} });
       }
+    };
+    for (let i = 0; i < groups.length; i += LIVE_READ_CONCURRENCY) {
+      await Promise.all(groups.slice(i, i + LIVE_READ_CONCURRENCY).map(deliver));
     }
   }
 }
