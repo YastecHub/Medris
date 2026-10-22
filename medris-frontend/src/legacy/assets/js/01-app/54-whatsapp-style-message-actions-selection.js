@@ -585,6 +585,7 @@ async function subscribeToConversation(conversationId) {
         clearTimeout(window.__levroTypingHideTimer);
         el.insertAdjacentHTML("beforeend", chatBubbleHtml(payload.new));
         scrollChatToBottom();
+        lvChatPop("in");
         resolveVisibleAttachments(el);
         setupMessageInteractions(el);
         sb.from("messages").update({ read_at: new Date().toISOString(), delivered_at: new Date().toISOString() }).eq("id", payload.new.id).then(() => refreshNotifications());
@@ -825,6 +826,8 @@ async function sendChatMessage(conversationId) {
   // replaced/removed below if the write succeeds/fails.
   chatEl?.insertAdjacentHTML("beforeend", chatBubbleHtml(optimistic));
   scrollChatToBottom();
+  lvChatPop("out");
+  pinChatToBottomBriefly();
   setupMessageInteractions(chatEl);
   const { data, error } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId }).select("*").single();
   if (error) {
@@ -834,7 +837,7 @@ async function sendChatMessage(conversationId) {
   }
   if (replyTargetSnapshot) data.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
   const tempBubble = document.querySelector(`.chat-bubble[data-msg-id="${tempId}"]`);
-  if (tempBubble) tempBubble.outerHTML = chatBubbleHtml(data);
+  if (tempBubble) { if (document.querySelector(`.chat-bubble[data-msg-id="${data.id}"]`)) tempBubble.remove(); else tempBubble.outerHTML = chatBubbleHtml(data); }
   setupMessageInteractions(byId("chatMessages"));
 }
 let chatAttachmentEditorState = null;
@@ -1136,15 +1139,28 @@ async function chatCatchUp() {
   try {
     const { data, error } = await sb.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: false }).limit(15);
     if (error || !data || convId !== activeConversationId || !byId("chatMessages")) return;
+    if (el.querySelector('.chat-bubble[data-msg-id^="temp-"]')) return; // a message of mine is still being sent
     const fresh = data.filter((m) => !el.querySelector(`.chat-bubble[data-msg-id="${m.id}"]`)).reverse();
+    // ticks of my own messages: single (not delivered), double (delivered), blue (read)
+    for (const m of data) {
+      if (m.sender_id !== session.user.id) continue;
+      const tt = el.querySelector(`.chat-bubble[data-msg-id="${m.id}"] .chat-time-text`);
+      const want = m.read_at ? "read" : m.delivered_at ? "delivered" : "sent";
+      if (tt && tt.dataset.tickState !== want) {
+        tt.dataset.tickState = want;
+        tt.innerHTML = `${new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${messageTicksHtml(m)}`;
+      }
+    }
+    let gotIncoming = false;
     for (const m of fresh) {
+      if (m.sender_id !== session.user.id) gotIncoming = true;
       el.insertAdjacentHTML("beforeend", chatBubbleHtml(m));
       if (m.sender_id !== session.user.id) {
         const stamp = new Date().toISOString();
         sb.from("messages").update({ read_at: stamp, delivered_at: stamp }).eq("id", m.id).then(() => refreshNotifications());
       }
     }
-    if (fresh.length) { scrollChatToBottom(); resolveVisibleAttachments(el); setupMessageInteractions(el); setChatTypingIndicator(false); }
+    if (fresh.length) { scrollChatToBottom(); if (gotIncoming) lvChatPop("in"); resolveVisibleAttachments(el); setupMessageInteractions(el); setChatTypingIndicator(false); }
   } catch (_) {
   } finally {
     chatCatchUpBusy = false;
@@ -1178,3 +1194,46 @@ setInterval(() => {
   if (inboxIsOpen() && !document.hidden) refreshConversationInboxInBackground();
 }, 4000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && inboxIsOpen()) refreshConversationInboxInBackground(); });
+
+// ---- WhatsApp-style chat behaviour -------------------------------------------------------------------------
+// A short "pop" when a message is sent or arrives in the open chat (no audio file needed).
+function lvChatPop(kind) {
+  try {
+    if (typeof soundEnabled !== "undefined" && !soundEnabled) return;
+    unlockNotificationAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    const t = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    const [f0, f1] = kind === "in" ? [880, 620] : [620, 420];
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(f1, t + 0.09);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.22, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.16);
+  } catch (_) {}
+}
+// Look up the "completed order" check when the chat opens, so the first Send does not wait for it.
+(function () {
+  const orig = window.subscribeToConversation || subscribeToConversation;
+  subscribeToConversation = async function (conversationId) {
+    try { conversationHasCompletedOrder(conversationId); } catch (_) {}
+    return orig.apply(this, arguments);
+  };
+})();
+// Keep the chat pinned to the newest message while the box resizes after Send and the keyboard moves.
+function pinChatToBottomBriefly() {
+  scrollChatToBottom();
+  [60, 180, 400].forEach((ms) => setTimeout(scrollChatToBottom, ms));
+}
+// Recipient is in the app: mark new messages as delivered (double tick) even before the chat is opened.
+let deliveredSweepBusy = false;
+async function markIncomingDelivered() {
+  if (deliveredSweepBusy || document.hidden || !session) return;
+  deliveredSweepBusy = true;
+  try { await sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id); } catch (_) {}
+  deliveredSweepBusy = false;
+}
+setInterval(markIncomingDelivered, 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) markIncomingDelivered(); });
