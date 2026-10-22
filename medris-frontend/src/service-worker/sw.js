@@ -51,36 +51,44 @@ self.addEventListener('fetch', event => {
 
   /*
    * Navigation requests:
-   * Always try the network first, then fall back to cache/offline page.
+   * Open instantly from the saved copy of the app, and refresh that copy
+   * in the background so the next open has the latest version. The first
+   * visit (nothing saved yet) and offline still work as before.
    */
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        try {
-          const fresh = await fetch(request);
+        const cache = await caches.open(CACHE);
+        const saved =
+          (await cache.match(request)) ||
+          (await cache.match(OFFLINE_FALLBACK));
 
-          const cache = await caches.open(CACHE);
+        const refresh = fetch(request)
+          .then(fresh => {
+            if (fresh && fresh.ok) {
+              cache.put(request, fresh.clone()).catch(() => {});
+            }
+            return fresh;
+          })
+          .catch(() => null);
 
-          cache
-            .put(request, fresh.clone())
-            .catch(() => {});
-
-          return fresh;
-        } catch (e) {
-          return (
-            (await caches.match(request)) ||
-            (await caches.match(OFFLINE_FALLBACK)) ||
-            new Response(
-              'Levromart is offline.',
-              {
-                status: 503,
-                headers: {
-                  'Content-Type': 'text/plain'
-                }
-              }
-            )
-          );
+        if (saved) {
+          event.waitUntil(refresh);
+          return saved;
         }
+
+        return (
+          (await refresh) ||
+          new Response(
+            'Levromart is offline.',
+            {
+              status: 503,
+              headers: {
+                'Content-Type': 'text/plain'
+              }
+            }
+          )
+        );
       })()
     );
 
