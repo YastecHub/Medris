@@ -61,7 +61,7 @@
     try{
       var url=typeof input==="string"?input:(input&&input.url)||"";
       var method=String((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
-      if(method!=="GET"&&method!=="HEAD"&&/\.supabase\.(co|in)\/(rest|functions)\/v1\//.test(url)) CACHE.clear();
+      if(method!=="GET"&&method!=="HEAD"&&/(\.supabase\.(co|in)\/(rest|functions)\/v1\/|\/rest\/v1\/|\/api\/v1\/)/.test(url)) CACHE.clear();
       var ttl=tableTtl(input,init);
       if(!ttl) return rawSafe(input,init);
       var key=url+"#"+hkey(init.headers), now=Date.now(), hit=CACHE.get(key);

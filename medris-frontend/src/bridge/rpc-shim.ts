@@ -47,6 +47,8 @@ class BackendRpcCall implements PromiseLike<RpcResult> {
   private async send(): Promise<RpcResult> {
     try {
       const data = await v1Request<unknown>("POST", `rpc/${this.name}`, { body: this.args, timeoutMs: TIMEOUT_MS, signal: this.signal });
+      // A change went through the backend, so the browser's short-lived copies of table reads are out of date.
+      if (!RPC_READS.has(this.name)) (window as unknown as { __levroClearReadCache?: () => void }).__levroClearReadCache?.();
       return { data: data === undefined ? null : data, error: null, count: null, status: 200, statusText: "OK" };
     } catch (err) {
       if (!(err instanceof V1Error)) return failure("Something went wrong. Please try again.", "client_error", 0);
