@@ -855,6 +855,7 @@ function hideLeviFromPanel() {
           <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left<span id="lbScope"></span></span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
+        <span class="lb-spark s1"></span><span class="lb-spark s2"></span><span class="lb-spark s3"></span><span class="lb-spark s4"></span><span class="lb-spark s5"></span>
         <div class="lb-hero-people" aria-hidden="true"><img src="/lb/person-a.webp" alt="" width="52" height="52" decoding="async"><img src="/lb/person-c.webp" alt="" width="52" height="52" decoding="async"></div>
       </div>
       <div class="lb-scope-seg" id="lbScopeSeg" role="tablist" aria-label="Campus"></div>
@@ -933,7 +934,7 @@ function hideLeviFromPanel() {
         <div class="lb-pod-av">${av(r.logo_url, r.business_name, "var(--sz)", "lb-av")}<span class="lb-pod-medal">${n}</span></div>
         <div class="lb-pod-name">${esc(r.business_name)}</div>
         <div class="lb-pod-pts"><b data-count="${r.points}">0</b> pts</div>
-        <div class="lb-pod-block">${n}<span class="lb-sheen"></span></div>
+        <div class="lb-pod-block"><span class="lb-pod-n">${n}</span><span class="lb-sheen"></span></div>
       </div>`;
     };
     return `<div class="lb-podium">${col(t[1], "second", 2)}${col(t[0], "first", 1)}${col(t[2], "third", 3)}</div>`;
@@ -946,14 +947,14 @@ function hideLeviFromPanel() {
     const sub = [r.city, gap].filter(Boolean).join(" · ");
     const isFol = followed.has(String(r.vendor_id));
     return `<div class="lb-row${r.is_me ? " me" : ""}" data-row onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
-      <div class="lb-rank">${r.rank}</div>${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}
-      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<span class="lb-tag fol" role="img" aria-label="You follow this vendor" title="You follow this vendor"><i class="fa-solid fa-user-check" aria-hidden="true"></i></span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
+      <div class="lb-rank">${r.rank}</div><span class="lb-avwrap">${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}${!r.is_me && isFol ? '<i class="fa-solid fa-circle-check lb-folbadge" role="img" aria-label="You follow this vendor" title="You follow this vendor"></i>' : ""}</span>
+      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
       <div class="lb-row-pts"><b>${num(r.points)}</b>pts</div></div>`;
   }
 
   function rankingHtml() {
-    const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" title="Vendors I follow" aria-label="Vendors I follow" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i></button></div>`;
-    const reward = `<p class="lb-note"><i class="fa-solid fa-gift"></i> Finish first to win a free week of promotion</p>`;
+    const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}</div>`;
+    const reward = `<div class="lb-prize"><span class="lb-prize-ico"><i class="fa-solid fa-gift"></i></span><span class="lb-prize-copy"><b>Finish first</b><small>Win a free week of promotion</small></span></div>`;
     const b = LB.boards[LB.period];
     if (!b || (viewCampus() !== "all" && LB.mapReady === false)) return chips + skeleton(7);   // wait for the vendor list so a campus board never flashes other campuses
     const rows = scopeRows(b.rows || []);
