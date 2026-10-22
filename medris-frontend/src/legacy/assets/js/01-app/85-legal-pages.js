@@ -156,7 +156,17 @@ sb.auth.onAuthStateChange((_event, _sess) => {
     return;
   }
   if (_event === "SIGNED_OUT" && session && !manualLogout) {
-    showToast("You've been signed out because your account was used on another device.", "error");
+    // Not a log-out the person asked for. Another open tab or the installed app may have just renewed the login, so
+    // check once before signing them out in the middle of what they are doing.
+    const stillIn = session;
+    setTimeout(async () => {
+      try {
+        const { data } = await sb.auth.getSession();
+        if (data?.session) { session = data.session; return; }
+      } catch (_) {}
+      if (session === stillIn || !session) { showToast("You've been signed out. Please sign in again.", "error"); manualLogout = false; refreshAuthStateOnce(); }
+    }, 1500);
+    return;
   }
   // Covers Google sign-in too -- that flow is a full-page redirect away and
   // back, so it never runs through submitAuth()'s own explicit call. SIGNED_IN
