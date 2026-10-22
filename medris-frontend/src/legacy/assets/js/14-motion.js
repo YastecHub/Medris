@@ -110,3 +110,49 @@
     }
   });
 })();
+
+/* Drag any bottom sheet down from its body, not only its top edge (Levi, comments, share). The sheet follows the
+   finger only when its own content is scrolled to the top, so normal scrolling is untouched. */
+(function () {
+  var SHEETS = [
+    { sel: "#aiChatPanel:not(.hidden)", scroller: "#aiChatMessages, .ai-chat-history-panel", close: function () { try { toggleAiChat(); } catch (_) {} } },
+    { sel: ".lv-cs-card", scroller: ".lv-cs-body, .lv-cs-body *", close: function (el) { var x = el.querySelector(".lv-cs-x"); if (x) x.click(); } },
+    { sel: "#storefrontShareModal:not(.hidden) .storefront-share-sheet", scroller: "", close: function (el) { var m = el.closest("#storefrontShareModal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: false })); } }
+  ];
+  var cur = null;
+  function scrolled(el, sheet, ts) {
+    // true if the touched content (or any scrollable parent inside the sheet) is not at its top
+    for (var n = el; n && n !== sheet.parentNode; n = n.parentNode) {
+      if (n.nodeType === 1 && n.scrollHeight > n.clientHeight + 2 && n.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) return true;
+      if (n === sheet) break;
+    }
+    return false;
+  }
+  document.addEventListener("touchstart", function (e) {
+    cur = null;
+    if (e.touches.length !== 1 || e.target.closest("textarea,input,select,[contenteditable],.leaflet-container")) return;
+    for (var i = 0; i < SHEETS.length; i++) {
+      var sheet = e.target.closest(SHEETS[i].sel);
+      if (sheet) { if (scrolled(e.target, sheet)) return; cur = { s: SHEETS[i], el: sheet, y: e.touches[0].clientY, x: e.touches[0].clientX, dy: 0, on: false, t: Date.now() }; return; }
+    }
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!cur) return;
+    var dy = e.touches[0].clientY - cur.y, dx = Math.abs(e.touches[0].clientX - cur.x);
+    if (!cur.on) { if (dy > 10 && dy > dx * 1.5) { cur.on = true; cur.el.style.transition = "none"; } else if (dy < -6 || dx > 14) { cur = null; return; } else return; }
+    cur.dy = Math.max(0, dy);
+    var base = getComputedStyle(cur.el).transform; base = base && base !== "none" ? base : "";
+    cur.el.style.transform = (base ? base + " " : "") + "translateY(" + cur.dy + "px)";
+  }, { passive: true });
+  function end() {
+    if (!cur) return;
+    var c = cur; cur = null;
+    if (!c.on) return;
+    c.el.style.transition = "";
+    var fast = c.dy / Math.max(1, Date.now() - c.t) > 0.6;
+    c.el.style.transform = "";
+    if (c.dy > 110 || (fast && c.dy > 40)) c.s.close(c.el);
+  }
+  document.addEventListener("touchend", end, { passive: true });
+  document.addEventListener("touchcancel", end, { passive: true });
+})();
