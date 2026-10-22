@@ -1,7 +1,7 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "3db036d303196e3191e416b439ef915d2d4ee0f0618afcfd194f388dbb5d8ca3",
+    "index.html": "9adbb3a28d3b806e83688c990f7fe6f7be0d72ae14f4b84d62453bb1dab00a0f",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
@@ -22,6 +22,6 @@
     "assets/js/13-face-verify.js": "3a75cb24a727f537e21d256021093af7b284f929161b534209f5edc7ae14775b",
     "assets/js/14-motion.js": "1568da3facf2b47518a8123cf8637dbe11931236a83d60afd8f3d509565176f1",
     "assets/js/15-autosave.js": "d006bb511a42c50dc6f15999ebba27c228c6cbf9821e3a8b229aba2d8b82bf74",
-    "sw.js": "b238e85e0ff8189ccc67899db2e5295cf21faf899b3951c93e46af2a06114515"
+    "sw.js": "dcdf58dc948cf4409bf8da416987fe97c9e14fa22279f5b2f974058ae20f21fb"
   }
 }
