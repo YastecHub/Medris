@@ -1123,3 +1123,33 @@ function openProductGallerySlide(event, index) {
   setProductGalleryPhoto(index, false);
   openProductImageLightbox();
 }
+
+// Safety net for open chats: if the live connection is slow, asleep or dropped, new messages still appear within a
+// few seconds. Looks only at the latest messages of the open conversation and adds any that are not on screen yet.
+let chatCatchUpBusy = false;
+async function chatCatchUp() {
+  if (chatCatchUpBusy || document.hidden || !session || !activeConversationId) return;
+  const el = byId("chatMessages");
+  if (!el) return;
+  const convId = activeConversationId;
+  chatCatchUpBusy = true;
+  try {
+    const { data, error } = await sb.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: false }).limit(15);
+    if (error || !data || convId !== activeConversationId || !byId("chatMessages")) return;
+    const fresh = data.filter((m) => !el.querySelector(`.chat-bubble[data-msg-id="${m.id}"]`)).reverse();
+    for (const m of fresh) {
+      el.insertAdjacentHTML("beforeend", chatBubbleHtml(m));
+      if (m.sender_id !== session.user.id) {
+        const stamp = new Date().toISOString();
+        sb.from("messages").update({ read_at: stamp, delivered_at: stamp }).eq("id", m.id).then(() => refreshNotifications());
+      }
+    }
+    if (fresh.length) { scrollChatToBottom(); resolveVisibleAttachments(el); setupMessageInteractions(el); setChatTypingIndicator(false); }
+  } catch (_) {
+  } finally {
+    chatCatchUpBusy = false;
+  }
+}
+setInterval(chatCatchUp, 3000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) chatCatchUp(); });
+window.addEventListener("online", chatCatchUp);
