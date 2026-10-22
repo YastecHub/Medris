@@ -1640,7 +1640,7 @@ async function setVendorRequestPref(v){
 /* ---- lv-campus2-js ---- */
 (function(){
   "use strict";
-  var LEVELS=[["Undergraduate",["100 Level","200 Level","300 Level","400 Level","500 Level","600 Level"]],["Pre-degree / Foundation",["JUPEB","IJMB","Pre-degree","Remedial / Foundation"]],["Polytechnic / College",["ND 1","ND 2","HND 1","HND 2","NCE 1","NCE 2","NCE 3","Diploma / Certificate"]],["Postgraduate",["PGD","Masters (MSc / MA / MBA)","MPhil","PhD"]]];
+  var LEVELS=[["Undergraduate",["100 Level","200 Level","300 Level","400 Level","500 Level","600 Level"]],["Pre-degree / A-Level / Foundation",["A-Level","JUPEB","IJMB","Pre-degree","Remedial / Foundation"]],["Polytechnic / College",["ND 1","ND 2","HND 1","HND 2","NCE 1","NCE 2","NCE 3","Diploma / Certificate"]],["Postgraduate",["PGD","Masters (MSc / MA / MBA)","MPhil","PhD","Other postgraduate programme"]]];
   function e2(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function V(){try{return(typeof vendor!=="undefined"&&vendor&&vendor.id)?vendor:null;}catch(_){return null;}}
   function toast(m,t){try{showToast(m,t||"info");}catch(_){}}
@@ -2047,8 +2047,10 @@ async function setVendorRequestPref(v){
     var svRow=null; try{ var r=await sb.from("vendor_student_verification").select("status").eq("vendor_id",v.id).maybeSingle(); svRow=r&&r.data; }catch(_){}
     // existing campus chosen earlier by the owner: carry it onto the store
     if(!v.campus_id&&profile&&profile.campus_id&&profile.campus_id!=="none"){ try{ await sb.from("vendors").update({campus_id:profile.campus_id}).eq("id",v.id); v.campus_id=profile.campus_id; }catch(_){} }
-    var needCampus=!v.campus_id||v.campus_id==="none", needScope=!v.campus_setup_done, needSv=!svRow||svRow.status==="rejected";
-    if(!needCampus&&!needScope&&!needSv) return;
+    // remember that "Where do you sell?" was answered, so a reload while taking the ID photo (common on phones) resumes at step 3
+    var scopeKey="lv-setup-scope-"+v.id, scopeDone=false; try{ scopeDone=localStorage.getItem(scopeKey)==="1"; }catch(_){}
+    var needCampus=!v.campus_id||v.campus_id==="none", needScope=!v.campus_setup_done&&!scopeDone&&!svRow, needSv=!svRow||svRow.status==="rejected";
+    if(!needCampus&&!needScope&&!needSv){ if(!v.campus_setup_done){ try{ await sb.from("vendors").update({campus_setup_done:true}).eq("id",v.id); v.campus_setup_done=true; }catch(_){} } return; }
     var step=needCampus?1:(needScope?2:3);
     var w=document.createElement("div"); w.id="lvSetup"; document.body.appendChild(w); document.documentElement.style.overflow="hidden";
     var ops={scope:v.operating_scope||"one",list:(v.operating_campuses||[]).slice()};
@@ -2094,6 +2096,7 @@ async function setVendorRequestPref(v){
         if(ops.scope==="multiple"&&v.campus_id&&ops.list.indexOf(v.campus_id)<0) ops.list.push(v.campus_id);
         var up=await sb.from("vendors").update({operating_scope:ops.scope,operating_campuses:ops.list}).eq("id",v.id); if(up.error){ toast("Couldn't save. Try again.","error"); return; }
         v.operating_scope=ops.scope; v.operating_campuses=ops.list;
+        try{ localStorage.setItem(scopeKey,"1"); }catch(_){}
         if(needSv){ step=3; render(); } else finish();
       }
       else if(a==="back3"){ step=2; render(); }
