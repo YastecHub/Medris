@@ -38,7 +38,7 @@ describe("/api/v1/jobs", () => {
     const list = await call(app, "GET", "/api/v1/jobs", withSecret());
     expect(list.status).toBe(200);
     const { data } = (await list.json()) as { data: { name: string; schedule: string }[] };
-    expect(data).toHaveLength(10);
+    expect(data).toHaveLength(11);
     expect(data).toContainEqual(expect.objectContaining({ name: "bg-reminders", schedule: "* * * * *" }));
     expect((await call(app, "POST", "/api/v1/jobs/drop-everything", withSecret())).status).toBe(400);
   });
