@@ -371,6 +371,20 @@ const payments = {
       return { data: null, error: toGatewayError(err) } as GatewayResult<{ accountName: string; bankName: string; accountLast4: string; verified: boolean }>;
     }
   },
+  async payCommission() {
+    try {
+      return ok(await v1.payments.payCommission());
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<Awaited<ReturnType<typeof v1.payments.payCommission>>>;
+    }
+  },
+  async payListing(kind: "product" | "package", listingId: string) {
+    try {
+      return ok(await v1.payments.payListing(kind, listingId));
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<Awaited<ReturnType<typeof v1.payments.payListing>>>;
+    }
+  },
   async myPayouts() {
     try {
       return ok(await v1.payments.myPayouts());

@@ -229,3 +229,43 @@ webhook that arrives later is a duplicate. A call that cannot be answered is lef
 - **Worker:** job `paystack-refunds` (every minute) flips a refund to `processing` (committed) and then calls Paystack. Paystack saying no → `failed` + admins told. No answer → left `processing`, admins told to check the dashboard, **never** retried by itself (Paystack has no idempotency key for refunds). `refund.processed` / `refund.failed` webhooks (#94) finish the status.
 - **Decision needed (assumed):** the buyer's Paystack fee is not refunded (Paystack does not return fees). Change it by refunding `amount_kobo` of the whole transaction instead of the order amount.
 - **Not done:** the "Refund via Paystack" button on the dispute screen, rental-deposit refunds on return, and chargeback evidence links (webhook already holds the payout and notifies admins).
+---
+
+## Paying for an order with Paystack (issue #95)
+
+Behind the switch **`PAYSTACK_CHECKOUT_ENABLED`** (a Heroku config var, default `false`). While it is off, the initialize endpoint
+answers `404 feature_disabled`, `GET /api/v1/payments/config` says `paystackCheckout: false`, and nothing else changes.
+
+- `POST /api/v1/orders/{orderId}/paystack/initialize` (the order's buyer only). The amount comes **only from the database**: what is
+  outstanding on the order (the whole total for pay-before, the delivery deposit for pay-after-delivery, then the exact balance
+  after delivery), plus **Paystack's fee, which the buyer pays** (founder's decision on #89). Answer:
+  `{ authorizationUrl, accessCode, reference, amountNaira (what the buyer pays), feeNaira, orderAmountNaira }`.
+  A double tap gets the same link back; if the order's amount changed, the old attempt is abandoned and a new one started; two
+  taps at the same moment leave one open attempt. Reference: `lvm_ord_<8 characters of the order id>_<16 random hex>`.
+- `GET /api/v1/payments/paystack/{reference}` (the payer or an admin): while the payment is open, asks Paystack and settles it
+  through **the same steps and event key as the webhook**, so whichever arrives first wins and the other is a duplicate. Answer
+  `{ status, orderStatus }`.
+- When Paystack confirms: the payment row is marked paid, the order moves on with the same rules as a vendor-confirmed bank transfer
+  (a delivery deposit confirms the order; a final payment completes it or starts the buyer's 24-hour confirmation; an order never
+  moves back a step), the vendor is told "Order paid: deliver now" and the buyer "Payment received".
+- An order with an open or paid Paystack attempt cannot also be reported as a bank transfer (`payment-report` answers 400).
+
+### The fee (assumption to confirm)
+
+`integrations/paystack/fees.ts` gives the total so that Levromart receives the order amount in full after Paystack's fee: **1.5% +
+₦100, the ₦100 waived below ₦2,500, capped at ₦2,000**. These are Paystack's published local rates as I know them; I could not open
+paystack.com/pricing from the build environment. **Check them against the pricing page and the dashboard before go-live (#103);**
+change them in that one file. The fee rounds up to the next kobo, so Levromart is never short.
+
+### Not covered here
+
+The checkout screen (#96), payouts to vendors (#98), refunds (#99). Orders already paid through the old Vercel functions are
+unchanged.
+
+## Levromart's own fees through Paystack (issue #100)
+
+- **Endpoints:** `POST /api/v1/shops/mine/commission/paystack/initialize` (all owed commission as one payment) and `POST /api/v1/listings/{product|package}/{id}/paystack/initialize` (the ₦999 monthly fee). Both are behind the same `PAYSTACK_CHECKOUT_ENABLED` switch as order payments, record a `paystack_transactions` row (`commission` / `listing_fee`), and are settled by the same webhook/`GET /payments/paystack/{reference}` path as orders, which calls the unchanged settlement code (`settleReference`, `settleListingPaymentFromWebhook`). Same references (`commission_…`, `levro_listing_…`), same metadata, same amounts as the old flow, so the same listing activates, the same charges are settled and the same shop unlocks.
+- **No double payment:** one open attempt per listing and per vendor (migration `0009`, not applied until the founder approves), a double tap gets the same link back, and an old open attempt is checked with Paystack before a new one is made. A listing already paid up is never charged again.
+- **App:** with the switch on, the commission "Pay now" uses the new endpoint; with it off the old flow runs. The listing endpoint exists, but the app's monthly listing screen currently takes a manual bank transfer, so it is not switched.
+- **Old endpoints that can go after go-live (not removed here):** `/api/vendor-payments` actions `pay-commission`, `start-listing-payment` (and the verify/consume listing actions), `/api/listing-payments`; their copies in `medris-backend/src/modules/vendor-payments/`. `setup-monthly-billing` (`billing_…` card billing) is untouched.
+- **Decision for the founder:** these fees are charged at exactly ₦999 / the owed commission, with no Paystack fee added (as today). Adding the fee on top would be a one-line change per flow.

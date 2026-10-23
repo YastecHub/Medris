@@ -431,3 +431,28 @@
     } catch (_) {}
   };
 })();
+
+/* ===== Commission "Pay now" through the Paystack ledger (issue #100) =====
+   With Paystack on, the owed commission is paid through the new endpoint (same amount, same unlock afterwards).
+   With it off, or if the new endpoint is not there, the old flow runs unchanged. */
+(function () {
+  "use strict";
+  var orig = window.payCommission;
+  if (typeof orig !== "function") return;
+  window.payCommission = async function () {
+    var on = window.lvPaystackOn ? await window.lvPaystackOn() : false;
+    if (!on || !window.levroData || !window.levroData.payments.payCommission) return orig.apply(this, arguments);
+    var errorEl = document.getElementById("commissionError");
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('[onclick*="payCommission()"]'));
+    buttons.forEach(function (b) { b.disabled = true; });
+    try {
+      var r = await window.levroData.payments.payCommission();
+      if (r.error || !r.data || !r.data.authorizationUrl) throw new Error((r.error && r.error.message) || "Could not start the commission payment.");
+      window.location.assign(r.data.authorizationUrl);
+    } catch (e) {
+      if (errorEl) { errorEl.textContent = e.message; errorEl.classList.remove("hidden"); }
+      else showToast(e.message || "Could not start the commission payment.", "error");
+      buttons.forEach(function (b) { b.disabled = false; });
+    }
+  };
+})();
