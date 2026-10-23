@@ -2788,12 +2788,12 @@ html:root:root:root body #app .vd-page .vd-filter-label{display:inline}
    Order top to bottom: cover, round profile picture, name, description. Follow + bell sit at the right,
    level with the picture, never over the name. */
 html:root:root body #app#app .storefront-profile .storefront-profile-body{position:relative!important;display:block!important;padding-top:0!important}
-html:root:root body #app#app .storefront-profile .storefront-avatar-row{position:relative!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;margin:-44px 0 0!important;padding:0!important;z-index:5!important;overflow:visible!important}
+html:root:root body #app#app .storefront-profile .storefront-avatar-row{position:relative!important;top:0!important;bottom:auto!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;margin:-44px 0 0!important;padding:0!important;z-index:5!important;overflow:visible!important}
 html:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar,
 html:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar-button{display:block!important;width:84px!important;height:84px!important;min-width:84px!important;min-height:84px!important;margin:0!important;border-radius:50%!important;overflow:hidden!important;position:relative!important;transform:none!important}
 html:root:root body #app#app .storefront-profile .storefront-profile-actions.storefront-public-actions{position:absolute!important;top:10px!important;right:0!important;left:auto!important;bottom:auto!important;inset-inline-end:0!important;width:auto!important;max-width:calc(100% - 100px)!important;height:40px!important;min-height:40px!important;margin:0!important;padding:0!important;display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-end!important;gap:.45rem!important;z-index:20!important;transform:none!important}
 html:root:root body #app#app .storefront-profile .storefront-public-actions .storefront-follow-wrap{position:relative!important;display:flex!important;flex-direction:row!important;align-items:center!important;margin:0!important;transform:none!important}
-html:root:root body #app#app .storefront-profile .storefront-name-row{position:relative!important;display:block!important;width:100%!important;margin:.7rem 0 .45rem!important;padding:0!important;transform:none!important;z-index:6!important;left:auto!important;top:auto!important}
+html:root:root body #app#app .storefront-profile .storefront-name-row{position:relative!important;display:block!important;width:100%!important;margin:1rem 0 .45rem!important;padding:0!important;transform:none!important;z-index:6!important;left:auto!important;top:auto!important}
 html:root:root body #app#app .storefront-profile .storefront-profile-name{margin:0!important;padding:0!important;transform:none!important}
 
 /* Profile picture preview: a round picture on the dark backdrop, no close button; tap anywhere outside to close. */
@@ -2809,3 +2809,7 @@ html:root[data-theme="dark"]:root body #app#app .levro-storefront-sheet-item i,
 html:root[data-theme="dark"]:root body #app#app .levro-storefront-sheet-item i[class],
 html:root[data-theme="black"]:root body #app#app .levro-storefront-sheet-item i,
 html:root[data-theme="black"]:root body #app#app .levro-storefront-sheet-item i[class]{color:#fff!important;-webkit-text-fill-color:#fff!important}
+
+/* Storefront: the details start right under the cover (other rules pulled them up into it); only the picture overlaps the cover */
+html:root:root body #app#app .storefront-profile .storefront-cover{margin-bottom:0!important}
+html:root:root body #app#app .storefront-profile .storefront-profile-body{display:flow-root!important;margin-top:0!important;top:auto!important;transform:none!important}
