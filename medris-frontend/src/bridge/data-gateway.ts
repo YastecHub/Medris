@@ -371,6 +371,13 @@ const payments = {
       return { data: null, error: toGatewayError(err) } as GatewayResult<{ accountName: string; bankName: string; accountLast4: string; verified: boolean }>;
     }
   },
+  async myPayouts() {
+    try {
+      return ok(await v1.payments.myPayouts());
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<Awaited<ReturnType<typeof v1.payments.myPayouts>>>;
+    }
+  },
   async myPayoutAccount() {
     try {
       return ok(await v1.payments.myPayoutAccount());

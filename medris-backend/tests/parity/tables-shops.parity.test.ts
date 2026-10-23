@@ -28,6 +28,8 @@ describe("parity: table queries - shops", () => {
     "paystack_subaccount_code",
     "commission_pct",
     "transfer_recipient_code",
+    "payout_verified_at",
+    "payout_account_last4",
     "billing_model",
     "paystack_authorization_code",
     "paystack_customer_code",

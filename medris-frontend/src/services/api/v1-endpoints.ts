@@ -51,6 +51,9 @@ export const v1 = {
     /** Saves the vendor's own payout account after they confirmed the resolved name. */
     savePayoutAccount: (bankCode: string, accountNumber: string, confirmedAccountName: string) =>
       v1Request<{ accountName: string; bankName: string; accountLast4: string; verified: boolean }>("PUT", "shops/mine/payout-account", { body: { bankCode, accountNumber, confirmedAccountName } }),
+    /** The shop's payouts, newest first (issue #98). */
+    myPayouts: () =>
+      v1Request<Array<{ id: string; orderId: string; amount: number; commission: number; status: string; holdReason: string | null; createdAt: string; updatedAt: string }>>("GET", "shops/mine/payouts", { query: { limit: 30 } }),
     myPayoutAccount: () => v1Request<{ verified: boolean; accountName: string | null; bankName: string | null; accountLast4: string | null }>("GET", "shops/mine/payout-account"),
   },
 

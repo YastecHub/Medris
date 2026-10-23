@@ -1,3 +1,5 @@
+import { RefundsService } from "../refunds/refunds.service.js";
+import { VendorPayoutsService } from "../vendor-payouts/vendor-payouts.service.js";
 import type { DataContext } from "../../database/context.js";
 import { CommissionRepository } from "../../database/repositories/commission.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
@@ -26,7 +28,9 @@ export const JOB_NAMES = [
   "levromart-points-reconcile",
   "levromart-service-offer-deadlines",
   "paystack-reconcile",
+  "paystack-refunds",
   "remind-unattended-orders",
+  "vendor-payouts",
 ] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
@@ -40,7 +44,9 @@ export const JOBS: readonly ScheduledJob[] = [
   { name: "levromart-points-reconcile", schedule: "*/10 * * * *", description: "Awards or revokes listing points for listings that changed." },
   { name: "levromart-service-offer-deadlines", schedule: "*/5 * * * *", description: "Expires service requests past their deadline." },
   { name: "paystack-reconcile", schedule: "*/10 * * * *", description: "Asks Paystack about payments left open for 15 minutes and payouts left processing for 30, and settles them like the webhook (new job: not in pg_cron, run it with Heroku Scheduler or POST /api/v1/jobs/paystack-reconcile)." },
+  { name: "paystack-refunds", schedule: "* * * * *", description: "Asks Paystack to refund queued refunds (cancelled or disputed orders paid with Paystack). New job: run it with Heroku Scheduler or POST /api/v1/jobs/paystack-refunds." },
   { name: "remind-unattended-orders", schedule: "*/3 * * * *", description: "Reminds both sides about orders still waiting for the vendor." },
+  { name: "vendor-payouts", schedule: "* * * * *", description: "Sends queued vendor payouts through Paystack and retries failed ones (new job: not in pg_cron, run it with Heroku Scheduler or POST /api/v1/jobs/vendor-payouts)." },
 ];
 
 const orderDetail = (orderId: string) => ({ targetView: "orderDetail", targetParams: { orderId } });
@@ -79,8 +85,12 @@ export class ScheduledJobsService {
         return this.processServiceOfferDeadlines();
       case "paystack-reconcile":
         return new PaystackWebhookService(this.db).reconcile();
+      case "paystack-refunds":
+        return new RefundsService(this.db).run();
       case "remind-unattended-orders":
         return this.remindUnattendedOrders();
+      case "vendor-payouts":
+        return new VendorPayoutsService(this.db).run();
     }
   }
 
