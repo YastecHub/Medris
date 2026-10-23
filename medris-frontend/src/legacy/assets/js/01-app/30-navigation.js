@@ -235,7 +235,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
     "vendorEarnings","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","wishlist","buyerOrders","orderHistory","orderDetail","leaveReview",
-    "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
+    "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminPayments",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminCampuses","adminLog","adminMonthlyListings","adminConversations","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration","adminR2Optimize"
   ]);
@@ -414,6 +414,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminR2Optimize": html = renderAdminR2Optimize(); break;
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
+      case "adminPayments": html = await renderAdminPayments(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPasswordResets": html = await renderAdminPasswordResets(); break;
       case "adminInventory": html = await renderAdminInventory(); break;

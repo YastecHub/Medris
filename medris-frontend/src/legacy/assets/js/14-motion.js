@@ -456,3 +456,95 @@
     }
   };
 })();
+
+/* ===== Admin: Payments area (issues #98, #99, #101) =====
+   Money in and out, payouts (release / hold / paid by hand), refunds, and the daily Paystack check. Admin only: the server
+   refuses everyone else, this screen is only the window onto it. */
+(function () {
+  "use strict";
+  var tab = "payouts", range = "today";
+  function naira(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
+  function when(t) { try { return new Date(t).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch (_) { return ""; } }
+  function api() { return window.levroData && window.levroData.adminPayments; }
+  var STATUS = { pending: "Waiting", processing: "On its way", success: "Sent", on_hold: "On hold", failed: "Failed", reversed: "Returned by bank", paid_manually: "Paid by hand", initialized: "Started", abandoned: "Abandoned", refunded: "Refunded", partially_refunded: "Part refunded", processed: "Done" };
+  function pill(s) { var good = s === "success" || s === "processed" || s === "paid_manually"; var bad = s === "failed" || s === "reversed"; return '<span class="badge ' + (good ? "badge-success" : bad ? "badge-danger" : "badge-warning") + '">' + esc(STATUS[s] || s) + "</span>"; }
+
+  function ask(title, label, withAmount, onOk) {
+    var m = document.createElement("div");
+    m.className = "modal lv-pm open"; m.id = "lvAdminAsk";
+    m.innerHTML = '<div class="modal-content lv-pm-card" role="dialog" aria-modal="true"><div class="lv-pm-head"><h3>' + esc(title) + "</h3></div>" +
+      (withAmount ? '<label>Amount in naira (leave empty to refund everything left)</label><input id="lvAskAmount" inputmode="decimal" />' : "") +
+      "<label>" + esc(label) + '</label><input id="lvAskText" maxlength="200" /><p class="lv-pay-err error-text hidden" id="lvAskErr"></p>' +
+      '<div class="lv-pm-actions"><button type="button" class="btn btn-outline" data-a="no">Cancel</button><button type="button" class="btn" data-a="yes">Confirm</button></div></div>';
+    m.addEventListener("click", async function (e) {
+      var a = e.target && e.target.getAttribute && e.target.getAttribute("data-a");
+      if (a === "no" || e.target === m) return m.remove();
+      if (a !== "yes") return;
+      var text = document.getElementById("lvAskText").value.trim();
+      var amtEl = document.getElementById("lvAskAmount");
+      var amount = amtEl && amtEl.value.trim() ? Number(amtEl.value) : undefined;
+      if (text.length < 3) { var er = document.getElementById("lvAskErr"); er.textContent = "Please write a few words."; er.classList.remove("hidden"); return; }
+      var res = await onOk(text, amount);
+      if (res && res.error) { var er2 = document.getElementById("lvAskErr"); er2.textContent = res.error.message || "Something went wrong."; er2.classList.remove("hidden"); return; }
+      m.remove(); showToast("Done.", "success"); navigate("adminPayments", {}, false);
+    });
+    document.body.appendChild(m);
+  }
+  window.lvPayAct = function (kind, id) {
+    var a = api(); if (!a) return;
+    if (kind === "release") {
+      showConfirmDialog("Send this payout again now?", { title: "Release payout", okLabel: "Release" }).then(async function (yes) {
+        if (!yes) return;
+        var r = await a.release(id);
+        if (r.error) return showToast(r.error.message, "error");
+        showToast("Queued. It is sent within a minute.", "success"); navigate("adminPayments", {}, false);
+      });
+    } else if (kind === "hold") ask("Hold payout", "Why are you holding it?", false, function (t) { return a.hold(id, t); });
+    else if (kind === "manual") ask("Mark as paid by hand", "How did you pay (reference)?", false, function (t) { return a.markManual(id, t); });
+    else if (kind === "refund") ask("Refund this order", "Reason for the refund", true, function (t, amt) { return a.refund(id, { amountNaira: amt, reason: t }); });
+  };
+  window.lvPayTab = function (t) { tab = t; navigate("adminPayments", {}, false); };
+  window.lvPayRange = function (r) { range = r; navigate("adminPayments", {}, false); };
+
+  function payoutRow(p) {
+    var acts = "";
+    if (["on_hold", "failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm" onclick="lvPayAct(\'release\',\'' + esc(p.id) + '\')">Release</button>';
+    if (p.status === "pending" || p.status === "failed") acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'hold\',\'' + esc(p.id) + '\')">Hold</button>';
+    if (["pending", "on_hold", "failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'manual\',\'' + esc(p.id) + '\')">Paid by hand</button>';
+    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + pill(p.status) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
+  }
+  function txRow(t) {
+    var can = t.order_id && (t.status === "success" || t.status === "partially_refunded");
+    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(t.amount) + "</b> " + pill(t.status) + "<small>" + esc(String(t.purpose).replace("_", " ")) + " · " + esc(t.business_name || "") + " · " + when(t.paid_at || t.created_at) + '</small></div><div class="lv-ap-acts">' + (can ? '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(t.order_id) + '\')">Refund</button>' : "") + "</div></div>";
+  }
+  function refundRow(r) { return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(r.amount) + "</b> " + pill(r.status) + "<small>" + esc(r.reason || "") + " · " + when(r.created_at) + (r.last_error ? " · " + esc(r.last_error) : "") + "</small></div></div>"; }
+  function reportRow(r) {
+    var rep = r.report || {}; var list = (rep.problems || []).map(function (p) { return "<li>" + esc(p.detail) + "</li>"; }).join("");
+    return '<div class="lv-ap-row lv-ap-col"><div class="lv-ap-main"><b>' + esc(String(r.window_start).slice(0, 10)) + "</b> " + (r.problems ? '<span class="badge badge-danger">' + r.problems + " to check</span>" : '<span class="badge badge-success">All matched</span>') + "<small>" + (rep.error ? esc(rep.error) : (rep.checked || 0) + " payments checked") + "</small></div>" + (list ? "<ul class=\"lv-ap-list\">" + list + "</ul>" : "") + "</div>";
+  }
+
+  window.renderAdminPayments = async function () {
+    var a = api();
+    var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
+    if (!a) return nav + '<div class="empty-state">Payments are not available right now.</div>';
+    var sum = await a.summary();
+    if (sum.error) return nav + '<div class="empty-state">' + esc(sum.error.message || "Only admins can see payments.") + "</div>";
+    var s = sum.data, h = s.health, t = s[range];
+    var q = { limit: 40 };
+    var rows;
+    if (tab === "payouts") rows = await a.payouts(q);
+    else if (tab === "held") rows = await a.payouts({ limit: 40, status: "on_hold" });
+    else if (tab === "failed") rows = await a.payouts({ limit: 40, status: "failed" });
+    else if (tab === "payments") rows = await a.transactions(q);
+    else if (tab === "refunds") rows = await a.refunds(q);
+    else rows = await a.reports();
+    var list = ((rows && rows.data) || []).map(tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
+    var tabs = [["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
+    return nav + '<h2 style="text-align:center;"><i class="fa-solid fa-credit-card"></i> Payments</h2>' +
+      (h.needsAttention ? '<div class="banner banner-warning" role="status"><strong><i class="fa-solid fa-triangle-exclamation"></i> ' + h.needsAttention + ' thing(s) need attention.</strong> Stuck or failed payouts and refunds, or mismatches in the last daily check.</div>' : '<div class="banner banner-success" role="status"><i class="fa-solid fa-circle-check"></i> Everything is matching.</div>') +
+      '<div class="segmented-tabs">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="lv-ap-totals">' + [["Collected", t.collected], ["Refunded", t.refunded], ["Paid to vendors", t.paidToVendors], ["Levromart commission", t.commission]].map(function (x) { return '<div class="stat"><div class="n">' + naira(x[1]) + '</div><div class="muted">' + x[0] + "</div></div>"; }).join("") + "</div>" +
+      '<div class="segmented-tabs" style="margin-top:1rem;">' + tabs.map(function (x) { return '<button class="' + (x[0] === tab ? "active" : "") + '" onclick="lvPayTab(\'' + x[0] + '\')">' + esc(x[1]) + "</button>"; }).join("") + "</div>" +
+      '<div class="lv-ap-list-wrap">' + list + "</div>";
+  };
+})();

@@ -1,3 +1,4 @@
+import { PaymentsAdminService } from "./modules/payments-admin/payments-admin.service.js";
 import { VendorFeesService } from "./modules/vendor-fees/vendor-fees.service.js";
 import { RefundsService } from "./modules/refunds/refunds.service.js";
 import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.service.js";
@@ -91,6 +92,7 @@ export interface AppServices {
   vendorPayouts: VendorPayoutsService;
   refunds: RefundsService;
   vendorFees: VendorFeesService;
+  paymentsAdmin: PaymentsAdminService;
   paystackCheckout: PaystackCheckoutService;
   commission: CommissionService;
   paymentClaims: PaymentClaimsService;
@@ -162,6 +164,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     payoutAccounts: overrides.payoutAccounts ?? new PayoutAccountsService(data),
     vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
     refunds: overrides.refunds ?? new RefundsService(data),
+    paymentsAdmin: overrides.paymentsAdmin ?? new PaymentsAdminService(data),
     vendorFees: overrides.vendorFees ?? new VendorFeesService(data, config.paystack.checkoutEnabled),
     paystackCheckout: overrides.paystackCheckout ?? new PaystackCheckoutService(data, config.paystack.checkoutEnabled),
     commission: overrides.commission ?? new CommissionService(data),

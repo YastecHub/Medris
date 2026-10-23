@@ -1,3 +1,4 @@
+import { PaymentsAdminService } from "../payments-admin/payments-admin.service.js";
 import { RefundsService } from "../refunds/refunds.service.js";
 import { VendorPayoutsService } from "../vendor-payouts/vendor-payouts.service.js";
 import type { DataContext } from "../../database/context.js";
@@ -27,6 +28,7 @@ export const JOB_NAMES = [
   "levromart-payment-unresolved-escalation",
   "levromart-points-reconcile",
   "levromart-service-offer-deadlines",
+  "paystack-daily-check",
   "paystack-reconcile",
   "paystack-refunds",
   "remind-unattended-orders",
@@ -43,6 +45,7 @@ export const JOBS: readonly ScheduledJob[] = [
   { name: "levromart-payment-unresolved-escalation", schedule: "*/5 * * * *", description: "Tells admins about payments left unresolved, or confirmed orders left unpaid, for 24 hours." },
   { name: "levromart-points-reconcile", schedule: "*/10 * * * *", description: "Awards or revokes listing points for listings that changed." },
   { name: "levromart-service-offer-deadlines", schedule: "*/5 * * * *", description: "Expires service requests past their deadline." },
+  { name: "paystack-daily-check", schedule: "30 3 * * *", description: "Compares yesterday's Paystack payments with the ledger, keeps the report and tells admins when anything does not match. New job: run it with Heroku Scheduler or POST /api/v1/jobs/paystack-daily-check." },
   { name: "paystack-reconcile", schedule: "*/10 * * * *", description: "Asks Paystack about payments left open for 15 minutes and payouts left processing for 30, and settles them like the webhook (new job: not in pg_cron, run it with Heroku Scheduler or POST /api/v1/jobs/paystack-reconcile)." },
   { name: "paystack-refunds", schedule: "* * * * *", description: "Asks Paystack to refund queued refunds (cancelled or disputed orders paid with Paystack). New job: run it with Heroku Scheduler or POST /api/v1/jobs/paystack-refunds." },
   { name: "remind-unattended-orders", schedule: "*/3 * * * *", description: "Reminds both sides about orders still waiting for the vendor." },
@@ -83,6 +86,8 @@ export class ScheduledJobsService {
         return this.db().asService((tx) => new PointsRepository(tx).reconcileListings().then(() => null));
       case "levromart-service-offer-deadlines":
         return this.processServiceOfferDeadlines();
+      case "paystack-daily-check":
+        return new PaymentsAdminService(this.db).reconcile();
       case "paystack-reconcile":
         return new PaystackWebhookService(this.db).reconcile();
       case "paystack-refunds":

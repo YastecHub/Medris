@@ -401,9 +401,27 @@ const payments = {
   },
 };
 
+/* ---------------------------------------------------------- admin payments */
+
+type AdminPaymentsApi = typeof v1.adminPayments;
+/** Every admin Payments call, wrapped so the screen gets `{ data, error }` like the rest of the gateway. */
+const adminPayments = Object.fromEntries(
+  (Object.keys(v1.adminPayments) as Array<keyof AdminPaymentsApi>).map((name) => [
+    name,
+    async (...args: unknown[]) => {
+      try {
+        return ok(await (v1.adminPayments[name] as (...a: unknown[]) => Promise<unknown>)(...args));
+      } catch (err) {
+        return { data: null, error: toGatewayError(err) };
+      }
+    },
+  ]),
+) as unknown as { [K in keyof AdminPaymentsApi]: (...args: Parameters<AdminPaymentsApi[K]>) => Promise<GatewayResult<Awaited<ReturnType<AdminPaymentsApi[K]>>>> };
+
 const levroData = Object.freeze({
   cart,
   payments,
+  adminPayments,
   notifications,
   favorites,
   follows,

@@ -41,7 +41,15 @@ export const adminPayouts = defineRoute({
   security: signedIn,
   middleware: [requireUser] as const,
   summary: "All vendor payouts (admins)",
-  request: { query: page.extend({ status: z.enum(["pending", "processing", "success", "failed", "reversed", "on_hold", "paid_manually"]).optional() }) },
+  request: {
+    query: page.extend({
+      status: z.enum(["pending", "processing", "success", "failed", "reversed", "on_hold", "paid_manually"]).optional(),
+      vendorId: z.string().uuid().optional(),
+      orderId: z.string().uuid().optional(),
+      from: z.string().datetime().optional(),
+      to: z.string().datetime().optional(),
+    }),
+  },
   responses: { 200: dataResponse(z.array(z.record(z.string(), z.unknown())).openapi("AdminPayouts"), "Payouts, newest first."), ...errorResponses(400, 401, 403), ...commonErrors },
 });
 

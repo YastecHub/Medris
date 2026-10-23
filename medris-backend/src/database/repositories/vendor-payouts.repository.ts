@@ -160,13 +160,18 @@ export class VendorPayoutsRepository {
     );
   }
 
-  all(status: string | null, limit: number, offset: number): Promise<PayoutRow[]> {
+  all(status: string | null, limit: number, offset: number, f: { vendorId?: string; orderId?: string; from?: string; to?: string } = {}): Promise<PayoutRow[]> {
     return jsonRows<PayoutRow>(
       this.db,
       sql`select p.id, p.order_id, p.vendor_id, v.business_name, p.amount_kobo::text as amount_kobo, p.commission_kobo::text as commission_kobo, p.status,
                  p.hold_reason, p.attempts, p.last_error, p.note, p.created_at, p.updated_at
           from public.vendor_payouts p join public.vendors v on v.id = p.vendor_id
-          where (${status}::text is null or p.status = ${status}) order by p.created_at desc limit ${limit} offset ${offset}`,
+          where (${status}::text is null or p.status = ${status})
+            and (${f.vendorId ?? null}::uuid is null or p.vendor_id = ${f.vendorId ?? null}::uuid)
+            and (${f.orderId ?? null}::uuid is null or p.order_id = ${f.orderId ?? null}::uuid)
+            and (${f.from ?? null}::timestamptz is null or p.created_at >= ${f.from ?? null}::timestamptz)
+            and (${f.to ?? null}::timestamptz is null or p.created_at < ${f.to ?? null}::timestamptz)
+          order by p.created_at desc limit ${limit} offset ${offset}`,
     );
   }
 
