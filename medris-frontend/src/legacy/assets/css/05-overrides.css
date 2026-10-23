@@ -2587,3 +2587,39 @@ html body #app .lb-page .lb-hero>.lb-hero-people{position:absolute!important;rig
 .lv-b3-dots{position:absolute;left:1rem;bottom:.4rem;display:flex;gap:.25rem}
 .lv-b3-dots i{width:.35rem;height:.35rem;border-radius:50%;background:rgba(255,255,255,.45)}
 .lv-b3-dots i.on{width:.9rem;border-radius:.3rem;background:#fff}
+
+/* ===== Messages tabs in light mode: no grey box behind them, readable active tab ===== */
+:root:not([data-theme="dark"]):not([data-theme="black"]) html body #app .msg-tabs-row,
+:root:not([data-theme="dark"]):not([data-theme="black"]) html body #app .msg-tabs,
+html:not([data-theme="dark"]):not([data-theme="black"]) body #app .msg-tabs-row,
+html:not([data-theme="dark"]):not([data-theme="black"]) body #app .msg-tabs{background:transparent!important;background-color:transparent!important;box-shadow:none!important;border-radius:0!important;border-color:transparent!important;border-bottom:1px solid #d5dbe3!important;padding-left:0;padding-right:0}
+html:not([data-theme="dark"]):not([data-theme="black"]) body #app .msg-tabs a{color:#5b6573!important;-webkit-text-fill-color:#5b6573!important;background:transparent!important}
+html:not([data-theme="dark"]):not([data-theme="black"]) body #app .msg-tabs a.active{color:#111827!important;-webkit-text-fill-color:#111827!important;border-bottom:3px solid var(--primary,#16a34a)!important}
+
+/* Home: the Trending services row keeps its place while the live data arrives (no jumping) */
+.lv-svc-skel{display:flex;gap:.8rem;overflow:hidden;padding:0 .35rem;margin-bottom:1rem}
+.lv-svc-skel span{flex:0 0 205px;height:13rem;border-radius:14px;background:color-mix(in srgb,var(--text) 7%,var(--card));animation:lvSkelPulse 1.4s ease-in-out infinite}
+@keyframes lvSkelPulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.lv-svc-skel span{animation:none}}
+
+/* Vendors page: "All categories" chip uses a plain grid icon and a light blue outline instead of green */
+#app .vd-page .vd-chip.vd-chip-all{--cc:#38bdf8;border-color:color-mix(in srgb,#38bdf8 45%,var(--border))!important}
+#app .vd-page .vd-chip.vd-chip-all .vd-chip-art-ico{background:color-mix(in srgb,#38bdf8 16%,var(--card))!important;color:#0284c7!important;display:inline-grid!important;place-items:center}
+#app .vd-page .vd-chip.vd-chip-all .vd-chip-art-ico i{font-size:.85rem!important;width:auto!important;height:auto!important;min-width:0!important;color:#0284c7!important}
+#app .vd-page .vd-chip.vd-chip-all.active{--cc:#38bdf8!important;background:color-mix(in srgb,#38bdf8 14%,var(--card))!important;border-color:#38bdf8!important;box-shadow:0 1px 6px color-mix(in srgb,#38bdf8 22%,transparent)!important}
+
+/* ===== Filter drawers: own backdrop, handle, tidy rows ===== */
+html body #app .browse-filter-panel:not(.hidden),html body #app .vendors-filters-panel:not(.hidden){box-shadow:0 -12px 40px rgba(0,0,0,.2)!important;z-index:9001!important;max-height:82vh;overscroll-behavior:contain;border-radius:24px 24px 0 0!important;padding-top:.5rem!important}
+.lv-sheet-back{position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9000;animation:lvSheetBack .2s ease}
+@keyframes lvSheetBack{from{opacity:0}to{opacity:1}}
+html body #app .browse-filter-panel:not(.hidden)::before,html body #app .vendors-filters-panel:not(.hidden)::before{content:"";display:block;width:42px;height:4px;border-radius:4px;background:color-mix(in srgb,var(--text) 22%,transparent);margin:.2rem auto .7rem}
+html body #app .browse-filter-panel-head,html body #app .vendors-filters-panel .lm-sheet-head{padding-bottom:.6rem;margin-bottom:.4rem;border-bottom:1px solid var(--border)}
+html body #app .browse-filter-panel-head strong,html body #app .vendors-filters-panel .lm-sheet-head strong{font-size:1.05rem}
+html body #app .vendors-filter-grid{display:grid!important;grid-template-columns:1fr!important;gap:.85rem!important}
+html body #app .vendors-filter-grid label{display:flex;flex-direction:column;gap:.35rem;font-size:.74rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--text-muted,#64748b)}
+html body #app .vendors-filter-grid select{font-size:.95rem!important;font-weight:600;text-transform:none;letter-spacing:0;min-height:46px!important;border-radius:14px!important;background-color:color-mix(in srgb,var(--text) 4%,var(--card))!important}
+html body #app .browse-filter-row-group{border:1px solid var(--border);border-radius:14px;margin:.5rem 0;overflow:hidden;background:color-mix(in srgb,var(--text) 3%,var(--card))}
+html body #app .browse-filter-subtrigger{border:0!important;border-radius:0!important;background:transparent!important;min-height:48px}
+html body #app .browse-filter-panel .browse-filter-clear{display:none!important}
+.lv-sheet-foot{display:flex;gap:.6rem;margin-top:1rem;position:sticky;bottom:-.2rem;padding-top:.6rem;background:linear-gradient(to top,var(--card) 70%,transparent)}
+.lv-sheet-foot .btn{flex:1;min-height:46px;border-radius:14px}

@@ -120,6 +120,8 @@
     { sel: "#aiChatPanel:not(.hidden)", close: function () { try { toggleAiChat(); } catch (_) {} }, back: null },
     { sel: ".lv-cs-card", close: function (el) { var x = el.querySelector(".lv-cs-x"); if (x) x.click(); }, back: ".lv-cs-back", own: ".lv-cs-head" },
     { sel: ".lv-cm-card", close: function (el) { var b = el.parentNode && el.parentNode.querySelector(".lv-cm-back"); if (b) b.click(); }, back: ".lv-cm-back", own: ".lv-cm-card" },
+    { sel: ".vendors-filters-panel:not(.hidden)", close: function () { try { toggleVendorsFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
+    { sel: ".browse-filter-panel:not(.hidden)", close: function () { try { toggleBrowseFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
     { sel: "#storefrontShareModal:not(.hidden) .storefront-share-sheet", close: function (el) { var m = el.closest("#storefrontShareModal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: false })); }, back: null }
   ];
   var START_SLOP = 8;          // px of movement before it counts as a drag
@@ -547,4 +549,43 @@
       '<div class="segmented-tabs" style="margin-top:1rem;">' + tabs.map(function (x) { return '<button class="' + (x[0] === tab ? "active" : "") + '" onclick="lvPayTab(\'' + x[0] + '\')">' + esc(x[1]) + "</button>"; }).join("") + "</div>" +
       '<div class="lv-ap-list-wrap">' + list + "</div>";
   };
+})();
+
+/* ===== Filter drawers (vendors page, browse): a real backdrop, a handle, and Clear / Show results buttons =====
+   The drawer used to fake its backdrop with a giant shadow, which could not fade or follow a drag. Now the backdrop is its
+   own layer (tap it to close, it fades while the drawer is pulled down) and the drawer is in the sheet-drag list above. */
+(function () {
+  "use strict";
+  var PANELS = [
+    { sel: ".vendors-filters-panel", fn: "toggleVendorsFilters", clear: "clearVendorsDirectoryFilters", label: "Show vendors" },
+    { sel: ".browse-filter-panel", fn: "toggleBrowseFilters", clear: "clearBrowseFilters", label: "Show results" }
+  ];
+  function sync(p) {
+    var el = document.querySelector(p.sel);
+    if (!el || !el.parentNode) return;
+    var open = !el.classList.contains("hidden");
+    var back = el.parentNode.querySelector(":scope > .lv-sheet-back");
+    if (open && !back) {
+      back = document.createElement("div");
+      back.className = "lv-sheet-back";
+      back.addEventListener("click", function () { try { window[p.fn](false); } catch (_) {} });
+      el.parentNode.insertBefore(back, el);
+    } else if (!open && back) back.remove();
+    if (open && !el.querySelector(":scope > .lv-sheet-foot")) {
+      var foot = document.createElement("div");
+      foot.className = "lv-sheet-foot";
+      foot.innerHTML = '<button type="button" class="btn btn-outline" data-a="clear">Clear all</button><button type="button" class="btn" data-a="done">' + p.label + "</button>";
+      foot.addEventListener("click", function (e) {
+        var a = e.target && e.target.getAttribute && e.target.getAttribute("data-a");
+        if (a === "clear" && typeof window[p.clear] === "function") window[p.clear]();
+        if (a === "done") window[p.fn](false);
+      });
+      el.appendChild(foot);
+    }
+  }
+  PANELS.forEach(function (p) {
+    var orig = window[p.fn];
+    if (typeof orig !== "function") return;
+    window[p.fn] = function () { var r = orig.apply(this, arguments); sync(p); return r; };
+  });
 })();

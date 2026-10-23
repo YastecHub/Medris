@@ -384,7 +384,6 @@ async function renderStorefrontInner(vendorId) {
   let html = `<section class="storefront-profile" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
     <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
       ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
-      ${isOwnStorefront ? `<label class="storefront-cover-edit" title="Edit storefront header" aria-label="Edit storefront header"><i class="fa-solid fa-pen"></i><input type="file" accept="image/*" onchange="uploadVendorCover(event)" /></label>` : ""}
       ${storefrontMoreItems ? `<button class="storefront-banner-more" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
     </div>
     <div class="storefront-profile-body">
@@ -392,7 +391,6 @@ async function renderStorefrontInner(vendorId) {
         ${logo}
       </div>
       <div class="storefront-profile-actions storefront-public-actions">
-        ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
         ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
       </div>
       <div class="storefront-name-row">
