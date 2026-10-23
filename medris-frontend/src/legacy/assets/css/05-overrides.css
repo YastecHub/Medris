@@ -2567,35 +2567,6 @@ html body #app .lb-page .lb-hero>.lb-hero-people{position:absolute!important;rig
 .lv-ap-list{margin:.4rem 0 0 1rem;font-size:.82rem}
 @media (min-width:700px){.lv-ap-totals{grid-template-columns:repeat(4,1fr)}}
 
-/* ===== Page headers: flat, edge to edge, continuous with the top bar; calmer lilac / peach / light green ===== */
-html body #app .lv-hero2,html body #app .lb-hero{border-radius:0!important;box-shadow:none!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;padding-left:max(1rem,calc(50vw - 50% + 1rem))!important;padding-right:max(1rem,calc(50vw - 50% + 1rem))!important}
-html body #app .lv-hero2:before{background:rgba(255,226,200,.32)}
-html body #app .lv-hero2-vendors,html body #app .lv-hero2-search,html body #app .lv-hero2-request{background:linear-gradient(135deg,#8b74d9 0%,#a58cea 60%,#b9a6f2 130%)}
-html body #app .lv-hero2-orders{background:linear-gradient(135deg,#f4a46a 0%,#f2a57f 55%,#d99ac4 130%)}
-html body #app .lb-hero{background:linear-gradient(135deg,#8b74d9 0%,#a58cea 60%,#b9a6f2 130%)}
-/* little icon chips: peach, one light green (the second green one and the white one are gone) */
-html body #app .lv-hero2 .lv-fl1{background:#ffd9b8;color:#7a3e12}
-html body #app .lv-hero2 .lv-fl2{background:#c7f0d8;color:#14663f}
-html body #app .lv-hero2 .lv-fl3{display:none}
-/* search page: no orange chip bottom right; the bottom-left one is light peach */
-html body #app .lv-hero2-search .lv-fl2{display:none}
-html body #app .lv-hero2-search .lv-fl3{display:grid;background:#ffe1c9;color:#7a3e12}
-html:root body #app .search-page .lv-hero2-search{border-radius:0!important}
-
-/* same calm palette on every hero / strip: lilac, peach, light green */
-html body #app .lv-hero2{background:linear-gradient(135deg,#8b74d9 0%,#a58cea 60%,#b9a6f2 130%)}
-html body #app .lv-hero2-orders{background:linear-gradient(135deg,#f4a46a 0%,#f2a57f 55%,#d99ac4 130%)}
-html body #app .lv-hero2 .lv-hero2-copy span,html body #app .lv-hero2 .lv-hero2-copy b{text-shadow:0 1px 2px rgba(60,30,120,.25)}
-html body #app .lv-band-a{background:linear-gradient(135deg,#7fcf9f,#5db985)}
-html body #app .lv-band-b{background:linear-gradient(135deg,#8b74d9,#a58cea)}
-html body #app .lv-band-d{background:linear-gradient(135deg,#f4a46a,#f2a57f)}
-html body #app .lv-band-e{background:linear-gradient(135deg,#8b74d9,#a58cea)}
-html body #app .lv-band-card{box-shadow:0 6px 14px rgba(70,50,140,.14)}
-html body #app .lv-band3{background:linear-gradient(135deg,#8b74d9 0%,#a58cea 70%,#b9a6f2 130%);box-shadow:0 6px 14px rgba(70,50,140,.14)}
-html body #app .lv-b3-slide.s2{background:linear-gradient(135deg,#f4a46a,#f2a57f)}
-html body #app .lv-b3-slide.s3{background:linear-gradient(135deg,#7fcf9f,#5db985)}
-html body #app .lv-b3-slide.s4{background:linear-gradient(135deg,#e58ab0,#b98be0)}
-html body #app .lv-b3-slide.s5{background:linear-gradient(135deg,#5fd48a,#3bb08a)}
 /* Payment confirmed: its own teal colour + icon so it is not mistaken for plain Confirmed (blue) or Payment unresolved (purple) */
 .od-tone-paid{--od-tone:#0d9488;--od-tone-text:#0f766e;--od-tone-soft:#ccfbf1;background:#effcf9}
 :root[data-theme="dark"] .od-tone-paid,:root[data-theme="black"] .od-tone-paid{background:color-mix(in srgb,var(--od-tone) 14%,var(--card))}
@@ -2654,3 +2625,20 @@ html body #app .browse-filter-panel .browse-filter-clear{display:none!important}
 
 /* Followers: a small store icon marks a vendor */
 .fn-vicon{font-size:.72rem;margin-right:.35rem;color:#0ea5e9}
+
+/* Home strip: swipe sideways by touch, snaps one slide at a time */
+html body #app .lv-b3-track{overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;transition:none;transform:none!important;touch-action:pan-x pan-y}
+html body #app .lv-b3-track::-webkit-scrollbar{display:none}
+html body #app .lv-b3-slide{scroll-snap-align:start;scroll-snap-stop:always}
+/* the winning vendor's logo in the "Who's winning?" slide */
+html body #app .lv-b3-logo:not(.on){display:none}
+html body #app .lv-b3-logo.on{right:1rem!important;top:50%!important;transform:translateY(-50%)!important;width:4.2rem;height:4.2rem;border-radius:50%;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.3);overflow:hidden;background:#fff;font-size:inherit;opacity:1}
+html body #app .lv-b3-logo .avatar-circle{width:100%!important;height:100%!important;display:block;object-fit:cover}
+html body #app .lv-b3-logo .avatar-fallback{display:flex!important;font-size:1.3rem!important;font-weight:900!important}
+
+/* Product cards: soft lilac, light peach and a touch of light green (the big green circle by the cart button is gone) */
+html:root body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(178,155,242,.52) 0 54px,transparent 55px),radial-gradient(circle at 0 100%,rgba(255,200,155,.58) 0 32px,transparent 33px),radial-gradient(circle at 34% 96%,rgba(120,220,170,.45) 0 4px,transparent 5px)!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 100%,rgba(184,164,242,.2) 0 54px,transparent 55px),radial-gradient(circle at 0 100%,rgba(255,208,166,.18) 0 32px,transparent 33px),radial-gradient(circle at 34% 96%,rgba(120,220,170,.3) 0 4px,transparent 5px)!important}
+/* search results: no orange circle; lilac top right, light peach bottom left */
+html:root body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(178,155,242,.48) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(255,200,155,.55) 0 56px,transparent 57px)!important}
+:root[data-theme="dark"] body #app .sr-row,:root[data-theme="black"] body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(184,164,242,.2) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(255,208,166,.16) 0 56px,transparent 57px)!important}
