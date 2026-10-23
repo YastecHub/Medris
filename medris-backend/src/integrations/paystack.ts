@@ -1,13 +1,11 @@
-import crypto from "node:crypto";
 import { requireEnv } from "../config/env.js";
+import { getPaystackClient, verifyWebhookSignature } from "./paystack/index.js";
 
 /**
  * Paystack REST API. All calls use the secret key from the environment and
  * return `{ res, json }` so callers keep the original success checks
  * (`res.ok && json.status`) and error messages (`json.message`).
  */
-
-const PAYSTACK_API = "https://api.paystack.co";
 
 export interface PaystackEnvelope<T = Record<string, unknown>> {
   status?: boolean;
@@ -31,16 +29,7 @@ export interface PaystackTransaction {
 }
 
 async function call<T>(path: string, init: RequestInit = {}, parse: "strict" | "lenient" = "strict"): Promise<PaystackResult<T>> {
-  const res = await fetch(`${PAYSTACK_API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${requireEnv("PAYSTACK_SECRET_KEY")}`,
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...(init.headers as Record<string, string> | undefined),
-    },
-  });
-  const json = (parse === "strict" ? await res.json() : await res.json().catch(() => ({}))) as PaystackEnvelope<T>;
-  return { res, json };
+  return getPaystackClient().rawRequest<T>(path, init, parse);
 }
 
 export interface InitializeTransactionInput {
@@ -90,9 +79,5 @@ export function createRefund(transactionReference: string) {
 
 /** HMAC-SHA512 of the raw request body with the secret key, compared in constant time. */
 export function isValidWebhookSignature(rawBody: string, signature: string | undefined): boolean {
-  if (!signature) return false;
-  const expected = crypto.createHmac("sha512", requireEnv("PAYSTACK_SECRET_KEY")).update(rawBody).digest("hex");
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expected);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return verifyWebhookSignature(rawBody, signature, requireEnv("PAYSTACK_SECRET_KEY"));
 }
