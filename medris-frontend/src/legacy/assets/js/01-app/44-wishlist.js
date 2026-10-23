@@ -105,6 +105,6 @@ function fpRender() {
     const av = profileAvatarHtml(r.avatar_url, name, "3rem");
     const open = r.is_vendor && r.vendor_id ? ` onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0"` : "";
     const sub = r.is_vendor ? [r.sector_name, r.city].filter(Boolean).join(" · ") : "Customer";
-    return `<div class="fp-row${r.is_vendor ? " clickable" : ""}"${open}>${av}<div class="fp-copy"><strong>${esc(name)}</strong><span class="muted">${esc(sub)}${when ? ` · since ${esc(when)}` : ""}</span>${fpTag(r)}</div>${r.is_vendor ? '<i class="fa-solid fa-chevron-right fp-go"></i>' : ""}</div>`;
+    return `<div class="fp-row${r.is_vendor ? " clickable" : ""}"${open}>${av}<div class="fp-copy"><strong>${r.is_vendor ? '<i class="fa-solid fa-store fn-vicon" aria-label="Vendor" title="Vendor"></i>' : ""}${esc(name)}</strong><span class="muted">${esc(sub)}${when ? ` · since ${esc(when)}` : ""}</span>${fpTag(r)}</div>${r.is_vendor ? '<i class="fa-solid fa-chevron-right fp-go"></i>' : ""}</div>`;
   }).join("");
 }

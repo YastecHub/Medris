@@ -24,7 +24,7 @@ function vendorOrderTopHtml(order, ctx) {
     <div class="od-menu-wrap"><button type="button" class="od-more" onclick="toggleOrderDetailMenu(event)" aria-label="More"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button><button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
   // ---- status card
-  h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : tone === "pending" ? "fa-hourglass-half" : "fa-box-open"}"></i></div>
+  h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : tone === "pending" ? "fa-hourglass-half" : tone === "paid" ? "fa-money-check-dollar" : "fa-box-open"}"></i></div>
     <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">${esc(typeLabel)} · ${esc(orderDateTimeStr(order.created_at))}</span>` : `<span class="od-placed">${esc(typeLabel)}</span>`}</div>
     <span class="od-pill od-pill-${tone}">${esc(odStatusLabel(order))}</span></section>`;
   // ---- state alert
@@ -212,7 +212,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
         <h2 style="margin:0;text-transform:capitalize;">${order.order_type} order</h2>
         <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Customer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
       </div>
-      <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : (lvOrderStageLabel(order) || order.status.replace("_", " "))}</span>
+      <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : lvOrderStageLabel(order) ? "order-status-badge-paid" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : (lvOrderStageLabel(order) || order.status.replace("_", " "))}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>Vendor hasn’t responded after 5–10 minutes? Tap “Remind vendor” and we’ll nudge them.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
