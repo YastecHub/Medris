@@ -120,6 +120,15 @@ async function renderHome() {
     const rows = await fetchProductsByIds(ids);
     return { data: rows, index };
   };
+  // Trending services load at the same time as everything else (they used to wait for the whole first batch, then ask again)
+  const svcPromise = (async () => {
+    try {
+      let sq = sb.from("products").select(PRODUCT_LIST_SELECT).eq("status", "active").eq("is_service", true).eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
+      if (activeCategory) sq = sq.eq("category_id", activeCategory.id);
+      const { data: sd } = await sq.order("view_count", { ascending: false }).limit(12);
+      return sd || [];
+    } catch (_) { return []; }
+  })();
   const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts, index: browseIndex }] = await Promise.all([
     vendorQuery.order("view_count", { ascending: false }).limit(40),
     loadTopVendors(),
@@ -238,13 +247,9 @@ async function renderHome() {
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
-  let svcRows = [];
-  try {
-    let sq = sb.from("products").select(PRODUCT_LIST_SELECT).eq("status", "active").eq("is_service", true).eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
-    if (activeCategory) sq = sq.eq("category_id", activeCategory.id);
-    const { data: sd } = await sq.order("view_count", { ascending: false }).limit(12);
-    svcRows = sd || [];
-  } catch (_) {}
+  const svcRows = await svcPromise;
+  // remembered, so the next open can draw the services row straight away from the saved copy
+  try { if (!activeCategory && svcRows.length) writeOfflineHomeCache({ ...(getOfflineHomeCache() || {}), services: svcRows }); } catch (_) {}
   html += homeQuickActionsHtml();
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
@@ -271,7 +276,7 @@ async function renderHome() {
 
   if (typeof lvHomeBand === "function") html += lvHomeBand();
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-table-cells-large"></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
-  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-bag-shopping"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-bell-concierge"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-gift"></i> Packages</button></div>`;
+  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" title="Products" aria-label="Products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-bag-shopping"></i></button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" title="Services" aria-label="Services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-bell-concierge"></i></button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" title="Packages" aria-label="Packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-gift"></i></button></div>`;
   html += `<div class="browse-filter-toolbar">
     <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()" aria-label="Filter" title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
     <input type="search" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search products, packages, or services" />

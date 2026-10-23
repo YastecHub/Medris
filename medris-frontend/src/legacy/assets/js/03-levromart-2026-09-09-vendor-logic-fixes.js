@@ -180,10 +180,10 @@
       </div>
     </div>
     <div class="vd-seg" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
-      <button type="button" class="vd-tab active" role="tab" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
-      <button type="button" class="vd-tab" role="tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>
-      <button type="button" class="vd-tab" role="tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
-      <button type="button" class="vd-tab" role="tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
+      <button type="button" class="vd-tab active" role="tab" data-filter="all" title="All vendors" aria-label="All vendors" onclick="setVendorsListingFilter('all')"><i class="fa-solid fa-store" aria-hidden="true"></i></button>
+      <button type="button" class="vd-tab" role="tab" data-filter="buy" title="Buy" aria-label="Buy" onclick="setVendorsListingFilter('buy')"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i></button>
+      <button type="button" class="vd-tab" role="tab" data-filter="rent" title="Rent" aria-label="Rent" onclick="setVendorsListingFilter('rent')"><i class="fa-solid fa-key" aria-hidden="true"></i></button>
+      <button type="button" class="vd-tab" role="tab" data-filter="both" title="Buy and rent" aria-label="Buy and rent" onclick="setVendorsListingFilter('both')"><i class="fa-solid fa-right-left" aria-hidden="true"></i></button>
     </div>
     <div class="vd-tools">
       <label class="vd-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorSearchInput" placeholder="Search vendors…" oninput="filterVendorsDirectory()" autocomplete="off" enterkeyhint="search" aria-label="Search vendors or products" /></label>

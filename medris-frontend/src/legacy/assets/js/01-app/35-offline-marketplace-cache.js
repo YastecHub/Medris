@@ -25,6 +25,7 @@ function writeOfflineHomeCache(data) {
       recentProducts: data.recentProducts || [],
       packages: data.packages || [],
       carouselSlides: data.carouselSlides || [],
+      services: data.services || (offlineCatalog && offlineCatalog.services) || [],
       categoriesWithListings: data.categoriesWithListings || []
     };
     localStorage.setItem(OFFLINE_HOME_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: compact }));
@@ -87,7 +88,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += homeQuickActionsHtml();
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
-  const trendingServices = deterministicHourlyShuffle((() => { const seen = new Set(); return [...(trending || []), ...(cache.browseProducts || []).filter(inScope)].filter(p => p && p.is_service && !seen.has(p.id) && seen.add(p.id)).slice(0, 12); })(),"trending-services");
+  const trendingServices = deterministicHourlyShuffle((() => { const seen = new Set(); return [...(trending || []), ...(cache.services || []).filter(inScope), ...(cache.browseProducts || []).filter(inScope)].filter(p => p && p.is_service && !seen.has(p.id) && seen.add(p.id)).slice(0, 12); })(),"trending-services");
   if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   // only when the services row below exists, so this strip never ends up right next to the sell/rent strip
   // this quick repaint may not know the services yet (the live load adds them): keep their place so nothing jumps when they arrive
