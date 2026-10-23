@@ -2810,6 +2810,13 @@ html:root[data-theme="dark"]:root body #app#app .levro-storefront-sheet-item i[c
 html:root[data-theme="black"]:root body #app#app .levro-storefront-sheet-item i,
 html:root[data-theme="black"]:root body #app#app .levro-storefront-sheet-item i[class]{color:#fff!important;-webkit-text-fill-color:#fff!important}
 
+/* Vendors: Grid / List / Map are icons again, centred; the Filters button is just the icon */
+html:root:root:root:root body #app .vd-page .vd-head{display:flex!important;justify-content:center!important;margin:0 0 .7rem!important}
+html:root:root:root:root body #app .vd-page .vd-views{display:inline-flex!important;grid-template-columns:none!important;width:auto!important;gap:2px!important;padding:3px!important;border:0!important;border-radius:14px!important;background:color-mix(in srgb,var(--text,#111) 7%,transparent)!important}
+html:root:root:root:root body #app .vd-page .vd-views button.vd-view{width:3rem!important;height:2.2rem!important;min-width:0!important;padding:0!important;display:inline-grid!important;place-items:center!important;border-radius:11px!important;font-size:0!important}
+html:root:root:root:root body #app .vd-page .vd-views button.vd-view svg{width:19px!important;height:19px!important;stroke:currentColor!important;fill:none!important}
+html:root:root:root:root body #app .vd-page .vd-tools button#vendorsFiltersToggle.vd-filter-btn{width:40px!important;min-width:40px!important;height:40px!important;padding:0!important;gap:0!important;display:inline-grid!important;place-items:center!important}
+html:root:root:root:root body #app .vd-page .vd-filter-label{display:none!important}
 /* Storefront: the details start right under the cover (other rules pulled them up into it); only the picture overlaps the cover */
 html:root:root body #app#app .storefront-profile .storefront-cover{margin-bottom:0!important}
 html:root:root body #app#app .storefront-profile .storefront-profile-body{display:flow-root!important;margin-top:0!important;top:auto!important;transform:none!important}
