@@ -2681,3 +2681,7 @@ html body #app .storefront-profile .storefront-banner-more,html body #app .store
 html body #app .storefront-profile .storefront-own-more-icon{background:transparent!important;color:var(--text)!important}
 html body #app .storefront-profile .storefront-banner-more i,html body #app .storefront-profile .storefront-own-more-icon i{font-size:.85rem!important;transition:transform .22s ease}
 body:has(#storefrontMoreSheet.is-open) #app .storefront-profile .storefront-banner-more i,body:has(#storefrontMoreSheet.is-open) #app .storefront-profile .storefront-own-more-icon i{transform:rotate(180deg)}
+
+/* Storefront arrow: just the arrow, no circle or background behind it */
+html body #app .storefront-profile .storefront-banner-more,html body #app .storefront-profile .storefront-own-more-icon{background:transparent!important;background-color:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important}
+html body #app .storefront-profile .storefront-banner-more i{color:#fff!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55))}
