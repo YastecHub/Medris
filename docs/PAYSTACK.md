@@ -261,3 +261,11 @@ change them in that one file. The fee rounds up to the next kobo, so Levromart i
 
 The checkout screen (#96), payouts to vendors (#98), refunds (#99). Orders already paid through the old Vercel functions are
 unchanged.
+
+## Levromart's own fees through Paystack (issue #100)
+
+- **Endpoints:** `POST /api/v1/shops/mine/commission/paystack/initialize` (all owed commission as one payment) and `POST /api/v1/listings/{product|package}/{id}/paystack/initialize` (the ₦999 monthly fee). Both are behind the same `PAYSTACK_CHECKOUT_ENABLED` switch as order payments, record a `paystack_transactions` row (`commission` / `listing_fee`), and are settled by the same webhook/`GET /payments/paystack/{reference}` path as orders, which calls the unchanged settlement code (`settleReference`, `settleListingPaymentFromWebhook`). Same references (`commission_…`, `levro_listing_…`), same metadata, same amounts as the old flow, so the same listing activates, the same charges are settled and the same shop unlocks.
+- **No double payment:** one open attempt per listing and per vendor (migration `0009`, not applied until the founder approves), a double tap gets the same link back, and an old open attempt is checked with Paystack before a new one is made. A listing already paid up is never charged again.
+- **App:** with the switch on, the commission "Pay now" uses the new endpoint; with it off the old flow runs. The listing endpoint exists, but the app's monthly listing screen currently takes a manual bank transfer, so it is not switched.
+- **Old endpoints that can go after go-live (not removed here):** `/api/vendor-payments` actions `pay-commission`, `start-listing-payment` (and the verify/consume listing actions), `/api/listing-payments`; their copies in `medris-backend/src/modules/vendor-payments/`. `setup-monthly-billing` (`billing_…` card billing) is untouched.
+- **Decision for the founder:** these fees are charged at exactly ₦999 / the owed commission, with no Paystack fee added (as today). Adding the fee on top would be a one-line change per flow.

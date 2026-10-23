@@ -43,6 +43,11 @@ export const v1 = {
     initializePaystack: (orderId: string) => v1Request<PaystackInitializeResult>("POST", `orders/${encodeURIComponent(orderId)}/paystack/initialize`),
     /** Where the payment stands; settles it first when it is still open. */
     paystackStatus: (reference: string) => v1Request<{ status: string; orderStatus: string | null }>("GET", `payments/paystack/${encodeURIComponent(reference)}`),
+    /** Pays all owed commission by card (issue #100). Returns the Paystack page to send the vendor to. */
+    payCommission: () => v1Request<{ authorizationUrl: string; accessCode: string; reference: string; amountNaira: number }>("POST", "shops/mine/commission/paystack/initialize"),
+    /** Pays a listing's ₦999 monthly fee by card (issue #100). */
+    payListing: (kind: "product" | "package", listingId: string) =>
+      v1Request<{ authorizationUrl: string; accessCode: string; reference: string; amountNaira: number } | { alreadyActive: true; paidUntil: string | null }>("POST", `listings/${kind}/${encodeURIComponent(listingId)}/paystack/initialize`),
     /** Paystack's bank list (cached on the server). */
     banks: () => v1Request<Array<{ code: string; name: string }>>("GET", "payments/banks"),
     /** Looks up the name on a bank account so the vendor can confirm it is theirs. */
