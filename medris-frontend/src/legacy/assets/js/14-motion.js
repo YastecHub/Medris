@@ -714,3 +714,27 @@
   }
   paintCached();
 })();
+
+/* ===== Back arrows take you back to where you were, not to Home =====
+   The app counts how many screens deep you are (stored on each history entry). A back arrow goes one screen back when
+   there is one, and only falls back to the given screen (Home) when this is the first screen of the visit. */
+(function () {
+  "use strict";
+  function depth() { try { return (history.state && history.state.lvDepth) || 0; } catch (_) { return 0; } }
+  var orig = window.navigate;
+  if (typeof orig === "function") {
+    window.navigate = async function (view, params, pushHistory) {
+      var prev = depth(), pushes = pushHistory !== false && !(pushHistory && typeof pushHistory === "object" && pushHistory.replace === true);
+      var r = await orig.apply(this, arguments);
+      try {
+        var st = history.state;
+        if (pushes && st && st.view === view && st.lvDepth == null) history.replaceState(Object.assign({}, st, { lvDepth: prev + 1 }), "");
+      } catch (_) {}
+      return r;
+    };
+  }
+  window.lvGoBack = function (fallback) {
+    if (depth() > 0) history.back();
+    else if (typeof navigate === "function") navigate(fallback || "home");
+  };
+})();
