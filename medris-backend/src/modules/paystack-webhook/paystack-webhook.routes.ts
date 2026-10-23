@@ -29,3 +29,19 @@ export const paystackWebhook = defineRoute({
     500: jsonResponse(z.object({ error: z.string() }), "Could not process the event; Paystack will send it again."),
   },
 });
+
+/** Used by the post-deploy health check (scripts/payments-health.mjs): reports the key MODE only, never the key. */
+export const paymentsHealth = defineRoute({
+  method: "get",
+  path: "/payments/health",
+  tags,
+  summary: "Are payments configured? (the key mode only, never the key)",
+  description: "Public. `keyMode` is `test` for an `sk_test_` key, `live` for an `sk_live_` key, `missing` or `unknown` otherwise.",
+  security: only("paystackSignature"),
+  responses: {
+    200: jsonResponse(
+      z.object({ data: z.object({ keyMode: z.enum(["test", "live", "missing", "unknown"]), checkoutEnabled: z.boolean() }) }),
+      "The mode and whether Paystack checkout is switched on.",
+    ),
+  },
+});

@@ -1,0 +1,43 @@
+name: Paystack test-mode smoke test (staging)
+
+# A real Paystack TEST-MODE run against the STAGING backend: pay with a test card, check the order, refund it, check the money
+# screens. It refuses to start unless the key is an sk_test_ key and the address looks like staging (scripts/paystack-smoke.mjs).
+# It never runs on pull requests and never against production.
+#
+# Needs these GitHub Actions secrets, added by the Paystack account holder (nobody pastes them anywhere else):
+#   PAYSTACK_TEST_SECRET_KEY, STAGING_BACKEND_URL, SMOKE_BUYER_TOKEN, SMOKE_ADMIN_TOKEN, SMOKE_ORDER_ID
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "40 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke test on staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: medris-frontend
+      - name: Smoke test
+        env:
+          PAYSTACK_TEST_SECRET_KEY: ${{ secrets.PAYSTACK_TEST_SECRET_KEY }}
+          STAGING_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
+          SMOKE_BUYER_TOKEN: ${{ secrets.SMOKE_BUYER_TOKEN }}
+          SMOKE_ADMIN_TOKEN: ${{ secrets.SMOKE_ADMIN_TOKEN }}
+          SMOKE_ORDER_ID: ${{ secrets.SMOKE_ORDER_ID }}
+        run: |
+          if [ -z "$PAYSTACK_TEST_SECRET_KEY" ] || [ -z "$STAGING_BACKEND_URL" ]; then
+            echo "The staging secrets are not set yet (see the comment at the top of this file). Skipping."
+            exit 0
+          fi
+          node scripts/paystack-smoke.mjs
