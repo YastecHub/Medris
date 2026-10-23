@@ -11,6 +11,7 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
   "adminLog",
   "adminInventory",
   "adminUsers",
+  "adminPayments",
   "adminR2Migration",
   "adminR2Optimize"
 ]);
@@ -38,6 +39,7 @@ function adminNavHtml(active) {
     ["adminPanel", "fa-user-check", "Vendors"],
     ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
+    ["adminPayments", "fa-credit-card", "Payments"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminInventory", "fa-boxes-stacked", "Inventory"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],

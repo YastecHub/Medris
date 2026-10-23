@@ -2554,3 +2554,15 @@ html body #app .lb-page .lb-hero>.lb-hero-people{position:absolute!important;rig
 .lv-payout-t{display:flex;flex-direction:column;flex:1;min-width:0}
 .lv-payout-t small{color:var(--muted);font-size:.78rem}
 .lv-payout-d{font-size:.76rem;color:var(--muted);flex:none}
+
+/* Admin Payments area (issues #98, #99, #101) */
+.lv-ap-totals{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin:.8rem 0}
+.lv-ap-list-wrap{margin-top:.8rem}
+.lv-ap-row{display:flex;gap:.6rem;align-items:center;justify-content:space-between;padding:.7rem .8rem;margin:.4rem 0;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.lv-ap-row.lv-ap-col{flex-direction:column;align-items:flex-start}
+.lv-ap-main{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.lv-ap-main small{color:var(--muted);font-size:.78rem}
+.lv-ap-link{font-size:.78rem;color:var(--primary);cursor:pointer}
+.lv-ap-acts{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end}
+.lv-ap-list{margin:.4rem 0 0 1rem;font-size:.82rem}
+@media (min-width:700px){.lv-ap-totals{grid-template-columns:repeat(4,1fr)}}

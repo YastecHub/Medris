@@ -245,7 +245,7 @@ const AI_NAV_TAG_RE = /`?\[\[NAV:([^\]]*)\]\]`?/;
 const AI_NAV_ALLOWED_VIEWS = new Set([
   "home", "profile", "buyerProfile", "vendors", "storefront", "productDetail", "packageDetail", "wishlist", "cart", "requestEquipment", "buyerOrders", "messages", "settings", "customerFollowing",
   "vendorDashboard", "vendorProducts", "vendorPackages", "vendorOrders", "vendorEditProfile", "vendorRequests", "vendorSuggestionsInbox", "supportRequest",
-  "adminPanel", "adminCarousel", "adminLinkLibrary", "adminPeople", "adminFinance", "adminDisputes", "adminSupportRequests", "adminFeedback", "adminUsers", "adminLog",
+  "adminPanel", "adminCarousel", "adminLinkLibrary", "adminPeople", "adminFinance", "adminDisputes", "adminPayments", "adminSupportRequests", "adminFeedback", "adminUsers", "adminLog",
 ]);
 function parseAiNavTag(content) {
   const str = String(content || "");

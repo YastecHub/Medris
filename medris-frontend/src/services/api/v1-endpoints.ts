@@ -62,6 +62,19 @@ export const v1 = {
     myPayoutAccount: () => v1Request<{ verified: boolean; accountName: string | null; bankName: string | null; accountLast4: string | null }>("GET", "shops/mine/payout-account"),
   },
 
+  /** The admin Payments area (issues #98, #99, #101). Admins only. */
+  adminPayments: {
+    summary: () => v1Request<Record<string, unknown>>("GET", "admin/payments/summary"),
+    transactions: (query: Record<string, string | number | undefined>) => v1Request<Array<Record<string, unknown>>>("GET", "admin/payments/transactions", { query }),
+    refunds: (query: Record<string, string | number | undefined>) => v1Request<Array<Record<string, unknown>>>("GET", "admin/payments/refunds", { query }),
+    reports: () => v1Request<Array<Record<string, unknown>>>("GET", "admin/payments/reconciliation"),
+    payouts: (query: Record<string, string | number | undefined>) => v1Request<Array<Record<string, unknown>>>("GET", "admin/payouts", { query }),
+    release: (id: string) => v1Request<{ id: string; status: string }>("POST", `admin/payouts/${encodeURIComponent(id)}/release`),
+    hold: (id: string, reason: string) => v1Request<{ id: string; status: string }>("POST", `admin/payouts/${encodeURIComponent(id)}/hold`, { body: { reason } }),
+    markManual: (id: string, note: string) => v1Request<{ id: string; status: string }>("POST", `admin/payouts/${encodeURIComponent(id)}/mark-manual`, { body: { note } }),
+    refund: (orderId: string, body: { amountNaira?: number; reason: string }) => v1Request<{ orderId: string; amount: number; status: string }>("POST", `admin/orders/${encodeURIComponent(orderId)}/refund`, { body }),
+  },
+
   notifications: {
     list: (readSince?: string, limit?: number) => v1Request<NotificationRowV1[]>("GET", "notifications", { query: { readSince, limit } }),
     unreadCount: (filter: { type?: string; after?: string } = {}) => v1Request<{ count: number }>("GET", "notifications/unread-count", { query: filter }),

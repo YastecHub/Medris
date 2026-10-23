@@ -189,10 +189,10 @@ export class VendorPayoutsService {
     });
   }
 
-  async list(me: Identity, input: { status?: string; limit: number; offset: number }) {
+  async list(me: Identity, input: { status?: string; vendorId?: string; orderId?: string; from?: string; to?: string; limit: number; offset: number }) {
     return this.db().asService(async (tx) => {
       await this.requireAdmin(tx, me);
-      const rows = await new VendorPayoutsRepository(tx).all(input.status ?? null, input.limit, input.offset);
+      const rows = await new VendorPayoutsRepository(tx).all(input.status ?? null, input.limit, input.offset, input);
       return rows.map((r) => ({ ...r, amount: koboToNaira(Number(r.amount_kobo)), commission: koboToNaira(Number(r.commission_kobo)) }));
     });
   }
