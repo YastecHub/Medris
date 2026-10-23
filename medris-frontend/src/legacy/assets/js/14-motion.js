@@ -157,3 +157,131 @@
   document.addEventListener("touchend", end, { passive: true });
   document.addEventListener("touchcancel", end, { passive: true });
 })();
+
+/* ===== Pay now with Paystack (issue #96) =====
+   Shown only when the backend says the Paystack switch is on. "Pay the vendor directly" is today's bank-transfer flow,
+   untouched. The amount always comes from the server; nothing is marked paid in the browser. */
+(function () {
+  "use strict";
+  var origDirect = window.openVendorDirectPayment;
+  var onCache = null, onAt = 0;
+  function naira(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
+  function paystackOn() {
+    if (onCache !== null && Date.now() - onAt < 60000) return Promise.resolve(onCache);
+    if (!window.levroData || !window.levroData.payments) return Promise.resolve(false);
+    return window.levroData.payments.config().then(function (r) { onCache = !!(r && r.data && r.data.paystackCheckout); onAt = Date.now(); return onCache; }, function () { return false; });
+  }
+  window.lvPaystackOn = paystackOn;
+  function remember(orderId, m) { try { localStorage.setItem("lv-pay-method:" + orderId, m); } catch (_) {} }
+  function remembered(orderId) { try { return localStorage.getItem("lv-pay-method:" + orderId) || ""; } catch (_) { return ""; } }
+  function closeModal() { var m = document.getElementById("lvPayModal"); if (m) m.remove(); }
+  function openModal(html) {
+    closeModal();
+    var m = document.createElement("div");
+    m.id = "lvPayModal"; m.className = "modal lv-pm open";
+    m.innerHTML = '<div class="modal-content lv-pm-card" role="dialog" aria-modal="true" aria-labelledby="lvPmTitle">' + html + "</div>";
+    m.addEventListener("click", function (e) { if (e.target === m) closeModal(); });
+    document.body.appendChild(m);
+    return m;
+  }
+
+  // The choice: Pay now (Paystack) or Pay the vendor directly
+  window.openVendorDirectPayment = async function (orderId) {
+    var args = arguments;
+    if (!orderId || typeof session === "undefined" || !session) return origDirect.apply(this, args);
+    var on = await paystackOn();
+    if (!on) return origDirect.apply(this, args);
+    var last = remembered(orderId);
+    openModal(
+      '<div class="lv-pm-head"><h3 id="lvPmTitle">How do you want to pay?</h3><button type="button" class="icon-btn" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<button type="button" class="lv-pm-opt' + (last === "paystack" ? " pick" : "") + '" data-m="paystack"><span class="ico"><i class="fa-solid fa-bolt"></i></span><span class="t"><b>Pay now</b><small>Card, bank transfer or USSD through Paystack. Levromart holds the money until you have your item.</small></span></button>' +
+      '<button type="button" class="lv-pm-opt' + (last === "direct" ? " pick" : "") + '" data-m="direct"><span class="ico"><i class="fa-solid fa-building-columns"></i></span><span class="t"><b>Pay the vendor directly</b><small>Transfer to the vendor\'s bank account, then tap "I\'ve made the payment".</small></span></button>'
+    );
+    document.getElementById("lvPayModal").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-m]"); if (!b) return;
+      remember(orderId, b.dataset.m);
+      if (b.dataset.m === "direct") { closeModal(); origDirect.apply(window, args); }
+      else startPaystack(orderId);
+    });
+  };
+
+  // Step 2: ask the server what to pay, show it, then continue to Paystack
+  async function startPaystack(orderId) {
+    openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">Getting your payment ready…</h3></div><p class="muted" role="status" aria-live="polite">Please wait a moment.</p>');
+    var r = await window.levroData.payments.initialize(orderId);
+    if (r.error || !r.data) {
+      openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">We could not start the payment</h3></div><p class="lv-pm-err" role="alert">' + esc((r.error && r.error.message) || "Please try again.") + '</p><div class="lv-pm-actions"><button type="button" class="btn" onclick="document.getElementById(\'lvPayModal\')?.remove()">Close</button></div>');
+      return;
+    }
+    var d = r.data;
+    openModal(
+      '<div class="lv-pm-head"><h3 id="lvPmTitle">Pay ' + esc(naira(d.amountNaira)) + '</h3></div>' +
+      '<ul class="lv-pm-sum"><li><span>Order amount</span><b>' + esc(naira(d.orderAmountNaira)) + '</b></li><li><span>Paystack fee</span><b>' + esc(naira(d.feeNaira)) + '</b></li><li class="tot"><span>You pay</span><b>' + esc(naira(d.amountNaira)) + '</b></li></ul>' +
+      '<p class="muted" style="font-size:.8rem">The vendor is paid after you confirm you have your order.</p>' +
+      '<div class="lv-pm-actions"><button type="button" class="btn btn-outline" onclick="document.getElementById(\'lvPayModal\')?.remove()">Cancel</button><button type="button" class="btn" id="lvPmGo">Continue to Paystack</button></div>'
+    );
+    var go = document.getElementById("lvPmGo");
+    go.addEventListener("click", function () {
+      if (go.disabled) return; go.disabled = true; go.textContent = "Opening Paystack…";   // a second tap must not open a second payment
+      openCheckout(orderId, d);
+    });
+  }
+
+  function loadInline() {
+    if (window.PaystackPop) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var s = document.createElement("script");
+      s.src = "https://js.paystack.co/v2/inline.js"; s.async = true;
+      var t = setTimeout(function () { resolve(false); }, 4000);
+      s.onload = function () { clearTimeout(t); resolve(!!window.PaystackPop); };
+      s.onerror = function () { clearTimeout(t); resolve(false); };
+      document.head.appendChild(s);
+    });
+  }
+  async function openCheckout(orderId, d) {
+    var popup = false;
+    try {
+      if (await loadInline()) {
+        var pop = new window.PaystackPop();
+        pop.resumeTransaction(d.accessCode, {
+          onSuccess: function () { closeModal(); window.lvConfirmPaystack(d.reference, orderId); },
+          onCancel: function () { closeModal(); showToast("Payment cancelled. Nothing was charged.", "info"); },
+          onError: function () { closeModal(); showToast("Payment could not be completed. Please try again.", "error"); }
+        });
+        popup = true;
+      }
+    } catch (_) { popup = false; }
+    if (!popup) { location.href = d.authorizationUrl; }   // popup blocked or unavailable: go to Paystack's page
+  }
+
+  // After Paystack: "Confirming your payment…", then Paid or not completed. Used by the popup and the return link.
+  window.lvConfirmPaystack = async function (reference, orderId) {
+    openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">Confirming your payment…</h3></div><p class="muted" role="status" aria-live="polite">This usually takes a few seconds. Please do not close the app.</p><div class="lv-pm-spin" aria-hidden="true"></div>');
+    var outcome = await window.levroData.payments.confirm(reference);
+    closeModal();
+    if (outcome === "paid") showToast("Paid. Thank you!", "success");
+    else if (outcome === "failed") showToast("Payment not completed. You were not charged. Please try again.", "error");
+    else showToast("We could not confirm that payment yet. It may still be processing; check your order in a minute.", "info");
+    if (orderId) { try { await navigate("orderDetail", { orderId: orderId }); } catch (_) {} }
+  };
+
+  // Order page: a short line saying the order was paid with Paystack (buyer and vendor wording)
+  var origDetail = window.renderOrderDetail;
+  if (typeof origDetail === "function") {
+    window.renderOrderDetail = async function (orderId) {
+      var html = await origDetail.apply(this, arguments);
+      try {
+        if (typeof html !== "string" || !orderId || typeof session === "undefined" || !session || !(await paystackOn())) return html;
+        var q = await Promise.all([
+          sb.from("payments").select("provider_reference,status").eq("order_id", orderId).eq("status", "paid").like("provider_reference", "lvm_ord_%").limit(1),
+          sb.from("orders").select("buyer_id").eq("id", orderId).maybeSingle()
+        ]);
+        var paid = q[0] && q[0].data && q[0].data[0];
+        if (!paid) return html;
+        var buyer = q[1] && q[1].data && String(q[1].data.buyer_id) === String(session.user.id);
+        var line = buyer ? "Paid with Paystack. Levromart holds the money until you confirm delivery." : "Paid. The money is held by Levromart and sent to your bank after the buyer confirms.";
+        return '<div class="lv-pm-note" role="status"><i class="fa-solid fa-shield-halved"></i><span>' + esc(line) + "</span></div>" + html;
+      } catch (_) { return html; }
+    };
+  }
+})();
