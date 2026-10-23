@@ -385,14 +385,14 @@ async function renderStorefrontInner(vendorId) {
   let html = `<section class="storefront-profile" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
     <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
       ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
-      ${storefrontMoreItems && !isOwnStorefront ? `<button class="storefront-banner-more" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
+      ${storefrontMoreItems && !isOwnStorefront ? `<button class="storefront-banner-more" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-chevron-down"></i></button>` : ""}
     </div>
     <div class="storefront-profile-body">
       <div class="storefront-avatar-row">
         ${logo}
       </div>
       <div class="storefront-profile-actions storefront-public-actions">
-        ${isOwnStorefront ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-more-icon" type="button" aria-label="More options" title="More options" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
+        ${isOwnStorefront ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-more-icon" type="button" aria-label="More options" title="More options" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-chevron-down"></i></button>` : ""}
         ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
       </div>
       <div class="storefront-name-row">
