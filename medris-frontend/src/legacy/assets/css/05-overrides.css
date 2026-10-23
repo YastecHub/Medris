@@ -2801,3 +2801,11 @@ html:root body #vendorProfileImageLightbox#vendorProfileImageLightbox img{width:
 html:root body #vendorProfileImageLightbox#vendorProfileImageLightbox .vendor-profile-image-close{display:none!important}
 html:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar img{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:50%!important;display:block!important}
 html:root:root body #app#app .storefront-profile .storefront-profile-name{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+
+/* Store options sheet: plain outlined icons, black in light mode and white in dark mode, no grey tile behind them */
+html:root:root body #app#app .levro-storefront-sheet-item i,
+html:root:root body #app#app .levro-storefront-sheet-item i[class]{background:none!important;background-image:none!important;box-shadow:none!important;border:0!important;border-radius:0!important;width:1.6rem!important;height:1.6rem!important;color:#0f172a!important;-webkit-text-fill-color:#0f172a!important;font-size:1.1rem!important}
+html:root[data-theme="dark"]:root body #app#app .levro-storefront-sheet-item i,
+html:root[data-theme="dark"]:root body #app#app .levro-storefront-sheet-item i[class],
+html:root[data-theme="black"]:root body #app#app .levro-storefront-sheet-item i,
+html:root[data-theme="black"]:root body #app#app .levro-storefront-sheet-item i[class]{color:#fff!important;-webkit-text-fill-color:#fff!important}
