@@ -156,3 +156,52 @@ The bodies of the database functions (`create_payment_intent`, `create_commissio
 functions) and the triggers that move an order after `payments.status = paid`; the full `buyerCancel` and `vendorDecline`
 paths; `api/vendor-payments.js` beyond the Paystack calls; whether the Paystack dashboard webhook points at Vercel or at the
 backend; Paystack account settings (transfers, OTP).
+
+---
+
+## The new webhook (issue #94): `POST /api/v1/payments/paystack/webhook`
+
+Added next to the old one; **the old webhook (`/api/paystack-webhook`, Vercel and its backend copy) keeps working until the URL
+in the Paystack dashboard is switched** (Paystack allows one URL per mode). Before switching, migration 0005 (the ledger tables,
+issue #93) must be applied to the database.
+
+What it does, in order:
+1. Reads the **raw body** and checks `x-paystack-signature` (HMAC-SHA512, constant time). Invalid or missing: `401`, nothing stored.
+2. Builds an **event key** (`<event>:<Paystack's own id>`, or a hash of the body) and, in one database transaction, takes a lock on
+   that key and records the event in `paystack_events`. If it was already processed the answer is `200` and nothing happens, even
+   when two copies arrive at the same moment.
+3. `charge.success`: asks Paystack to **verify** the payment first (before opening the transaction) and never trusts the event's
+   amount. If the payment is in `paystack_transactions`, the amount in kobo and the currency must match what was recorded; if not,
+   nothing is settled, the event is stored as `amount_mismatch` and admins get an alert. If it is not in the ledger (a payment
+   started by today's Vercel functions), it is settled exactly like the old webhook: ₦999 listing activation, otherwise commission,
+   billing or order payment (`settleReference`).
+4. `transfer.success|failed|reversed` update `vendor_payouts` by `transfer_reference`; `refund.processed|failed` update
+   `paystack_refunds`; `charge.dispute.create|remind|resolve` alert admins and, on `create`, put the order's **pending** payouts on
+   hold. A failed or reversed transfer and a failed refund alert admins. Unknown events are stored and answered `200`.
+5. If the verify call cannot finish (timeout, Paystack down) the event is stored **unprocessed** and answered `200`; the
+   reconciliation job settles it. If something else goes wrong the answer is `500`, the reason is stored on the event, and
+   Paystack sends it again.
+
+### State machine (a record only moves forward; anything else is stored as "ignored: out of order")
+
+| Record | Allowed moves |
+|---|---|
+| Payout | pending → processing, success, failed, reversed, on_hold · processing → success, failed, reversed, on_hold · **success → reversed** (the bank took it back) · failed and reversed are final · on_hold → any (an admin decides) |
+| Payment attempt | initialized → success, failed, abandoned · failed, abandoned → success (a late success) · success → refunded, partially_refunded |
+| Refund | pending → processing, processed, failed · processing → processed, failed · failed → processed · processed is final |
+
+Examples: `transfer.success` after `transfer.reversed` is ignored; `transfer.reversed` after `transfer.success` is applied; a second
+`charge.success` for a settled payment is a duplicate.
+
+Not done here (later issues): moving the **order** itself on `refund.processed` (#99), creating payouts and sending transfers (#98),
+notifying vendors about payouts (#98).
+
+### Reconciliation job: `paystack-reconcile`
+
+For a webhook that never arrives. Every 10 minutes it asks Paystack about payments left `initialized` for more than 15 minutes and
+payouts left `processing` for more than 30, and settles them the way the webhook would have, using the **same event key**, so a
+webhook that arrives later is a duplicate. A call that cannot be answered is left for the next run. Safe to run as often as you like.
+
+- It is a backend job (`POST /api/v1/jobs/paystack-reconcile`, header `x-cron-secret: <CRON_SECRET>`). It is **not** in pg_cron.
+  Schedule it with Heroku Scheduler (`*/10 * * * *`) calling that URL, or run it by hand the same way.
+- Answer: `{ "job": "paystack-reconcile", "result": { "payments": n, "payouts": n, "settled": n, "problems": n } }`.
