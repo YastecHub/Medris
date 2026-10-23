@@ -110,6 +110,7 @@ npm run db:migrate -w medris-backend -- --apply --confirm aws-0-<region>.pooler.
 | `0002_backend_auth_sessions.sql` | adds empty table `backend_sessions` (for `AUTH_BACKEND_SESSIONS=true`) - pending, needs approval |
 | `0003_backend_read_last_sign_in.sql` | lets `medris_api` read `auth.users.last_sign_in_at` (chat "last seen" in the backend) - pending, needs approval |
 | `0004_backend_live_notify.sql` | a NOTIFY trigger on the 22 live tables, so the backend's `/api/v1/live` can push row changes (changes no data) - pending, needs approval |
+| `0005_paystack_ledger.sql` | four empty tables for Paystack payments (attempts, webhook events, vendor payouts, refunds) with row-level security; changes nothing existing - pending, needs founder approval |
 
 The four clean-up migrations from manual section 11 (duplicate indexes, duplicate sectors, retiring `inventory` and
 search v1) and the grant that went with the `inventory` move were **removed** on 17 Oct 2026: none of them is needed
