@@ -221,3 +221,11 @@ webhook that arrives later is a duplicate. A call that cannot be answered is lef
 - **Holds:** open dispute, Paystack chargeback, no verified payout account, or nothing left after commission/refunds. Failed transfers retry after 10 min and 1 h (new reference each time); a third failure puts the payout on hold. An empty Paystack balance leaves the payout pending for 6 h and tells admins at most once a day.
 - **Admin:** `GET /admin/payouts`, `POST /admin/payouts/{id}/release | hold | mark-manual` (logged in `admin_actions`). Vendor: `GET /shops/mine/payouts` and the "Your payouts" list on the Earnings page.
 - **Why no double transfer:** one queue row per order; one claim at a time (`skip locked` + status flip); one reference per attempt, which Paystack also refuses to reuse; a failed or reversed payout gets a new reference only after Paystack has said the old one did not go through.
+
+## Refunds (issue #99)
+
+- **Cancellation:** migration `0008` queues a `pending` refund row in the same transaction as any cancellation of an order that has a successful Paystack card payment (one row per payment; repeats are harmless). **Not applied until the founder approves.**
+- **Admin refund:** `POST /api/v1/admin/orders/{orderId}/refund` `{ amountNaira?, reason }`. Refundable = paid for the order through Paystack − refunds made or under way. Refused when the vendor's payout is processing, sent or paid by hand, when a refund is already under way, or when the amount is too large. The order row and the payout row are locked, so a refund and a payout can never take the same money.
+- **Worker:** job `paystack-refunds` (every minute) flips a refund to `processing` (committed) and then calls Paystack. Paystack saying no → `failed` + admins told. No answer → left `processing`, admins told to check the dashboard, **never** retried by itself (Paystack has no idempotency key for refunds). `refund.processed` / `refund.failed` webhooks (#94) finish the status.
+- **Decision needed (assumed):** the buyer's Paystack fee is not refunded (Paystack does not return fees). Change it by refunding `amount_kobo` of the whole transaction instead of the order amount.
+- **Not done:** the "Refund via Paystack" button on the dispute screen, rental-deposit refunds on return, and chargeback evidence links (webhook already holds the payout and notifies admins).
