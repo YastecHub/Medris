@@ -1,3 +1,5 @@
+import type { DataContext } from "../../database/context.js";
+type Executor = Parameters<Parameters<DataContext["asService"]>[0]>[0]; // a service-role transaction
 import { getDataContext } from "../../database/index.js";
 import { BillingRepository, type ListingRow, type ListingTable } from "../../database/repositories/billing.repository.js";
 import { UsersRepository } from "../../database/repositories/users.repository.js";
@@ -149,17 +151,20 @@ export async function verifyAndActivateListing(
 }
 
 /** Marks the optional listing_payment_intents row paid; failures are ignored. */
-async function markIntentPaid(reference: string): Promise<void> {
+async function markIntentPaid(reference: string, within?: Executor): Promise<void> {
   try {
-    await getDataContext().asService((db) => new BillingRepository(db).markListingIntentPaid(reference, new Date().toISOString()));
+    // inside a caller's transaction, a failure is contained in a savepoint so it cannot abort the caller's work
+    if (within) await within.transaction((sp) => new BillingRepository(sp).markListingIntentPaid(reference, new Date().toISOString()));
+    else await getDataContext().asService((db) => new BillingRepository(db).markListingIntentPaid(reference, new Date().toISOString()));
   } catch {
     /* reconciliation record only */
   }
 }
 
 /** Webhook path: activates the listing named in the Paystack metadata. Throws on mismatch (-> 500, Paystack retries). */
-export async function settleListingPaymentFromWebhook(reference: string, metadata: Record<string, unknown>): Promise<void> {
-  const data = getDataContext();
+export async function settleListingPaymentFromWebhook(reference: string, metadata: Record<string, unknown>, within?: Executor): Promise<void> {
+  // `within`: run inside the caller's transaction (the Paystack webhook) instead of opening our own
+  const data = within ? { asService: <T>(work: (db: Executor) => Promise<T>) => work(within) } : getDataContext();
   const table: ListingTable = metadata.kind === "product" ? "products" : "vendor_packages";
   const listingId = String(metadata.listing_id);
   const vendorId = String(metadata.vendor_id);
@@ -188,7 +193,7 @@ export async function settleListingPaymentFromWebhook(reference: string, metadat
   } catch {
     throw new Error("Could not activate the paid listing.");
   }
-  await markIntentPaid(reference);
+  await markIntentPaid(reference, within);
 }
 
 /* ------------------------------------------------------------- start payment */

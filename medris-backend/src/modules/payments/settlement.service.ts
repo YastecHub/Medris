@@ -1,3 +1,5 @@
+import type { DataContext } from "../../database/context.js";
+type Executor = Parameters<Parameters<DataContext["asService"]>[0]>[0]; // a service-role transaction
 import { getDataContext } from "../../database/index.js";
 import { BillingRepository } from "../../database/repositories/billing.repository.js";
 import { PaymentsRepository } from "../../database/repositories/orders.repository.js";
@@ -11,8 +13,9 @@ import type { PaystackTransaction } from "../../integrations/paystack.js";
  *  - anything else     a buyer's order payment ("medris_...").
  * Shared by the webhook (authoritative) and the browser-return verify call.
  */
-export async function settleReference(reference: string, txData: PaystackTransaction | undefined): Promise<void> {
-  const data = getDataContext();
+export async function settleReference(reference: string, txData: PaystackTransaction | undefined, within?: Executor): Promise<void> {
+  // `within`: run inside the caller's transaction (the Paystack webhook) instead of opening our own
+  const data = within ? { asService: <T>(work: (db: Executor) => Promise<T>) => work(within) } : getDataContext();
   const now = () => new Date().toISOString();
 
   if (reference.startsWith("commission_")) {

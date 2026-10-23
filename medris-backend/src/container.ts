@@ -23,6 +23,7 @@ import { SupportService } from "./modules/support/support.service.js";
 import { AdminDashboardService } from "./modules/admin-dashboard/admin-dashboard.service.js";
 import { BlocksService } from "./modules/blocks/blocks.service.js";
 import { ScheduledJobsService } from "./modules/scheduled-jobs/scheduled-jobs.service.js";
+import { PaystackWebhookService } from "./modules/paystack-webhook/paystack-webhook.service.js";
 import { CommissionService } from "./modules/commission/commission.service.js";
 import { PaymentClaimsService } from "./modules/payment-claims/payment-claims.service.js";
 import { CheckoutService } from "./modules/checkout/checkout.service.js";
@@ -80,6 +81,7 @@ export interface AppServices {
   adminDashboard: AdminDashboardService;
   blocks: BlocksService;
   scheduledJobs: ScheduledJobsService;
+  paystackWebhook: PaystackWebhookService;
   commission: CommissionService;
   paymentClaims: PaymentClaimsService;
   checkout: CheckoutService;
@@ -146,6 +148,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     adminDashboard: overrides.adminDashboard ?? new AdminDashboardService(data),
     blocks: overrides.blocks ?? new BlocksService(data),
     scheduledJobs: overrides.scheduledJobs ?? new ScheduledJobsService(data),
+    paystackWebhook: overrides.paystackWebhook ?? new PaystackWebhookService(data),
     commission: overrides.commission ?? new CommissionService(data),
     paymentClaims: overrides.paymentClaims ?? new PaymentClaimsService(data),
     checkout: overrides.checkout ?? new CheckoutService(data),
