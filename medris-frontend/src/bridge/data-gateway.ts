@@ -356,6 +356,28 @@ const payments = {
     });
   },
   outcomeOf,
+  /** Verified payout account (issue #97). Backend only. */
+  async resolveAccount(bankCode: string, accountNumber: string) {
+    try {
+      return ok(await v1.payments.resolveAccount(bankCode, accountNumber));
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<{ accountName: string; bankName: string; accountLast4: string }>;
+    }
+  },
+  async savePayoutAccount(bankCode: string, accountNumber: string, confirmedAccountName: string) {
+    try {
+      return ok(await v1.payments.savePayoutAccount(bankCode, accountNumber, confirmedAccountName));
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<{ accountName: string; bankName: string; accountLast4: string; verified: boolean }>;
+    }
+  },
+  async myPayoutAccount() {
+    try {
+      return ok(await v1.payments.myPayoutAccount());
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<{ verified: boolean; accountName: string | null; bankName: string | null; accountLast4: string | null }>;
+    }
+  },
 };
 
 const levroData = Object.freeze({

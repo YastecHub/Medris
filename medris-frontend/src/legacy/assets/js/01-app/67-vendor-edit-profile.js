@@ -21,6 +21,7 @@ async function renderVendorEditProfile() {
   const { data: billingPreview } = await sb.rpc("compute_monthly_billing_amount", { p_vendor_id: v.id });
   const bp = (billingPreview && billingPreview[0]) || { listing_count: 0, amount: 0 };
   setTimeout(loadBankOptions, 0);
+  setTimeout(() => { if (window.lvPayoutCardInit) window.lvPayoutCardInit(); }, 0);
   setTimeout(() => {
     initVendorLocationMap();
   }, 0);
@@ -109,6 +110,7 @@ async function renderVendorEditProfile() {
   <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly through Paystack on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. Funds typically land in your account the next business day after a sale.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
+    <div id="payoutVerifiedBox"></div>
     ${v.paystack_subaccount_code
       ? `<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · <span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
        <button class="btn btn-sm btn-outline" onclick="byId('bankFormWrap').classList.toggle('hidden')">Change bank account</button>`
