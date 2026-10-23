@@ -26,6 +26,7 @@ import { AdminDashboardService } from "./modules/admin-dashboard/admin-dashboard
 import { BlocksService } from "./modules/blocks/blocks.service.js";
 import { ScheduledJobsService } from "./modules/scheduled-jobs/scheduled-jobs.service.js";
 import { PayoutAccountsService } from "./modules/payout-accounts/payout-accounts.service.js";
+import { PaystackCheckoutService } from "./modules/paystack-checkout/paystack-checkout.service.js";
 import { PaystackWebhookService } from "./modules/paystack-webhook/paystack-webhook.service.js";
 import { CommissionService } from "./modules/commission/commission.service.js";
 import { PaymentClaimsService } from "./modules/payment-claims/payment-claims.service.js";
@@ -88,6 +89,7 @@ export interface AppServices {
   payoutAccounts: PayoutAccountsService;
   vendorPayouts: VendorPayoutsService;
   refunds: RefundsService;
+  paystackCheckout: PaystackCheckoutService;
   commission: CommissionService;
   paymentClaims: PaymentClaimsService;
   checkout: CheckoutService;
@@ -158,6 +160,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     payoutAccounts: overrides.payoutAccounts ?? new PayoutAccountsService(data),
     vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
     refunds: overrides.refunds ?? new RefundsService(data),
+    paystackCheckout: overrides.paystackCheckout ?? new PaystackCheckoutService(data, config.paystack.checkoutEnabled),
     commission: overrides.commission ?? new CommissionService(data),
     paymentClaims: overrides.paymentClaims ?? new PaymentClaimsService(data),
     checkout: overrides.checkout ?? new CheckoutService(data),
