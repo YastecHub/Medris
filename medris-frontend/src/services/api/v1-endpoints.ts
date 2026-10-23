@@ -36,6 +36,15 @@ export const v1 = {
     unfollow: (vendorId: string) => v1Request<{ removed: number }>("DELETE", `follows/${encodeURIComponent(vendorId)}`),
   },
 
+  payments: {
+    /** Is Paystack checkout switched on? (backend switch PAYSTACK_CHECKOUT_ENABLED) */
+    config: () => v1Request<{ paystackCheckout: boolean }>("GET", "payments/config"),
+    /** Starts a Paystack payment for the order; the server decides the amount (order amount + Paystack's fee). */
+    initializePaystack: (orderId: string) => v1Request<PaystackInitializeResult>("POST", `orders/${encodeURIComponent(orderId)}/paystack/initialize`),
+    /** Where the payment stands; settles it first when it is still open. */
+    paystackStatus: (reference: string) => v1Request<{ status: string; orderStatus: string | null }>("GET", `payments/paystack/${encodeURIComponent(reference)}`),
+  },
+
   notifications: {
     list: (readSince?: string, limit?: number) => v1Request<NotificationRowV1[]>("GET", "notifications", { query: { readSince, limit } }),
     unreadCount: (filter: { type?: string; after?: string } = {}) => v1Request<{ count: number }>("GET", "notifications/unread-count", { query: filter }),
@@ -43,5 +52,15 @@ export const v1 = {
     mark: (body: MarkNotificationsRequest) => v1Request<{ updated: number }>("POST", "notifications/read", { body }),
   },
 };
+
+export interface PaystackInitializeResult {
+  authorizationUrl: string;
+  accessCode: string;
+  reference: string;
+  /** What the buyer pays now (order amount plus Paystack's fee). */
+  amountNaira: number;
+  feeNaira: number;
+  orderAmountNaira: number;
+}
 
 export type V1Api = typeof v1;

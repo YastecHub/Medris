@@ -26,6 +26,7 @@ import { V1Error } from "@/services/api/v1-client";
 import { appConfig } from "@/config/env";
 import { BACKEND_FEATURES, defaultFeatureList, enabledFeatures, parseFeatureList, writeFeatureOverride, type BackendFeature } from "@/services/backend-features";
 import { installRpc, supabaseRpc } from "./rpc-shim";
+import { outcomeOf, waitForPaystackPayment, type PaystackOutcome } from "@/services/paystack-checkout";
 import { installLive } from "./live-shim";
 import { installTables } from "./table-shim";
 
@@ -320,8 +321,46 @@ const catalogue = {
     ),
 };
 
+/* -------------------------------------------------------------- payments */
+
+/** Paystack checkout for orders (issue #96). No Supabase fallback: it only exists on the backend. */
+const payments = {
+  /** `{ paystackCheckout: false }` when there is no backend or the switch is off. */
+  async config(): Promise<GatewayResult<{ paystackCheckout: boolean }>> {
+    if (!appConfig.backendUrl) return ok({ paystackCheckout: false });
+    try {
+      return ok(await v1.payments.config());
+    } catch {
+      return ok({ paystackCheckout: false });
+    }
+  },
+  async initialize(orderId: string) {
+    try {
+      return ok(await v1.payments.initializePaystack(orderId));
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<Awaited<ReturnType<typeof v1.payments.initializePaystack>>>;
+    }
+  },
+  async status(reference: string) {
+    try {
+      return ok(await v1.payments.paystackStatus(reference));
+    } catch (err) {
+      return { data: null, error: toGatewayError(err) } as GatewayResult<{ status: string; orderStatus: string | null }>;
+    }
+  },
+  /** After the buyer returns from Paystack: check until paid or failed (1 s, 2 s, 4 s ... about a minute). */
+  async confirm(reference: string, onTick?: () => void): Promise<PaystackOutcome> {
+    return waitForPaystackPayment(async () => {
+      onTick?.();
+      return (await v1.payments.paystackStatus(reference)).status;
+    });
+  },
+  outcomeOf,
+};
+
 const levroData = Object.freeze({
   cart,
+  payments,
   notifications,
   favorites,
   follows,

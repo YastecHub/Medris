@@ -174,6 +174,8 @@ window.addEventListener("popstate", (e) => {
     const reference = urlParams.get("reference");
     const orderId = urlParams.get("orderId");
     history.replaceState({ view: "home", params: {} }, "", location.pathname);
+    // payments started with "Pay now (Paystack)": the new backend checks with Paystack and settles (issue #96)
+    if (/^lvm_ord_/.test(reference) && window.lvConfirmPaystack) { await window.lvConfirmPaystack(reference, orderId); return; }
     showVerifyingPaymentScreen();
     try {
       const res = await fetch(`/api/verify-payment?reference=${encodeURIComponent(reference)}`);
