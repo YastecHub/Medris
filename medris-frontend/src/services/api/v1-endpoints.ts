@@ -43,6 +43,15 @@ export const v1 = {
     initializePaystack: (orderId: string) => v1Request<PaystackInitializeResult>("POST", `orders/${encodeURIComponent(orderId)}/paystack/initialize`),
     /** Where the payment stands; settles it first when it is still open. */
     paystackStatus: (reference: string) => v1Request<{ status: string; orderStatus: string | null }>("GET", `payments/paystack/${encodeURIComponent(reference)}`),
+    /** Paystack's bank list (cached on the server). */
+    banks: () => v1Request<Array<{ code: string; name: string }>>("GET", "payments/banks"),
+    /** Looks up the name on a bank account so the vendor can confirm it is theirs. */
+    resolveAccount: (bankCode: string, accountNumber: string) =>
+      v1Request<{ accountName: string; bankName: string; accountLast4: string }>("POST", "payments/bank-account/resolve", { body: { bankCode, accountNumber } }),
+    /** Saves the vendor's own payout account after they confirmed the resolved name. */
+    savePayoutAccount: (bankCode: string, accountNumber: string, confirmedAccountName: string) =>
+      v1Request<{ accountName: string; bankName: string; accountLast4: string; verified: boolean }>("PUT", "shops/mine/payout-account", { body: { bankCode, accountNumber, confirmedAccountName } }),
+    myPayoutAccount: () => v1Request<{ verified: boolean; accountName: string | null; bankName: string | null; accountLast4: string | null }>("GET", "shops/mine/payout-account"),
   },
 
   notifications: {

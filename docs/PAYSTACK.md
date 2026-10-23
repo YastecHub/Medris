@@ -205,3 +205,10 @@ webhook that arrives later is a duplicate. A call that cannot be answered is lef
 - It is a backend job (`POST /api/v1/jobs/paystack-reconcile`, header `x-cron-secret: <CRON_SECRET>`). It is **not** in pg_cron.
   Schedule it with Heroku Scheduler (`*/10 * * * *`) calling that URL, or run it by hand the same way.
 - Answer: `{ "job": "paystack-reconcile", "result": { "payments": n, "payouts": n, "settled": n, "problems": n } }`.
+
+## Verified payout accounts (issue #97)
+
+- Vendors look up their account (`POST /payments/bank-account/resolve`), see the name, and confirm it; `PUT /shops/mine/payout-account` re-resolves on the server, requires the confirmed name to match, creates the Paystack transfer recipient and stores only the last 4 digits as verified (`vendors.payout_verified_at`, `payout_account_last4`). Migration `0006` adds these columns and is **not applied** until the founder approves.
+- Changing or first-verifying an account notifies the vendor and admins. `GET /admin/payout-accounts/unverified` lists shops still unverified.
+- Payouts (#98) must refuse vendors without `transfer_recipient_code` and `payout_verified_at`.
+- Not done yet: the admin screen tag/list in the app (API exists) and the sign-up form name preview.

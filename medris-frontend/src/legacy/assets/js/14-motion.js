@@ -328,3 +328,65 @@
     };
   }
 })();
+
+/* ===== Verified payout account (issue #97) =====
+   When Paystack checkout is on, the vendor sees the name on the bank account and confirms it is theirs before it is saved.
+   The server looks the name up again and checks it matches; the full number is never sent back. */
+(function () {
+  "use strict";
+  var origSave = window.saveVendorBankDetails;
+  function fail(msg) { var e = document.getElementById("bankError"); if (e) { e.textContent = msg; e.classList.remove("hidden"); } }
+  function confirmName(name, bank, last4) {
+    return new Promise(function (resolve) {
+      var m = document.createElement("div");
+      m.id = "lvAcctModal"; m.className = "modal lv-pm open";
+      m.innerHTML = '<div class="modal-content lv-pm-card" role="dialog" aria-modal="true" aria-labelledby="lvAcctTitle">' +
+        '<div class="lv-pm-head"><h3 id="lvAcctTitle">Is this your account?</h3></div>' +
+        '<p class="lv-pm-acct"><b>' + esc(name) + "</b><br><span class=\"muted\">" + esc(bank || "") + " · ···" + esc(last4 || "") + "</span></p>" +
+        '<p class="muted">Your earnings will be sent here. Only confirm if this is your own account.</p>' +
+        '<div class="lv-pm-actions"><button type="button" class="btn btn-outline" data-a="no">No, go back</button><button type="button" class="btn" data-a="yes">Yes, this is my account</button></div></div>';
+      m.addEventListener("click", function (e) {
+        var a = e.target && e.target.getAttribute && e.target.getAttribute("data-a");
+        if (a || e.target === m) { m.remove(); resolve(a === "yes"); }
+      });
+      document.body.appendChild(m);
+    });
+  }
+  window.saveVendorBankDetails = async function () {
+    var on = window.lvPaystackOn ? await window.lvPaystackOn() : false;
+    if (!on || !window.levroData || !window.levroData.payments.resolveAccount) return origSave.apply(this, arguments);
+    var bankCode = String((document.getElementById("veBankCode") || {}).value || "").trim();
+    var number = String((document.getElementById("veAccountNumber") || {}).value || "").trim();
+    var err = document.getElementById("bankError"); if (err) err.classList.add("hidden");
+    if (!/^\d{10}$/.test(number)) return fail("Enter a valid 10-digit account number.");
+    if (!bankCode) return fail("Choose a bank.");
+    var btn = document.getElementById("saveBankBtn");
+    if (btn) { if (btn.disabled) return; btn.disabled = true; }
+    try {
+      var r = await window.levroData.payments.resolveAccount(bankCode, number);
+      if (r.error || !r.data) return fail((r.error && r.error.message) || "We could not find that account. Check the bank and number.");
+      if (!(await confirmName(r.data.accountName, r.data.bankName, r.data.accountLast4))) return;
+      var s = await window.levroData.payments.savePayoutAccount(bankCode, number, r.data.accountName);
+      if (s.error || !s.data) return fail((s.error && s.error.message) || "Could not save your account. Please try again.");
+      showToast("Payout account verified: " + s.data.accountName, "success");
+      await navigate("vendorEditProfile", {}, false);
+    } catch (e) {
+      fail("Something went wrong. Please try again.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  window.lvPayoutCardInit = async function () {
+    try {
+      if (!(window.lvPaystackOn && (await window.lvPaystackOn()))) return;
+      var box = document.getElementById("payoutVerifiedBox");
+      if (!box) return;
+      var r = await window.levroData.payments.myPayoutAccount();
+      var d = r && r.data;
+      box.innerHTML = d && d.verified
+        ? '<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Account verified.</strong> ' + esc(d.accountName || "") + " · " + esc(d.bankName || "") + " ···" + esc(d.accountLast4 || "") + "</div>"
+        : '<div class="banner banner-warning" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-triangle-exclamation"></i> Account not verified.</strong> Add your bank below and confirm the name to be paid.</div>';
+    } catch (_) {}
+  };
+})();
