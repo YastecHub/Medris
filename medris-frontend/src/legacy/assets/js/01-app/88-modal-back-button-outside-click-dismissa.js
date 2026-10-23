@@ -56,7 +56,7 @@ window.addEventListener("popstate", (e) => {
 (async function init() {
   applyHorizontalBrowsePreference();
   prepareLevromartSplash();
-  const splashEmergencyTimer=setTimeout(()=>{const el=byId("levromartSplash");if(el&&!window.__levroSplashHidden){el.classList.add("is-hidden");el.setAttribute("aria-hidden","true");console.warn("[Levromart] Splash watchdog released startup after a bounded timeout.");}},4000);
+  const splashEmergencyTimer=setTimeout(()=>{const el=byId("levromartSplash");if(el&&!window.__levroSplashHidden){el.classList.add("is-hidden");el.setAttribute("aria-hidden","true");console.warn("[Levromart] Splash watchdog released startup after a bounded timeout.");}},1400);
   // Absolute backstop: whatever else happens, the splash can never stay on
   // screen longer than this. The two hides below are the real triggers.
 

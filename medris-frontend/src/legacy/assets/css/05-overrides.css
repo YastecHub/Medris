@@ -2709,3 +2709,23 @@ html:root[data-theme="dark"] body #vendorsMap .leaflet-tile-pane,html:root[data-
 #app .vd-page .vd-chip.vd-chip-all .vd-chip-art-ico{background:color-mix(in srgb,#64748b 14%,var(--card))!important;color:#475569!important}
 #app .vd-page .vd-chip.vd-chip-all .vd-chip-art-ico i{color:#475569!important}
 #app .vd-page .vd-chip.vd-chip-all.active{--cc:#64748b!important;background:color-mix(in srgb,#64748b 12%,var(--card))!important;border-color:#64748b!important;box-shadow:none!important}
+
+/* Icon-only tabs: vendors (all / buy / rent / both) and browse (products / services / packages) */
+#app .vd-seg{justify-content:space-around!important;gap:0!important}
+#app .vd-seg .vd-tab{flex:1 1 0!important;text-align:center!important;font-size:1.15rem!important}
+#app .vd-seg .vd-tab i{pointer-events:none}
+#app .home-catalog-type-tabs .catalog-type-tab{font-size:1.15rem!important;justify-content:center;gap:0}
+#app .home-catalog-type-tabs .catalog-type-tab i{pointer-events:none;margin:0!important}
+
+/* Messages "Chat actions" drawer: clean rows with soft icon tiles */
+html body #app .messages-more-menu:not(.hidden){box-shadow:0 -12px 40px rgba(0,0,0,.2)!important;z-index:9001!important;border-radius:24px 24px 0 0!important;padding-top:.5rem!important}
+html body #app .messages-more-menu:not(.hidden)::before{content:"";display:block;width:42px;height:4px;border-radius:4px;background:color-mix(in srgb,var(--text) 22%,transparent);margin:.2rem auto .7rem}
+html body #app .messages-more-menu .lm-sheet-head{padding-bottom:.6rem;margin-bottom:.35rem;border-bottom:1px solid var(--border)}
+html body #app .messages-more-menu .lm-sheet-head strong{font-size:1.05rem}
+html body #app .messages-more-menu .ms-item{display:flex!important;align-items:center;gap:.8rem;width:100%;min-height:54px;padding:.35rem .4rem!important;border-radius:14px;font-weight:600;font-size:.96rem}
+html body #app .messages-more-menu .ms-item:active{background:color-mix(in srgb,var(--text) 6%,transparent)}
+html body #app .messages-more-menu .ms-item i{flex:0 0 2.3rem;width:2.3rem;height:2.3rem;display:inline-grid!important;place-items:center;border-radius:12px;font-size:.95rem;background:color-mix(in srgb,#8b6bff 14%,var(--card));color:#6f55d9}
+html body #app .messages-more-menu .ms-item:nth-of-type(2) i{background:color-mix(in srgb,#0ea5e9 14%,var(--card));color:#0284c7}
+html body #app .messages-more-menu .ms-item:nth-of-type(3) i{background:color-mix(in srgb,#0ea5e9 14%,var(--card));color:#0284c7}
+html body #app .messages-more-menu .ms-item:nth-of-type(4) i{background:color-mix(in srgb,#10b981 14%,var(--card));color:#059669}
+html body #app .messages-more-menu .ms-item:nth-of-type(5) i{background:color-mix(in srgb,#f59e0b 16%,var(--card));color:#d97706}

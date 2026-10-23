@@ -122,6 +122,7 @@
     { sel: ".lv-cm-card", close: function (el) { var b = el.parentNode && el.parentNode.querySelector(".lv-cm-back"); if (b) b.click(); }, back: ".lv-cm-back", own: ".lv-cm-card" },
     { sel: ".vendors-filters-panel:not(.hidden)", close: function () { try { toggleVendorsFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
     { sel: ".browse-filter-panel:not(.hidden)", close: function () { try { toggleBrowseFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
+    { sel: "#messagesMoreMenu:not(.hidden)", close: function () { var m = document.getElementById("messagesMoreMenu"); if (m) m.classList.add("hidden"); }, back: ".lv-sheet-back" },
     { sel: ".order-filters-panel:not(.hidden)", close: function () { try { window.closeLevromartTransientFilters(); } catch (_) {} }, back: ".lv-sheet-back" },
     { sel: "#storefrontShareModal:not(.hidden) .storefront-share-sheet", close: function (el) { var m = el.closest("#storefrontShareModal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: false })); }, back: null }
   ];
@@ -598,7 +599,8 @@
   var PANELS = [
     { sel: ".vendors-filters-panel", close: function () { try { toggleVendorsFilters(false); } catch (_) {} }, clear: "clearVendorsDirectoryFilters", label: "Show vendors" },
     { sel: ".browse-filter-panel", close: function () { try { toggleBrowseFilters(false); } catch (_) {} }, clear: "clearBrowseFilters", label: "Show results" },
-    { sel: ".order-filters-panel", close: function () { try { window.closeLevromartTransientFilters(); } catch (_) {} }, clear: null, label: null }
+    { sel: ".order-filters-panel", close: function () { try { window.closeLevromartTransientFilters(); } catch (_) {} }, clear: null, label: null },
+    { sel: "#messagesMoreMenu", close: function () { var m = document.getElementById("messagesMoreMenu"); if (m) m.classList.add("hidden"); }, clear: null, label: null }
   ];
   function sync() {
     PANELS.forEach(function (p) {
@@ -722,13 +724,46 @@
   "use strict";
   function depth() { try { return (history.state && history.state.lvDepth) || 0; } catch (_) { return 0; } }
   var orig = window.navigate;
+  // Where each screen was scrolled to, per history entry, so Back returns to the exact spot (not the top of the page).
+  var scrolls = {};
+  try { scrolls = JSON.parse(sessionStorage.getItem("lv-scrolls") || "{}") || {}; } catch (_) {}
+  function keyOf(create) {
+    try {
+      var st = history.state;
+      if (st && st.lvKey) return st.lvKey;
+      if (create && st) { var k = "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); history.replaceState(Object.assign({}, st, { lvKey: k }), ""); return k; }
+    } catch (_) {}
+    return null;
+  }
+  function remember() {
+    var k = keyOf(true);
+    if (!k) return;
+    scrolls[k] = window.scrollY || document.documentElement.scrollTop || 0;
+    try { sessionStorage.setItem("lv-scrolls", JSON.stringify(scrolls)); } catch (_) {}
+  }
+  // keep the spot while the page fills in; stop the moment the person scrolls or touches the screen
+  function restore(y) {
+    var cancelled = false, stop = function () { cancelled = true; };
+    ["touchstart", "wheel", "keydown", "pointerdown"].forEach(function (t) { addEventListener(t, stop, { once: true, passive: true, capture: true }); });
+    [0, 40, 120, 300, 700, 1400].forEach(function (ms) {
+      setTimeout(function () { if (!cancelled && Math.abs((window.scrollY || 0) - y) > 2) window.scrollTo({ top: y, behavior: "auto" }); }, ms);
+    });
+  }
+  // leaving a screen by any route (taps, links, the bottom bar) remembers where you were
+  document.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest("a, button, [onclick], .card, .product-card-wrap")) remember(); }, true);
+  addEventListener("pagehide", remember);
   if (typeof orig === "function") {
     window.navigate = async function (view, params, pushHistory) {
       var prev = depth(), pushes = pushHistory !== false && !(pushHistory && typeof pushHistory === "object" && pushHistory.replace === true);
+      if (pushes) remember();
       var r = await orig.apply(this, arguments);
       try {
         var st = history.state;
         if (pushes && st && st.view === view && st.lvDepth == null) history.replaceState(Object.assign({}, st, { lvDepth: prev + 1 }), "");
+        if (pushHistory === false) {            // Back / forward: return to where this screen was left
+          var k = keyOf(false), y = k != null ? scrolls[k] : undefined;
+          if (Number.isFinite(y)) restore(y);
+        }
       } catch (_) {}
       return r;
     };
@@ -780,4 +815,23 @@
       if (input) input.value = "";
     }, 0);
   }, false);
+})();
+
+/* ===== The Messages "Chat actions" drawer stays open until you close it =====
+   The inbox redraws itself every few seconds as new messages arrive; that used to wipe the open drawer (and bring the bottom
+   bar back). The open state is now remembered and put back after every redraw. */
+(function () {
+  "use strict";
+  var wantOpen = false;
+  function menu() { return document.getElementById("messagesMoreMenu"); }
+  new MutationObserver(function (list) {
+    var m = menu();
+    if (!m) return;
+    var attr = list.some(function (r) { return r.type === "attributes" && r.target === m; });
+    if (attr) { wantOpen = !m.classList.contains("hidden"); return; }          // the person opened or closed it
+    if (wantOpen && m.classList.contains("hidden")) m.classList.remove("hidden"); // the page was redrawn: put it back
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+  // leaving the Messages page ends it
+  var nav = window.navigate;
+  if (typeof nav === "function") window.navigate = function () { wantOpen = false; return nav.apply(this, arguments); };
 })();
