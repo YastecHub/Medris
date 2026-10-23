@@ -151,6 +151,54 @@ jobs:
             medris-frontend/test-results/
           retention-days: 7
 
+  # The payment flows end to end against a fake Paystack (medris-backend/tests/payments-e2e). Always runs, so it can be a required
+  # check; it must stay under 3 minutes. The browser side of payments runs in the "Frontend browser tests" job above
+  # (tests/e2e/payments.spec.ts). Required checks to set on main: Checks, Frontend browser tests, Payments end-to-end,
+  # PostgreSQL 17, Payments end-to-end (PostgreSQL 17).
+  payments:
+    name: Payments end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Payment flows (PGlite)
+        run: npm run test:payments -w medris-backend
+
+  payments-postgres:
+    name: Payments end-to-end (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medris_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medris_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # includes the concurrency tests, which only mean something with several real connections
+      - name: Payment flows on PostgreSQL 17
+        run: npm run test:payments:postgres -w medris-backend
+
   postgres:
     name: PostgreSQL 17
     needs: changes

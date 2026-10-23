@@ -1,0 +1,45 @@
+name: Payments health
+
+# Runs after a deploy of the backend and every hour. It never charges anything and never sends a key: it checks that the backend
+# is up, that the payment routes are mounted and refuse unsigned calls, and that the Paystack key MODE is right for the
+# environment (live in production). If a check fails this workflow fails and GitHub emails the people watching the repository.
+#
+# After a Heroku deploy, run it by hand or add a deploy hook that calls
+#   POST https://api.github.com/repos/kenniskalu18-prog/Medris/dispatches   {"event_type":"backend-deployed"}
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Backend address (leave empty for the production backend)
+        required: false
+      expect:
+        description: "Key mode this environment must use (live or test)"
+        required: false
+        default: live
+  repository_dispatch:
+    types: [backend-deployed]
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    name: Payments health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check payments
+        env:
+          URL_INPUT: ${{ github.event.inputs.url }}
+          EXPECT_INPUT: ${{ github.event.inputs.expect }}
+          DEFAULT_URL: ${{ vars.PAYMENTS_HEALTH_URL }}
+        run: |
+          url="${URL_INPUT:-${DEFAULT_URL:-https://levromart-5212f03a7e44.herokuapp.com}}"
+          expect="${EXPECT_INPUT:-live}"
+          node scripts/payments-health.mjs --url "$url" --expect "$expect"

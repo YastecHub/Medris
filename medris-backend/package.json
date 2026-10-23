@@ -22,7 +22,9 @@
     "db:migrate": "tsx scripts/migrate.ts up",
     "db:migration:new": "tsx scripts/migrate.ts new",
     "db:migrations:check": "tsx scripts/migrate.ts check",
-    "db:baseline:update": "tsx scripts/update-baseline.ts"
+    "db:baseline:update": "tsx scripts/update-baseline.ts",
+    "test:payments": "vitest run tests/payments-e2e",
+    "test:payments:postgres": "vitest run --no-file-parallelism tests/payments-e2e"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
