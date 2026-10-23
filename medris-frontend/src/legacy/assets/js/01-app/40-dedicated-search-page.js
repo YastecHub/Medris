@@ -43,7 +43,7 @@ function renderSearchPage() {
     ${typeof lvPageHero === "function" ? lvPageHero("search") : ""}
     <div class="search-page-head">
     <div class="search-page-bar">
-      <button type="button" class="search-page-back" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+      <button type="button" class="search-page-back" onclick="lvGoBack('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
       <div class="search-page-input-wrap">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" inputmode="search" enterkeyhint="search" id="searchPageInput" placeholder="Search products, services, vendors…" autocomplete="off" oninput="scheduleSearchPageQuery()" onkeydown="if(event.key==='Enter'){event.preventDefault();runSearchPageQuery(this.value.trim(),true);}" />
