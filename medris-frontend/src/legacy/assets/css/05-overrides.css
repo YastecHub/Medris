@@ -2685,3 +2685,27 @@ body:has(#storefrontMoreSheet.is-open) #app .storefront-profile .storefront-bann
 /* Storefront arrow: just the arrow, no circle or background behind it */
 html body #app .storefront-profile .storefront-banner-more,html body #app .storefront-profile .storefront-own-more-icon{background:transparent!important;background-color:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important}
 html body #app .storefront-profile .storefront-banner-more i{color:#fff!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55))}
+
+/* The storefront banner arrow: only the arrow, in light and dark, beating the older per-theme rules */
+html:root body #app .storefront-profile .storefront-cover > .storefront-banner-more,
+:root[data-theme="dark"] body #app .storefront-profile .storefront-cover > .storefront-banner-more,
+:root[data-theme="black"] body #app .storefront-profile .storefront-cover > .storefront-banner-more{background:transparent!important;background-color:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important}
+
+/* Product cards: the lilac circle sits at the top right of the DETAILS part (below the photo), not behind the photo */
+html:root body #app .product-card-wrap>.card{isolation:isolate;background-image:radial-gradient(circle at 0 100%,rgba(255,168,108,.55) 0 34px,transparent 35px),radial-gradient(circle at 34% 96%,rgba(50,200,130,.6) 0 4px,transparent 5px)!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 0 100%,rgba(255,168,108,.28) 0 34px,transparent 35px),radial-gradient(circle at 34% 96%,rgba(50,200,130,.45) 0 4px,transparent 5px)!important}
+html:root body #app .product-card-wrap>.card>h4{position:relative}
+html:root body #app .product-card-wrap>.card>h4::after{content:"";position:absolute;z-index:-1;pointer-events:none;width:104px;height:104px;border-radius:50%;right:calc(-.65rem - 52px);top:calc(-.45rem - 52px);background:rgba(150,118,250,.5);clip-path:inset(50% 50% 0 0)}
+:root[data-theme="dark"] body #app .product-card-wrap>.card>h4::after,:root[data-theme="black"] body #app .product-card-wrap>.card>h4::after{background:rgba(150,118,250,.32)}
+
+/* Vendors directory map follows the theme too: dark map in dark mode */
+html:root[data-theme="dark"] body #vendorsMap .leaflet-tile-pane,html:root[data-theme="black"] body #vendorsMap .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) saturate(.7) brightness(.82) contrast(.95)!important}
+
+/* Storefront menu: no category line (it is already on the storefront); icons calm and neutral */
+#app#app .levro-storefront-sheet-item i[class]{background:color-mix(in srgb,var(--text) 7%,var(--card))!important;background-image:none!important;color:var(--text-muted,#475569)!important;box-shadow:none!important;border-radius:50%!important}
+
+/* Vendors page: "All categories" chip in a steady neutral tone instead of bright blue */
+#app .vd-page .vd-chip.vd-chip-all{--cc:#64748b;border-color:color-mix(in srgb,#64748b 38%,var(--border))!important}
+#app .vd-page .vd-chip.vd-chip-all .vd-chip-art-ico{background:color-mix(in srgb,#64748b 14%,var(--card))!important;color:#475569!important}
+#app .vd-page .vd-chip.vd-chip-all .vd-chip-art-ico i{color:#475569!important}
+#app .vd-page .vd-chip.vd-chip-all.active{--cc:#64748b!important;background:color-mix(in srgb,#64748b 12%,var(--card))!important;border-color:#64748b!important;box-shadow:none!important}

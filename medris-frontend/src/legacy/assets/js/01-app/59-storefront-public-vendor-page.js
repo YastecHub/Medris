@@ -374,7 +374,6 @@ async function renderStorefrontInner(vendorId) {
 
   const storefrontMoreItems = [
     isOwnStorefront ? `<button type="button" class="ms-item" onclick="closeStorefrontMoreSheet();navigate('vendorEditProfile')"><i class='fa-solid fa-pen'></i> Edit profile</button>` : "",
-    v.sector?.name ? `<div class="ms-item"><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</div>` : "",
     v.cac_number ? `<div class="ms-item"><i class='fa-solid fa-building-columns'></i> CAC verified</div>` : "",
     yearsSince(v.created_at) ? `<div class="ms-item"><i class="fa-solid fa-calendar-check"></i> ${esc(yearsSince(v.created_at))}</div>` : "",
     v.opening_hours ? `<div class="ms-item"><i class='fa-solid fa-clock'></i> ${esc(v.opening_hours)}</div>` : "",

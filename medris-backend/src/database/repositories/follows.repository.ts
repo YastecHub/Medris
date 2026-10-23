@@ -185,6 +185,18 @@ export class FollowReadsRepository {
     );
   }
 
+  /** The customers (people who are not a live shop) following a shop: name, picture and since when. Nothing else about them. */
+  followerCustomers(vendorId: string): Promise<{ name: string | null; avatar_url: string | null; followed_at: string }[]> {
+    return jsonRows(
+      this.db,
+      sql`select coalesce(u.name, 'Levromart user') as name, u.avatar_url, vf.created_at as followed_at
+          from public.vendor_follows vf join public.users u on u.id = vf.follower_id
+          where vf.vendor_id = ${vendorId}
+            and not exists (select 1 from public.vendors v where v.user_id = u.id and v.deleted_at is null and v.is_active = true and v.verification_status = 'verified')
+          order by vf.created_at desc limit 500`,
+    );
+  }
+
   /** get_vendor_follower_network(p_vendor_id): the shops among a vendor's followers, ranked by their link to the viewer. */
   followerNetwork(viewerId: string | null, vendorId: string): Promise<FollowerNetworkEntry[]> {
     return jsonRows<FollowerNetworkEntry>(

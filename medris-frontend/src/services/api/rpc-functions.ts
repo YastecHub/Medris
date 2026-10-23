@@ -18,7 +18,7 @@ export const RPC_READS: ReadonlySet<string> = new Set([
   "get_points_leaderboard", "get_product_comment_counts", "get_product_reviews", "get_reviewable_order_for_product",
   "get_service_price_hint", "get_shared_ai_conversation", "get_vendor_commission_breakdown",
   "get_vendor_commission_deadline", "get_vendor_commission_owed", "get_vendor_follow_state",
-  "get_vendor_follow_states", "get_vendor_follower_counts", "get_vendor_follower_network", "get_vendor_followers",
+  "get_vendor_follow_states", "get_vendor_follower_counts", "get_vendor_follower_customers", "get_vendor_follower_network", "get_vendor_followers",
   "get_vendor_followers_v2", "get_vendor_product_regions", "get_vendor_spotlight", "get_vendor_stats",
   "get_vendor_suggestions", "list_my_chat_lists", "list_my_conversations", "search_ai_conversations",
   "search_product_ids", "search_products_full_v2", "validate_referral_code",
