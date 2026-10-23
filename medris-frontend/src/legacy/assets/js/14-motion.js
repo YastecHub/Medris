@@ -111,56 +111,111 @@
   });
 })();
 
-/* Drag any bottom sheet down from its body, not only its top edge (Levi, comments, share). The sheet follows the
-   finger only when its own content is scrolled to the top, so normal scrolling is untouched. */
+/* Drag any bottom sheet down from anywhere on it (Levi, comments, share, pop-up cards), like WhatsApp and TikTok.
+   The sheet follows the finger exactly (no jump when the drag starts), the page behind never scrolls, the dimmed backdrop
+   fades as the sheet goes down, and on release it either glides away or settles back, depending on how far and how fast
+   it was pulled. It only follows the finger when its own content is scrolled to the top, so normal scrolling is untouched. */
 (function () {
   var SHEETS = [
-    { sel: "#aiChatPanel:not(.hidden)", scroller: "#aiChatMessages, .ai-chat-history-panel", close: function () { try { toggleAiChat(); } catch (_) {} } },
-    { sel: ".lv-cs-card", scroller: ".lv-cs-body, .lv-cs-body *", close: function (el) { var x = el.querySelector(".lv-cs-x"); if (x) x.click(); } },
-    { sel: "#storefrontShareModal:not(.hidden) .storefront-share-sheet", scroller: "", close: function (el) { var m = el.closest("#storefrontShareModal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: false })); } }
+    { sel: "#aiChatPanel:not(.hidden)", close: function () { try { toggleAiChat(); } catch (_) {} }, back: null },
+    { sel: ".lv-cs-card", close: function (el) { var x = el.querySelector(".lv-cs-x"); if (x) x.click(); }, back: ".lv-cs-back", own: ".lv-cs-head" },
+    { sel: ".lv-cm-card", close: function (el) { var b = el.parentNode && el.parentNode.querySelector(".lv-cm-back"); if (b) b.click(); }, back: ".lv-cm-back", own: ".lv-cm-card" },
+    { sel: "#storefrontShareModal:not(.hidden) .storefront-share-sheet", close: function (el) { var m = el.closest("#storefrontShareModal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: false })); }, back: null }
   ];
-  var cur = null;
-  function scrolled(el, sheet, ts) {
-    // true if the touched content (or any scrollable parent inside the sheet) is not at its top
-    for (var n = el; n && n !== sheet.parentNode; n = n.parentNode) {
-      if (n.nodeType === 1 && n.scrollHeight > n.clientHeight + 2 && n.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) return true;
+  var START_SLOP = 8;          // px of movement before it counts as a drag
+  var cur = null, raf = 0;
+  function put(el, prop, val) { el.style.setProperty(prop, val, "important"); }   // beats the sheets' own !important transforms
+  function clear(el) { el.style.removeProperty("transform"); el.style.removeProperty("transition"); el.style.removeProperty("will-change"); }
+  function scrolledDown(target, sheet) {
+    for (var n = target; n && n.nodeType === 1; n = n.parentNode) {
+      if (n.scrollHeight > n.clientHeight + 2 && n.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) return true;
       if (n === sheet) break;
     }
     return false;
   }
+  function backdropOf(c) { return c.s.back ? (c.el.parentNode && c.el.parentNode.querySelector(c.s.back)) : null; }
+  function paint() {
+    raf = 0;
+    if (!cur) return;
+    put(cur.el, "transform", "translate3d(0," + cur.offset + "px,0)");
+    if (cur.back) cur.back.style.opacity = String(Math.max(0, 1 - cur.offset / Math.max(1, cur.height)));
+  }
+  function velocity(c) {   // px per ms over the last ~100 ms
+    var h = c.trail, last = h[h.length - 1], first = last;
+    for (var i = h.length - 1; i >= 0 && last.t - h[i].t <= 100; i--) first = h[i];
+    return last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0;
+  }
+  function settle(c, closing) {
+    var el = c.el, back = c.back;
+    var done = false;
+    function finish() {
+      if (done) return; done = true;
+      if (closing) c.s.close(el);
+      clear(el);
+      if (back) back.style.removeProperty("opacity");
+    }
+    put(el, "transition", closing ? "transform .26s cubic-bezier(.3,.7,.4,1)" : "transform .34s cubic-bezier(.2,.9,.25,1.05)");
+    put(el, "transform", closing ? "translate3d(0," + (c.height + 24) + "px,0)" : "translate3d(0,0,0)");
+    if (back) { back.style.transition = "opacity .26s ease"; back.style.opacity = closing ? "0" : "1"; }
+    el.addEventListener("transitionend", function te(e) { if (e.target !== el) return; el.removeEventListener("transitionend", te); finish(); });
+    setTimeout(finish, 420);
+  }
+  function stopTheirs(e, c) { if (c && c.s.own && e.target.closest && e.target.closest(c.s.own)) e.stopPropagation(); }  // replaces the sheets' older, jumpier handlers
+
   document.addEventListener("touchstart", function (e) {
     cur = null;
-    if (e.touches.length !== 1 || e.target.closest("textarea,input,select,[contenteditable],.leaflet-container")) return;
+    if (e.touches.length !== 1) return;
+    var t = e.target;
+    if (!t.closest) return;
     for (var i = 0; i < SHEETS.length; i++) {
-      var sheet = e.target.closest(SHEETS[i].sel);
-      if (sheet) { if (scrolled(e.target, sheet)) return; cur = { s: SHEETS[i], el: sheet, y: e.touches[0].clientY, x: e.touches[0].clientX, dy: 0, on: false, t: Date.now() }; return; }
+      var sheet = t.closest(SHEETS[i].sel);
+      if (!sheet) continue;
+      var c = { s: SHEETS[i], el: sheet, y: e.touches[0].clientY, x: e.touches[0].clientX, on: false, offset: 0, height: sheet.getBoundingClientRect().height, trail: [], back: null };
+      stopTheirs(e, c);
+      if (t.closest("textarea,input,select,[contenteditable],.leaflet-container") || scrolledDown(t, sheet)) return;
+      c.trail.push({ y: c.y, t: e.timeStamp });
+      cur = c;
+      return;
     }
-  }, { passive: true });
+  }, { passive: true, capture: true });
+
   document.addEventListener("touchmove", function (e) {
     if (!cur) return;
-    var dy = e.touches[0].clientY - cur.y, dx = Math.abs(e.touches[0].clientX - cur.x);
-    if (!cur.on) { if (dy > 10 && dy > dx * 1.5) { cur.on = true; cur.el.style.transition = "none"; } else if (dy < -6 || dx > 14) { cur = null; return; } else return; }
-    cur.dy = Math.max(0, dy);
-    var base = getComputedStyle(cur.el).transform; base = base && base !== "none" ? base : "";
-    cur.el.style.transform = (base ? base + " " : "") + "translateY(" + cur.dy + "px)";
-    if (e.cancelable) e.preventDefault(); // the page behind the sheet must not scroll while the sheet is being dragged
-  }, { passive: false });
-  function end() {
+    stopTheirs(e, cur);
+    var y = e.touches[0].clientY, dy = y - cur.y, dx = Math.abs(e.touches[0].clientX - cur.x);
+    if (!cur.on) {
+      if (dy > START_SLOP && dy > dx * 1.4) {
+        cur.on = true;
+        cur.back = backdropOf(cur);
+        put(cur.el, "transition", "none");
+        put(cur.el, "will-change", "transform");
+        if (cur.back) cur.back.style.transition = "none";
+      } else if (dy < -START_SLOP || dx > 14) { cur = null; return; }
+      else return;
+    }
+    cur.offset = Math.max(0, dy - START_SLOP);     // the sheet starts moving from where the drag began, so there is no jump
+    cur.trail.push({ y: y, t: e.timeStamp });
+    if (cur.trail.length > 8) cur.trail.shift();
+    if (e.cancelable) e.preventDefault();          // the page behind must not scroll while the sheet is being dragged
+    if (!raf) raf = requestAnimationFrame(paint);
+  }, { passive: false, capture: true });
+
+  function end(e) {
     if (!cur) return;
+    stopTheirs(e, cur);
     var c = cur; cur = null;
     if (!c.on) return;
-    c.el.style.transition = "";
-    var fast = c.dy / Math.max(1, Date.now() - c.t) > 0.6;
-    c.el.style.transform = "";
-    if (c.dy > 110 || (fast && c.dy > 40)) c.s.close(c.el);
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    var v = velocity(c);
+    settle(c, c.offset > c.height * 0.3 || (v > 0.55 && c.offset > 24));
   }
-  document.addEventListener("touchend", end, { passive: true });
-  document.addEventListener("touchcancel", end, { passive: true });
+  document.addEventListener("touchend", end, { passive: true, capture: true });
+  document.addEventListener("touchcancel", end, { passive: true, capture: true });
 })();
 
 /* ===== Pay now with Paystack (issue #96) =====
-   Shown only when the backend says the Paystack switch is on. "Pay the vendor directly" is today's bank-transfer flow,
-   untouched. The amount always comes from the server; nothing is marked paid in the browser. */
+   Shown only when the backend says the Paystack switch is on; then Paystack is the only way to pay an order in the app.
+   The amount always comes from the server; nothing is marked paid in the browser. */
 (function () {
   "use strict";
   var origDirect = window.openVendorDirectPayment;
@@ -172,8 +227,6 @@
     return window.levroData.payments.config().then(function (r) { onCache = !!(r && r.data && r.data.paystackCheckout); onAt = Date.now(); return onCache; }, function () { return false; });
   }
   window.lvPaystackOn = paystackOn;
-  function remember(orderId, m) { try { localStorage.setItem("lv-pay-method:" + orderId, m); } catch (_) {} }
-  function remembered(orderId) { try { return localStorage.getItem("lv-pay-method:" + orderId) || ""; } catch (_) { return ""; } }
   function closeModal() { var m = document.getElementById("lvPayModal"); if (m) m.remove(); }
   function openModal(html) {
     closeModal();
@@ -185,24 +238,14 @@
     return m;
   }
 
-  // The choice: Pay now (Paystack) or Pay the vendor directly
+  // "Pay" on an order: when Paystack checkout is on, it goes straight to the Paystack summary (no bank-transfer option).
+  // When it is off, the original bank-transfer screen opens as before.
   window.openVendorDirectPayment = async function (orderId) {
     var args = arguments;
     if (!orderId || typeof session === "undefined" || !session) return origDirect.apply(this, args);
     var on = await paystackOn();
     if (!on) return origDirect.apply(this, args);
-    var last = remembered(orderId);
-    openModal(
-      '<div class="lv-pm-head"><h3 id="lvPmTitle">How do you want to pay?</h3><button type="button" class="icon-btn" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
-      '<button type="button" class="lv-pm-opt' + (last === "paystack" ? " pick" : "") + '" data-m="paystack"><span class="ico"><i class="fa-solid fa-bolt"></i></span><span class="t"><b>Pay now</b><small>Card, bank transfer or USSD through Paystack. Levromart holds the money until you have your item.</small></span></button>' +
-      '<button type="button" class="lv-pm-opt' + (last === "direct" ? " pick" : "") + '" data-m="direct"><span class="ico"><i class="fa-solid fa-building-columns"></i></span><span class="t"><b>Pay the vendor directly</b><small>Transfer to the vendor\'s bank account, then tap "I\'ve made the payment".</small></span></button>'
-    );
-    document.getElementById("lvPayModal").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-m]"); if (!b) return;
-      remember(orderId, b.dataset.m);
-      if (b.dataset.m === "direct") { closeModal(); origDirect.apply(window, args); }
-      else startPaystack(orderId);
-    });
+    return startPaystack(orderId);
   };
 
   // Step 2: ask the server what to pay, show it, then continue to Paystack
@@ -215,9 +258,9 @@
     }
     var d = r.data;
     openModal(
-      '<div class="lv-pm-head"><h3 id="lvPmTitle">Pay ' + esc(naira(d.amountNaira)) + '</h3></div>' +
+      '<div class="lv-pm-head"><h3 id="lvPmTitle"><span class="lv-pm-ico" aria-hidden="true"><i class="fa-solid fa-credit-card"></i></span>Pay ' + esc(naira(d.amountNaira)) + '</h3><button type="button" class="icon-btn" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
       '<ul class="lv-pm-sum"><li><span>Order amount</span><b>' + esc(naira(d.orderAmountNaira)) + '</b></li><li><span>Paystack fee</span><b>' + esc(naira(d.feeNaira)) + '</b></li><li class="tot"><span>You pay</span><b>' + esc(naira(d.amountNaira)) + '</b></li></ul>' +
-      '<p class="muted" style="font-size:.8rem">The vendor is paid after you confirm you have your order.</p>' +
+      '<p class="lv-pm-secure"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Secured by Paystack. The vendor is paid after you confirm you have your order.</span></p>' +
       '<div class="lv-pm-actions"><button type="button" class="btn btn-outline" onclick="document.getElementById(\'lvPayModal\')?.remove()">Cancel</button><button type="button" class="btn" id="lvPmGo">Continue to Paystack</button></div>'
     );
     var go = document.getElementById("lvPmGo");
