@@ -43,30 +43,54 @@ window.lvHomeBand2 = function () {
 };
 // Third Home strip, between Trending products and Trending services: a slow carousel of calls to action
 window.lvHomeBand3 = function () {
-  setTimeout(() => lvFloatHero(), 500); setTimeout(() => lvFloatHero(), 1500); setTimeout(() => lvBand3Start(), 300);
+  setTimeout(() => lvFloatHero(), 500); setTimeout(() => lvFloatHero(), 1500); setTimeout(() => lvBand3Start(), 300); setTimeout(() => lvBand3Winner(), 400);
   const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
   const slide = (cls, onclick, title, sub, cta, icon) => `<div class="lv-b3-slide ${cls}" role="link" tabindex="0" onclick="${onclick}"><div class="lv-b3-copy"><b>${title}</b><span>${sub}</span><em>${cta} <i class="fa-solid fa-arrow-right"></i></em></div><i class="lv-fl lv-b3-bigic fa-solid ${icon}"></i></div>`;
   return `<section class="lv-band3" id="lvBand3" aria-roledescription="carousel" aria-label="More on Levromart"><div class="lv-b3-track">${
     slide("s1", "navigate('vendors')", "Shop from your campus", "Follow your favourite vendors and never miss a drop.", "See vendors", "fa-bag-shopping") +
     slide("s2", req, "Can't find it?", "Tell vendors what you need and let them come to you.", "Request it", "fa-hand") +
-    slide("s3", "navigate('leaderboard')", "Who's winning?", "See the top vendors on campus right now.", "Vendor leaderboard", "fa-trophy") +
+    slide("s3", "navigate('leaderboard')", "Who's winning?", "See the top vendors on campus right now.", "Vendor leaderboard", "fa-trophy").replace('<i class="lv-fl lv-b3-bigic fa-solid fa-trophy"></i>', '<span class="lv-fl lv-b3-bigic lv-b3-logo" id="lvB3Logo" aria-hidden="true"></span><i class="lv-fl lv-b3-bigic lv-b3-trophy fa-solid fa-trophy"></i>') +
     slide("s4", "navigate('leaderboard')", "Follow us", "Instagram and TikTok: @levromart. Tap to find us.", "Follow us", "fa-heart").replace("navigate('leaderboard')", "window.open('https://instagram.com/levromart','_blank','noopener')") +
     slide("s5", "window.open('https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs','_blank','noopener')", "Join the family", "Our WhatsApp community: deals, tips and campus news.", "Join the group", "fa-whatsapp").replace("fa-solid fa-whatsapp", "fa-brands fa-whatsapp")
   }</div><div class="lv-b3-dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i><i></i></div></section>`;
 };
-// Moves to the next slide every 4 seconds; stops when the strip leaves the page or the person prefers less motion.
+// The strip scrolls sideways by touch (scroll-snap) and also moves to the next slide every 4 seconds on its own.
+// Touching it pauses the automatic movement for a while; it stops when the strip leaves the page.
 window.lvBand3Start = function () {
   const el = document.getElementById("lvBand3");
   if (!el || el.dataset.run) return;
   el.dataset.run = "1";
   const track = el.querySelector(".lv-b3-track"), dots = el.querySelectorAll(".lv-b3-dots i");
-  let i = 0;
-  const go = (n) => { i = n % dots.length; track.style.transform = `translateX(-${i * 100}%)`; dots.forEach((d, k) => d.classList.toggle("on", k === i)); };
+  const slideW = () => track.clientWidth || 1;
+  const current = () => Math.round(track.scrollLeft / slideW());
+  const mark = () => { const i = current(); dots.forEach((d, k) => d.classList.toggle("on", k === i)); };
+  track.addEventListener("scroll", () => { requestAnimationFrame(mark); }, { passive: true });
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  let paused = false;
-  el.addEventListener("touchstart", () => { paused = true; }, { passive: true });
-  el.addEventListener("touchend", () => { setTimeout(() => { paused = false; }, 4000); }, { passive: true });
-  const t = setInterval(() => { if (!document.body.contains(el)) return clearInterval(t); if (!paused && !document.hidden) go(i + 1); }, 4000);
+  let pausedUntil = 0;
+  const pause = () => { pausedUntil = Date.now() + 8000; };
+  ["touchstart", "pointerdown", "wheel"].forEach((t) => track.addEventListener(t, pause, { passive: true }));
+  const timer = setInterval(() => {
+    if (!document.body.contains(el)) return clearInterval(timer);
+    if (document.hidden || Date.now() < pausedUntil) return;
+    const r = el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) return;
+    const next = (current() + 1) % dots.length;
+    track.scrollTo({ left: next * slideW(), behavior: "smooth" });
+  }, 4000);
+};
+// "Who's winning?" slide: the winning vendor's logo (their initials without one), like the strip further down the page
+window.lvBand3Winner = async function () {
+  try {
+    const slot = document.getElementById("lvB3Logo");
+    if (!slot || typeof window.lvVendorSpot !== "function") return;
+    const spot = await window.lvVendorSpot();
+    const w = (spot && spot.leaders && spot.leaders[0]) || (spot && spot.winner);
+    if (!w || !w.business_name) return;
+    slot.innerHTML = profileAvatarHtml(w.logo_url, w.business_name, "100%", { extraClass: "lv-band-logo-img" });
+    slot.classList.add("on");
+    slot.setAttribute("title", w.business_name);
+    slot.parentNode.querySelector(".lv-b3-trophy")?.classList.add("hidden");
+  } catch (_) {}
 };
 // Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
 window.lvHomeBand = function () {

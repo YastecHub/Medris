@@ -626,3 +626,45 @@
     window[p.fn] = function () { var r = orig.apply(this, arguments); sync(p); return r; };
   });
 })();
+
+/* ===== Search keeps its place: coming back to the Search page (e.g. from a vendor or product you opened) shows the same
+   search and results again, instead of an empty "no results" page. It remembers for 30 minutes. ===== */
+(function () {
+  "use strict";
+  var KEY = "lv-search-state";
+  function save(patch) {
+    try {
+      var cur = JSON.parse(sessionStorage.getItem(KEY) || "{}") || {};
+      sessionStorage.setItem(KEY, JSON.stringify(Object.assign(cur, patch, { at: Date.now() })));
+    } catch (_) {}
+  }
+  function load() {
+    try {
+      var s = JSON.parse(sessionStorage.getItem(KEY) || "null");
+      return s && s.term && Date.now() - s.at < 30 * 60000 ? s : null;
+    } catch (_) { return null; }
+  }
+  function wrap(name, after) {
+    var orig = window[name];
+    if (typeof orig !== "function") return;
+    window[name] = function () { var r = orig.apply(this, arguments); try { after.apply(this, arguments); } catch (_) {} return r; };
+  }
+  wrap("runSearchPageQuery", function (term) { term = String(term || "").trim(); if (term) save({ term: term, filter: (typeof searchPageFilter !== "undefined" ? searchPageFilter : "all") }); });
+  wrap("setSearchPageFilter", function (id) { save({ filter: id }); });
+  wrap("clearSearchPageInput", function () { try { sessionStorage.removeItem(KEY); } catch (_) {} });
+  var origRender = window.renderSearchPage;
+  if (typeof origRender === "function") {
+    window.renderSearchPage = function () {
+      var html = origRender.apply(this, arguments);
+      setTimeout(function () {
+        var s = load(), input = document.getElementById("searchPageInput");
+        if (!s || !input || input.value) return;
+        input.value = s.term;
+        var clear = document.getElementById("searchPageClearBtn"); if (clear) clear.classList.remove("hidden");
+        if (s.filter && s.filter !== "all" && typeof setSearchPageFilter === "function") setSearchPageFilter(s.filter);
+        else if (typeof runSearchPageQuery === "function") runSearchPageQuery(s.term, false);
+      }, 60);
+      return html;
+    };
+  }
+})();
