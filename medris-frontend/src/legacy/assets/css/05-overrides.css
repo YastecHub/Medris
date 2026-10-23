@@ -2543,3 +2543,24 @@ html body #app .lb-page .lb-hero>.lb-hero-people{position:absolute!important;rig
 .lv-pm-acct{font-size:1.05rem;margin:.4rem 0 .6rem}
 .lv-pm-actions{display:flex;gap:.6rem;margin-top:.8rem}
 .lv-pm-actions .btn{flex:1}
+
+/* Payment confirmed: its own teal colour + icon so it is not mistaken for plain Confirmed (blue) or Payment unresolved (purple) */
+.od-tone-paid{--od-tone:#0d9488;--od-tone-text:#0f766e;--od-tone-soft:#ccfbf1;background:#effcf9}
+:root[data-theme="dark"] .od-tone-paid,:root[data-theme="black"] .od-tone-paid{background:color-mix(in srgb,var(--od-tone) 14%,var(--card))}
+.order-status-badge-paid{background:rgba(13,148,136,.12)!important;color:#0f766e!important;border:1px solid rgba(13,148,136,.3)!important;-webkit-text-fill-color:#0f766e!important}
+[data-theme="dark"] .order-status-badge-paid{color:#5eead4!important;-webkit-text-fill-color:#5eead4!important}
+
+/* Home strip carousel */
+.lv-band3{display:block;padding:0;cursor:default}
+.lv-band3:before{display:none}
+.lv-b3-track{display:flex;transition:transform .6s cubic-bezier(.22,.8,.3,1)}
+.lv-b3-slide{flex:0 0 100%;position:relative;display:flex;align-items:center;min-height:5.6rem;padding:.9rem 1rem;cursor:pointer;overflow:hidden}
+.lv-b3-slide .lv-b3-copy{max-width:68%}
+.lv-b3-slide.s2{background:linear-gradient(135deg,#f59e0b,#d9480f)}
+.lv-b3-slide.s3{background:linear-gradient(135deg,#0f9d6a,#0b6b47)}
+.lv-b3-slide.s4{background:linear-gradient(135deg,#e1306c,#833ab4)}
+.lv-b3-slide.s5{background:linear-gradient(135deg,#25d366,#128c7e)}
+.lv-b3-bigic{position:absolute;right:1.1rem;top:50%;transform:translateY(-50%);font-size:2.6rem;opacity:.9;color:#fff}
+.lv-b3-dots{position:absolute;left:1rem;bottom:.4rem;display:flex;gap:.25rem}
+.lv-b3-dots i{width:.35rem;height:.35rem;border-radius:50%;background:rgba(255,255,255,.45)}
+.lv-b3-dots i.on{width:.9rem;border-radius:.3rem;background:#fff}
