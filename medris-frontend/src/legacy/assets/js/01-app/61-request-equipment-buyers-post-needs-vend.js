@@ -41,10 +41,32 @@ window.lvHomeBand2 = function () {
     <button type="button" class="lv-band-card lv-band-e" onclick="navigate('vendors')"><span class="lv-band-t"><b>Rent from vendors</b></span><img class="lv-fl" src="/lb/person-d.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-key"></i></button>
   </section>`;
 };
-// Third Home strip, between Trending products and Trending services
+// Third Home strip, between Trending products and Trending services: a slow carousel of calls to action
 window.lvHomeBand3 = function () {
-  setTimeout(() => lvFloatHero(), 500); setTimeout(() => lvFloatHero(), 1500);
-  return `<section class="lv-band3" onclick="navigate('vendors')" role="link" tabindex="0" aria-label="Meet campus vendors"><div class="lv-b3-copy"><b>Shop from your campus</b><span>Follow your favourite vendors and never miss a drop.</span><em>See vendors <i class="fa-solid fa-arrow-right"></i></em></div><img class="lv-fl lv-b3-img" src="/lb/person-e.webp" alt="" width="72" height="72" loading="lazy" decoding="async"><i class="lv-fl lv-b3-ic fa-solid fa-bag-shopping"></i></section>`;
+  setTimeout(() => lvFloatHero(), 500); setTimeout(() => lvFloatHero(), 1500); setTimeout(() => lvBand3Start(), 300);
+  const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
+  const slide = (cls, onclick, title, sub, cta, icon) => `<div class="lv-b3-slide ${cls}" role="link" tabindex="0" onclick="${onclick}"><div class="lv-b3-copy"><b>${title}</b><span>${sub}</span><em>${cta} <i class="fa-solid fa-arrow-right"></i></em></div><i class="lv-fl lv-b3-bigic fa-solid ${icon}"></i></div>`;
+  return `<section class="lv-band3" id="lvBand3" aria-roledescription="carousel" aria-label="More on Levromart"><div class="lv-b3-track">${
+    slide("s1", "navigate('vendors')", "Shop from your campus", "Follow your favourite vendors and never miss a drop.", "See vendors", "fa-bag-shopping") +
+    slide("s2", req, "Can't find it?", "Tell vendors what you need and let them come to you.", "Request it", "fa-hand") +
+    slide("s3", "navigate('leaderboard')", "Who's winning?", "See the top vendors on campus right now.", "Vendor leaderboard", "fa-trophy") +
+    slide("s4", "navigate('leaderboard')", "Follow us", "Instagram and TikTok: @levromart. Tap to find us.", "Follow us", "fa-heart").replace("navigate('leaderboard')", "window.open('https://instagram.com/levromart','_blank','noopener')") +
+    slide("s5", "window.open('https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs','_blank','noopener')", "Join the family", "Our WhatsApp community: deals, tips and campus news.", "Join the group", "fa-whatsapp").replace("fa-solid fa-whatsapp", "fa-brands fa-whatsapp")
+  }</div><div class="lv-b3-dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i><i></i></div></section>`;
+};
+// Moves to the next slide every 4 seconds; stops when the strip leaves the page or the person prefers less motion.
+window.lvBand3Start = function () {
+  const el = document.getElementById("lvBand3");
+  if (!el || el.dataset.run) return;
+  el.dataset.run = "1";
+  const track = el.querySelector(".lv-b3-track"), dots = el.querySelectorAll(".lv-b3-dots i");
+  let i = 0;
+  const go = (n) => { i = n % dots.length; track.style.transform = `translateX(-${i * 100}%)`; dots.forEach((d, k) => d.classList.toggle("on", k === i)); };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let paused = false;
+  el.addEventListener("touchstart", () => { paused = true; }, { passive: true });
+  el.addEventListener("touchend", () => { setTimeout(() => { paused = false; }, 4000); }, { passive: true });
+  const t = setInterval(() => { if (!document.body.contains(el)) return clearInterval(t); if (!paused && !document.hidden) go(i + 1); }, 4000);
 };
 // Lively strip on Home between Featured Vendors and Browse everything: three tappable cards
 window.lvHomeBand = function () {
