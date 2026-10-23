@@ -2675,3 +2675,9 @@ html body #app .order-filters-grid label:nth-child(4)::before{content:"\f133"}
 html body #app .vendors-filter-grid label:nth-child(2)::before{background:color-mix(in srgb,#f59e0b 18%,var(--card));color:#d97706}
 html body #app .vendors-filter-grid label:nth-child(3)::before,html body #app .order-filters-grid label:nth-child(3)::before{background:color-mix(in srgb,#10b981 18%,var(--card));color:#059669}
 html body #app .vendors-filter-grid label:nth-child(4)::before,html body #app .order-filters-grid label:nth-child(4)::before{background:color-mix(in srgb,#0ea5e9 18%,var(--card));color:#0284c7}
+
+/* Storefront menu: a small plain arrow instead of an encircled three dots; it turns up while the menu is open */
+html body #app .storefront-profile .storefront-banner-more,html body #app .storefront-profile .storefront-own-more-icon{width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;border:0!important;background:rgba(0,0,0,.28)!important;box-shadow:none!important;color:#fff!important;display:inline-flex!important;align-items:center;justify-content:center;backdrop-filter:none!important}
+html body #app .storefront-profile .storefront-own-more-icon{background:transparent!important;color:var(--text)!important}
+html body #app .storefront-profile .storefront-banner-more i,html body #app .storefront-profile .storefront-own-more-icon i{font-size:.85rem!important;transition:transform .22s ease}
+body:has(#storefrontMoreSheet.is-open) #app .storefront-profile .storefront-banner-more i,body:has(#storefrontMoreSheet.is-open) #app .storefront-profile .storefront-own-more-icon i{transform:rotate(180deg)}
