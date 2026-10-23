@@ -122,6 +122,7 @@
     { sel: ".lv-cm-card", close: function (el) { var b = el.parentNode && el.parentNode.querySelector(".lv-cm-back"); if (b) b.click(); }, back: ".lv-cm-back", own: ".lv-cm-card" },
     { sel: ".vendors-filters-panel:not(.hidden)", close: function () { try { toggleVendorsFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
     { sel: ".browse-filter-panel:not(.hidden)", close: function () { try { toggleBrowseFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
+    { sel: ".order-filters-panel:not(.hidden)", close: function () { try { window.closeLevromartTransientFilters(); } catch (_) {} }, back: ".lv-sheet-back" },
     { sel: "#storefrontShareModal:not(.hidden) .storefront-share-sheet", close: function (el) { var m = el.closest("#storefrontShareModal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: false })); }, back: null }
   ];
   var START_SLOP = 8;          // px of movement before it counts as a drag
@@ -588,43 +589,44 @@
   }).observe(document.body, { childList: true, subtree: true });
 })();
 
-/* ===== Filter drawers (vendors page, browse): a real backdrop, a handle, and Clear / Show results buttons =====
+/* ===== Filter drawers (vendors, browse, orders): a real backdrop, a handle, Clear / Show buttons =====
    The drawer used to fake its backdrop with a giant shadow, which could not fade or follow a drag. Now the backdrop is its
-   own layer (tap it to close, it fades while the drawer is pulled down) and the drawer is in the sheet-drag list above. */
+   own layer (tap it to close, it fades while the drawer is pulled down) and the drawer is in the sheet-drag list above.
+   Whatever closes a drawer (the Done button, a tap outside, a drag), the backdrop goes with it. */
 (function () {
   "use strict";
   var PANELS = [
-    { sel: ".vendors-filters-panel", fn: "toggleVendorsFilters", clear: "clearVendorsDirectoryFilters", label: "Show vendors" },
-    { sel: ".browse-filter-panel", fn: "toggleBrowseFilters", clear: "clearBrowseFilters", label: "Show results" }
+    { sel: ".vendors-filters-panel", close: function () { try { toggleVendorsFilters(false); } catch (_) {} }, clear: "clearVendorsDirectoryFilters", label: "Show vendors" },
+    { sel: ".browse-filter-panel", close: function () { try { toggleBrowseFilters(false); } catch (_) {} }, clear: "clearBrowseFilters", label: "Show results" },
+    { sel: ".order-filters-panel", close: function () { try { window.closeLevromartTransientFilters(); } catch (_) {} }, clear: null, label: null }
   ];
-  function sync(p) {
-    var el = document.querySelector(p.sel);
-    if (!el || !el.parentNode) return;
-    var open = !el.classList.contains("hidden");
-    var back = el.parentNode.querySelector(":scope > .lv-sheet-back");
-    if (open && !back) {
-      back = document.createElement("div");
-      back.className = "lv-sheet-back";
-      back.addEventListener("click", function () { try { window[p.fn](false); } catch (_) {} });
-      el.parentNode.insertBefore(back, el);
-    } else if (!open && back) back.remove();
-    if (open && !el.querySelector(":scope > .lv-sheet-foot")) {
-      var foot = document.createElement("div");
-      foot.className = "lv-sheet-foot";
-      foot.innerHTML = '<button type="button" class="btn btn-outline" data-a="clear">Clear all</button><button type="button" class="btn" data-a="done">' + p.label + "</button>";
-      foot.addEventListener("click", function (e) {
-        var a = e.target && e.target.getAttribute && e.target.getAttribute("data-a");
-        if (a === "clear" && typeof window[p.clear] === "function") window[p.clear]();
-        if (a === "done") window[p.fn](false);
-      });
-      el.appendChild(foot);
-    }
+  function sync() {
+    PANELS.forEach(function (p) {
+      var el = document.querySelector(p.sel);
+      if (!el || !el.parentNode) return;
+      var open = !el.classList.contains("hidden");
+      var back = el.parentNode.querySelector(":scope > .lv-sheet-back");
+      if (open && !back) {
+        back = document.createElement("div");
+        back.className = "lv-sheet-back";
+        back.addEventListener("click", p.close);
+        el.parentNode.insertBefore(back, el);
+      } else if (!open && back) back.remove();
+      if (open && p.label && !el.querySelector(":scope > .lv-sheet-foot")) {
+        var foot = document.createElement("div");
+        foot.className = "lv-sheet-foot";
+        foot.innerHTML = '<button type="button" class="btn btn-outline" data-a="clear">Clear all</button><button type="button" class="btn" data-a="done">' + p.label + "</button>";
+        foot.addEventListener("click", function (e) {
+          var a = e.target && e.target.getAttribute && e.target.getAttribute("data-a");
+          if (a === "clear" && p.clear && typeof window[p.clear] === "function") window[p.clear]();
+          if (a === "done") p.close();
+        });
+        el.appendChild(foot);
+      }
+    });
   }
-  PANELS.forEach(function (p) {
-    var orig = window[p.fn];
-    if (typeof orig !== "function") return;
-    window[p.fn] = function () { var r = orig.apply(this, arguments); sync(p); return r; };
-  });
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; sync(); }); }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
 })();
 
 /* ===== Search keeps its place: coming back to the Search page (e.g. from a vendor or product you opened) shows the same
@@ -667,4 +669,48 @@
       return html;
     };
   }
+})();
+
+/* ===== The profile picture in the top bar never falls back to the generic icon while you are signed in =====
+   The picture is remembered on this phone, shown at once when the app opens, and only replaced by the green login icon
+   when there really is no login (signed out, or never signed in). */
+(function () {
+  "use strict";
+  var KEY = "lv-avatar";
+  function hasStoredLogin() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k)) return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+  function cached() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (_) { return null; } }
+  function paintCached() {
+    var c = cached(), btn = document.getElementById("avatarBtn"), login = document.getElementById("loginBtn");
+    if (!c || !btn || !login || !hasStoredLogin()) return;
+    btn.classList.remove("hidden"); login.classList.add("hidden");
+    if (!btn.firstElementChild) {
+      btn.innerHTML = c.url
+        ? '<img src="' + String(c.url).replace(/"/g, "&quot;") + '" alt="" draggable="false" />'
+        : (typeof avatarFallbackHtml === "function" ? avatarFallbackHtml(c.name || "", "100%", "", c.name || "") : "");
+    }
+  }
+  var orig = window.updateAuthUI;
+  if (typeof orig === "function") {
+    window.updateAuthUI = function () {
+      orig.apply(this, arguments);
+      try {
+        if (typeof session !== "undefined" && session && typeof profile !== "undefined" && profile) {
+          localStorage.setItem(KEY, JSON.stringify({ id: session.user.id, url: profile.avatar_url || "", name: profile.name || profile.email || "" }));
+        } else if (!hasStoredLogin()) {
+          localStorage.removeItem(KEY);   // really signed out
+        } else {
+          paintCached();                  // still signed in, the profile is just not loaded yet: keep the picture
+        }
+      } catch (_) {}
+    };
+  }
+  paintCached();
 })();

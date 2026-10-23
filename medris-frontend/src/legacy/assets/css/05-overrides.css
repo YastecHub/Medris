@@ -2642,3 +2642,36 @@ html:root body #app .product-card-wrap>.card{background-image:radial-gradient(ci
 /* search results: no orange circle; lilac top right, light peach bottom left */
 html:root body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(178,155,242,.48) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(255,200,155,.55) 0 56px,transparent 57px)!important}
 :root[data-theme="dark"] body #app .sr-row,:root[data-theme="black"] body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(184,164,242,.2) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(255,208,166,.16) 0 56px,transparent 57px)!important}
+
+/* ===== Round four ===== */
+/* Leaderboard header: flat bottom edge (the top keeps its curve) */
+html body #app .lb-hero{border-radius:22px 22px 0 0!important}
+
+/* Product cards: livelier lilac (top right), peach (bottom left) and a touch of green by "Total" */
+html:root body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 0,rgba(150,118,250,.5) 0 52px,transparent 53px),radial-gradient(circle at 0 100%,rgba(255,168,108,.55) 0 34px,transparent 35px),radial-gradient(circle at 34% 96%,rgba(50,200,130,.6) 0 4px,transparent 5px)!important}
+:root[data-theme="dark"] body #app .product-card-wrap>.card,:root[data-theme="black"] body #app .product-card-wrap>.card{background-image:radial-gradient(circle at 100% 0,rgba(150,118,250,.32) 0 52px,transparent 53px),radial-gradient(circle at 0 100%,rgba(255,168,108,.28) 0 34px,transparent 35px),radial-gradient(circle at 34% 96%,rgba(50,200,130,.45) 0 4px,transparent 5px)!important}
+html:root body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(150,118,250,.46) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(255,168,108,.5) 0 56px,transparent 57px)!important}
+:root[data-theme="dark"] body #app .sr-row,:root[data-theme="black"] body #app .sr-row{background-image:radial-gradient(circle at 100% 0,rgba(150,118,250,.3) 0 46px,transparent 47px),radial-gradient(circle at 0 100%,rgba(255,168,108,.26) 0 56px,transparent 57px)!important}
+
+/* Filter drawers: same sheet look for orders, and tidier fields with a small icon for each */
+html body #app .order-filters-panel:not(.hidden){box-shadow:0 -12px 40px rgba(0,0,0,.2)!important;z-index:9001!important;max-height:82vh;overscroll-behavior:contain;border-radius:24px 24px 0 0!important;border:0!important;padding-top:.5rem!important}
+html body #app .order-filters-panel:not(.hidden)::before{content:"";display:block;width:42px;height:4px;border-radius:4px;background:color-mix(in srgb,var(--text) 22%,transparent);margin:.2rem auto .7rem}
+html body #app .order-filters-panel .lm-sheet-head{padding-bottom:.6rem;margin-bottom:.6rem;border-bottom:1px solid var(--border)}
+html body #app .order-filters-panel .lm-sheet-head strong{font-size:1.05rem}
+html body #app .order-filters-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:.75rem!important}
+html body #app .order-filters-grid label,html body #app .vendors-filter-grid label{display:flex;flex-direction:column;gap:.35rem;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted,#64748b)}
+html body #app .order-filters-grid select{font-size:.92rem!important;font-weight:600;text-transform:none;letter-spacing:0;min-height:46px!important;border-radius:14px!important;background-color:color-mix(in srgb,var(--text) 4%,var(--card))!important}
+html body #app .order-filters-actions{display:flex!important;gap:.6rem;margin-top:1rem;position:sticky;bottom:-.2rem;padding-top:.6rem;background:linear-gradient(to top,var(--card) 70%,transparent)}
+html body #app .order-filters-actions .order-filter-clear-btn,html body #app .order-filters-actions .order-filter-done-btn{flex:1;min-height:46px;border-radius:14px!important;font-weight:700}
+html body #app .vendors-filter-grid label::before,html body #app .order-filters-grid label::before{font-family:"Font Awesome 6 Free","Font Awesome 5 Free";font-weight:900;display:inline-block;width:1.5rem;height:1.5rem;line-height:1.5rem;text-align:center;border-radius:8px;margin-bottom:.1rem;background:color-mix(in srgb,#8b6bff 16%,var(--card));color:#7357e6;font-size:.72rem;letter-spacing:0}
+html body #app .vendors-filter-grid label:nth-child(1)::before{content:"\f5fd"}
+html body #app .vendors-filter-grid label:nth-child(2)::before{content:"\f3c5"}
+html body #app .vendors-filter-grid label:nth-child(3)::before{content:"\f02c"}
+html body #app .vendors-filter-grid label:nth-child(4)::before{content:"\f160"}
+html body #app .order-filters-grid label:nth-child(1)::before{content:"\f111"}
+html body #app .order-filters-grid label:nth-child(2)::before{content:"\f02b"}
+html body #app .order-filters-grid label:nth-child(3)::before{content:"\f53d"}
+html body #app .order-filters-grid label:nth-child(4)::before{content:"\f133"}
+html body #app .vendors-filter-grid label:nth-child(2)::before{background:color-mix(in srgb,#f59e0b 18%,var(--card));color:#d97706}
+html body #app .vendors-filter-grid label:nth-child(3)::before,html body #app .order-filters-grid label:nth-child(3)::before{background:color-mix(in srgb,#10b981 18%,var(--card));color:#059669}
+html body #app .vendors-filter-grid label:nth-child(4)::before,html body #app .order-filters-grid label:nth-child(4)::before{background:color-mix(in srgb,#0ea5e9 18%,var(--card));color:#0284c7}

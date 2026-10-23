@@ -70,21 +70,39 @@ async function refreshAuthState() {
     }
     const isAuthRejection = status === 401 || status === 403 || /user.?not.?found|session.?not.?found|invalid.*token|jwt/i.test(verifyError?.message || "");
     if (isAuthRejection || (!verifyError && !verifiedUser?.user)) {
-      // Temporary diagnostic for a reported "logs in, then immediately logs
-      // back out" bug that hasn't been reproduced yet -- this is the one
-      // path in refreshAuthState() that forces a sign-out, so if that report
-      // is this code misfiring on something that wasn't really an invalid
-      // session, this toast is what will catch it in the act. Safe to
-      // remove once that's confirmed one way or the other.
-      console.warn("[Levromart] Auto sign-out triggered:", { status, message: verifyError?.message, isAuthRejection, hadVerifiedUser: !!verifiedUser?.user });
-      showToast(`Signed out (diagnostic): ${verifyError?.message || (isAuthRejection ? "auth rejected" : "no user returned")}${status ? " · status " + status : ""}`, "error");
-      session = null;
-      profile = null;
-      vendor = null;
-      favoriteIds = new Set();
-      packageFavoriteIds = new Set();
-      manualLogout = true;
-      await sb.auth.signOut({ scope: "local" }).catch(() => {});
+      // People must never be signed out by a hiccup. Wait a moment (another tab or the installed app may be renewing the
+      // login right now), look again, and only sign out when the login itself is confirmed dead: the renewal is refused
+      // because its refresh token no longer exists, not because of the network, a slow server or a race.
+      let stillBad = true;
+      try {
+        await new Promise((r) => setTimeout(r, 1500));
+        const again = await sb.auth.getSession();
+        if (again?.data?.session) {
+          session = again.data.session;
+          const check = await sb.auth.getUser();
+          if (!check.error && check.data?.user) stillBad = false;
+        }
+      } catch (_) {}
+      let tokenDead = false;
+      if (stillBad) {
+        try {
+          const renew = await sb.auth.refreshSession();
+          if (renew?.data?.session) { session = renew.data.session; stillBad = false; }
+          else if (renew?.error && /refresh.?token.*(not.?found|invalid|already.?used|revoked)|invalid.?grant|session.?(not.?found|missing)/i.test(renew.error.message || renew.error.code || "")) tokenDead = true;
+        } catch (_) {}
+      }
+      if (stillBad && tokenDead) {
+        console.warn("[Levromart] Login is no longer valid; signing out:", { status, message: verifyError?.message });
+        session = null;
+        profile = null;
+        vendor = null;
+        favoriteIds = new Set();
+        packageFavoriteIds = new Set();
+        manualLogout = true;
+        await sb.auth.signOut({ scope: "local" }).catch(() => {});
+      } else if (stillBad) {
+        console.warn("[Levromart] Could not confirm the login just now; keeping the person signed in:", { status, message: verifyError?.message });
+      }
     }
   }
 
