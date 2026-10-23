@@ -51,9 +51,11 @@ self.addEventListener('fetch', event => {
 
   /*
    * Navigation requests:
-   * Open instantly from the saved copy of the app, and refresh that copy
-   * in the background so the next open has the latest version. The first
-   * visit (nothing saved yet) and offline still work as before.
+   * Ask the network first, but only wait a short while (2.5 s). A normal
+   * connection therefore always opens the newest version straight away, with
+   * no flash of an older look. On a slow or missing connection the saved copy
+   * opens instead, and the fresh copy is kept for next time (the open page
+   * is told to reload itself if it is still untouched).
    */
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -65,33 +67,40 @@ self.addEventListener('fetch', event => {
 
         const refresh = fetch(request)
           .then(async fresh => {
-            if (fresh && fresh.ok) {
-              // A newer version of the app than the saved copy we just showed: keep it, then tell the open page so it can
-              // reload itself at once (before anything was touched) instead of staying on the old look until the next visit.
-              let newer = false;
-              if (saved) {
-                try {
-                  const [a, b] = await Promise.all([saved.clone().text(), fresh.clone().text()]);
-                  newer = a !== b;
-                } catch (e) {}
-              }
-              await cache.put(request, fresh.clone()).catch(() => {});
-              if (newer) {
-                const open = await self.clients.matchAll({ type: 'window' });
-                open.forEach(c => c.postMessage({ type: 'LV_APP_UPDATED' }));
-              }
+            if (!(fresh && fresh.ok)) return null;
+            let newer = false;
+            if (saved) {
+              try {
+                const [a, b] = await Promise.all([saved.clone().text(), fresh.clone().text()]);
+                newer = a !== b;
+              } catch (e) {}
             }
-            return fresh;
+            await cache.put(request, fresh.clone()).catch(() => {});
+            return { fresh, newer };
           })
           .catch(() => null);
 
         if (saved) {
-          event.waitUntil(refresh);
+          const quick = await Promise.race([
+            refresh,
+            new Promise(resolve => setTimeout(() => resolve(null), 2500))
+          ]);
+          if (quick && quick.fresh) return quick.fresh;
+
+          event.waitUntil(
+            refresh.then(async done => {
+              if (done && done.newer) {
+                const open = await self.clients.matchAll({ type: 'window' });
+                open.forEach(c => c.postMessage({ type: 'LV_APP_UPDATED' }));
+              }
+            })
+          );
           return saved;
         }
 
+        const done = await refresh;
         return (
-          (await refresh) ||
+          (done && done.fresh) ||
           new Response(
             'Levromart is offline.',
             {
