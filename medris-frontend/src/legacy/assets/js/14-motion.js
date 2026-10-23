@@ -548,3 +548,40 @@
       '<div class="lv-ap-list-wrap">' + list + "</div>";
   };
 })();
+
+/* ===== No numbers in a shop's "about" text =====
+   Phone numbers, account numbers or any digits are not allowed in a business description (people were using it to take
+   customers away from the app). Digits are removed as they are typed or pasted, and the save is refused if any are left.
+   The database enforces the same rule (migration 0011). */
+(function () {
+  "use strict";
+  var DIGITS = /[0-9\u0660-\u0669\u06F0-\u06F9\uFF10-\uFF19]/g;
+  var SELECTOR = "#veBio,#vaBio";
+  var lastToast = 0;
+  function say() {
+    if (Date.now() - lastToast < 4000) return;
+    lastToast = Date.now();
+    try { showToast("Numbers are not allowed in your business description.", "info"); } catch (_) {}
+  }
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t || !t.matches || !t.matches(SELECTOR)) return;
+    if (!DIGITS.test(t.value)) { DIGITS.lastIndex = 0; return; }
+    DIGITS.lastIndex = 0;
+    var pos = t.selectionStart, before = t.value.slice(0, pos == null ? 0 : pos).replace(DIGITS, "").length;
+    t.value = t.value.replace(DIGITS, "");
+    try { t.setSelectionRange(before, before); } catch (_) {}
+    say();
+  }, true);
+  // a "hint" under each field
+  new MutationObserver(function () {
+    document.querySelectorAll(SELECTOR).forEach(function (t) {
+      if (t.dataset.noNum) return;
+      t.dataset.noNum = "1";
+      var h = document.createElement("small");
+      h.className = "muted lv-no-num-hint";
+      h.textContent = "No numbers, please (phone or account numbers are not allowed here).";
+      t.insertAdjacentElement("afterend", h);
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+})();
