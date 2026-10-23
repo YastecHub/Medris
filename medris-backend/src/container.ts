@@ -1,3 +1,4 @@
+import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.service.js";
 import { loadConfig, type AppConfig } from "./config/app-config.js";
 import type { DataContext } from "./database/context.js";
 import { getDataContext } from "./database/index.js";
@@ -84,6 +85,7 @@ export interface AppServices {
   scheduledJobs: ScheduledJobsService;
   paystackWebhook: PaystackWebhookService;
   payoutAccounts: PayoutAccountsService;
+  vendorPayouts: VendorPayoutsService;
   commission: CommissionService;
   paymentClaims: PaymentClaimsService;
   checkout: CheckoutService;
@@ -152,6 +154,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     scheduledJobs: overrides.scheduledJobs ?? new ScheduledJobsService(data),
     paystackWebhook: overrides.paystackWebhook ?? new PaystackWebhookService(data),
     payoutAccounts: overrides.payoutAccounts ?? new PayoutAccountsService(data),
+    vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
     commission: overrides.commission ?? new CommissionService(data),
     paymentClaims: overrides.paymentClaims ?? new PaymentClaimsService(data),
     checkout: overrides.checkout ?? new CheckoutService(data),

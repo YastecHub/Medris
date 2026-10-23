@@ -390,3 +390,44 @@
     } catch (_) {}
   };
 })();
+
+/* ===== Vendor payouts list on the Earnings page (issue #98) =====
+   Each payout the vendor is owed, with where it is: waiting, on its way, sent, or on hold (and why). Shown only with Paystack on. */
+(function () {
+  "use strict";
+  var orig = window.renderVendorEarnings;
+  if (typeof orig !== "function") return;
+  var LABEL = {
+    pending: ["Waiting to be sent", "fa-clock", "pending"],
+    processing: ["On its way to your bank", "fa-paper-plane", "info"],
+    success: ["Sent to your bank", "fa-circle-check", "success"],
+    on_hold: ["On hold", "fa-hand", "warning"],
+    failed: ["Trying again", "fa-rotate", "warning"],
+    reversed: ["Returned by the bank. We are sorting it out", "fa-rotate-left", "warning"],
+    paid_manually: ["Paid to you by Levromart", "fa-circle-check", "success"]
+  };
+  function naira(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
+  window.renderVendorEarnings = async function () {
+    var html = await orig.apply(this, arguments);
+    if (typeof html !== "string" || html.indexOf("Access denied") >= 0) return html;
+    setTimeout(window.lvLoadPayoutList, 0);
+    return html + '<section class="lv-payouts" id="lvPayoutList" aria-live="polite"></section>';
+  };
+  window.lvLoadPayoutList = async function () {
+    var box = document.getElementById("lvPayoutList");
+    try {
+      if (!box || !(window.lvPaystackOn && (await window.lvPaystackOn()))) return;
+      var r = await window.levroData.payments.myPayouts();
+      var rows = (r && r.data) || [];
+      if (!rows.length) { box.innerHTML = ""; return; }
+      box.innerHTML = '<h3 class="earn-h"><i class="fa-solid fa-money-bill-transfer"></i> Your payouts</h3>' + rows.map(function (p) {
+        var l = LABEL[p.status] || [p.status, "fa-circle", "info"];
+        var when = new Date(p.updatedAt || p.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+        return '<button type="button" class="lv-payout-row" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.orderId) + '\',source:\'sales\'})">' +
+          '<span class="lv-payout-ico lv-payout-' + l[2] + '"><i class="fa-solid ' + l[1] + '"></i></span>' +
+          '<span class="lv-payout-t"><b>' + naira(p.amount) + '</b><small>' + esc(l[0]) + (p.status === "on_hold" && p.holdReason ? " · " + esc(p.holdReason) : "") + '</small></span>' +
+          '<span class="lv-payout-d">' + esc(when) + "</span></button>";
+      }).join("");
+    } catch (_) {}
+  };
+})();

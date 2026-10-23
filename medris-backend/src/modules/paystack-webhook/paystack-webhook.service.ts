@@ -1,3 +1,4 @@
+import { notifyPayoutSent } from "../vendor-payouts/vendor-payouts.service.js";
 import crypto from "node:crypto";
 import { requireEnv } from "../../config/env.js";
 import type { DataContext } from "../../database/context.js";
@@ -172,6 +173,7 @@ export class PaystackWebhookService {
     if (payout.status === to) return "duplicate: already " + to;
     if (!canMovePayout(payout.status, to)) return `ignored: out of order (${payout.status} -> ${to})`;
     await ledger.setPayout(payout.id, to, to === "success" ? null : String(data.reason ?? data.message ?? `Transfer ${to}`).slice(0, 300));
+    if (to === "success") await notifyPayoutSent(tx, payout.id);
     if (to !== "success") {
       await new NotificationWriter(tx).notifyAdmins(
         to === "failed" ? "Vendor payout failed" : "Vendor payout reversed",
