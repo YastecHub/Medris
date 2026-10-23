@@ -279,6 +279,7 @@ export const RPC: Record<string, RpcEntry> = {
   get_vendor_follower_counts: { run: (s, _me, a) => s.follows.followerCounts(ids(a.p_vendor_ids)) },
   get_vendor_followers: { run: (s, me, a) => s.follows.followers(me, id(a.p_vendor_id)) },
   get_vendor_followers_v2: { run: (s, me, a) => s.follows.followersDetailed(me, id(a.p_vendor_id)) },
+  get_vendor_follower_customers: { run: (s, me, a) => s.follows.followerCustomers(me, id(a.p_vendor_id)) },
   get_vendor_follower_network: { run: (s, me, a) => s.follows.followerNetwork(me, id(a.p_vendor_id)) },
   set_vendor_follow_preferences: {
     run: (s, me, a) =>

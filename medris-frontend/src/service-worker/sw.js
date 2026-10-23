@@ -64,9 +64,22 @@ self.addEventListener('fetch', event => {
           (await cache.match(OFFLINE_FALLBACK));
 
         const refresh = fetch(request)
-          .then(fresh => {
+          .then(async fresh => {
             if (fresh && fresh.ok) {
-              cache.put(request, fresh.clone()).catch(() => {});
+              // A newer version of the app than the saved copy we just showed: keep it, then tell the open page so it can
+              // reload itself at once (before anything was touched) instead of staying on the old look until the next visit.
+              let newer = false;
+              if (saved) {
+                try {
+                  const [a, b] = await Promise.all([saved.clone().text(), fresh.clone().text()]);
+                  newer = a !== b;
+                } catch (e) {}
+              }
+              await cache.put(request, fresh.clone()).catch(() => {});
+              if (newer) {
+                const open = await self.clients.matchAll({ type: 'window' });
+                open.forEach(c => c.postMessage({ type: 'LV_APP_UPDATED' }));
+              }
             }
             return fresh;
           })

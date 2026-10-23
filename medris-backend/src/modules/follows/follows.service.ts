@@ -85,6 +85,12 @@ export class FollowsService {
     });
   }
 
+  /** New: the customers following a shop, for any signed-in person (name and picture only). */
+  followerCustomers(me: Identity | null, vendorId: string) {
+    if (!me) throw unauthenticated("Authentication required.");
+    return this.db().asService((tx) => new FollowReadsRepository(tx).followerCustomers(vendorId));
+  }
+
   /** Replaces: public.get_vendor_follower_network(uuid) */
   followerNetwork(me: Identity | null, vendorId: string): Promise<FollowerNetworkEntry[]> {
     return this.db().asService((tx) => new FollowReadsRepository(tx).followerNetwork(me?.userId ?? null, vendorId));

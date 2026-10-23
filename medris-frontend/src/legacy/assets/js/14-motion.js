@@ -738,3 +738,46 @@
     else if (typeof navigate === "function") navigate(fallback || "home");
   };
 })();
+
+/* ===== A refresh never leaves you on the old version =====
+   The app opens instantly from a saved copy and checks for a newer one in the background. When a newer one is found in the
+   first seconds, and nothing has been touched yet, the page reloads itself once, so you never see the old look (or a mix of
+   old and new) after an update. */
+(function () {
+  "use strict";
+  var touched = false;
+  ["pointerdown", "keydown", "touchstart"].forEach(function (t) { addEventListener(t, function () { touched = true; }, { once: true, capture: true, passive: true }); });
+  try {
+    navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", function (e) {
+      if (e.data && e.data.type === "LV_APP_UPDATED" && !touched && performance.now() < 20000) location.reload();
+    });
+  } catch (_) {}
+})();
+
+/* ===== Maps follow the app theme: dark mode gives a dark map, light mode a light map (you can still pick another style on the map) ===== */
+(function () {
+  "use strict";
+  var orig = window.setTheme;
+  if (typeof orig !== "function") return;
+  window.setTheme = function (theme) {
+    var r = orig.apply(this, arguments);
+    try {
+      if (typeof vmpMap !== "undefined" && vmpMap && typeof vmpSetStyle === "function") vmpSetStyle(theme === "dark" || theme === "black" ? "night" : "streets", false);
+    } catch (_) {}
+    return r;
+  };
+})();
+
+/* ===== Search: after you open a result, the search box is cleared (nothing left to wipe by hand) ===== */
+(function () {
+  "use strict";
+  document.addEventListener("click", function (e) {
+    var hit = e.target && e.target.closest && e.target.closest("#searchPageResults .search-result-row, #searchPageResults .lv-svr-item, #searchPageResults .sr-row, #searchPageResults [data-product-id], #searchPageResults [data-vendor-id]");
+    if (!hit) return;
+    try { sessionStorage.removeItem("lv-search-state"); } catch (_) {}
+    setTimeout(function () {
+      var input = document.getElementById("searchPageInput");
+      if (input) input.value = "";
+    }, 0);
+  }, false);
+})();

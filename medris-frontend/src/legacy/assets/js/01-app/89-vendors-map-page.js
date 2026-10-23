@@ -75,9 +75,8 @@ async function initVendorsMapPage(tries = 0) {
   if (buyerLocation) { center = [buyerLocation.lat, buyerLocation.lng]; zoom = 13; }
   vmpMap = window.L.map("vmpMap", { zoomControl: false, attributionControl: true, zoomSnap: 0.5, zoomDelta: 0.5, inertia: true, worldCopyJump: true }).setView(center, zoom);
   vmpMap.attributionControl.setPrefix(false);
-  // The map always opens in the light "Map" style; only a style the person picked themselves is remembered.
-  let st = ""; try { st = localStorage.getItem("levromart-vmp-style-v2") || ""; } catch (_) {}
-  vmpSetStyle(VMP_STYLES[st] ? st : "streets", false);
+  // The map follows the app's theme (Night in dark mode, Map in light mode); a style picked on the map itself lasts until the theme changes.
+  vmpSetStyle(["dark", "black"].includes(document.documentElement.getAttribute("data-theme")) ? "night" : "streets", false);
   vmpLayer = window.L.layerGroup().addTo(vmpMap);
   vmpMap.on("zoomend moveend", () => { vmpDrawPins(); vmpDrawRail(); });
   vmpMap.on("click", () => { vmpClearRoute(); vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });

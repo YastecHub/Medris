@@ -21,12 +21,12 @@ async function renderVendorFollowerNetwork(vendorId) {
     sb.rpc("get_vendor_follower_network", { p_vendor_id: vendorId }),
   ]);
   const rows = netRes?.data || [];
-  // the shop's own owner also sees the customers who follow it (nobody else does)
+  // customers who follow this shop are listed too (name and picture only), for anyone signed in; shops carry a store icon
   let customers = [];
-  if (session && vendor && String(vendor.id) === String(vendorId)) {
+  if (session) {
     try {
-      const own = await sb.rpc("get_vendor_followers_v2", { p_vendor_id: vendorId });
-      customers = (own?.data || []).filter((r) => !r.is_vendor);
+      const cr = await sb.rpc("get_vendor_follower_customers", { p_vendor_id: vendorId });
+      customers = Array.isArray(cr?.data) ? cr.data : [];
     } catch (_) {}
   }
   const head = `<div class="fn-head"><button type="button" class="icon-btn" onclick="history.length>1?history.back():navigate('vendors')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2>Followers</h2><p class="muted">${customers.length ? "Customers and vendors" : "Vendors"} following ${esc(v?.business_name || "this shop")}</p></div></div>`;
