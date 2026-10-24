@@ -2836,3 +2836,8 @@ html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth
 html:root[data-theme="dark"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(3),html:root[data-theme="black"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(3){--st:#2dd4bf}
 html:root[data-theme="dark"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(4),html:root[data-theme="black"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(4){--st:#a78bfa}
 html:root[data-theme="dark"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(5),html:root[data-theme="black"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(5){--st:#4ade80}
+
+/* Order page: amounts in plain ink and links in a calm blue instead of green */
+html:root body #app .od-card .od-price,html:root body #app .od-price{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+html:root body #app .od-card .od-link,html:root body #app a.od-link{color:#2f5f9e!important;-webkit-text-fill-color:#2f5f9e!important}
+html:root[data-theme="dark"] body #app .od-card .od-link,html:root[data-theme="black"] body #app .od-card .od-link,html:root[data-theme="dark"] body #app a.od-link,html:root[data-theme="black"] body #app a.od-link{color:#8db8f0!important;-webkit-text-fill-color:#8db8f0!important}
