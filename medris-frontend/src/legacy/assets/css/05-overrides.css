@@ -3045,6 +3045,54 @@ html:root:root:root:root:root body #app#app#app .vd-page .vd-seg .vd-tab.active:
 html:root:root:root:root:root body #app#app#app .vd-page .vd-views{padding:2px!important}
 html:root:root:root:root:root body #app#app#app .vd-page .vd-views button.vd-view{width:2.7rem!important;height:2rem!important}
 
+/* ===== School picker: a clean searchable list (logo, name, short name) with text tabs, no mascot panel ===== */
+html:root:root:root body #lvCampus#lvCampus .lvc-hero{display:none!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-search{padding:.2rem 1rem .6rem!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-sbox{background:var(--card)!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:none!important;min-height:2.9rem}
+html:root:root:root body #lvCampus#lvCampus .lvc-chips{display:flex!important;gap:1.35rem!important;overflow-x:auto;padding:0 1rem!important;margin:0!important;border-bottom:1px solid var(--border);scrollbar-width:none;flex-wrap:nowrap!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-chips::-webkit-scrollbar{display:none}
+html:root:root:root body #lvCampus#lvCampus .lvc-chips .lvc-chip{flex:0 0 auto;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.55rem 0 .7rem!important;color:var(--text-muted)!important;font-weight:600!important;font-size:.9rem!important;position:relative}
+html:root:root:root body #lvCampus#lvCampus .lvc-chips .lvc-chip.on{color:var(--text)!important;font-weight:800!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-chips .lvc-chip.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#8b6bff}
+html:root:root:root body #lvCampus#lvCampus .lvc-count{padding:.8rem 1rem .3rem!important;font-size:.78rem!important;color:var(--text-muted)!important;text-transform:none!important;letter-spacing:0!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-grid{display:block!important;padding:0 1rem!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-item{display:flex!important;flex-direction:row!important;align-items:center!important;gap:.85rem!important;width:100%!important;text-align:left!important;padding:.8rem 0!important;margin:0!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-item .lvc-logo{flex:0 0 auto;width:2.7rem!important;height:2.7rem!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-item .lvc-name{flex:1 1 auto;min-width:0;font-size:.95rem!important;font-weight:600!important;text-align:left!important;color:var(--text)!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-item.sel .lvc-name{font-weight:800!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-item small,html:root:root:root body #lvCampus#lvCampus .lvc-item .lvc-abbr{flex:0 0 auto;font-size:.76rem!important;color:var(--text-muted)!important}
+html:root:root:root body #lvCampus#lvCampus .lvc-foot{border-top:1px solid var(--border)!important;background:var(--card)!important}
+
+/* ===== Leaderboard tabs spread across the width ===== */
+html:root:root:root:root body #app#app .lb-page .lb-tabs{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:0!important;overflow:visible!important}
+html:root:root:root:root body #app#app .lb-page .lb-tabs .lb-tab{width:100%!important;text-align:center!important;justify-content:center;padding-left:0!important;padding-right:0!important}
+html:root:root:root:root body #app#app .lb-page .lb-tabs .lb-tab.active::after{left:12%!important;right:12%!important}
+html:root:root:root:root body #app#app .lb-page .lb-scope-seg{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0!important}
+html:root:root:root:root body #app#app .lb-page .lb-scope-seg button{text-align:center!important;width:100%!important}
+html:root:root:root:root body #app#app .lb-page .lb-chips{display:flex!important;justify-content:center;gap:.7rem}
+
+/* ===== Order and vendor filter panels: plain icons (ink in light mode, white in dark), no coloured tiles ===== */
+html:root:root:root body #app#app .order-filters-grid label::before,html:root:root:root body #app#app .vendors-filter-grid label::before{background:transparent!important;box-shadow:none!important;color:var(--text)!important;border-radius:0!important;width:1.2rem!important;font-size:.95rem!important;text-align:left!important}
+
+/* ===== Home cards: bare icons (no squares behind them) and a flyer-style finish ===== */
+html:root:root:root body #app#app .lv-fl{box-shadow:none}
+html:root:root:root body #app#app .lv-b3-bigic.lv-fl,html:root:root:root body #app#app .lv-band-card .lv-bfl{background:transparent!important;box-shadow:none!important;border-radius:0!important;width:auto!important;height:auto!important;color:#fff!important;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+html:root:root:root body #app#app .lv-band-card .lv-bfl{font-size:1.9rem!important;left:auto!important;right:.9rem!important;top:.7rem!important;color:#ffd21f!important}
+html:root:root:root body #app#app .lv-b3-bigic.lv-fl{font-size:3.2rem!important;right:1.2rem}
+html:root:root:root body #app#app .lv-band-wa-logo{background:transparent!important;box-shadow:none!important;border-radius:50%!important}
+html:root:root:root body #app#app .lv-b3-slide.s1{background:linear-gradient(135deg,#4f46e5,#7c3aed)}
+html:root:root:root body #app#app .lv-b3-slide.s2{background:linear-gradient(135deg,#f97316,#ec4899)}
+html:root:root:root body #app#app .lv-b3-slide.s3{background:linear-gradient(135deg,#7c3aed,#c026d3)}
+html:root:root:root body #app#app .lv-b3-slide.s5{background:linear-gradient(135deg,#25d366,#0e9f6e)}
+html:root:root:root body #app#app .lv-b3-slide{min-height:6.4rem!important;isolation:isolate}
+html:root:root:root body #app#app .lv-b3-slide::before{content:"";position:absolute;z-index:-1;right:-34px;top:-46px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.13)}
+html:root:root:root body #app#app .lv-b3-slide::after{content:"";position:absolute;z-index:-1;left:-46px;bottom:-70px;width:150px;height:150px;border-radius:50%;border:20px solid rgba(255,255,255,.09)}
+html:root:root:root body #app#app .lv-b3-slide .lv-b3-copy b{font-size:1.2rem}
+html:root:root:root body #app#app .lv-band-card{isolation:isolate}
+html:root:root:root body #app#app .lv-band-card::before{content:"";position:absolute;z-index:-1;right:-30px;top:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.13)}
+html:root:root:root body #app#app .lv-band-card::after{content:"";position:absolute;z-index:-1;left:-40px;bottom:-60px;width:120px;height:120px;border-radius:50%;border:16px solid rgba(255,255,255,.09)}
+html:root:root:root body #app#app .lv-band-b{background:linear-gradient(135deg,#7c3aed,#c026d3)!important}
+html:root:root:root body #app#app .lv-band-c{background:linear-gradient(135deg,#25d366,#0e9f6e)!important}
 /* ===== Payout bank picker: one clean card, real bank logos, no stray close button ===== */
 html:root:root:root body .vendor-bank-picker-modal .vendor-bank-picker-content,html:root:root:root body #vendorBankPickerModal .vendor-bank-picker-content{width:min(520px,94vw)!important;max-height:82vh!important;display:flex!important;flex-direction:column!important;padding:0!important;border-radius:22px!important;overflow:hidden!important;background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 24px 60px rgba(15,23,42,.35)!important}
 html:root:root:root body .vendor-bank-picker-header{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:1rem!important;padding:1.1rem 1.1rem .6rem!important;margin:0!important;border:0!important;background:transparent!important}
