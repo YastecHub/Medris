@@ -10,7 +10,8 @@ export const paystackWebhookController = controller()
     const keyMode = !key ? "missing" : key.startsWith("sk_test_") ? "test" : key.startsWith("sk_live_") ? "live" : "unknown";
     const setup = await services.paystackCheckout.setupStatus();
     const missingMigrations = setup ? Object.entries(setup).filter(([, ok]) => !ok).map(([n]) => n) : null;
-    return json({ data: { keyMode, checkoutEnabled: services.config.paystack.checkoutEnabled, missingMigrations } } as never, 200);
+    const webhook = await services.paystackCheckout.webhookStatus();
+    return json({ data: { keyMode, checkoutEnabled: services.config.paystack.checkoutEnabled, missingMigrations, webhook } } as never, 200);
   })
   .route(routes.paystackWebhook, async ({ req, services }) => {
     const result = await services.paystackWebhook.handle(await readBodyText(req), req.get("x-paystack-signature"));

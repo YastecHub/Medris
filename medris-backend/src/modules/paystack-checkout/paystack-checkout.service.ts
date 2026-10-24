@@ -67,6 +67,16 @@ export class PaystackCheckoutService {
     }
   }
 
+  /** For the public health page: is Paystack's notification reaching us, and is anything still waiting. Never throws. */
+  async webhookStatus() {
+    try {
+      const w = await this.db().asService((tx) => new PaystackLedgerRepository(tx).webhookStatus());
+      return { lastEventAt: w.last_event_at, events24h: w.events_24h, failedEvents: w.failed_events, waitingPayments: w.waiting_payments };
+    } catch {
+      return null;
+    }
+  }
+
   config(): { paystackCheckout: boolean } {
     return { paystackCheckout: this.checkoutEnabled };
   }

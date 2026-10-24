@@ -36,11 +36,11 @@ export const paymentsHealth = defineRoute({
   path: "/payments/health",
   tags,
   summary: "Are payments configured? (the key mode only, never the key)",
-  description: "Public. `keyMode` is `test` for an `sk_test_` key, `live` for an `sk_live_` key, `missing` or `unknown` otherwise. `missingMigrations` lists the payment database changes (0005, 0007...) not yet applied; null if it could not be checked.",
+  description: "Public. `keyMode` is `test` for an `sk_test_` key, `live` for an `sk_live_` key, `missing` or `unknown` otherwise. `missingMigrations` lists the payment database changes (0005, 0007...) not yet applied; null if it could not be checked. `webhook` shows whether Paystack's notifications reach the server (`lastEventAt`, events in the last day, events that failed, payments still waiting after 5 minutes).",
   security: only("paystackSignature"),
   responses: {
     200: jsonResponse(
-      z.object({ data: z.object({ keyMode: z.enum(["test", "live", "missing", "unknown"]), checkoutEnabled: z.boolean(), missingMigrations: z.array(z.string()).nullable() }) }),
+      z.object({ data: z.object({ keyMode: z.enum(["test", "live", "missing", "unknown"]), checkoutEnabled: z.boolean(), missingMigrations: z.array(z.string()).nullable(), webhook: z.object({ lastEventAt: z.string().nullable(), events24h: z.number(), failedEvents: z.number(), waitingPayments: z.number() }).nullable() }) }),
       "The mode and whether Paystack checkout is switched on.",
     ),
   },
