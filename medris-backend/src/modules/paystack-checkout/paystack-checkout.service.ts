@@ -58,6 +58,15 @@ export class PaystackCheckoutService {
     private readonly checkoutEnabled: boolean,
   ) {}
 
+  /** For the public health page: which database changes are in place. Never throws (a failure reads as "unknown"). */
+  async setupStatus(): Promise<Record<string, boolean> | null> {
+    try {
+      return await this.db().asService((tx) => new PaystackLedgerRepository(tx).setupStatus());
+    } catch {
+      return null;
+    }
+  }
+
   config(): { paystackCheckout: boolean } {
     return { paystackCheckout: this.checkoutEnabled };
   }

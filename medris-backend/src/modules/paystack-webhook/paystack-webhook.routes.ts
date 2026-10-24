@@ -36,11 +36,11 @@ export const paymentsHealth = defineRoute({
   path: "/payments/health",
   tags,
   summary: "Are payments configured? (the key mode only, never the key)",
-  description: "Public. `keyMode` is `test` for an `sk_test_` key, `live` for an `sk_live_` key, `missing` or `unknown` otherwise.",
+  description: "Public. `keyMode` is `test` for an `sk_test_` key, `live` for an `sk_live_` key, `missing` or `unknown` otherwise. `missingMigrations` lists the payment database changes (0005, 0007...) not yet applied; null if it could not be checked.",
   security: only("paystackSignature"),
   responses: {
     200: jsonResponse(
-      z.object({ data: z.object({ keyMode: z.enum(["test", "live", "missing", "unknown"]), checkoutEnabled: z.boolean() }) }),
+      z.object({ data: z.object({ keyMode: z.enum(["test", "live", "missing", "unknown"]), checkoutEnabled: z.boolean(), missingMigrations: z.array(z.string()).nullable() }) }),
       "The mode and whether Paystack checkout is switched on.",
     ),
   },

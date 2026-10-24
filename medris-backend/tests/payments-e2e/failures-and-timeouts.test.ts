@@ -17,6 +17,16 @@ describe("timeouts (unknown outcomes) and failures", () => {
     expect(ok.status).toBe(200);
   });
 
+  it("the health page names any payment database change that is not applied (none missing here), and reveals no key", async () => {
+    const r = await json(await api.get(w, "/payments/health"));
+    expect(r.status).toBe(200);
+    expect(r.data.missingMigrations).toEqual([]);
+    expect(JSON.stringify(r.body)).not.toMatch(/sk_(test|live)_/);
+    await w.db.query(`drop trigger orders_queue_paystack_refunds on public.orders`);
+    const after = await json(await api.get(w, "/payments/health"));
+    expect(after.data.missingMigrations).toEqual(["0008"]);
+  });
+
   it("the Paystack key is missing on the server: a clear 'not available' answer, nothing half-started", async () => {
     const orderId = await newOrder(w);
     const saved = process.env.PAYSTACK_SECRET_KEY;
