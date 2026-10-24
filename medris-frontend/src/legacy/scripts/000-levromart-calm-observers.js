@@ -3,6 +3,7 @@
    that frame, still before the screen is painted, so nothing flickers and nothing is missed. */
 (function () {
   "use strict";
+  try { document.documentElement.setAttribute("data-card-style", localStorage.getItem("lv-card-style") || "dots"); } catch (_) {}
   var Native = window.MutationObserver;
   if (!Native || window.__lvCalmObservers) return;
   window.__lvCalmObservers = true;

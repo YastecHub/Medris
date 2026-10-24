@@ -1050,7 +1050,7 @@
       </section>
 
       <section class="va-sec va-s5">
-      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><strong>Tell buyers more</strong><small>A short intro and when you are open</small></div><span class="va-step">5</span></div>
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-pen-to-square"></i></span><div><strong>Tell buyers more</strong><small>A short intro and when you are open</small></div><span class="va-step">5</span></div>
       <label>About your business <span class="muted">(optional)</span></label>
       <textarea id="vaBio" rows="3" placeholder="Tell buyers briefly what your business offers."></textarea>
 

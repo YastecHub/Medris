@@ -887,3 +887,49 @@
   new MutationObserver(mark).observe(document.body, { childList: true, subtree: true });
   mark();
 })();
+
+/* ===== Bank pickers: show each bank's own logo (small pictures kept with the app); a plain bank icon when there is none ===== */
+(function () {
+  "use strict";
+  function dress() {
+    document.querySelectorAll(".vendor-bank-option:not([data-lvlogo])").forEach(function (btn) {
+      btn.setAttribute("data-lvlogo", "1");
+      var code = String(btn.getAttribute("data-bank-code") || "").replace(/[^a-zA-Z0-9._-]/g, "");
+      var holder = btn.querySelector(".vendor-bank-option-icon");
+      if (!code || !holder) return;
+      var img = new Image();
+      img.alt = ""; img.loading = "lazy"; img.decoding = "async";
+      img.onload = function () { holder.innerHTML = ""; holder.appendChild(img); };
+      img.src = "/bank-logos/" + code + ".webp";
+    });
+  }
+  new MutationObserver(dress).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* ===== Settings: pick the pattern behind product cards ===== */
+(function () {
+  "use strict";
+  var KEY = "lv-card-style";
+  var STYLES = [["dots", "Dots", "lv-cs-dots"], ["lines", "Stripes", "lv-cs-lines"], ["grid", "Grid", "lv-cs-grid2"], ["glow", "Soft glow", "lv-cs-glow"], ["corners", "Corners", "lv-cs-corners"], ["plain", "Plain", ""]];
+  function get() { try { return localStorage.getItem(KEY) || "dots"; } catch (_) { return "dots"; } }
+  document.documentElement.setAttribute("data-card-style", get());
+  function paint() {
+    var cur = get();
+    document.querySelectorAll("#lvCardStyleSection .lv-cs-tile").forEach(function (b) { var on = b.getAttribute("data-cs") === cur; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+  }
+  function set(v) { try { localStorage.setItem(KEY, v); } catch (_) {} document.documentElement.setAttribute("data-card-style", v); paint(); }
+  function mount() {
+    var page = document.getElementById("settings-page");
+    if (!page || document.getElementById("lvCardStyleSection")) return;
+    var first = page.querySelector(".settings-page-section"); if (!first) return;
+    var sec = document.createElement("section");
+    sec.className = "settings-page-section"; sec.id = "lvCardStyleSection";
+    sec.innerHTML = '<h3><i class="fa-solid fa-table-cells-large"></i> Product cards</h3><p class="settings-section-note">Pick the pattern behind product cards. It is saved on this device.</p><div class="lv-cs-grid">' +
+      STYLES.map(function (s) { return '<button type="button" class="lv-cs-tile" data-cs="' + s[0] + '" aria-pressed="false"><span class="lv-cs-prev ' + s[2] + '"></span>' + s[1] + "</button>"; }).join("") + "</div>";
+    first.insertAdjacentElement("afterend", sec);
+    sec.addEventListener("click", function (e) { var b = e.target.closest("[data-cs]"); if (b) set(b.getAttribute("data-cs")); });
+    paint();
+  }
+  new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
+  mount();
+})();
