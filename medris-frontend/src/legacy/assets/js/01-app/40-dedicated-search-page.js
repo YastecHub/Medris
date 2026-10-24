@@ -10,7 +10,7 @@
 // ordinary list items with a plain onclick, not a floating dropdown that
 // has to survive an input's blur event.
 const SEARCH_HISTORY_KEY = "levromart-search-history-v1";
-const SEARCH_HISTORY_MAX = 7;
+const SEARCH_HISTORY_MAX = 6;
 function readSearchHistory() {
   try { const list = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); return Array.isArray(list) ? list.slice(0, SEARCH_HISTORY_MAX) : []; } catch (_) { return []; }
 }

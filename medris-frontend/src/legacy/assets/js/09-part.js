@@ -1061,7 +1061,7 @@
         <option value="daily_8_8">Every day, 8:00 AM – 8:00 PM</option>
         <option value="weekdays_9_6">Mon–Fri, 9:00 AM – 6:00 PM (closed weekends)</option>
         <option value="mon_sat_9_7">Mon–Sat, 9:00 AM – 7:00 PM (closed Sunday)</option>
-        <option value="24_7">Open 24/7</option>
+        <option value="24_7" selected>Open 24/7</option>
         <option value="custom">Custom, day by day…</option>
       </select>
       <div id="vaCustomHoursWrap" class="hidden" style="margin-top:.6rem;">

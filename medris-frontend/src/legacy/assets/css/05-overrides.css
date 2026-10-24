@@ -2900,3 +2900,43 @@ html:root body .lf-page .inline-toggle-row input[type="checkbox"]:checked::after
 html:root body .photo-dropzone.is-compact{padding:.7rem .9rem!important;min-height:0!important;flex-direction:row!important;gap:.6rem!important;justify-content:center}
 html:root body .photo-dropzone.is-compact i{font-size:1.1rem!important;margin:0!important}
 html:root body .photo-dropzone.is-compact span.muted{display:none}
+
+/* Vendor application: clear, bold "I'm not a student" and "I don't have my ID card or biodata yet" ticks */
+html:root body .lvv-notstudent,html:root body .sv-nodocs{display:flex!important;align-items:flex-start;gap:.8rem;margin:.9rem 0 1rem!important;padding:.9rem 1rem!important;border:2px solid color-mix(in srgb,#8b6bff 55%,var(--border))!important;border-radius:16px!important;background:color-mix(in srgb,#8b6bff 8%,var(--card))!important;cursor:pointer;color:var(--text)!important}
+html:root body .lvv-notstudent.on{border-color:#7c5cf0!important;background:color-mix(in srgb,#8b6bff 14%,var(--card))!important}
+html:root body .lvv-notstudent input[type="checkbox"],html:root body .sv-nodocs input[type="checkbox"]{flex:0 0 auto;width:1.55rem!important;height:1.55rem!important;min-width:1.55rem;margin:.1rem 0 0!important;accent-color:#7c5cf0;cursor:pointer}
+html:root body .lvv-notstudent span,html:root body .sv-nodocs span{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+html:root body .lvv-notstudent b,html:root body .sv-nodocs b{font-size:1rem;font-weight:800;color:var(--text)}
+html:root body .lvv-notstudent small,html:root body .sv-nodocs small{font-size:.8rem;font-weight:500;color:var(--text-muted);line-height:1.35}
+
+/* ===== Search page, refurbished: calm and airy. No banner, a plain search bar, text tabs, one tidy row of recent searches, flat result rows ===== */
+html:root body #app .search-page .lv-hero2{display:none!important}
+html:root body #app .search-page{padding-top:.4rem}
+html:root body #app .search-page .search-page-bar{display:flex;align-items:center;gap:.6rem;margin:0 0 .9rem!important}
+html:root body #app .search-page .search-page-back{width:2.4rem!important;height:2.4rem!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--text)!important;font-size:1.05rem}
+html:root body #app .search-page .search-page-input-wrap{flex:1 1 auto;background:var(--card)!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:none!important;min-height:2.9rem}
+html:root body #app .search-page .search-page-input-wrap:focus-within{border-color:color-mix(in srgb,#8b6bff 60%,var(--border))!important;box-shadow:0 0 0 3px color-mix(in srgb,#8b6bff 14%,transparent)!important}
+html:root body #app .search-page .search-page-input-wrap input{background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important}
+html:root body #app .search-page .search-page-filters{display:flex!important;gap:1.35rem!important;overflow-x:auto;padding:0 .2rem .1rem!important;margin:0 0 1.1rem!important;border-bottom:1px solid var(--border);scrollbar-width:none}
+html:root body #app .search-page .search-page-filters::-webkit-scrollbar{display:none}
+html:root body #app .search-page .search-page-filter{flex:0 0 auto;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.45rem 0 .7rem!important;font-size:.92rem!important;font-weight:600!important;color:var(--text-muted)!important;position:relative}
+html:root body #app .search-page .search-page-filter i{display:none!important}
+html:root body #app .search-page .search-page-filter.active{color:var(--text)!important;font-weight:800!important}
+html:root body #app .search-page .search-page-filter.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#8b6bff}
+/* section titles */
+html:root body #app .search-page .lv-svr-head strong,html:root body #app .search-page .search-page-history-head span,html:root body #app .search-page .search-page-section>h3{font-size:1rem!important;font-weight:800!important;letter-spacing:0!important;text-transform:none!important;color:var(--text)!important;margin:0!important}
+html:root body #app .search-page .lv-svr{margin:0 0 1.7rem!important}
+html:root body #app .search-page .lv-svr-head,html:root body #app .search-page .search-page-history-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 .8rem!important}
+html:root body #app .search-page .search-page-history-head button{color:var(--text-muted)!important;font-weight:600;font-size:.82rem}
+html:root body #app .search-page .search-page-history-block{margin:0 0 1.7rem!important}
+html:root body #app .search-page .search-page-history-chips{display:flex!important;flex-wrap:nowrap!important;gap:.5rem!important;overflow:hidden}
+html:root body #app .search-page .search-page-chip{flex:0 1 auto;min-width:0;max-width:6.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important;border-radius:999px!important;padding:.38rem .8rem!important;font-size:.84rem!important;font-weight:600;box-shadow:none!important}
+html:root body #app .search-page .search-page-section{margin-top:0!important}
+html:root body #app .search-page .search-page-section>h3{margin-bottom:.4rem!important}
+/* result rows: flat list with hairlines instead of heavy cards */
+html:root body #app .search-page .sr-row{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding:.95rem 0!important;margin:0!important;overflow:visible!important}
+html:root body #app .search-page .sr-row::before,html:root body #app .search-page .sr-row::after,html:root body #app .search-page .sr-row>h4::after{display:none!important;content:none!important}
+html:root body #app .search-page .sr-row .sr-price{background:transparent!important;color:var(--text)!important;font-weight:800;font-size:.98rem;padding:0!important;border-radius:0!important;position:static!important}
+html:root body #app .search-page .sr-row .sr-cart{width:2.3rem;height:2.3rem;border-radius:12px;border:1px solid var(--border)!important;background:transparent!important;color:var(--text)!important;box-shadow:none!important}
+html:root body #app .search-page .sr-row .sr-type{background:transparent!important;color:var(--text-muted)!important;font-style:normal;font-weight:600}
+html:root body #app .search-page .sr-row .sr-thumb,html:root body #app .search-page .sr-row img{border-radius:14px!important}

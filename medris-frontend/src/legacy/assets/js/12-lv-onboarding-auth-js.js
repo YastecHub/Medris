@@ -1663,9 +1663,15 @@ async function setVendorRequestPref(v){
     var major=window.lvMyCampusId(); var ids=st.list.slice(); if(major&&major!=="none"&&ids.indexOf(major)<0) ids.unshift(major);
     return '<div class="lvv-chips">'+ids.map(function(id){var r=window.lvCampusById(id);return '<span>'+e2(r?(r.abbr&&r.abbr.length<=8?r.abbr:r.name):id)+'</span>';}).join("")+'</div>';
   }
+  var forceStudent=false;
+  function isNotStudent(){ var m=window.lvMyCampusId(); return m==="none"&&!forceStudent; }
+  function notStudentHtml(on){
+    return '<label class="lvv-notstudent'+(on?' on':'')+'"><input type="checkbox" id="lvNotStudent"'+(on?' checked':'')+'><span><b>I\'m not a student</b><small>'+(on?'No university or student ID needed. Everyone on Levromart can buy from you.':'Tick this if you are not in a school. You will skip the university and student ID steps.')+'</small></span></label>';
+  }
   function blockHtml(){
     var st=getOps(),major=window.lvMyCampusId();
-    return '<label>Major campus</label><div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-a="major">'+window.lvCampusBtnHtml(major&&major!=="none"?major:"","Choose your major campus")+'</button></div>'
+    if(isNotStudent()) return notStudentHtml(true);
+    return notStudentHtml(false)+'<label>Major campus</label><div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-a="major">'+window.lvCampusBtnHtml(major&&major!=="none"?major:"","Choose your major campus")+'</button></div>'
      +'<p class="lvv-hint">Your major campus is the one shown on your store, vendor cards and featured listings.</p>'
      +'<label>Where do you sell?</label><div class="lvv-seg">'+[["one","One campus"],["multiple","Selected campuses"],["all","All campuses"]].map(function(o){return '<button type="button" data-s="'+o[0]+'" class="'+(st.scope===o[0]?'on':'')+'">'+o[1]+'</button>';}).join("")+'</div>'
      +(st.scope==="multiple"?'<button type="button" class="lv-campus-btn" data-a="many"><span class="ico"><i class="fa-solid fa-list-check"></i></span><span class="t">'+(st.list.length?st.list.length+" campus"+(st.list.length===1?"":"es")+" selected":"Choose campuses")+'<small>Tick every campus you deliver to or sell on</small></span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i></button>'+chipsHtml(st):'')
@@ -1675,8 +1681,16 @@ async function setVendorRequestPref(v){
     var host=anchor.parentNode; if(host.querySelector("[data-lvv]")) return;
     var wrap=document.createElement("div"); wrap.className="lvv"; wrap.setAttribute("data-lvv","1");
     anchor.insertAdjacentElement("afterend",wrap);
-    function paint(){ wrap.innerHTML=blockHtml(); }
-    window.lvCampuses().then(function(){ paint(); mountSV(wrap); });
+    function syncSV(){ var sv=host.querySelector("[data-lvsv]"); if(sv) sv.style.display=isNotStudent()?"none":""; }
+    function paint(){ wrap.innerHTML=blockHtml(); syncSV(); }
+    window.lvCampuses().then(function(){ paint(); mountSV(wrap); syncSV(); });
+    wrap.addEventListener("change",function(e){
+      if(!e.target||e.target.id!=="lvNotStudent") return;
+      if(e.target.checked){
+        forceStudent=false;
+        window.lvSaveCampus("none").then(function(){ return saveOps({scope:"all",list:[]}); }).then(paint).catch(function(){ toast("Couldn't save that. Check your connection and try again.","error"); e.target.checked=false; });
+      } else { forceStudent=true; paint(); }
+    });
     wrap.addEventListener("click",function(e){
       var b=e.target.closest("[data-a],[data-s]"); if(!b) return;
       if(b.dataset.a==="major"){ window.lvCampuses().then(function(){ window.lvOpenCampusPicker({title:"Your major campus",current:window.lvMyCampusId(),onPick:function(r){ window.lvSaveCampus(r.id).then(paint).catch(function(){toast("Couldn't save your campus.","error");}); }}); }); }
@@ -1720,7 +1734,7 @@ async function setVendorRequestPref(v){
     if(after.parentNode.querySelector("[data-lvsv]")) return;
     var box=document.createElement("div"); box.className="lv-sv"; box.setAttribute("data-lvsv","1");
     after.insertAdjacentElement("afterend",box);
-    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={}, pend={};
+    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={}, pend={}, noDocs=false;
     function isPdfUrl(u){ return /\.pdf(\?|$)/i.test(String(u||"")); }
     function notPdf(d){ return d&&!(d.type==="application/pdf"||isPdfUrl(typeof d==="string"?d:d.name)); }
     function fthumb(f,url,label,icon){
@@ -1746,9 +1760,10 @@ async function setVendorRequestPref(v){
        +'<label>Faculty</label><input id="svFaculty" value="'+e2(r.faculty||"")+'" placeholder="e.g. Engineering" autocomplete="off">'
        +'<label>Department</label><input id="svDept" value="'+e2(r.department||"")+'" placeholder="e.g. Computer Science" autocomplete="off">'
        +'<label>Level of study</label><select id="svLevel">'+levelOptions(r.level)+'</select>'
-       +'<div class="up"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,"School ID card","fa-regular fa-id-card")+'</button>'
+       +'<label class="sv-nodocs"><input type="checkbox" id="svNoDocs"'+(noDocs?' checked':'')+'> <span><b>I don\'t have my ID card or biodata yet</b><small>No problem: you can submit without them and add them later.</small></span></label>'
+       +'<div class="up'+(noDocs?' hidden':'')+'"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,"School ID card","fa-regular fa-id-card")+'</button>'
        +'<button type="button" data-f="bio" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+fthumb(files.bio,r.biodata_url,"Biodata page","fa-regular fa-file-lines")+'</button></div>'
-       +'<p class="sv-hint">Photos or PDF files both work.</p>'
+       +'<p class="sv-hint'+(noDocs?' hidden':'')+'">Photos or PDF files both work.</p>'
        +'<input type="file" accept="image/*,application/pdf,.pdf" class="hidden" id="svFile">'
        +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
        +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for review")+'</button>';
@@ -1809,6 +1824,7 @@ async function setVendorRequestPref(v){
     });
     box.addEventListener("change",async function(e){
       if(e.target.id==="svNoMatric"){ setNo(e.target.checked); return; }
+      if(e.target.id==="svNoDocs"){ var kd=keepInputs(); noDocs=e.target.checked; paint(); restoreInputs(kd); return; }
       if(e.target.id!=="svFile"||!cur) return; var slot=cur, file=e.target.files[0]; e.target.value=""; if(!file) return;
       var keep={m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked};
       try{
@@ -1853,7 +1869,7 @@ async function setVendorRequestPref(v){
       var miss=[],bad=[]; if(!nm&&!m){ miss.push("matric number (or tick the box)"); bad.push("#svMatric"); } if(!f){ miss.push("faculty"); bad.push("#svFaculty"); } if(!d){ miss.push("department"); bad.push("#svDept"); } if(!l){ miss.push("level"); bad.push("#svLevel"); }
       if(miss.length){ ferr("Please add your "+miss.join(", ")+".",bad); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
-      if(!hasId||!hasBio){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
+      if(!noDocs&&(!hasId||!hasBio)){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();

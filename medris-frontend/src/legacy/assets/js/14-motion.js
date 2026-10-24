@@ -853,3 +853,12 @@
   var nav = window.navigate;
   if (typeof nav === "function") window.navigate = function () { wantOpen = false; return nav.apply(this, arguments); };
 })();
+
+/* ===== Vendor application: working hours use the app's own dropdown (not the phone's plain list) ===== */
+(function () {
+  "use strict";
+  function dress() { var s = document.getElementById("vaHoursPreset"); if (s && typeof enhanceSelect === "function") { try { enhanceSelect(s); } catch (_) {} } }
+  var host = document.getElementById("app") || document.body;
+  new MutationObserver(dress).observe(host, { childList: true, subtree: true });
+  dress();
+})();
