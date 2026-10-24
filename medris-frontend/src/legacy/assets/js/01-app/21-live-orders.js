@@ -67,6 +67,10 @@ function handleOrdersVisibilityRefresh() {
 
 // True while the person is typing into a field on the page. A live repaint would wipe what they have typed, so it waits.
 function userIsTypingInApp() {
+  // An open "report an issue" form, or a picture just chosen for it, must survive a live repaint (coming back from the photo picker used to wipe it).
+  const df = document.getElementById("disputeForm");
+  if (df && !df.classList.contains("hidden")) return true;
+  if (Array.from(document.querySelectorAll("#app input[type=file]")).some((i) => i.files && i.files.length)) return true;
   const a = document.activeElement;
   if (!a || !a.closest || !a.closest("#app")) return false;
   const t = a.tagName;

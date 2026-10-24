@@ -2882,3 +2882,21 @@ html:root body #app#app#app .vd-page .vd-chip.vd-chip-all.active,html:root[data-
 
 /* "All categories": the selected one gets a very light lilac highlight */
 html:root body #app#app#app .vd-page .vd-chip.vd-chip-all.active,html:root[data-theme="dark"] body #app#app#app .vd-page .vd-chip.vd-chip-all.active,html:root[data-theme="black"] body #app#app#app .vd-page .vd-chip.vd-chip-all.active{background:color-mix(in srgb,#8b6bff 10%,var(--card))!important;border:1px solid color-mix(in srgb,#8b6bff 55%,var(--border))!important}
+
+/* Add / edit listing: lively section icons (lilac, sky, mint, peach, teal, pink), a real on/off switch, and a compact "add more photos" box once the display picture is set */
+html:root body .lf-page:not([data-lf-mode="service"]):not([data-lf-mode="package"]) .lm-sec.lm-blue{--lm:#8b6bff}
+html:root body .lf-page .lm-sec.lm-violet{--lm:#4f9bff}
+html:root body .lf-page .lm-sec.lm-green{--lm:#19c486}
+html:root body .lf-page .lm-sec.lm-amber{--lm:#ff9a62}
+html:root body .lf-page .lm-sec.lm-teal{--lm:#14b8a6}
+html:root body .lf-page .lm-sec.lm-pink{--lm:#ec6fb0}
+html:root body .lf-page .lm-sec .lm-ico{background:color-mix(in srgb,var(--lm) 18%,var(--card))!important;color:var(--lm)!important}
+html:root[data-theme="dark"] body .lf-page .lm-sec .lm-ico,html:root[data-theme="black"] body .lf-page .lm-sec .lm-ico{background:color-mix(in srgb,var(--lm) 24%,var(--card))!important}
+html:root body .lf-page .inline-toggle-row{display:flex!important;align-items:center;justify-content:space-between;gap:1rem}
+html:root body .lf-page .inline-toggle-row input[type="checkbox"]{-webkit-appearance:none!important;appearance:none!important;flex:0 0 auto;width:2.75rem!important;height:1.6rem!important;min-width:2.75rem;margin:0;padding:0;border:0!important;border-radius:999px!important;background:color-mix(in srgb,var(--text) 20%,var(--card))!important;position:relative;cursor:pointer;transition:background .15s ease;box-shadow:none!important}
+html:root body .lf-page .inline-toggle-row input[type="checkbox"]::after{content:"";position:absolute;top:.17rem;left:.17rem;width:1.26rem;height:1.26rem;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.35);transition:transform .15s ease}
+html:root body .lf-page .inline-toggle-row input[type="checkbox"]:checked{background:#8b6bff!important}
+html:root body .lf-page .inline-toggle-row input[type="checkbox"]:checked::after{transform:translateX(1.15rem)}
+html:root body .photo-dropzone.is-compact{padding:.7rem .9rem!important;min-height:0!important;flex-direction:row!important;gap:.6rem!important;justify-content:center}
+html:root body .photo-dropzone.is-compact i{font-size:1.1rem!important;margin:0!important}
+html:root body .photo-dropzone.is-compact span.muted{display:none}
