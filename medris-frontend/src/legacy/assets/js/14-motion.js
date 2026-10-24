@@ -1310,3 +1310,40 @@
     });
   }, 10000);
 })();
+
+/* ===== Always run the newest version: whenever the app comes back to the front, check for a newer release and refresh once ===== */
+(function () {
+  "use strict";
+  var link = document.querySelector('link[href*="01-base.css"]');
+  var m = link && /[?&]v=(\d+)/.exec(link.getAttribute("href") || "");
+  var running = m ? m[1] : null;
+  if (!running) return;
+  var hiddenAt = 0, lastCheck = 0;
+  function busy() {
+    var a = document.activeElement;
+    return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value);
+  }
+  async function check(force) {
+    if (Date.now() - lastCheck < (force ? 0 : 90000)) return;
+    lastCheck = Date.now();
+    try {
+      var reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+      if (reg) reg.update().catch(function () {});
+      var r = await fetch("/sw.js?lvv=" + Date.now(), { cache: "no-store" });
+      var t = await r.text(), n = /shell-v(\d+)/.exec(t);
+      if (!n || n[1] === running) return;
+      var key = "lv-updated-to"; var done = ""; try { done = sessionStorage.getItem(key) || ""; } catch (_) {}
+      if (done === n[1] || busy()) return;           // only once per release, never while someone is typing
+      try { sessionStorage.setItem(key, n[1]); } catch (_) {}
+      try { showToast("Updating Levromart…", "info"); } catch (_) {}
+      setTimeout(function () { location.reload(); }, 600);
+    } catch (_) {}
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 15000) check(true);
+  });
+  window.addEventListener("pageshow", function (e) { if (e.persisted) check(true); });
+  setTimeout(function () { check(true); }, 4000);          // shortly after opening
+  setInterval(function () { if (!document.hidden) check(false); }, 300000);
+})();
