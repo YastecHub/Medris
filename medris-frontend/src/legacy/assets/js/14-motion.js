@@ -33,7 +33,7 @@
   window.lvResumeCarousel=resumeCarousel;
   var KEEP=[
     {sel:"#homePromotionalCarousel",
-     sig:function(n){ return Array.prototype.map.call(n.querySelectorAll(".home-promotional-slide:not([data-clone])"),function(b){ var i=b.querySelector("img"); return (i?(i.getAttribute("src")||""):"")+"|"+(b.getAttribute("data-link-url")||""); }).join(";"); },
+     sig:function(n){ return Array.prototype.map.call(n.querySelectorAll(".home-promotional-slide:not([data-clone]):not([data-wv])"),function(b){ var i=b.querySelector("img"); return (i?(i.getAttribute("src")||""):"")+"|"+(b.getAttribute("data-link-url")||""); }).join(";"); },
      scroll:function(n){ var v=n.querySelector("#homePromotionalViewport"); return v?v.scrollLeft:0; },
      after:function(n,sc){ var v=n.querySelector("#homePromotionalViewport"); requestAnimationFrame(function(){ if(v&&sc){ v.style.scrollSnapType="none"; v.scrollLeft=sc; requestAnimationFrame(function(){ v.style.scrollSnapType=""; }); } resumeCarousel(); }); }},
     {sel:".levro-home-cat-rail",
@@ -755,7 +755,13 @@
   }
   var heights = {};
   try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
+  function view0() { try { return currentView; } catch (_) { return ""; } }
+  var vendorsSnap = null;   // the Vendors page as it looked when we left it (grid/list only), so Back can show it at once
   function remember() {
+    try {
+      var a = document.getElementById("app"), m = null; try { m = localStorage.getItem("levromart_vendors_view"); } catch (_) {}
+      if (a && view0() === "vendors" && m !== "map" && a.querySelector("#vendorsGrid .vd-card, #vendorsGrid > *:not(.vd-skel)")) vendorsSnap = a.innerHTML;
+    } catch (_) {}
     var k = keyOf(true);
     if (!k) return;
     scrolls[k] = window.scrollY || document.documentElement.scrollTop || 0;
@@ -782,6 +788,9 @@
       var heldBody = false;
       if (pushHistory === false) {
         try { var hk = keyOf(false), hh = hk != null ? heights[hk] : 0; if (hh > 0) { document.body.style.minHeight = hh + "px"; heldBody = true; } } catch (_) {}
+      }
+      if (pushHistory === false && view === "vendors" && vendorsSnap && view0() !== "vendors") {
+        try { document.getElementById("app").innerHTML = vendorsSnap; } catch (_) {}
       }
       var r = await orig.apply(this, arguments);
       if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
@@ -932,4 +941,175 @@
   }
   new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
   mount();
+})();
+
+/* ===== Vendors page: coming Back shows the vendors we already have straight away (no grey placeholders first) ===== */
+(function () {
+  "use strict";
+  var orig = window.renderVendorsDirectory;
+  if (typeof orig !== "function" || window.__lvVendorsInstant) return;
+  window.__lvVendorsInstant = true;
+  window.renderVendorsDirectory = function () {
+    var html = orig.apply(this, arguments);
+    try {
+      var all = window.__allVendors;
+      if (!Array.isArray(all) || !all.length || typeof vendorDirectorySkeletonHtml !== "function") return html;
+      var sk = vendorDirectorySkeletonHtml();
+      var at = html.indexOf(sk);
+      if (at < 0) return html;
+      var shown = window.__filteredVendors;
+      var mode = typeof vendorDirectoryMode === "string" ? vendorDirectoryMode : "grid", cards = "";
+      if (mode !== "map") {
+        if (!Array.isArray(shown) || shown.length !== all.length) return html;   // a filter was applied last time: wait for the fresh list
+        var fn = mode === "list" ? window.vendorDirectoryCardHtml || (typeof vendorDirectoryCardHtml === "function" ? vendorDirectoryCardHtml : null) : (typeof vendorPageCardHtml === "function" ? vendorPageCardHtml : null);
+        if (!fn) return html;
+        cards = shown.slice(0, 12).map(fn).join("");
+      }
+      return html.slice(0, at) + cards + html.slice(at + sk.length);
+    } catch (_) { return html; }
+  };
+})();
+
+/* ===== Home: three flyer banners for the vendor who is winning right now (storefront, products, follow) =====
+   They are slipped in between the normal promotional banners, take their colours from the vendor's logo, and change on
+   their own whenever a different vendor takes the lead. */
+(function () {
+  "use strict";
+  var busy = false, prodCache = {}, colorCache = {};
+  function esc2(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function hueOf(id) { var h = 2166136261; String(id).split("").forEach(function (ch) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }); return (h >>> 0) % 360; }
+  function palette(h) { return "--wv-a:hsl(" + h + ",68%,40%);--wv-b:hsl(" + ((h + 28) % 360) + ",70%,26%);--wv-c:hsl(" + h + ",90%,72%);--wv-ink:hsl(" + h + ",70%,30%)"; }
+  // the most colourful part of the logo, so the flyer matches it
+  function logoHue(url) {
+    if (!url) return Promise.resolve(null);
+    if (colorCache[url] !== undefined) return Promise.resolve(colorCache[url]);
+    return new Promise(function (res) {
+      var im = new Image(); im.crossOrigin = "anonymous";
+      var done = function (v) { colorCache[url] = v; res(v); };
+      im.onload = function () {
+        try {
+          var c = document.createElement("canvas"); c.width = c.height = 32; var x = c.getContext("2d"); x.drawImage(im, 0, 0, 32, 32);
+          var d = x.getImageData(0, 0, 32, 32).data, bins = new Array(24).fill(0);
+          for (var i = 0; i < d.length; i += 4) {
+            var r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, dl = mx - mn;
+            if (d[i + 3] < 200 || dl < .18 || l < .15 || l > .9) continue;
+            var h = mx === r ? ((g - b) / dl + 6) % 6 : mx === g ? (b - r) / dl + 2 : (r - g) / dl + 4;
+            bins[Math.floor(h * 60 / 15) % 24] += dl;
+          }
+          var best = 0; bins.forEach(function (v, k) { if (v > bins[best]) best = k; });
+          done(bins[best] > 0 ? best * 15 + 7 : null);
+        } catch (_) { done(null); }
+      };
+      im.onerror = function () { done(null); };
+      im.src = url;
+    });
+  }
+  function products(vid) {
+    var c = prodCache[vid]; if (c && Date.now() - c.at < 300000) return Promise.resolve(c.rows);
+    return Promise.resolve(sb.from("products").select("id,name,photos,sale_price,discount_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(12))
+      .then(function (r) {
+        var rows = ((r && r.data) || []).filter(function (p) { return p.photos && p.photos[0]; }).slice(0, 3);
+        prodCache[vid] = { at: Date.now(), rows: rows }; return rows;
+      }).catch(function () { return []; });
+  }
+  function naira(p) { try { var v = typeof effectivePrice === "function" ? effectivePrice(p) : (p.discount_price || p.sale_price); v = Number(v); return v > 0 ? "₦" + v.toLocaleString("en-NG") : ""; } catch (_) { return ""; } }
+  function logoHtml(w, cls) {
+    var ini = esc2(String(w.business_name || "?").trim().slice(0, 2).toUpperCase());
+    return '<span class="lv-wv-logo ' + (cls || "") + '">' + (w.logo_url ? '<img src="' + esc2(w.logo_url) + '" alt="" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement(\'b\'),{textContent:\'' + ini + '\'}))">' : "<b>" + ini + "</b>") + "</span>";
+  }
+  function slide(kind, w, rows, hue) {
+    var id = esc2(w.vendor_id), nm = esc2(w.business_name);
+    var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette(hue) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
+    var thumbs = rows.map(function (p) { return '<img src="' + esc2(p.photos[0]) + '" alt="" loading="lazy" decoding="async">'; }).join("");
+    if (kind === "a") {
+      return "<button type=\"button\"" + open + "Vendor of the week: " + nm + '"><span class="lv-wv-in">' +
+        '<span class="lv-wv-badge"><i class="fa-solid fa-crown"></i> Vendor of the week</span>' +
+        logoHtml(w, "lv-wv-logo-big") +
+        '<span class="lv-wv-name">' + nm + "</span>" +
+        '<span class="lv-wv-sub">' + (Number(w.points) ? Number(w.points).toLocaleString("en-NG") + " points this week" : "Top of the leaderboard") + "</span>" +
+        (thumbs ? '<span class="lv-wv-thumbs">' + thumbs + "</span>" : "") +
+        '<span class="lv-wv-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
+    }
+    if (kind === "b") {
+      var tiles = rows.map(function (p) { return '<span class="lv-wv-tile"><img src="' + esc2(p.photos[0]) + '" alt="" loading="lazy" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join("");
+      return "<button type=\"button\"" + open + "Shop " + nm + '"><span class="lv-wv-in">' +
+        '<span class="lv-wv-badge"><i class="fa-solid fa-fire"></i> Fresh from the winner</span>' +
+        logoHtml(w, "lv-wv-logo-sm") +
+        '<span class="lv-wv-name lv-wv-name-sm">' + nm + "</span>" +
+        '<span class="lv-wv-tiles">' + tiles + "</span>" +
+        '<span class="lv-wv-more">Tap to shop all <i class="fa-solid fa-arrow-right"></i></span></span></button>';
+    }
+    return "<button type=\"button\"" + open + "Follow " + nm + '"><span class="lv-wv-in">' +
+      '<span class="lv-wv-badge"><i class="fa-solid fa-heart"></i> Don\'t miss a drop</span>' +
+      logoHtml(w, "lv-wv-logo-big") +
+      '<span class="lv-wv-name">Follow ' + nm + "</span>" +
+      '<span class="lv-wv-sub">Be first to see new products, deals and updates.</span>' +
+      '<span class="lv-wv-cta lv-wv-cta-follow"><i class="fa-solid fa-user-plus"></i> Follow</span></span></button>';
+  }
+  window.lvWvTap = function (e, kind, vid) {
+    var s = e.currentTarget, vp = document.getElementById("homePromotionalViewport");
+    try {
+      if (vp && vp.dataset.loop === "1" && typeof homeCarouselStep === "function") {
+        var step = homeCarouselStep(vp), dom = Array.prototype.indexOf.call(s.parentElement.children, s);
+        if (step && Math.abs(vp.scrollLeft - dom * step) > step * .35) { e.preventDefault(); vp.scrollTo({ left: dom * step, behavior: "smooth" }); return; }
+      }
+      if (typeof homeCarouselJustDragged !== "undefined" && homeCarouselJustDragged) { e.preventDefault(); return; }
+    } catch (_) {}
+    if (kind !== "c") { navigate("storefront", { vendorId: vid }); return; }
+    if (!session) { try { showLogin(); } catch (_) {} return; }
+    try { window.__followRecentAction = { vendorId: String(vid), following: true, at: Date.now() }; window.rememberVendorFollow && window.rememberVendorFollow(vid, true); } catch (_) {}
+    navigate("storefront", { vendorId: vid });
+    Promise.resolve(levroData.follows.set(vid, true)).then(function (r) {
+      if (r && r.error) throw r.error;
+      try { showToast("You are now following this vendor.", "success"); } catch (_) {}
+    }).catch(function () { try { window.__followRecentAction = null; showToast("Could not follow just now. Open the shop and tap follow.", "error"); } catch (_) {} });
+  };
+  function rebuild(car, extra) {
+    var track = car.querySelector("#homePromotionalTrack"), vp = car.querySelector("#homePromotionalViewport"); if (!track || !vp) return;
+    var base = Array.prototype.filter.call(track.children, function (n) { return !n.hasAttribute("data-clone") && !n.hasAttribute("data-wv"); });
+    if (!base.length) return;
+    var tmp = document.createElement("div"); tmp.innerHTML = extra.join("");
+    var wv = Array.prototype.slice.call(tmp.children), order = [];
+    base.forEach(function (b, i) { order.push(b); if (wv.length && i < 3) order.push(wv.shift()); });
+    wv.forEach(function (n) { order.push(n); });
+    var wasLoop = vp.dataset.loop === "1";
+    track.replaceChildren.apply(track, order);
+    if (order.length > 1) {
+      var lastC = order[order.length - 1].cloneNode(true), firstC = order[0].cloneNode(true);
+      [lastC, firstC].forEach(function (c) { c.setAttribute("data-clone", "1"); c.setAttribute("tabindex", "-1"); c.setAttribute("aria-hidden", "true"); });
+      track.insertBefore(lastC, track.firstChild); track.appendChild(firstC);
+      vp.dataset.loop = "1";
+    }
+    var dots = car.querySelector("#homePromotionalDots");
+    if (!dots && order.length > 1) { dots = document.createElement("div"); dots.className = "home-promotional-dots"; dots.id = "homePromotionalDots"; car.appendChild(dots); }
+    if (dots) dots.innerHTML = order.map(function (_, i) { return '<button type="button" class="home-promotional-dot ' + (i === 0 ? "active" : "") + '" onclick="activateHomeCarouselSlide(' + i + ')" aria-label="Go to slide ' + (i + 1) + '"></button>'; }).join("");
+    vp.dataset.carouselBound = ""; window.__levroCarouselDom = null;
+    try { if (typeof homeCarouselTimer !== "undefined" && homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; } } catch (_) {}
+    try { initHomepageCarousel(); } catch (_) {}
+    if (!wasLoop || true) requestAnimationFrame(function () { try { if (typeof homeCarouselGoTo === "function") { vp.style.scrollSnapType = "none"; vp.scrollLeft = (order.length > 1 ? 1 : 0) * homeCarouselStep(vp); requestAnimationFrame(function () { vp.style.scrollSnapType = ""; }); } } catch (_) {} });
+  }
+  async function inject() {
+    if (busy) return;
+    var car = document.getElementById("homePromotionalCarousel"); if (!car || typeof window.lvVendorSpot !== "function") return;
+    busy = true;
+    try {
+      var spot = await window.lvVendorSpot();
+      var w = spot && ((spot.leaders && spot.leaders[0]) || spot.winner);
+      car = document.getElementById("homePromotionalCarousel"); if (!car) return;
+      if (!w || !w.vendor_id || !w.business_name) { car.querySelectorAll("[data-wv]").length && removeAll(car); return; }
+      var rows = await products(w.vendor_id);
+      var h = await logoHue(w.logo_url); if (h == null) h = hueOf(w.vendor_id);
+      car = document.getElementById("homePromotionalCarousel"); if (!car) return;
+      var key = w.vendor_id + "|" + h + "|" + rows.map(function (p) { return p.id; }).join(",");
+      if (car.getAttribute("data-wv-key") === key) return;
+      var extra = [slide("a", w, rows, h)]; if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h));
+      car.setAttribute("data-wv-key", key);
+      rebuild(car, extra);
+    } catch (_) {} finally { busy = false; }
+  }
+  function removeAll(car) { car.removeAttribute("data-wv-key"); rebuild(car, []); }
+  var t = 0;
+  new MutationObserver(function () { if (t || busy) return; if (!document.getElementById("homePromotionalCarousel")) return; t = setTimeout(function () { t = 0; inject(); }, 120); }).observe(document.body, { childList: true, subtree: true });
+  setInterval(function () { if (!document.hidden) inject(); }, 120000);
+  inject();
 })();

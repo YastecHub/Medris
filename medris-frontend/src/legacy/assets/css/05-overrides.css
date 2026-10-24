@@ -3135,7 +3135,7 @@ html:root:root body #app .va-page .va-sec{box-shadow:none!important;border-radiu
 
 /* ===== Product card patterns (chosen in Settings, saved on the device). Default: soft dots ===== */
 html:root:root:root:root body #app#app .product-card-wrap>.card{background-color:var(--card)!important;background-repeat:repeat!important}
-html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.22) 1.3px,transparent 1.6px)!important;background-size:14px 14px!important}
+html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.26) 1.6px,transparent 2px)!important;background-size:28px 28px!important}
 html[data-card-style="lines"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.09) 0 8px,transparent 8px 16px)!important;background-size:auto!important}
 html[data-card-style="grid"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(rgba(139,107,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.10) 1px,transparent 1px)!important;background-size:16px 16px!important}
 html[data-card-style="glow"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(160deg,rgba(139,107,255,.16),rgba(255,154,98,.08) 55%,transparent 80%)!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
@@ -3145,7 +3145,7 @@ html:root:root:root:root body .lv-cs-grid{display:grid;grid-template-columns:rep
 html:root:root:root:root body .lv-cs-tile{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.55rem .4rem .6rem;border:1.5px solid var(--border);border-radius:14px;background:transparent;color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer}
 html:root:root:root:root body .lv-cs-tile.on{border-color:#7c5cf0;background:color-mix(in srgb,#8b6bff 8%,var(--card));font-weight:800}
 html:root:root:root:root body .lv-cs-prev{display:block;width:100%;height:3.1rem;border-radius:9px;border:1px solid var(--border);background-color:var(--card)}
-html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.3) 1.3px,transparent 1.6px);background-size:10px 10px}
+html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.34) 1.3px,transparent 1.7px);background-size:16px 16px}
 html:root:root:root:root body .lv-cs-lines{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.14) 0 6px,transparent 6px 12px)}
 html:root:root:root:root body .lv-cs-grid2{background-image:linear-gradient(rgba(139,107,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.18) 1px,transparent 1px);background-size:11px 11px}
 html:root:root:root:root body .lv-cs-glow{background-image:linear-gradient(160deg,rgba(139,107,255,.28),rgba(255,154,98,.14) 55%,transparent 80%)}
@@ -3159,6 +3159,42 @@ html:root:root:root:root body #profilePanel .profile-panel-header{margin-top:-.2
 /* "Who's winning?" slide: the winner's logo is a small circle again, not stretched over the whole strip */
 html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on{position:absolute!important;display:block!important;left:auto!important;right:1rem!important;top:50%!important;transform:translateY(-50%)!important;width:4.2rem!important;height:4.2rem!important;max-width:4.2rem!important;border-radius:50%!important;overflow:hidden!important;border:3px solid #fff!important;background:#fff!important;box-shadow:0 6px 12px rgba(0,0,0,.3)!important;filter:none!important;font-size:inherit!important}
 html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on img,html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;border-radius:50%!important;object-fit:cover!important;display:block!important}
+/* ---- orders-no-title ---- */
+html:root:root:root body #app#app .orders-title-row>h2{display:none!important}
+/* ---- service-badge-outline ---- */
+/* service badge on cards: a plain outlined icon, like the add-to-cart button */
+html:root:root:root:root body #app#app .product-card-wrap .card .card-service-btn,html:root:root:root:root body #app#app .card-service-btn{background:transparent!important;border:1.5px solid var(--primary,#3fb97f)!important;color:var(--primary,#3fb97f)!important;box-shadow:none!important}
+html:root:root:root:root body #app#app .card-service-btn i{color:var(--primary,#3fb97f)!important}
+/* ---- winning-vendor-flyers ---- */
+html:root:root body #app#app .home-promotional-slide.lv-wv{container-type:inline-size;background:linear-gradient(135deg,var(--wv-a),var(--wv-b))!important;color:#fff;text-align:left;border:0!important;padding:0!important}
+html:root:root body #app#app .home-promotional-slide.lv-wv::before{display:block!important;content:"";position:absolute;inset:auto;right:-14cqw;top:-18cqw;width:60cqw;height:60cqw;border-radius:50%;background:rgba(255,255,255,.12);filter:none!important;z-index:0}
+html:root:root body #app#app .home-promotional-slide.lv-wv::after{content:"";position:absolute;left:-16cqw;bottom:-26cqw;width:52cqw;height:52cqw;border-radius:50%;border:5cqw solid rgba(255,255,255,.09);z-index:0}
+.lv-wv-in{position:absolute;inset:0;display:block;z-index:1;padding:5cqw}
+.lv-wv-badge{position:absolute;left:5cqw;top:5cqw;display:inline-flex;align-items:center;gap:1.6cqw;padding:1.4cqw 3cqw;border-radius:99px;background:rgba(255,255,255,.18);font-size:3cqw;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.lv-wv-badge i{color:#ffd54a}
+.lv-wv-logo{position:absolute;right:5cqw;top:5cqw;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;background:#fff;color:var(--wv-ink);border:1.2cqw solid #fff;box-shadow:0 2cqw 5cqw rgba(0,0,0,.28);font-weight:900}
+.lv-wv-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.lv-wv-logo-big{width:26cqw;height:26cqw;font-size:8cqw}
+.lv-wv-logo-sm{width:13cqw;height:13cqw;font-size:4.4cqw}
+.lv-wv-name{position:absolute;left:5cqw;top:15cqw;max-width:56cqw;font-size:8.2cqw;line-height:1.05;font-weight:900;letter-spacing:-.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 .6cqw 2cqw rgba(0,0,0,.2)}
+.lv-wv-name-sm{top:13cqw;font-size:5.4cqw;max-width:60cqw;-webkit-line-clamp:1}
+.lv-wv-sub{position:absolute;left:5cqw;top:36cqw;max-width:56cqw;font-size:3.5cqw;font-weight:600;line-height:1.3;opacity:.92}
+.lv-wv-thumbs{position:absolute;left:5cqw;bottom:5cqw;display:flex}
+.lv-wv-thumbs img{width:15cqw;height:15cqw;object-fit:cover;border-radius:3cqw;border:.9cqw solid #fff;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,.25);margin-right:-3.5cqw;background:#fff}
+.lv-wv-cta{position:absolute;right:5cqw;bottom:5cqw;display:inline-flex;align-items:center;gap:2cqw;padding:2.4cqw 4.4cqw;border-radius:99px;background:#fff;color:var(--wv-ink);font-size:3.6cqw;font-weight:800;box-shadow:0 1.5cqw 4cqw rgba(0,0,0,.22)}
+.lv-wv-cta-follow{left:5cqw;right:auto}
+.lv-wv-tiles{position:absolute;left:5cqw;right:5cqw;top:23cqw;display:flex;gap:2.6cqw}
+.lv-wv-tile{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:.6cqw;background:rgba(255,255,255,.95);color:#1b1b2f;border-radius:3.4cqw;padding:1.6cqw;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,.2)}
+.lv-wv-tile img{width:100%;aspect-ratio:1.3/1;object-fit:cover;border-radius:2.2cqw;background:#eee}
+.lv-wv-tile b{font-size:2.9cqw;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-wv-tile i{font-style:normal;font-size:3cqw;font-weight:900;color:var(--wv-ink)}
+.lv-wv-b .lv-wv-cta,.lv-wv-kind-b .lv-wv-cta{bottom:4cqw}
+.lv-wv-more{position:absolute;left:5cqw;bottom:4.5cqw;font-size:3.4cqw;font-weight:800;opacity:.95}
+html:root:root body #app#app .lv-wv .lv-wv-thumbs img{width:15cqw!important;height:15cqw!important;max-width:none!important;border-radius:3cqw!important;object-fit:cover!important}
+html:root:root body #app#app .lv-wv .lv-wv-tile img{width:100%!important;height:auto!important;aspect-ratio:1.3/1;border-radius:2.2cqw!important;object-fit:cover!important}
+html:root:root body #app#app .lv-wv .lv-wv-logo img{width:100%!important;height:100%!important;border-radius:50%!important}
+html:root:root body #app#app .lv-wv-c .lv-wv-name{font-size:7cqw;-webkit-line-clamp:3;top:14cqw}
+html:root:root body #app#app .lv-wv-c .lv-wv-sub{top:41cqw}
 /* ---- hours-dropdown-opens-up ---- */
 /* the working-hours list opens upward so it is not hidden under the Submit button */
 html:root:root:root body #app#app .va-page .ms-wrap .ms-list{top:auto!important;bottom:calc(100% + 6px)!important;max-height:min(46vh,320px)!important;overflow-y:auto!important;z-index:30!important}
