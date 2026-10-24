@@ -1063,6 +1063,14 @@
       }
       if (typeof homeCarouselJustDragged !== "undefined" && homeCarouselJustDragged) { e.preventDefault(); return; }
     } catch (_) {}
+    if (kind.indexOf("fy:") === 0) {
+      var act = kind.slice(3);
+      if (act === "join") window.open("https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", "_blank", "noopener");
+      else if (act === "links") window.open("/links", "_blank", "noopener");
+      else if (act === "requestEquipment" && !session) requireLoginThen("requestEquipment");
+      else navigate(act, {}, true);
+      return;
+    }
     var hit = e.target && e.target.closest && e.target.closest("[data-pid]");
     if (hit && kind !== "c") { navigate("productDetail", { productId: hit.getAttribute("data-pid") }); return; }
     if (kind !== "c") { navigate("storefront", { vendorId: vid }); return; }
@@ -1108,12 +1116,12 @@
   // A banner whose picture an admin uploaded or edited after this release (CUT) keeps its picture, so replacing one still works.
   var CUT = Date.parse("2026-10-26T00:00:00Z");
   var FY = [
-    { k: "join", link: "https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", label: "Join the community", h1: "Join the", h2: "community.", sub: "Be first to hear new vendors, offers and campus updates on WhatsApp.", cta: "Tap to join the group", ph: "join", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star"] },
-    { k: "sell", link: "?levro=vendorApply", label: "Sell to your whole campus", h1: "Sell to your", h2: "whole campus.", sub: "Open your shop in minutes. List products, get orders, grow.", cta: "Become a vendor", ph: "sell", tiles: ["fa-box", "star", "fa-tag", "fa-cart-shopping"] },
-    { k: "store", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Buy \u00b7 Sell \u00b7 Rent", ph: "store", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
-    { k: "follow", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "", ph: "follow", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true, foot: "Tap our link in bio \u00b7 levromart.com/links" },
-    { k: "win", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true, foot: '<i class="fa-solid fa-globe"></i> levromart.com' },
-    { k: "request", link: "?levro=requestEquipment", label: "Can't find it? Request it.", h1: "Can't find it?", h2: "Request it.", sub: "Tell vendors what you need. They come to you with offers.", cta: "Request an item", ph: "request", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star", "fa-box"] }
+    { k: "join", act: "join", link: "https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", label: "Join the community", h1: "Join the", h2: "community.", sub: "Be first to hear new vendors, offers and campus updates on WhatsApp.", cta: "Tap to join the group", ph: "join", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star"] },
+    { k: "sell", act: "vendorApply", link: "?levro=vendorApply", label: "Sell to your whole campus", h1: "Sell to your", h2: "whole campus.", sub: "Open your shop in minutes. List products, get orders, grow.", cta: "Become a vendor", ph: "sell", tiles: ["fa-box", "star", "fa-tag", "fa-cart-shopping"] },
+    { k: "store", act: "vendors", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Buy \u00b7 Sell \u00b7 Rent", ph: "store", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
+    { k: "follow", act: "links", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "", ph: "follow", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true, foot: "Tap our link in bio \u00b7 levromart.com/links" },
+    { k: "win", act: "leaderboard", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true, foot: '<i class="fa-solid fa-globe"></i> levromart.com' },
+    { k: "request", act: "requestEquipment", link: "?levro=requestEquipment", label: "Can't find it? Request it.", h1: "Can't find it?", h2: "Request it.", sub: "Tell vendors what you need. They come to you with offers.", cta: "Request an item", ph: "request", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star", "fa-box"] }
   ];
   var SOC = [["fa-instagram", "#e1306c"], ["fa-tiktok", "#111"], ["fa-facebook-f", "#1877f2"], ["fa-x-twitter", "#000"], ["fa-linkedin-in", "#0a66c2"], ["fa-substack", "#ff6719"], ["fa-whatsapp", "#25d366"]];
   function fyHtml(d) {
@@ -1129,7 +1137,7 @@
   }
   function flyerize(b, d) {
     b.classList.add("lv-wv", "lv-fy", "lv-fy-" + d.k); b.setAttribute("data-flyer", d.k);
-    b.setAttribute("data-link-url", d.link); b.setAttribute("aria-label", d.label); b.removeAttribute("style");
+    b.setAttribute("data-link-url", d.link); b.setAttribute("onclick", "lvWvTap(event,'fy:" + d.act + "','')"); b.setAttribute("aria-label", d.label); b.removeAttribute("style");
     b.innerHTML = fyHtml(d);
   }
   var origR = window.renderHomepageCarouselHtml;
@@ -1156,7 +1164,7 @@
     };
   }
   async function inject() {
-    if (busy) return;
+    if (busy || Date.now() - (window.__lvCarTouchedAt || 0) < 600000) return;
     var car = document.getElementById("homePromotionalCarousel"); if (!car || typeof window.lvVendorSpot !== "function") return;
     busy = true;
     try {
@@ -1239,4 +1247,35 @@
   }
   new MutationObserver(function () { dress(); }).observe(document.body, { childList: true, subtree: true });
   dress();
+})();
+
+
+/* ===== Levi: the X always closes him (and Esc), even if something else swallowed the tap ===== */
+(function () {
+  "use strict";
+  function closeLevi() {
+    var p = document.getElementById("aiChatPanel");
+    if (!p || p.classList.contains("hidden")) return;
+    p.classList.add("hidden"); p.style.removeProperty("transform"); p.style.removeProperty("transition");
+    try { syncLeviFabVisibility(); } catch (_) {}
+    try { updateCartFab(); } catch (_) {}
+  }
+  function isX(e) { return e.target && e.target.closest && e.target.closest("#aiChatPanel .drawer-close-btn"); }
+  document.addEventListener("click", function (e) { if (!isX(e)) return; e.preventDefault(); e.stopPropagation(); closeLevi(); }, true);
+  document.addEventListener("touchend", function (e) { if (!isX(e)) return; if (e.cancelable) e.preventDefault(); e.stopPropagation(); closeLevi(); }, { capture: true, passive: false });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeLevi(); });
+})();
+
+/* ===== Home banners: once someone touches the row, it stays where they leave it (no more self-scrolling back) ===== */
+(function () {
+  "use strict";
+  window.__lvCarTouchedAt = 0;
+  function mine(e) { return e.target && e.target.closest && e.target.closest("#homePromotionalViewport"); }
+  ["touchstart", "pointerdown", "wheel", "mousedown"].forEach(function (t) {
+    document.addEventListener(t, function (e) {
+      if (!mine(e)) return;
+      window.__lvCarTouchedAt = Date.now();
+      try { homeCarouselPause(30 * 60 * 1000); } catch (_) {}
+    }, { passive: true, capture: true });
+  });
 })();

@@ -3316,3 +3316,11 @@ html:root:root body #app#app .lv-fy .lv-fy-photo img{width:100%!important;height
 .lv-fy-follow .lv-fy-t1{background:linear-gradient(135deg,#8fb2ff,#9a6bff);color:#fff;right:36cqw}.lv-fy-win .lv-fy-t1{background:#ffc933;color:#1b1b2f;right:42cqw;top:6cqw}
 .lv-fy-request .lv-fy-t1{background:#12a06a;color:#fff;right:44cqw;top:8cqw}.lv-fy-join .lv-fy-t3{right:44cqw}
 @media (prefers-reduced-motion:reduce){.lv-fy-t{animation:none}}
+
+/* ---- winner-badge-flat-and-levi-x ---- */
+/* the little labels on the winner flyers lie flat on the design, no backdrop (like the Levromart logo) */
+html:root:root body #app#app .lv-wv .lv-wv-badge{background:none!important;padding:0!important;box-shadow:none!important}
+html:root:root body #app#app .lv-fy-soon{box-shadow:none}
+/* Levi sits above everything else and his close button is easy to hit */
+html:root:root:root body #aiChatPanel{z-index:10060!important}
+html:root:root:root body #aiChatPanel .drawer-close-btn{min-width:44px;min-height:44px;position:relative;z-index:3}
