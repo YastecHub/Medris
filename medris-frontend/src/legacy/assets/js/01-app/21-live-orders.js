@@ -9,7 +9,9 @@ function ensureOrderScrollWatch() {
   window.addEventListener("scroll", () => { lastOrderScrollAt = performance.now(); }, { passive:true });
   orderScrollWatchBound = true;
 }
-function refreshVisibleOrderView() {
+function refreshVisibleOrderView(force) {
+  // Called by event handlers with an event object: only an explicit `true` forces a redraw.
+  force = force === true;
   if (!["vendorOrders", "buyerOrders", "orderDetail", "orderHistory"].includes(currentView)) return;
   clearTimeout(ordersLiveRefreshTimer);
 
@@ -22,8 +24,9 @@ function refreshVisibleOrderView() {
   if (savedView === "orderDetail") {
     ordersLiveRefreshTimer = setTimeout(async () => {
       if (currentView !== savedView) return;
-      if (userIsTypingInApp()) { ordersLiveRefreshTimer = setTimeout(refreshVisibleOrderView, 2500); return; }
+      if (userIsTypingInApp()) { ordersLiveRefreshTimer = setTimeout(() => refreshVisibleOrderView(force), 2500); return; }
       try {
+        if (!force && !(await orderViewChangedSince())) return;   // nothing about this order changed: no redraw, no flicker
         await navigate(savedView, { ...(currentViewParams || savedParams) }, false);   // the page as it is NOW, never as it was when the event arrived
       } catch (err) {
         console.warn("[Levromart] Live order-detail refresh failed:", err);
@@ -43,6 +46,8 @@ function refreshVisibleOrderView() {
       return;
     }
     ordersLiveRefreshTimer = setTimeout(async () => {
+      if (currentView !== savedView) return;
+      try { if (!force && !(await orderViewChangedSince())) return; } catch (_) {}   // same orders as on screen: leave the page alone
       if (currentView !== savedView) return;
       document.body.classList.add("orders-refreshing");
       // The tab and filters chosen NOW, not the ones from when the live event arrived: otherwise a tap on another tab made just
@@ -107,6 +112,15 @@ async function currentOrderSignature() {
   }
   return null;
 }
+// True when the orders/payments behind the open screen differ from what was last drawn (or nothing was recorded yet).
+async function orderViewChangedSince() {
+  const key = currentView + ":" + (currentViewParams?.orderId || "");
+  const sig = await currentOrderSignature();
+  if (sig == null) return true;
+  const prev = __orderSigs.get(key);
+  __orderSigs.set(key, sig);
+  return prev === undefined || prev !== sig;
+}
 let orderPollTick = 0;
 function startOrderSignaturePoll() {
   if (orderSignatureTimer) return;
@@ -122,7 +136,7 @@ function startOrderSignaturePoll() {
       if (sig == null) return;
       const prev = __orderSigs.get(key);
       __orderSigs.set(key, sig);
-      if (prev !== undefined && prev !== sig) refreshVisibleOrderView();
+      if (prev !== undefined && prev !== sig) refreshVisibleOrderView(true);
     } catch (_) {}
   }, 4000);
 }
@@ -148,13 +162,16 @@ function subscribeOrderUpdates() {
   const status = (name) => (st) => {
     window["__" + name + "RealtimeStatus"] = st;
     if (st === "SUBSCRIBED") {
+      window.__liveResubTries = 0;
       // After a dropped connection nothing was replayed, so catch up straight away.
       if (liveEverSubscribed) refreshAllLiveViews();
       liveEverSubscribed = true;
     } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
       console.warn("[Levromart] Live updates (" + name + ") unavailable:", st);
       clearTimeout(liveResubTimer);
-      liveResubTimer = setTimeout(() => { if (session) subscribeOrderUpdates(); }, 5000);
+      // Back off (5 s, 10 s, 20 s ... up to 2 min) so a connection that cannot be made does not rebuild the channels and redraw the page over and over.
+      window.__liveResubTries = Math.min((window.__liveResubTries || 0) + 1, 5);
+      liveResubTimer = setTimeout(() => { if (session) subscribeOrderUpdates(); }, Math.min(120000, 5000 * 2 ** (window.__liveResubTries - 1)));
     }
   };
   const uid = session.user.id, stamp = Date.now();
@@ -171,7 +188,7 @@ function subscribeOrderUpdates() {
   ordersLiveChannel.subscribe(status("orders"));
 
   const aux = sb.channel(`order-extras-${uid}-${stamp}`);
-  for (const table of ["order_items", "order_notes", "service_offers", "disputes"]) aux.on("postgres_changes", { event: "*", schema: "public", table }, refreshVisibleOrderView);
+  for (const table of ["order_items", "order_notes", "service_offers", "disputes"]) aux.on("postgres_changes", { event: "*", schema: "public", table }, () => refreshVisibleOrderView(true));
   aux.subscribe(status("orderExtras"));
 
   const req = sb.channel(`requests-live-${uid}-${stamp}`);
