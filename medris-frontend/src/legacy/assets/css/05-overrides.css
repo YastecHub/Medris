@@ -3247,3 +3247,15 @@ html:root:root:root body #app#app .orders-empty-live>strong{font-size:1.25rem}
 .oe-step small{font-size:.68rem;line-height:1.3;color:var(--muted)}
 .oe-ico{display:inline-flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;border-radius:50%;background:linear-gradient(135deg,var(--oe),color-mix(in srgb,var(--oe) 55%,#fff));color:#fff;font-size:1rem;box-shadow:0 6px 14px -6px var(--oe)}
 @media(prefers-reduced-motion:reduce){.oe-float{animation:none}}
+/* ---- designed-banners ---- */
+.lv-wv-brand{position:absolute;left:5cqw;top:5cqw;display:inline-flex;align-items:center;gap:1.6cqw;padding:1cqw 3cqw 1cqw 1.2cqw;border-radius:99px;background:rgba(255,255,255,.18);font-size:3.2cqw;font-weight:800;letter-spacing:.02em}
+.lv-wv-brand img{width:6cqw!important;height:6cqw!important;border-radius:50%;background:#fff;display:block}
+.lv-wv-photo{position:absolute;right:-4cqw;bottom:-6cqw;width:42cqw;height:42cqw;border-radius:50%;overflow:hidden;border:1.4cqw solid #fff;box-shadow:0 2cqw 6cqw rgba(0,0,0,.3)}
+html:root:root body #app#app .lv-wv .lv-wv-photo img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center 22%!important;display:block;border-radius:0!important}
+.lv-wv-name-d{top:17cqw;max-width:52cqw;font-size:7.4cqw;-webkit-line-clamp:3}
+.lv-wv-sub-d{top:auto;bottom:18cqw;max-width:50cqw;font-size:3.3cqw}
+.lv-wv-d .lv-wv-cta{right:auto;left:5cqw}
+html:root:root:root body #app#app .orders-empty-live{overflow:visible}
+html:root:root:root body #app#app .orders-empty-live::before{top:-1rem;width:14rem;height:14rem;margin-left:-7rem;background:radial-gradient(circle closest-side,rgba(139,107,255,.2),rgba(255,154,98,.1) 55%,transparent)}
+.lv-wv-tile{cursor:pointer}.lv-wv-thumbs img{cursor:pointer}
+html:root:root body #app#app .lv-wv .lv-wv-brand img{width:6cqw!important;height:6cqw!important;max-width:none!important;border-radius:50%!important;object-fit:cover!important;position:static!important}

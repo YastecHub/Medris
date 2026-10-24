@@ -33,7 +33,7 @@
   window.lvResumeCarousel=resumeCarousel;
   var KEEP=[
     {sel:"#homePromotionalCarousel",
-     sig:function(n){ return Array.prototype.map.call(n.querySelectorAll(".home-promotional-slide:not([data-clone]):not([data-wv])"),function(b){ var i=b.querySelector("img"); return (i?(i.getAttribute("src")||""):"")+"|"+(b.getAttribute("data-link-url")||""); }).join(";"); },
+     sig:function(n){ return Array.prototype.map.call(n.querySelectorAll(".home-promotional-slide:not([data-clone]):not([data-wv])"),function(b){ var i=b.querySelector("img"); return (i?(i.getAttribute("src")||""):"")+"|"+(b.getAttribute("data-link-url")||"")+"|"+(b.getAttribute("aria-label")||""); }).join(";"); },
      scroll:function(n){ var v=n.querySelector("#homePromotionalViewport"); return v?v.scrollLeft:0; },
      after:function(n,sc){ var v=n.querySelector("#homePromotionalViewport"); requestAnimationFrame(function(){ if(v&&sc){ v.style.scrollSnapType="none"; v.scrollLeft=sc; requestAnimationFrame(function(){ v.style.scrollSnapType=""; }); } resumeCarousel(); }); }},
     {sel:".levro-home-cat-rail",
@@ -1018,8 +1018,8 @@
       }).catch(function () { return []; });
   }
   function pick3(pool) { var a = pool.slice(), out = []; while (a.length && out.length < 3) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); return out; }
-  function thumbsHtml(rows) { return rows.map(function (p) { return '<img src="' + esc2(p.photos[0]) + '" alt="" decoding="async">'; }).join(""); }
-  function tilesHtml(rows) { return rows.map(function (p) { return '<span class="lv-wv-tile"><img src="' + esc2(p.photos[0]) + '" alt="" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join(""); }
+  function thumbsHtml(rows) { return rows.map(function (p) { return '<img data-pid="' + esc2(p.id) + '" src="' + esc2(p.photos[0]) + '" alt="" decoding="async">'; }).join(""); }
+  function tilesHtml(rows) { return rows.map(function (p) { return '<span class="lv-wv-tile" data-pid="' + esc2(p.id) + '"><img src="' + esc2(p.photos[0]) + '" alt="" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join(""); }
   function naira(p) { try { var v = typeof effectivePrice === "function" ? effectivePrice(p) : (p.discount_price || p.sale_price); v = Number(v); return v > 0 ? "₦" + v.toLocaleString("en-NG") : ""; } catch (_) { return ""; } }
   function logoHtml(w, cls) {
     var ini = esc2(String(w.business_name || "?").trim().slice(0, 2).toUpperCase());
@@ -1028,7 +1028,7 @@
   function slide(kind, w, rows, hue) {
     var id = esc2(w.vendor_id), nm = esc2(w.business_name);
     var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette({ a: 0, b: 1, c: 2 }[kind]) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
-    var thumbs = rows.map(function (p) { return '<img src="' + esc2(p.photos[0]) + '" alt="" loading="lazy" decoding="async">'; }).join("");
+    var thumbs = thumbsHtml(rows);
     if (kind === "a") {
       return "<button type=\"button\"" + open + "Vendor of the week: " + nm + '"><span class="lv-wv-in">' +
         '<span class="lv-wv-badge"><i class="fa-solid fa-crown"></i> Vendor of the week</span>' +
@@ -1039,7 +1039,7 @@
         '<span class="lv-wv-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
     }
     if (kind === "b") {
-      var tiles = rows.map(function (p) { return '<span class="lv-wv-tile"><img src="' + esc2(p.photos[0]) + '" alt="" loading="lazy" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join("");
+      var tiles = tilesHtml(rows);
       return "<button type=\"button\"" + open + "Shop " + nm + '"><span class="lv-wv-in">' +
         '<span class="lv-wv-badge"><i class="fa-solid fa-fire"></i> Fresh from the winner</span>' +
         logoHtml(w, "lv-wv-logo-sm") +
@@ -1063,6 +1063,8 @@
       }
       if (typeof homeCarouselJustDragged !== "undefined" && homeCarouselJustDragged) { e.preventDefault(); return; }
     } catch (_) {}
+    var hit = e.target && e.target.closest && e.target.closest("[data-pid]");
+    if (hit && kind !== "c") { navigate("productDetail", { productId: hit.getAttribute("data-pid") }); return; }
     if (kind !== "c") { navigate("storefront", { vendorId: vid }); return; }
     if (!session) { try { showLogin(); } catch (_) {} return; }
     try { window.__followRecentAction = { vendorId: String(vid), following: true, at: Date.now() }; window.rememberVendorFollow && window.rememberVendorFollow(vid, true); } catch (_) {}
@@ -1072,16 +1074,14 @@
       try { showToast("You are now following this vendor.", "success"); } catch (_) {}
     }).catch(function () { try { window.__followRecentAction = null; showToast("Could not follow just now. Open the shop and tap follow.", "error"); } catch (_) {} });
   };
-  function rebuild(car, extra) {
-    var track = car.querySelector("#homePromotionalTrack"), vp = car.querySelector("#homePromotionalViewport"); if (!track || !vp) return;
+  // lays the banners out: winner flyers first, then alternating with the normal ones; adds the loop copies and the dots
+  function compose(car, extra) {
+    var track = car.querySelector("#homePromotionalTrack"), vp = car.querySelector("#homePromotionalViewport"); if (!track || !vp) return 0;
     var base = Array.prototype.filter.call(track.children, function (n) { return !n.hasAttribute("data-clone") && !n.hasAttribute("data-wv"); });
-    if (!base.length) return;
+    if (!base.length) return 0;
     var tmp = document.createElement("div"); tmp.innerHTML = extra.join("");
-    var wv = Array.prototype.slice.call(tmp.children), order = [];
-    // the vendor of the week comes first, then the banners alternate: winner, normal, winner, normal ...
-    var bi = 0;
+    var wv = Array.prototype.slice.call(tmp.children), order = [], bi = 0;
     while (wv.length || bi < base.length) { if (wv.length) order.push(wv.shift()); if (bi < base.length) order.push(base[bi++]); }
-    var wasLoop = vp.dataset.loop === "1";
     track.replaceChildren.apply(track, order);
     if (order.length > 1) {
       var lastC = order[order.length - 1].cloneNode(true), firstC = order[0].cloneNode(true);
@@ -1092,11 +1092,56 @@
     var dots = car.querySelector("#homePromotionalDots");
     if (!dots && order.length > 1) { dots = document.createElement("div"); dots.className = "home-promotional-dots"; dots.id = "homePromotionalDots"; car.appendChild(dots); }
     if (dots) dots.innerHTML = order.map(function (_, i) { return '<button type="button" class="home-promotional-dot ' + (i === 0 ? "active" : "") + '" onclick="activateHomeCarouselSlide(' + i + ')" aria-label="Go to slide ' + (i + 1) + '"></button>'; }).join("");
+    return order.length;
+  }
+  function rebuild(car, extra) {
+    var vp = car.querySelector("#homePromotionalViewport"); if (!vp) return;
+    var n = compose(car, extra); if (!n) return;
+    var order = { length: n };
     vp.dataset.carouselBound = ""; window.__levroCarouselDom = null;
     try { if (typeof homeCarouselTimer !== "undefined" && homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; } } catch (_) {}
     try { initHomepageCarousel(); } catch (_) {}
     var jump = function () { try { var st = homeCarouselStep(vp); if (st && order.length > 1) { vp.style.scrollSnapType = "none"; vp.scrollLeft = st; requestAnimationFrame(function () { vp.style.scrollSnapType = ""; }); } } catch (_) {} };
     requestAnimationFrame(jump); setTimeout(jump, 120); setTimeout(jump, 400);
+  }
+  // ---- the normal banners become designed flyers too (headline from the banner's text, Levromart logo, a real person) ----
+  var INFO = [
+    [/local/i, "Buy from vendors right on your campus", "Explore vendors"], [/service/i, "Hair, repairs, tutoring and more, from people you can trust", "Book a service"],
+    [/product|quality/i, "Fresh finds from campus vendors, one tap away", "Shop now"], [/vendor|nearby|follow/i, "See who is selling around you and follow your favourites", "Find vendors"],
+    [/everything/i, "Products, services and rentals in one app", "Start exploring"], [/choice|tomorrow/i, "Shop smart and support students who hustle", "Join in"],
+    [/campus|store/i, "Your campus, your store. Open a shop in minutes", "Get started"]
+  ];
+  function flyerize(b) {
+    if (b.hasAttribute("data-wv") || b.getAttribute("data-flyer")) return;
+    var idx = Number(b.getAttribute("data-carousel-index")) || 0, alt = (b.getAttribute("aria-label") || "").replace(/^Promotion \d+$/, "Levromart");
+    var info = INFO.filter(function (r) { return r[0].test(alt); })[0] || [0, "Campus vendors, one app.", "Explore"];
+    b.classList.add("lv-wv", "lv-wv-d"); b.setAttribute("data-flyer", "1"); b.setAttribute("data-wv-kind", "d"); b.setAttribute("data-pal", String(idx + 3));
+    b.setAttribute("style", palette(idx + 3));
+    b.innerHTML = '<span class="lv-wv-in"><span class="lv-wv-brand"><img src="/icon-192.png" alt="" width="22" height="22"> Levromart</span>' +
+      '<span class="lv-wv-photo"><img src="/lb/person-' + "abcdef".charAt(idx % 6) + '.webp" alt="" decoding="async"></span>' +
+      '<span class="lv-wv-name lv-wv-name-d">' + esc2(alt) + '</span><span class="lv-wv-sub lv-wv-sub-d">' + esc2(info[1]) + '</span>' +
+      '<span class="lv-wv-cta">' + esc2(info[2]) + ' <i class="fa-solid fa-arrow-right"></i></span></span>';
+  }
+  var origR = window.renderHomepageCarouselHtml;
+  if (typeof origR === "function" && !window.__lvDesignedBanners) {
+    window.__lvDesignedBanners = true;
+    window.renderHomepageCarouselHtml = function () {
+      var html = origR.apply(this, arguments);
+      if (!html) return html;
+      try {
+        var box = document.createElement("div"); box.innerHTML = html;
+        box.querySelectorAll(".home-promotional-slide").forEach(flyerize);
+        var car = box.querySelector("#homePromotionalCarousel"), c = null;
+        try { c = JSON.parse(localStorage.getItem("lv-wv-cache") || "null"); } catch (_) {}
+        if (car && c && c.w && c.w.vendor_id && Date.now() - c.at < 43200000) {
+          logoPal = c.pal || null; var pool = c.pool || []; window.__lvWvPool = pool;
+          var rows = pick3(pool), extra = [slide("a", c.w, rows, 0)]; if (rows.length) extra.push(slide("b", c.w, rows, 0)); extra.push(slide("c", c.w, rows, 0));
+          car.setAttribute("data-wv-key", c.w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0));
+          compose(car, extra);
+        }
+        return box.innerHTML;
+      } catch (_) { return html; }
+    };
   }
   async function inject() {
     if (busy) return;
@@ -1115,6 +1160,7 @@
       if (car.getAttribute("data-wv-key") === key) return;
       var extra = [slide("a", w, rows, h)]; if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h));
       car.setAttribute("data-wv-key", key);
+      try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {}
       rebuild(car, extra);
     } catch (_) {} finally { busy = false; }
   }
@@ -1134,8 +1180,8 @@
   }
   function swapColours() {
     if (document.hidden) return; palStep++;
-    document.querySelectorAll("[data-wv]").forEach(function (sl) {
-      var c = pickPal({ a: 0, b: 1, c: 2 }[sl.getAttribute("data-wv-kind")] || 0);
+    document.querySelectorAll(".lv-wv").forEach(function (sl) {
+      var c = pickPal(sl.hasAttribute("data-pal") ? Number(sl.getAttribute("data-pal")) : ({ a: 0, b: 1, c: 2 }[sl.getAttribute("data-wv-kind")] || 0));
       sl.style.setProperty("--wv-a", c[0]); sl.style.setProperty("--wv-b", c[1]); sl.style.setProperty("--wv-ink", c[0]);
     });
   }
@@ -1160,4 +1206,25 @@
   new MutationObserver(function () { if (document.querySelector(".lv-b3-slide:not([style*='--b3-a'])")) paint(); }).observe(document.body, { childList: true, subtree: true });
   setInterval(function () { if (!document.hidden) { step++; paint(); } }, 9000);
   paint();
+})();
+
+/* ===== Empty pages (saved items, following): same lively "what to do next" cards as the Orders page ===== */
+(function () {
+  "use strict";
+  var SETS = [
+    { re: /^Nothing saved yet/i, acts: [["fa-bag-shopping", "Browse products", "home"], ["fa-store", "Find vendors", "vendors"]], steps: [["fa-heart", "Save it", "Tap the heart on anything you like", "#e11d48"], ["fa-bell", "Stay tuned", "Come back when you are ready", "#6d28d9"], ["fa-bag-shopping", "Buy it", "Order straight from your saved list", "#0e7490"]] },
+    { re: /not following/i, acts: [["fa-store", "Find vendors", "vendors"], ["fa-trophy", "See who is winning", "leaderboard"]], steps: [["fa-store", "Pick a vendor", "Open a storefront you like", "#6d28d9"], ["fa-user-plus", "Follow", "One tap on the follow button", "#e11d48"], ["fa-bell", "Get updates", "New drops and deals reach you first", "#0e7490"]] }
+  ];
+  function dress() {
+    document.querySelectorAll("#app .empty-state:not([data-lv-live])").forEach(function (el) {
+      var t = (el.textContent || "").replace(/\s+/g, " ").trim(), set = SETS.filter(function (x) { return x.re.test(t); })[0];
+      if (!set) return;
+      el.setAttribute("data-lv-live", "1"); el.classList.add("orders-empty-live");
+      el.insertAdjacentHTML("beforeend",
+        '<div class="oe-actions">' + set.acts.map(function (a, i) { return '<button type="button" class="btn' + (i ? " btn-outline" : "") + '" onclick="navigate(\'' + a[2] + '\')"><i class="fa-solid ' + a[0] + '"></i> ' + a[1] + "</button>"; }).join("") + "</div>" +
+        '<div class="oe-steps">' + set.steps.map(function (x, i) { return '<div class="oe-step" style="--oe:' + x[3] + ";animation-delay:" + i * 90 + 'ms"><span class="oe-ico"><i class="fa-solid ' + x[0] + '"></i></span><b>' + x[1] + "</b><small>" + x[2] + "</small></div>"; }).join("") + "</div>");
+    });
+  }
+  new MutationObserver(function () { dress(); }).observe(document.body, { childList: true, subtree: true });
+  dress();
 })();
