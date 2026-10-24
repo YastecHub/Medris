@@ -3013,3 +3013,20 @@ html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab i{display:none!impor
 html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab::before{display:none!important}
 html:root:root:root body #app#app .lb-page .lb-chip{background:transparent!important;border:1px solid var(--border)!important;color:var(--text-muted)!important;box-shadow:none!important;font-weight:600}
 html:root:root:root body #app#app .lb-page .lb-chip.active{background:color-mix(in srgb,#8b6bff 12%,var(--card))!important;border-color:color-mix(in srgb,#8b6bff 55%,var(--border))!important;color:var(--text)!important}
+
+/* ===== Edge to edge on phones: the page gutters shrink from 16px to about 9px, and the thin lines and tab rails run right to the screen edges ===== */
+@media (max-width:700px){
+  html:root:root:root:root body #app#app .container,html:root:root:root:root body .container{padding-left:max(.55rem,env(safe-area-inset-left,0px))!important;padding-right:max(.55rem,env(safe-area-inset-right,0px))!important}
+  html:root:root:root:root body #app#app .notif-item-wrap,
+  html:root:root:root:root body #app#app .conv-list-item,
+  html:root:root:root:root body #app#app #orderListWrap .card,
+  html:root:root:root:root body #app#app #orderListWrap .order-card,
+  html:root:root:root:root body #app#app .vd-page .vd-grid.vendors-list-mode .vd-card,
+  html:root:root:root:root body #app#app .search-page .sr-row,
+  html:root:root:root:root body #app#app .lb-page .lb-list>*{margin-left:calc(-1*max(.55rem,env(safe-area-inset-left,0px)))!important;margin-right:calc(-1*max(.55rem,env(safe-area-inset-right,0px)))!important;padding-left:max(.55rem,env(safe-area-inset-left,0px))!important;padding-right:max(.55rem,env(safe-area-inset-right,0px))!important;width:auto!important;max-width:none!important}
+  html:root:root:root:root body #app#app .vd-page .vd-seg,
+  html:root:root:root:root body #app#app .order-status-pills-rail,
+  html:root:root:root:root body #app#app .search-page .search-page-filters,
+  html:root:root:root:root body #app#app .lb-page .lb-tabs,
+  html:root:root:root:root body #app#app .notif-tabs{margin-left:calc(-1*max(.55rem,env(safe-area-inset-left,0px)))!important;margin-right:calc(-1*max(.55rem,env(safe-area-inset-right,0px)))!important;padding-left:max(.55rem,env(safe-area-inset-left,0px))!important;padding-right:max(.55rem,env(safe-area-inset-right,0px))!important;width:auto!important}
+}
