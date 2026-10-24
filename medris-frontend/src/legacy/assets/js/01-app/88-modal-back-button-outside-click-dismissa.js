@@ -230,10 +230,18 @@ window.addEventListener("popstate", (e) => {
 
   // Generic deep link from any notification email (see api/notify-email.js)
   if (urlParams.get("nview")) {
-    const view = urlParams.get("nview");
+    let view = urlParams.get("nview");
     let params = {};
     try { params = JSON.parse(urlParams.get("nparams") || "{}"); } catch (e) {}
     history.replaceState({ view: "home", params: {} }, "", location.pathname);
+    // Orders pushes: a vendor's "orders need your attention" reminder says buyerOrders (the customer's page); their orders are on the
+    // vendor Orders page. Both always open on the All tab. Same rule as applyPushDeepLink (the app was already open).
+    let isVendor = !!vendor;
+    if (!isVendor && session && view === "buyerOrders") {
+      try { const vq = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).limit(1); isVendor = !!(vq.data && vq.data[0]); } catch (e) {}
+    }
+    if (view === "buyerOrders" && isVendor && profile?.role !== "admin") { view = "vendorOrders"; params.perspective = "sales"; }
+    if (view === "vendorOrders" || view === "buyerOrders") { params.status = "all"; if (view === "vendorOrders" && !params.perspective) params.perspective = "sales"; }
     if (session) { await navigate(view, params); return; }
     showLogin();
   }
