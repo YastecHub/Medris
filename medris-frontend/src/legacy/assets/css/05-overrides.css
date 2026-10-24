@@ -3135,7 +3135,7 @@ html:root:root body #app .va-page .va-sec{box-shadow:none!important;border-radiu
 
 /* ===== Product card patterns (chosen in Settings, saved on the device). Default: soft dots ===== */
 html:root:root:root:root body #app#app .product-card-wrap>.card{background-color:var(--card)!important;background-repeat:repeat!important}
-html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.26) 1.6px,transparent 2px)!important;background-size:28px 28px!important}
+html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.30) 1.8px,transparent 2.4px),radial-gradient(rgba(255,154,98,.32) 1.4px,transparent 2px),radial-gradient(rgba(236,111,176,.28) 1.2px,transparent 1.8px),radial-gradient(rgba(139,107,255,.2) 1px,transparent 1.6px)!important;background-size:47px 53px,61px 43px,71px 67px,29px 37px!important;background-position:0 0,19px 27px,37px 11px,7px 41px!important}
 html[data-card-style="lines"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.09) 0 8px,transparent 8px 16px)!important;background-size:auto!important}
 html[data-card-style="grid"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(rgba(139,107,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.10) 1px,transparent 1px)!important;background-size:16px 16px!important}
 html[data-card-style="glow"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(160deg,rgba(139,107,255,.16),rgba(255,154,98,.08) 55%,transparent 80%)!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
@@ -3145,7 +3145,7 @@ html:root:root:root:root body .lv-cs-grid{display:grid;grid-template-columns:rep
 html:root:root:root:root body .lv-cs-tile{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.55rem .4rem .6rem;border:1.5px solid var(--border);border-radius:14px;background:transparent;color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer}
 html:root:root:root:root body .lv-cs-tile.on{border-color:#7c5cf0;background:color-mix(in srgb,#8b6bff 8%,var(--card));font-weight:800}
 html:root:root:root:root body .lv-cs-prev{display:block;width:100%;height:3.1rem;border-radius:9px;border:1px solid var(--border);background-color:var(--card)}
-html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.34) 1.3px,transparent 1.7px);background-size:16px 16px}
+html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.4) 1.5px,transparent 2px),radial-gradient(rgba(255,154,98,.45) 1.2px,transparent 1.8px),radial-gradient(rgba(236,111,176,.4) 1px,transparent 1.6px);background-size:19px 23px,27px 17px,31px 29px;background-position:0 0,9px 11px,15px 5px}
 html:root:root:root:root body .lv-cs-lines{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.14) 0 6px,transparent 6px 12px)}
 html:root:root:root:root body .lv-cs-grid2{background-image:linear-gradient(rgba(139,107,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.18) 1px,transparent 1px);background-size:11px 11px}
 html:root:root:root:root body .lv-cs-glow{background-image:linear-gradient(160deg,rgba(139,107,255,.28),rgba(255,154,98,.14) 55%,transparent 80%)}
@@ -3205,3 +3205,45 @@ html:root:root:root body #app#app .va-page .ms-wrap .ms-list{top:auto!important;
 html:root:root body #app#app .home-promotional-slide.lv-wv{transition:--wv-a 1.6s ease,--wv-b 1.6s ease,--wv-ink 1.6s ease}
 .lv-wv-swap{animation:lvWvIn .6s ease both}
 @keyframes lvWvIn{from{opacity:0;transform:translateY(1.6cqw)}to{opacity:1;transform:none}}
+
+/* ---- lively-orders-and-strips ---- */
+/* hours list: show every choice in full (it has only a handful), never scrolled with the first one cut off */
+html:root:root:root body #app#app .va-page .ms-wrap .ms-list{max-height:none!important;overflow:visible!important}
+/* strips under the banner: colours fade through nicer pairs, icons wiggle now and then */
+@property --b3-a{syntax:"<color>";inherits:true;initial-value:#6d28d9}
+@property --b3-b{syntax:"<color>";inherits:true;initial-value:#be185d}
+html:root:root:root body #app#app .lv-b3-slide:not(.s5){background:linear-gradient(135deg,var(--b3-a),var(--b3-b))!important;transition:--b3-a 1.6s ease,--b3-b 1.6s ease}
+@keyframes lvWiggle{0%,66%,100%{transform:translateY(-50%) rotate(0) scale(1)}72%{transform:translateY(-50%) rotate(-14deg) scale(1.1)}80%{transform:translateY(-50%) rotate(12deg) scale(1.1)}88%{transform:translateY(-50%) rotate(-6deg)}}
+@keyframes lvBobUp{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 7px))}}
+@keyframes lvWiggle2{0%,66%,100%{transform:rotate(0) scale(1)}72%{transform:rotate(-14deg) scale(1.12)}80%{transform:rotate(12deg) scale(1.12)}88%{transform:rotate(-6deg)}}
+html:root:root:root body #app#app .lv-b3-slide .lv-b3-bigic{animation:lvWiggle 5.5s ease-in-out infinite}
+html:root:root:root body #app#app .lv-b3-slide.s1 .lv-b3-bigic{animation:lvBobUp 3.4s ease-in-out infinite}
+html:root:root:root body #app#app .lv-b3-slide.s3 .lv-b3-bigic{animation:lvBobUp 3s ease-in-out infinite}
+html:root:root:root body #app#app .lv-b3-slide.s4 .lv-b3-bigic{animation-delay:1.4s}
+html:root:root:root body #app#app .lv-b3-slide.s5 .lv-b3-bigic{animation-delay:2.6s}
+html:root:root:root body #app#app .lv-band-card .lv-bfl{animation:lvWiggle2 6s ease-in-out infinite}
+html:root:root:root body #app#app .lv-band-d .lv-bfl{animation-delay:1.2s}
+@media (prefers-reduced-motion:reduce){html:root:root:root body #app#app .lv-b3-slide .lv-b3-bigic,html:root:root:root body #app#app .lv-band-card .lv-bfl{animation:none!important}}
+/* orders: status dots on the tabs and a lively empty page */
+html:root:root:root body #app#app .order-status-pill::before{content:"";display:inline-block;width:.45rem;height:.45rem;border-radius:50%;margin-right:.4rem;vertical-align:.08em;background:var(--od,#9aa3b2)}
+html:root:root:root body #app#app .order-status-pill[data-status="pending"]{--od:#f59e0b}
+html:root:root:root body #app#app .order-status-pill[data-status="confirmed"]{--od:#3b82f6}
+html:root:root:root body #app#app .order-status-pill[data-status="payment_unresolved"]{--od:#f97316}
+html:root:root:root body #app#app .order-status-pill[data-status="disputed"]{--od:#ef4444}
+html:root:root:root body #app#app .order-status-pill[data-status="completed"]{--od:#22c55e}
+html:root:root:root body #app#app .order-status-pill[data-status="cancelled"]{--od:#94a3b8}
+html:root:root:root body #app#app .order-status-pill[data-status="handed_over"]{--od:#8b5cf6}
+html:root:root:root body #app#app .order-status-pill[data-status="returned"]{--od:#ec4899}
+html:root:root:root body #app#app .orders-empty-live{position:relative;padding:1.4rem 1rem 1rem;display:flex;flex-direction:column;align-items:center;gap:.35rem;overflow:hidden}
+html:root:root:root body #app#app .orders-empty-live::before{content:"";position:absolute;z-index:0;top:-3.5rem;left:50%;width:19rem;height:19rem;margin-left:-9.5rem;border-radius:50%;background:radial-gradient(circle,rgba(139,107,255,.22),rgba(255,154,98,.12) 45%,transparent 70%);pointer-events:none}
+html:root:root:root body #app#app .orders-empty-live>*{position:relative;z-index:1}
+html:root:root:root body #app#app .orders-empty-live>strong{font-size:1.25rem}
+.oe-float{animation:lvBobSimple 3.4s ease-in-out infinite}
+@keyframes lvBobSimple{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.oe-actions{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;margin:.7rem 0 .4rem}
+.oe-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;width:100%;max-width:34rem;margin-top:1rem}
+.oe-step{display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.8rem .45rem;border-radius:18px;background:color-mix(in srgb,var(--oe) 8%,var(--card));border:1px solid color-mix(in srgb,var(--oe) 22%,transparent);text-align:center;animation:lvWvIn .6s ease both}
+.oe-step b{font-size:.82rem}
+.oe-step small{font-size:.68rem;line-height:1.3;color:var(--muted)}
+.oe-ico{display:inline-flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;border-radius:50%;background:linear-gradient(135deg,var(--oe),color-mix(in srgb,var(--oe) 55%,#fff));color:#fff;font-size:1rem;box-shadow:0 6px 14px -6px var(--oe)}
+@media(prefers-reduced-motion:reduce){.oe-float{animation:none}}
