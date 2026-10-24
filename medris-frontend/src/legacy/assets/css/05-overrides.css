@@ -3030,3 +3030,17 @@ html:root:root:root body #app#app .lb-page .lb-chip.active{background:color-mix(
   html:root:root:root:root body #app#app .lb-page .lb-tabs,
   html:root:root:root:root body #app#app .notif-tabs{margin-left:calc(-1*max(.55rem,env(safe-area-inset-left,0px)))!important;margin-right:calc(-1*max(.55rem,env(safe-area-inset-right,0px)))!important;padding-left:max(.55rem,env(safe-area-inset-left,0px))!important;padding-right:max(.55rem,env(safe-area-inset-right,0px))!important;width:auto!important}
 }
+
+/* Vendors: the four tabs share the full width evenly; the Grid / List / Map switch moves to the right, just above the results */
+html:root:root:root:root:root body #app#app#app .vd-page{display:flex!important;flex-direction:column}
+html:root:root:root:root:root body #app#app#app .vd-page>.vd-seg{order:1}
+html:root:root:root:root:root body #app#app#app .vd-page>.vd-tools{order:2}
+html:root:root:root:root:root body #app#app#app .vd-page>.vendors-filters-panel{order:3}
+html:root:root:root:root:root body #app#app#app .vd-page>.vd-chips{order:4}
+html:root:root:root:root:root body #app#app#app .vd-page>.vd-head{order:5;display:flex!important;justify-content:flex-end!important;margin:.5rem 0 .7rem!important}
+html:root:root:root:root:root body #app#app#app .vd-page>.vd-grid,html:root:root:root:root:root body #app#app#app .vd-page>#vendorsMapWrap{order:6}
+html:root:root:root:root:root body #app#app#app .vd-page .vd-seg{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:0!important;overflow:visible!important}
+html:root:root:root:root:root body #app#app#app .vd-page .vd-seg .vd-tab{width:100%!important;text-align:center!important;padding-left:0!important;padding-right:0!important}
+html:root:root:root:root:root body #app#app#app .vd-page .vd-seg .vd-tab.active::after{left:12%!important;right:12%!important}
+html:root:root:root:root:root body #app#app#app .vd-page .vd-views{padding:2px!important}
+html:root:root:root:root:root body #app#app#app .vd-page .vd-views button.vd-view{width:2.7rem!important;height:2rem!important}
