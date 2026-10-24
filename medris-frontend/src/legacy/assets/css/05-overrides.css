@@ -3195,3 +3195,6 @@ html:root:root body #app#app .lv-wv .lv-wv-tile img{width:100%!important;height:
 html:root:root body #app#app .lv-wv .lv-wv-logo img{width:100%!important;height:100%!important;border-radius:50%!important}
 html:root:root body #app#app .lv-wv-c .lv-wv-name{font-size:7cqw;-webkit-line-clamp:3;top:14cqw}
 html:root:root body #app#app .lv-wv-c .lv-wv-sub{top:41cqw}
+/* ---- hours-dropdown-opens-up ---- */
+/* the working-hours list opens upward so it is not hidden under the Submit button */
+html:root:root:root body #app#app .va-page .ms-wrap .ms-list{top:auto!important;bottom:calc(100% + 6px)!important;max-height:min(46vh,320px)!important;overflow-y:auto!important;z-index:30!important}
