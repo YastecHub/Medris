@@ -1,10 +1,16 @@
 {
  "$comment": "Ordered pieces of the legacy document and the legacy asset files. Assembled by medris-frontend/build/legacy-document.ts. Order matters: later CSS and later function definitions win.",
- "assetVersion": 216,
+ "assetVersion": 217,
  "pieces": [
   {
    "kind": "markup",
    "file": "markup/001-stylesheet-link.html"
+  },
+  {
+   "kind": "script",
+   "openTag": "<script>",
+   "closeTag": "</script>",
+   "file": "scripts/000-levromart-calm-observers.js"
   },
   {
    "kind": "script",
