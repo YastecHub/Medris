@@ -683,7 +683,8 @@ function loadProdCategoriesForSector(presetCategoryId) {
 }
 
 function renderExistingPhotos() {
-  byId("prodExistingPhotos").innerHTML = (window.__existingPhotos || [])
+  // The first saved photo is the display picture (shown above), so it is not repeated in this list.
+  byId("prodExistingPhotos").innerHTML = (window.__existingPhotos || []).slice(1)
     .map((url) => `<div class="photo-thumb"><img src="${esc(url)}" alt="" /><button type="button" class="photo-remove" onclick="removeExistingPhoto('${esc(url)}')" title="Remove"><i class="fa-solid fa-xmark"></i></button></div>`)
     .join("");
 }
@@ -713,7 +714,10 @@ function renderNewProductPhotos() {
   const wrap = byId("prodNewPhotoPreviews");
   if (!wrap) return;
   wrap.innerHTML = "";
+  // When there is no saved photo (or it is being replaced) the first new photo is the display picture, shown above.
+  const displayIsFirstNew = !(window.__existingPhotos || []).length || window.__replaceDisplayPicture;
   (window.__newProductPhotoFiles || []).forEach((f, index) => {
+    if (index === 0 && displayIsFirstNew) return;
     const url = URL.createObjectURL(f);
     const safeName = esc(f.name || "Image");
     const node = document.createElement("div");
@@ -884,6 +888,13 @@ function closeProductModal(options = {}) {
 
 function renderProductDisplayPicture(){
   const wrap=byId('prodDisplayPicture'); if(!wrap)return;
+  // One place for the picture: while there is none, only the upload area shows; once there is one, it is shown big and the upload area shrinks to "add more".
+  (function(){
+    const has=!!((window.__newProductPhotoFiles?.[0] && (!(window.__existingPhotos||[]).length || window.__replaceDisplayPicture)) || (window.__existingPhotos||[])[0]);
+    wrap.style.display=has?'':'none';
+    const lab=wrap.previousElementSibling; if(lab&&lab.tagName==='LABEL') lab.style.display=has?'':'none';
+    const dz=byId('photoDropzone'); if(dz){ dz.classList.toggle('is-compact',has); const st=dz.querySelector('strong'); if(st) st.textContent=has?'Add more photos':'Add photos'; const sp=dz.querySelector('span.muted'); if(sp) sp.textContent=has?'Tap to choose, or drag images here':'The first one is your display picture. Tap to choose, or drag images here'; const l2=dz.previousElementSibling; if(l2&&l2.tagName==='LABEL') l2.textContent=has?'More photos':'Photos'; }
+  })();
   const url=(window.__newProductPhotoFiles?.[0] && (!(window.__existingPhotos||[]).length || window.__replaceDisplayPicture)) ? URL.createObjectURL(window.__newProductPhotoFiles[0]) : ((window.__existingPhotos||[])[0] || '');
   wrap.innerHTML=url?`<img src="${esc(url)}" alt="Display picture"><span style="position:absolute;left:.55rem;bottom:.55rem;padding:.25rem .45rem;border-radius:999px;background:rgba(0,0,0,.58);color:#fff;font-size:.62rem;font-weight:700;">Main card image · tap to edit</span>`:`<div class="display-picture-empty"><i class="fa-regular fa-image"></i><strong>No display picture</strong><span>Tap to choose an image</span></div>`;
 }
@@ -892,7 +903,7 @@ function openProductDisplayPictureActions(event){
   const menu=document.createElement('div'); menu.id='productDisplayPictureMenu'; menu.className='product-display-picture-menu';
   menu.innerHTML='<button type="button" data-action="replace"><i class="fa-solid fa-rotate"></i> Replace</button><button type="button" data-action="delete"><i class="fa-solid fa-trash"></i> Delete</button>';
   document.body.appendChild(menu); const r=byId('prodDisplayPicture').getBoundingClientRect(); menu.style.left=`${Math.min(r.left,window.innerWidth-180)}px`; menu.style.top=`${Math.min(r.bottom+6,window.innerHeight-90)}px`;
-  menu.addEventListener('click',e=>{const action=e.target.closest?.('button')?.dataset.action; if(action==='replace'){window.__replaceDisplayPicture=true;byId('prodPhotoFiles')?.click();} else if(action==='delete'){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);renderExistingPhotos();renderProductDisplayPicture();} menu.remove();});
+  menu.addEventListener('click',e=>{const action=e.target.closest?.('button')?.dataset.action; if(action==='replace'){window.__replaceDisplayPicture=true;byId('prodPhotoFiles')?.click();} else if(action==='delete'){if((window.__existingPhotos||[]).length){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);}else{window.__newProductPhotoFiles=(window.__newProductPhotoFiles||[]).slice(1);syncNewProductPhotoInput();renderNewProductPhotos();}renderExistingPhotos();renderProductDisplayPicture();renderProductVariantPricing();} menu.remove();});
   setTimeout(()=>document.addEventListener('pointerdown',function close(ev){if(!menu.contains(ev.target)){menu.remove();document.removeEventListener('pointerdown',close)}},{once:true}),0);
 }
 function clearProductDisplayPicture(){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);renderExistingPhotos();renderProductDisplayPicture();}
