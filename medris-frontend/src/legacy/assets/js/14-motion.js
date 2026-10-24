@@ -862,3 +862,18 @@
   new MutationObserver(dress).observe(host, { childList: true, subtree: true });
   dress();
 })();
+
+/* ===== Profile panel: draw attention to "Apply to be a vendor" with a gentle jiggle ===== */
+(function () {
+  "use strict";
+  function mark() {
+    var panel = document.getElementById("profilePanel"); if (!panel) return;
+    panel.querySelectorAll(".vp-row, button, a").forEach(function (el) {
+      if (el.classList.contains("vp-cta-jiggle")) return;
+      var t = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (/^Apply to be a vendor/i.test(t) && t.length < 60) el.classList.add("vp-cta-jiggle");
+    });
+  }
+  new MutationObserver(mark).observe(document.body, { childList: true, subtree: true });
+  mark();
+})();
