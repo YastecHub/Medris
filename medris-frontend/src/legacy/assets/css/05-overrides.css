@@ -3261,4 +3261,58 @@ html:root:root:root body #app#app .orders-empty-live::before{top:-1rem;width:14r
 html:root:root body #app#app .lv-wv .lv-wv-brand img{width:6cqw!important;height:6cqw!important;max-width:none!important;border-radius:50%!important;object-fit:cover!important;position:static!important}
 /* ---- banner-polka-dots ---- */
 /* some flyers get the same scattered polka dots as the product cards (in soft white) */
-html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="3"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="5"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="7"]{background:radial-gradient(rgba(255,255,255,.26) 2px,transparent 2.7px) 0 0/43px 47px,radial-gradient(rgba(255,255,255,.18) 1.5px,transparent 2.1px) 17px 23px/59px 41px,radial-gradient(rgba(255,255,255,.14) 1.2px,transparent 1.8px) 31px 9px/67px 61px,linear-gradient(135deg,var(--wv-a),var(--wv-b))!important}
+html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="b"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="3"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="5"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="7"]{background:radial-gradient(rgba(255,255,255,.26) 2px,transparent 2.7px) 0 0/43px 47px,radial-gradient(rgba(255,255,255,.18) 1.5px,transparent 2.1px) 17px 23px/59px 41px,radial-gradient(rgba(255,255,255,.14) 1.2px,transparent 1.8px) 31px 9px/67px 61px,linear-gradient(135deg,var(--wv-a),var(--wv-b))!important}
+/* ---- coded-flyers ---- */
+@keyframes lvFyBob{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-1.8cqw) rotate(calc(var(--r,0deg) + 4deg))}}
+@keyframes lvFyWig{0%,70%,100%{transform:rotate(var(--r,0deg)) scale(1)}76%{transform:rotate(calc(var(--r,0deg) - 16deg)) scale(1.12)}84%{transform:rotate(calc(var(--r,0deg) + 14deg)) scale(1.12)}92%{transform:rotate(calc(var(--r,0deg) - 6deg))}}
+html:root:root body #app#app .home-promotional-slide.lv-fy::before,html:root:root body #app#app .home-promotional-slide.lv-fy::after{display:none!important}
+html:root:root body #app#app .home-promotional-slide.lv-fy{color:#fff;--dot:rgba(255,255,255,.2)}
+html:root:root body #app#app .lv-fy.lv-fy-join{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#10c476,#0a6b48 115%)!important}
+html:root:root body #app#app .lv-fy.lv-fy-sell{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#2c1790,#3b1ea8)!important}
+html:root:root body #app#app .lv-fy.lv-fy-store{--dot:rgba(120,90,0,.2);background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#ffd43b,#ffc928)!important;color:#0c2b20}
+html:root:root body #app#app .lv-fy.lv-fy-follow{--dot:rgba(90,60,200,.16);background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(145deg,#efe6ff,#c7b2fb)!important;color:#1a1040}
+html:root:root body #app#app .lv-fy.lv-fy-win{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#13a56e,#0a3f31 115%)!important}
+html:root:root body #app#app .lv-fy.lv-fy-request{--dot:rgba(90,60,200,.16);background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(145deg,#eadffd,#b8a2f4)!important;color:#1a1040}
+.lv-fy-brand{position:absolute;left:5cqw;top:5cqw;display:inline-flex;align-items:center;gap:2cqw;font-size:4.6cqw;font-weight:800;letter-spacing:-.02em}
+html:root:root body #app#app .lv-fy .lv-fy-brand img{width:8cqw!important;height:8cqw!important;max-width:none!important;border-radius:2.2cqw!important;border:.5cqw solid rgba(255,255,255,.9);object-fit:cover!important;background:#fff}
+.lv-fy-h{position:absolute;left:5cqw;top:17cqw;display:flex;flex-direction:column;font-size:7.3cqw;line-height:1;letter-spacing:-.04em;font-weight:900;max-width:54cqw}
+.lv-fy-h em{font-style:normal}
+.lv-fy-h strong{font-weight:900}
+.lv-fy-join .lv-fy-h strong{color:#06352a}
+.lv-fy-sell .lv-fy-h strong{color:#27f0b0}
+.lv-fy-store .lv-fy-h em{color:#0c2b20}.lv-fy-store .lv-fy-h strong{color:#fff;text-shadow:0 .6cqw 1.6cqw rgba(0,0,0,.22)}
+.lv-fy-follow .lv-fy-h em{color:#1a1040}.lv-fy-follow .lv-fy-h strong{color:#12a06a}
+.lv-fy-win .lv-fy-h{font-size:6.4cqw;top:25cqw;max-width:54cqw}.lv-fy-win .lv-fy-h strong{color:#ffc933}
+.lv-fy-request .lv-fy-h em{color:#1a1040}.lv-fy-request .lv-fy-h strong{color:#5b21f5}
+.lv-fy-sub{position:absolute;left:5cqw;top:36cqw;max-width:50cqw;font-size:3.2cqw;line-height:1.28;font-weight:600;opacity:.95}
+.lv-fy-sub b{color:#5b21f5}
+.lv-fy-win .lv-fy-sub{top:43cqw}
+.lv-fy-follow .lv-fy-sub{top:33cqw;max-width:56cqw;opacity:.85}
+.lv-fy-cta{position:absolute;left:5cqw;bottom:5cqw;display:inline-flex;align-items:center;gap:2cqw;padding:2.4cqw 4.6cqw;border-radius:99px;background:#fff;color:#0a6b48;font-size:3.7cqw;font-weight:800;box-shadow:0 1.5cqw 4cqw rgba(0,0,0,.2)}
+.lv-fy-sell .lv-fy-cta{background:#ffc933;color:#1b1b2f}
+.lv-fy-store .lv-fy-cta{background:#0c2b20;color:#fff}
+.lv-fy-request .lv-fy-cta{background:#12a06a;color:#fff}
+.lv-fy-soon{position:absolute;left:5cqw;top:15cqw;padding:1.3cqw 4cqw;border-radius:99px;background:#ffc933;color:#1b1b2f;font-size:3.6cqw;font-weight:900;letter-spacing:.02em}
+.lv-fy-foot{position:absolute;left:5cqw;bottom:5cqw;font-size:3.3cqw;font-weight:800;opacity:.92}
+.lv-fy-win .lv-fy-foot i{color:#3aa0ff}
+.lv-fy-follow .lv-fy-foot{opacity:.8;font-weight:700}
+.lv-fy-soc{position:absolute;left:5cqw;top:41cqw;display:flex}
+.lv-fy-soc span{display:inline-flex;align-items:center;justify-content:center;width:7.6cqw;height:7.6cqw;border-radius:50%;border:.7cqw solid #fff;color:#fff;font-size:3.4cqw;margin-right:-1.2cqw;box-shadow:0 .8cqw 2cqw rgba(0,0,0,.25)}
+.lv-fy-photo{position:absolute;right:4cqw;top:16cqw;width:36cqw;height:36cqw;border-radius:50%;overflow:hidden;border:1.1cqw solid #fff;box-shadow:0 0 0 1.1cqw #19c47c,0 2cqw 6cqw rgba(0,0,0,.28)}
+.lv-fy-sell .lv-fy-photo{box-shadow:0 0 0 1.1cqw #1fe3a2,0 2cqw 6cqw rgba(0,0,0,.3)}
+.lv-fy-win .lv-fy-photo{box-shadow:0 0 0 1.4cqw #f7c32e,0 2cqw 6cqw rgba(0,0,0,.3)}
+.lv-fy-request .lv-fy-photo{box-shadow:0 0 0 1.4cqw #f7c32e,0 2cqw 6cqw rgba(0,0,0,.25)}
+.lv-fy-follow .lv-fy-photo{box-shadow:0 2cqw 6cqw rgba(110,80,200,.35);border-color:rgba(255,255,255,.9)}
+.lv-fy-store .lv-fy-photo{width:36cqw;height:42cqw;border-radius:5cqw;border:0;box-shadow:0 2cqw 6cqw rgba(0,0,0,.25);background:#ffd43b;right:5cqw;top:13cqw}
+html:root:root body #app#app .lv-fy .lv-fy-photo img{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:0!important;display:block}
+.lv-fy-t{position:absolute;display:inline-flex;align-items:center;justify-content:center;width:8.6cqw;height:8.6cqw;border-radius:2.6cqw;background:#fff;color:#0a6b48;font-size:3.9cqw;box-shadow:0 1.4cqw 3.4cqw rgba(0,0,0,.22);animation:lvFyBob 4.2s ease-in-out infinite}
+.lv-fy-t1{right:6cqw;top:5cqw;--r:10deg;background:#0d3a2b;color:#fff}
+.lv-fy-t2{right:28cqw;bottom:6cqw;--r:-8deg;animation-name:lvFyWig;animation-duration:6s;animation-delay:.8s}
+.lv-fy-t3{right:46cqw;top:9cqw;--r:12deg;width:9.6cqw;height:9.6cqw;color:#6a5cff;background:linear-gradient(135deg,#8fb2ff,#9a6bff);color:#fff;animation-name:lvFyWig;animation-duration:5.4s}
+.lv-fy-t4{right:4cqw;bottom:9cqw;--r:-6deg;background:#18c07a;color:#fff;animation-delay:1.3s}
+.lv-fy-t5{right:30cqw;top:4cqw;--r:8deg;background:#fff;animation-delay:.4s}
+.lv-fy-sell .lv-fy-t1{background:#ffc933;color:#1b1b2f}.lv-fy-store .lv-fy-t1{background:#ffd43b;color:#0c2b20;right:44cqw;top:6cqw}
+.lv-fy-store .lv-fy-t2{background:#0c2b20;color:#fff}.lv-fy-store .lv-fy-t3{right:auto;left:42cqw;top:auto;bottom:6cqw}
+.lv-fy-follow .lv-fy-t1{background:linear-gradient(135deg,#8fb2ff,#9a6bff);color:#fff;right:36cqw}.lv-fy-win .lv-fy-t1{background:#ffc933;color:#1b1b2f;right:42cqw;top:6cqw}
+.lv-fy-request .lv-fy-t1{background:#12a06a;color:#fff;right:44cqw;top:8cqw}.lv-fy-join .lv-fy-t3{right:44cqw}
+@media (prefers-reduced-motion:reduce){.lv-fy-t{animation:none}}
