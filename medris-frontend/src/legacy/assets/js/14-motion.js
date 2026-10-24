@@ -1104,33 +1104,45 @@
     var jump = function () { try { var st = homeCarouselStep(vp); if (st && order.length > 1) { vp.style.scrollSnapType = "none"; vp.scrollLeft = st; requestAnimationFrame(function () { vp.style.scrollSnapType = ""; }); } } catch (_) {} };
     requestAnimationFrame(jump); setTimeout(jump, 120); setTimeout(jump, 400);
   }
-  // ---- the normal banners become designed flyers too (headline from the banner's text, Levromart logo, a real person) ----
-  var INFO = [
-    [/local/i, "Buy from vendors right on your campus", "Explore vendors"], [/service/i, "Hair, repairs, tutoring and more, from people you can trust", "Book a service"],
-    [/product|quality/i, "Fresh finds from campus vendors, one tap away", "Shop now"], [/vendor|nearby|follow/i, "See who is selling around you and follow your favourites", "Find vendors"],
-    [/everything/i, "Products, services and rentals in one app", "Start exploring"], [/choice|tomorrow/i, "Shop smart and support students who hustle", "Join in"],
-    [/campus|store/i, "Your campus, your store. Open a shop in minutes", "Get started"]
+  // ---- the six launch banners, rebuilt in code from the original flyer pictures (same words, colours and photos, with moving icons) ----
+  // A banner whose picture an admin uploaded or edited after this release (CUT) keeps its picture, so replacing one still works.
+  var CUT = Date.parse("2026-10-26T00:00:00Z");
+  var FY = [
+    { k: "join", link: "https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", label: "Join the community", h1: "Join the", h2: "community.", sub: "Be first to hear new vendors, offers and campus updates on WhatsApp.", cta: "Tap to join the group", ph: "join", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star"] },
+    { k: "sell", link: "?levro=vendorApply", label: "Sell to your whole campus", h1: "Sell to your", h2: "whole campus.", sub: "Open your shop in minutes. List products, get orders, grow.", cta: "Become a vendor", ph: "sell", tiles: ["fa-box", "star", "fa-tag", "fa-cart-shopping"] },
+    { k: "store", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Buy \u00b7 Sell \u00b7 Rent", ph: "store", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
+    { k: "follow", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "", ph: "follow", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true, foot: "Tap our link in bio \u00b7 levromart.com/links" },
+    { k: "win", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true, foot: '<i class="fa-solid fa-globe"></i> levromart.com' },
+    { k: "request", link: "?levro=requestEquipment", label: "Can't find it? Request it.", h1: "Can't find it?", h2: "Request it.", sub: "Tell vendors what you need. They come to you with offers.", cta: "Request an item", ph: "request", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star", "fa-box"] }
   ];
-  function flyerize(b) {
-    if (b.hasAttribute("data-wv") || b.getAttribute("data-flyer")) return;
-    var idx = Number(b.getAttribute("data-carousel-index")) || 0, alt = (b.getAttribute("aria-label") || "").replace(/^Promotion \d+$/, "Levromart");
-    var info = INFO.filter(function (r) { return r[0].test(alt); })[0] || [0, "Campus vendors, one app.", "Explore"];
-    b.classList.add("lv-wv", "lv-wv-d"); b.setAttribute("data-flyer", "1"); b.setAttribute("data-wv-kind", "d"); b.setAttribute("data-pal", String(idx + 3));
-    b.setAttribute("style", palette(idx + 3));
-    b.innerHTML = '<span class="lv-wv-in"><span class="lv-wv-brand"><img src="/icon-192.png" alt="" width="22" height="22"> Levromart</span>' +
-      '<span class="lv-wv-photo"><img src="/lb/person-' + "abcdef".charAt(idx % 6) + '.webp" alt="" decoding="async"></span>' +
-      '<span class="lv-wv-name lv-wv-name-d">' + esc2(alt) + '</span><span class="lv-wv-sub lv-wv-sub-d">' + esc2(info[1]) + '</span>' +
-      '<span class="lv-wv-cta">' + esc2(info[2]) + ' <i class="fa-solid fa-arrow-right"></i></span></span>';
+  var SOC = [["fa-instagram", "#e1306c"], ["fa-tiktok", "#111"], ["fa-facebook-f", "#1877f2"], ["fa-x-twitter", "#000"], ["fa-linkedin-in", "#0a66c2"], ["fa-substack", "#ff6719"], ["fa-whatsapp", "#25d366"]];
+  function fyHtml(d) {
+    var tiles = d.tiles.map(function (t, i) { return '<span class="lv-fy-t lv-fy-t' + (i + 1) + '">' + (t === "star" ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-solid ' + t + '"></i>') + "</span>"; }).join("");
+    var soc = d.social ? '<span class="lv-fy-soc">' + SOC.map(function (x) { return '<span style="background:' + x[1] + '"><i class="fa-brands ' + x[0] + '"></i></span>'; }).join("") + "</span>" : "";
+    return '<span class="lv-wv-in"><span class="lv-fy-brand"><img src="/icon-192.png" alt="" width="40" height="40"><b>levromart</b></span>' +
+      (d.soon ? '<span class="lv-fy-soon">COMING SOON</span>' : "") +
+      '<span class="lv-fy-h"><em>' + d.h1 + "</em><strong>" + d.h2 + "</strong></span>" +
+      '<span class="lv-fy-sub">' + d.sub + "</span>" + soc +
+      (d.cta ? '<span class="lv-fy-cta">' + d.cta + (d.cta.indexOf("\u00b7") < 0 ? ' <i class="fa-solid fa-arrow-right"></i>' : "") + "</span>" : "") +
+      (d.foot ? '<span class="lv-fy-foot">' + d.foot + "</span>" : "") +
+      '<span class="lv-fy-photo"><img src="/lb/flyer-' + d.ph + '.webp" alt="" decoding="async"></span>' + tiles + "</span>";
+  }
+  function flyerize(b, d) {
+    b.classList.add("lv-wv", "lv-fy", "lv-fy-" + d.k); b.setAttribute("data-flyer", d.k);
+    b.setAttribute("data-link-url", d.link); b.setAttribute("aria-label", d.label); b.removeAttribute("style");
+    b.innerHTML = fyHtml(d);
   }
   var origR = window.renderHomepageCarouselHtml;
   if (typeof origR === "function" && !window.__lvDesignedBanners) {
     window.__lvDesignedBanners = true;
     window.renderHomepageCarouselHtml = function () {
-      var html = origR.apply(this, arguments);
+      var arguments0 = arguments[0], html = origR.apply(this, arguments);
       if (!html) return html;
       try {
         var box = document.createElement("div"); box.innerHTML = html;
-        // the normal banners keep their own uploaded pictures (they already are the designed flyers); only the winner flyers are built here
+        var list = (arguments0 && arguments0.filter ? arguments0 : []).filter(function (x) { return x && x.image_url; }).slice(0, 12), map = {}, n = 0;
+        list.forEach(function (sl, i) { var t = Date.parse(sl.updated_at || sl.created_at || ""); if ((!t || t < CUT) && n < FY.length) map[i] = FY[n++]; });
+        box.querySelectorAll(".home-promotional-slide").forEach(function (b) { var d = map[Number(b.getAttribute("data-carousel-index"))]; if (d) flyerize(b, d); });
         var car = box.querySelector("#homePromotionalCarousel"), c = null;
         try { c = JSON.parse(localStorage.getItem("lv-wv-cache") || "null"); } catch (_) {}
         if (car && c && c.w && c.w.vendor_id && Date.now() - c.at < 43200000) {

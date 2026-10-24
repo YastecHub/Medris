@@ -95,10 +95,10 @@ function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
     const steps = isCustomerView
       ? [["fa-magnifying-glass", "Find it", "Browse products and services from campus vendors", "#6d28d9"], ["fa-hand-holding-dollar", "Pay safely", "Pay the vendor and report it in the app", "#e11d48"], ["fa-box-open", "Get it", "Confirm when it arrives and rate the vendor", "#0e7490"]]
       : [["fa-share-nodes", "Share your shop", "Send your storefront link to buyers", "#6d28d9"], ["fa-bell", "Get orders", "You are notified the moment someone orders", "#e11d48"], ["fa-sack-dollar", "Get paid", "Confirm payment and hand the order over", "#0e7490"]];
-    const acts = onlyHistory ? "" : isCustomerView
+    const acts = isCustomerView
       ? `<div class="oe-actions"><button type="button" class="btn" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Start shopping</button><button type="button" class="btn btn-outline" onclick="navigate('vendors')"><i class="fa-solid fa-store"></i> Find vendors</button></div>`
       : "";
-    const stepHtml = onlyHistory ? "" : `<div class="oe-steps">${steps.map((x, i) => `<div class="oe-step" style="--oe:${x[3]};animation-delay:${i * 90}ms"><span class="oe-ico"><i class="fa-solid ${x[0]}"></i></span><b>${x[1]}</b><small>${x[2]}</small></div>`).join("")}</div>`;
+    const stepHtml = `<div class="oe-steps">${steps.map((x, i) => `<div class="oe-step" style="--oe:${x[3]};animation-delay:${i * 90}ms"><span class="oe-ico"><i class="fa-solid ${x[0]}"></i></span><b>${x[1]}</b><small>${x[2]}</small></div>`).join("")}</div>`;
     return `<div class="empty-state orders-empty orders-empty-live"><span class="orders-empty-icon oe-float">${typeof lvIllus === "function" ? lvIllus("box", 84) : '<i class="fa-solid fa-box-open"></i>'}</span><strong>${onlyHistory ? "No active orders" : "No orders yet"}</strong><span class="muted">${onlyHistory ? "Finished orders are under History." : isCustomerView ? "Orders you place will show up here." : "Orders from your customers will show up here."}</span>${acts}${stepHtml}</div>`;
   }
   const total = orders.length;
