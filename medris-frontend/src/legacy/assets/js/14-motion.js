@@ -755,7 +755,13 @@
   }
   var heights = {};
   try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
+  function view0() { try { return currentView; } catch (_) { return ""; } }
+  var vendorsSnap = null;   // the Vendors page as it looked when we left it (grid/list only), so Back can show it at once
   function remember() {
+    try {
+      var a = document.getElementById("app"), m = null; try { m = localStorage.getItem("levromart_vendors_view"); } catch (_) {}
+      if (a && view0() === "vendors" && m !== "map" && a.querySelector("#vendorsGrid .vd-card, #vendorsGrid > *:not(.vd-skel)")) vendorsSnap = a.innerHTML;
+    } catch (_) {}
     var k = keyOf(true);
     if (!k) return;
     scrolls[k] = window.scrollY || document.documentElement.scrollTop || 0;
@@ -782,6 +788,9 @@
       var heldBody = false;
       if (pushHistory === false) {
         try { var hk = keyOf(false), hh = hk != null ? heights[hk] : 0; if (hh > 0) { document.body.style.minHeight = hh + "px"; heldBody = true; } } catch (_) {}
+      }
+      if (pushHistory === false && view === "vendors" && vendorsSnap && view0() !== "vendors") {
+        try { document.getElementById("app").innerHTML = vendorsSnap; } catch (_) {}
       }
       var r = await orig.apply(this, arguments);
       if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
@@ -932,4 +941,31 @@
   }
   new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
   mount();
+})();
+
+/* ===== Vendors page: coming Back shows the vendors we already have straight away (no grey placeholders first) ===== */
+(function () {
+  "use strict";
+  var orig = window.renderVendorsDirectory;
+  if (typeof orig !== "function" || window.__lvVendorsInstant) return;
+  window.__lvVendorsInstant = true;
+  window.renderVendorsDirectory = function () {
+    var html = orig.apply(this, arguments);
+    try {
+      var all = window.__allVendors;
+      if (!Array.isArray(all) || !all.length || typeof vendorDirectorySkeletonHtml !== "function") return html;
+      var sk = vendorDirectorySkeletonHtml();
+      var at = html.indexOf(sk);
+      if (at < 0) return html;
+      var shown = window.__filteredVendors;
+      var mode = typeof vendorDirectoryMode === "string" ? vendorDirectoryMode : "grid", cards = "";
+      if (mode !== "map") {
+        if (!Array.isArray(shown) || shown.length !== all.length) return html;   // a filter was applied last time: wait for the fresh list
+        var fn = mode === "list" ? window.vendorDirectoryCardHtml || (typeof vendorDirectoryCardHtml === "function" ? vendorDirectoryCardHtml : null) : (typeof vendorPageCardHtml === "function" ? vendorPageCardHtml : null);
+        if (!fn) return html;
+        cards = shown.slice(0, 12).map(fn).join("");
+      }
+      return html.slice(0, at) + cards + html.slice(at + sk.length);
+    } catch (_) { return html; }
+  };
 })();
