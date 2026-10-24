@@ -39,6 +39,21 @@ export interface LedgerEvent {
 export class PaystackLedgerRepository {
   constructor(private readonly db: Executor) {}
 
+  /** Which of the payment database changes are present (one marker object per migration; names only, no data). */
+  async setupStatus(): Promise<Record<string, boolean>> {
+    const row = await jsonRow<Record<string, boolean>>(
+      this.db,
+      sql`select
+        (to_regclass('public.paystack_transactions') is not null) as "0005",
+        exists (select 1 from pg_trigger where tgname = 'orders_queue_vendor_payout' and not tgisinternal) as "0007",
+        exists (select 1 from pg_trigger where tgname = 'orders_queue_paystack_refunds' and not tgisinternal) as "0008",
+        (to_regclass('public.paystack_transactions_one_open_listing_fee_idx') is not null) as "0009",
+        (to_regclass('public.paystack_reconciliation_reports') is not null) as "0010",
+        exists (select 1 from pg_trigger where tgname = 'vendors_bio_no_numbers' and not tgisinternal) as "0011"`,
+    );
+    return row ?? {};
+  }
+
   /** Held until the surrounding transaction ends, so two deliveries of one event are handled one after the other. */
   async lockEvent(eventKey: string): Promise<void> {
     await this.db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${"paystack_event:" + eventKey}, 0))`);

@@ -5,10 +5,12 @@ import * as routes from "./paystack-webhook.routes.js";
 
 /** /api/v1/payments/paystack/webhook - see paystack-webhook.routes.ts. */
 export const paystackWebhookController = controller()
-  .route(routes.paymentsHealth, ({ services }) => {
+  .route(routes.paymentsHealth, async ({ services }) => {
     const key = optionalEnv("PAYSTACK_SECRET_KEY");
     const keyMode = !key ? "missing" : key.startsWith("sk_test_") ? "test" : key.startsWith("sk_live_") ? "live" : "unknown";
-    return json({ data: { keyMode, checkoutEnabled: services.config.paystack.checkoutEnabled } } as never, 200);
+    const setup = await services.paystackCheckout.setupStatus();
+    const missingMigrations = setup ? Object.entries(setup).filter(([, ok]) => !ok).map(([n]) => n) : null;
+    return json({ data: { keyMode, checkoutEnabled: services.config.paystack.checkoutEnabled, missingMigrations } } as never, 200);
   })
   .route(routes.paystackWebhook, async ({ req, services }) => {
     const result = await services.paystackWebhook.handle(await readBodyText(req), req.get("x-paystack-signature"));
