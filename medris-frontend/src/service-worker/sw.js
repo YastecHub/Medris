@@ -51,7 +51,7 @@ self.addEventListener('fetch', event => {
 
   /*
    * Navigation requests:
-   * Ask the network first, but only wait a short while (2.5 s). A normal
+   * Ask the network first, but only wait a short while (1.2 s). A normal
    * connection therefore always opens the newest version straight away, with
    * no flash of an older look. On a slow or missing connection the saved copy
    * opens instead, and the fresh copy is kept for next time (the open page
@@ -83,7 +83,7 @@ self.addEventListener('fetch', event => {
         if (saved) {
           const quick = await Promise.race([
             refresh,
-            new Promise(resolve => setTimeout(() => resolve(null), 2500))
+            new Promise(resolve => setTimeout(() => resolve(null), 1200))
           ]);
           if (quick && quick.fresh) return quick.fresh;
 

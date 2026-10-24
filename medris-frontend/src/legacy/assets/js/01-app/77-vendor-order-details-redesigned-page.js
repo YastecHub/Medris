@@ -31,7 +31,7 @@ function vendorOrderTopHtml(order, ctx) {
   const alerts = {
     pending: { icon: "fa-hourglass-half", head: "Customer is waiting for your confirmation", body: "Confirm the order to see who they are and message them in the app, or decline it if you can't fulfil it." },
     confirmed: { icon: "fa-circle-check", head: "You accepted this order", body: ctx.feePaid ? "Payment is in. Get the order ready and hand it over." : "Waiting for the customer to pay you and report the payment." },
-    handed_over: { icon: "fa-truck-fast", head: isDelivery ? "Order is out for delivery" : "Order handed over", body: isRental ? "Mark it returned once the equipment is back with you." : "The order completes once the customer confirms and payment is settled." },
+    handed_over: { icon: "fa-truck-fast", head: isDelivery ? "Order is out for delivery" : "Order handed over", body: isRental ? "Mark it returned once the equipment is back with you." : ctx.feePaid ? "Paid. Waiting for the customer to confirm they received it. Your money is sent to your bank once they confirm (or automatically after 24 hours)." : "The order completes once the customer confirms and payment is settled." },
     returned: { icon: "fa-rotate-left", head: "Equipment returned", body: "Waiting for the customer to confirm so the order can complete." },
     completed: { icon: "fa-circle-check", head: "Order completed", body: "This order is done. Thank you for selling on Levromart." },
     cancelled: { icon: "fa-circle-xmark", head: "This order was cancelled", body: "No further action is needed." },
