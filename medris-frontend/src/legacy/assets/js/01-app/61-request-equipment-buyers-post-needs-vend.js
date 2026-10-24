@@ -88,6 +88,8 @@ window.lvBand3Winner = async function () {
     if (!w || !w.business_name) return;
     slot.innerHTML = profileAvatarHtml(w.logo_url, w.business_name, "100%", { extraClass: "lv-band-logo-img" });
     slot.classList.add("on");
+    // fixed circle, whatever the stylesheet says: the logo must never grow over the whole slide
+    [["width", "4.2rem"], ["height", "4.2rem"], ["max-width", "4.2rem"], ["border-radius", "50%"], ["overflow", "hidden"]].forEach(([k, v]) => slot.style.setProperty(k, v, "important"));
     slot.setAttribute("title", w.business_name);
     slot.parentNode.querySelector(".lv-b3-trophy")?.classList.add("hidden");
   } catch (_) {}

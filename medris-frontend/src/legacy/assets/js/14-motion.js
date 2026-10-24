@@ -924,7 +924,7 @@
     var first = page.querySelector(".settings-page-section"); if (!first) return;
     var sec = document.createElement("section");
     sec.className = "settings-page-section"; sec.id = "lvCardStyleSection";
-    sec.innerHTML = '<h3><i class="fa-solid fa-table-cells-large"></i> Product cards</h3><p class="settings-section-note">Pick the pattern behind product cards. It is saved on this device.</p><div class="lv-cs-grid">' +
+    sec.innerHTML = '<h3><i class="fa-solid fa-table-cells-large"></i> Product cards</h3><p class="settings-section-note">Dots is the default. You can change the pattern behind product cards here any time; it is saved on this device.</p><div class="lv-cs-grid">' +
       STYLES.map(function (s) { return '<button type="button" class="lv-cs-tile" data-cs="' + s[0] + '" aria-pressed="false"><span class="lv-cs-prev ' + s[2] + '"></span>' + s[1] + "</button>"; }).join("") + "</div>";
     first.insertAdjacentElement("afterend", sec);
     sec.addEventListener("click", function (e) { var b = e.target.closest("[data-cs]"); if (b) set(b.getAttribute("data-cs")); });
