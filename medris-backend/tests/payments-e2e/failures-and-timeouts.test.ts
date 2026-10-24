@@ -27,6 +27,17 @@ describe("timeouts (unknown outcomes) and failures", () => {
     expect(after.data.missingMigrations).toEqual(["0008"]);
   });
 
+  it("Pay is tapped again after the first link was already paid (slow bank transfer): the payment is settled once and the buyer is told so", async () => {
+    const orderId = await newOrder(w);
+    const first = await startPayment(w, orderId);
+    w.paystack.completeCheckout(first.data.reference as string);
+    const again = await startPayment(w, orderId);
+    expect(again.status).toBe(409);
+    expect(await payStatus(orderId)).toBe("paid");
+    const n = await w.db.query(`select 1 from public.notifications where user_id = $1 and type = 'payment_confirmed' and (target_params->>'orderId') = $2`, [w.vendor.id, orderId]);
+    expect(n).toHaveLength(1);
+  });
+
   it("the Paystack key is missing on the server: a clear 'not available' answer, nothing half-started", async () => {
     const orderId = await newOrder(w);
     const saved = process.env.PAYSTACK_SECRET_KEY;

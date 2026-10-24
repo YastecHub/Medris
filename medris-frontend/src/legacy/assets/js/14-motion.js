@@ -324,7 +324,25 @@
           sb.from("orders").select("buyer_id").eq("id", orderId).maybeSingle()
         ]);
         var paid = q[0] && q[0].data && q[0].data[0];
-        if (!paid) return html;
+        if (!paid) {
+          // A card or bank-transfer payment can reach Paystack a few minutes after the buyer left: when this order has a payment
+          // waiting, ask the server to check it (the same check as the webhook) and reload the page once it is paid.
+          try {
+            var wait = await sb.from("payments").select("provider_reference").eq("order_id", orderId).eq("status", "pending").like("provider_reference", "lvm_ord_%").order("created_at", { ascending: false }).limit(1);
+            var ref = wait && wait.data && wait.data[0] && wait.data[0].provider_reference;
+            window.__lvPayChecked = window.__lvPayChecked || {};
+            if (ref && Date.now() - (window.__lvPayChecked[ref] || 0) > 20000) {
+              window.__lvPayChecked[ref] = Date.now();
+              window.levroData.payments.status(ref).then(function (r) {
+                if (r && r.data && window.levroData.payments.outcomeOf(r.data.status) === "paid" && typeof currentView !== "undefined" && currentView === "orderDetail") {
+                  showToast("Payment confirmed. Thank you!", "success");
+                  navigate("orderDetail", { orderId: orderId }, false);
+                }
+              }, function () {});
+            }
+          } catch (_) {}
+          return html;
+        }
         var buyer = q[1] && q[1].data && String(q[1].data.buyer_id) === String(session.user.id);
         var line = buyer ? "Paid with Paystack. Levromart holds the money until you confirm delivery." : "Paid. The money is held by Levromart and sent to your bank after the buyer confirms.";
         return '<div class="lv-pm-note" role="status"><i class="fa-solid fa-shield-halved"></i><span>' + esc(line) + "</span></div>" + html;

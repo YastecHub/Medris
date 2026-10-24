@@ -120,6 +120,18 @@ export class PaystackCheckoutService {
 
     if (step.reuse) {
       const r = step.reuse;
+      // The buyer may already have paid through the link we are about to hand out again (a bank transfer can take minutes to
+      // arrive): settle it now and say so, instead of sending them to a page that answers "already completed".
+      try {
+        const v = await getPaystackClient().verifyTransaction(r.reference);
+        if (v.status === "success") {
+          await new PaystackWebhookService(this.db).confirmByReference(r.reference);
+          throw conflict("We already received this payment. Please open your order to see it.");
+        }
+      } catch (err) {
+        if (err instanceof AppError) throw err;
+        // Paystack could not be asked right now: hand out the link as before
+      }
       return result(r.reference, r.authorization.authorization_url ?? "", r.authorization.access_code ?? "", r.grossKobo, r.feeKobo, r.netKobo);
     }
     const f = step.fresh!;
