@@ -10,7 +10,7 @@ export default function RefundPolicyPage() {
   return (
     <div className="legal-page">
       <h2>Refund &amp; Cancellation Policy</h2>
-      <p className="muted">Last updated: 2 October 2026</p>
+      <p className="muted">Last updated: 24 October 2026</p>
 
       <h3>1. Before a vendor confirms your order</h3>
       <p>You can cancel freely from your Orders page. Any payment already made online is refunded in full to your original payment method via Paystack (refunds typically reflect within 5 - 10 business days, per Paystack's processing time).</p>
@@ -30,7 +30,10 @@ export default function RefundPolicyPage() {
       <h3>6. Chat and calls after an order</h3>
       <p>You can message and call the vendor while your order is accepted and in progress, for example to arrange delivery or raise a problem. Once an order is completed the chat stays open for 24 hours and then closes (the messages are kept as a record). If something is wrong with a completed order, raise it as a dispute from the order page within the time limit in section 4 rather than through chat, so that your evidence is recorded.</p>
 
-      <h3>7. How refunds are paid</h3>
+      <h3>7. Paid, but your order still shows unpaid</h3>
+    <p>Sometimes a payment goes through but the order does not update straight away. Levromart checks with Paystack automatically and matches the payment to your order; this normally takes a few minutes. If it is still not updated after an hour, send a support request with your payment receipt. If a payment cannot be matched to an order, it is refunded to you.</p>
+
+    <h3>8. How refunds are paid</h3>
       <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
     </div>
   );

@@ -1863,14 +1863,17 @@
     const pid=kind==="package"?currentViewParams?.packageId:currentProductDetail?.id;
     const cache=pid?window.__lvCmtCache[kind+pid]:null;
     const cid=String(commentId), uid=session.user.id, tbl=kind==="package"?"package_comment_likes":"product_comment_likes";
-    const was=cache?cache.myLiked.has(cid):false;
+    // Where the page keeps no saved count for this thread (the comments sheet), start from what is on screen, so the number never dips to blank.
+    const row0=document.querySelector(`.product-comment-row[data-comment-id="${CSS.escape(cid)}"]`);
+    const baseN=Number(row0?.querySelector(".lv-cr-n")?.textContent||0)||0;
+    const was=cache?cache.myLiked.has(cid):!!row0?.querySelector(".lv-cr-act.active");
     const apply=(liked)=>{
       if(cache){const n=Number(cache.likeMap.get(cid)||0);if(liked){cache.myLiked.add(cid);cache.likeMap.set(cid,was===liked?n:n+1)}else{cache.myLiked.delete(cid);cache.likeMap.set(cid,Math.max(0,was===liked?n:n-1))}}
       const row=document.querySelector(`.product-comment-row[data-comment-id="${CSS.escape(cid)}"]`);
       const btn=row&&row.querySelector(":scope > .lv-cr-actions .lv-cr-act, .lv-cr-actions .lv-cr-act");
       if(btn){btn.classList.toggle("active",liked);btn.setAttribute("aria-pressed",String(liked));if(liked){btn.classList.remove("lv-pop");void btn.offsetWidth;btn.classList.add("lv-pop")}}
       const num=row&&row.querySelector(".lv-cr-n");
-      if(num){const n=cache?Number(cache.likeMap.get(cid)||0):0;num.textContent=n>0?String(n):""}
+      if(num){const n=cache?Number(cache.likeMap.get(cid)||0):Math.max(0,baseN+(liked?1:0)-(was?1:0));num.textContent=n>0?String(n):""}
     };
     apply(!was);
     try{
@@ -1881,7 +1884,7 @@
       if(cache){const n=Number(cache.likeMap.get(cid)||0);if(was){cache.myLiked.add(cid);cache.likeMap.set(cid,n+1)}else{cache.myLiked.delete(cid);cache.likeMap.set(cid,Math.max(0,n-1))}}
       const row=document.querySelector(`.product-comment-row[data-comment-id="${CSS.escape(cid)}"]`);
       const btn=row&&row.querySelector(".lv-cr-actions .lv-cr-act");if(btn){btn.classList.toggle("active",was);btn.setAttribute("aria-pressed",String(was))}
-      const num=row&&row.querySelector(".lv-cr-n");if(num){const n=cache?Number(cache.likeMap.get(cid)||0):0;num.textContent=n>0?String(n):""}
+      const num=row&&row.querySelector(".lv-cr-n");if(num){const n=cache?Number(cache.likeMap.get(cid)||0):baseN;num.textContent=n>0?String(n):""}
       showToast((e&&e.message)||"Could not update comment like.","error");
     }
   }
