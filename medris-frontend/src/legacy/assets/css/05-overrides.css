@@ -3093,6 +3093,16 @@ html:root:root:root body #app#app .lv-band-card::before{content:"";position:abso
 html:root:root:root body #app#app .lv-band-card::after{content:"";position:absolute;z-index:-1;left:-40px;bottom:-60px;width:120px;height:120px;border-radius:50%;border:16px solid rgba(255,255,255,.09)}
 html:root:root:root body #app#app .lv-band-b{background:linear-gradient(135deg,#7c3aed,#c026d3)!important}
 html:root:root:root body #app#app .lv-band-c{background:linear-gradient(135deg,#25d366,#0e9f6e)!important}
+/* ---- home-cards-cleanup ---- */
+/* promo banner: whole picture visible on a soft blurred copy of itself (not cropped) */
+html:root:root body #app#app .home-promotional-slide{background:#14102b!important}
+html:root:root body #app#app .home-promotional-slide::before{display:block!important;content:"";position:absolute;inset:-24px;background:var(--slide-bg,none) center/cover no-repeat;filter:blur(22px) saturate(1.2) brightness(.85);z-index:0}
+html:root:root body #app#app .home-promotional-slide img{position:relative;z-index:1;object-fit:contain!important;object-position:center!important}
+/* Open your shop / Rent / Who's winning: the little icon sits top-left, never on the round picture */
+html:root:root:root body #app#app .lv-band-card .lv-bfl{left:.9rem!important;right:auto!important;top:.75rem!important;font-size:1.5rem!important}
+/* service badge on listing cards: bright and lively instead of grey */
+html:root:root:root body #app#app .product-card-wrap .card .card-service-btn,html:root:root:root body #app#app .card-service-btn{background:linear-gradient(145deg,#ff6bb5,#8b5cf6)!important;color:#fff!important;border:0!important;box-shadow:0 6px 14px -4px rgba(139,92,246,.6),inset 0 1px 1px rgba(255,255,255,.5)!important}
+html:root:root:root body #app#app .card-service-btn i{color:#fff!important}
 /* ===== Payout bank picker: one clean card, real bank logos, no stray close button ===== */
 html:root:root:root body .vendor-bank-picker-modal .vendor-bank-picker-content,html:root:root:root body #vendorBankPickerModal .vendor-bank-picker-content{width:min(520px,94vw)!important;max-height:82vh!important;display:flex!important;flex-direction:column!important;padding:0!important;border-radius:22px!important;overflow:hidden!important;background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 24px 60px rgba(15,23,42,.35)!important}
 html:root:root:root body .vendor-bank-picker-header{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:1rem!important;padding:1.1rem 1.1rem .6rem!important;margin:0!important;border:0!important;background:transparent!important}
