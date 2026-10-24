@@ -753,18 +753,21 @@
     } catch (_) {}
     return null;
   }
+  var heights = {};
+  try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
   function remember() {
     var k = keyOf(true);
     if (!k) return;
     scrolls[k] = window.scrollY || document.documentElement.scrollTop || 0;
-    try { sessionStorage.setItem("lv-scrolls", JSON.stringify(scrolls)); } catch (_) {}
+    heights[k] = document.documentElement.scrollHeight || 0;
+    try { sessionStorage.setItem("lv-scrolls", JSON.stringify(scrolls)); sessionStorage.setItem("lv-heights", JSON.stringify(heights)); } catch (_) {}
   }
   // keep the spot while the page fills in; stop the moment the person scrolls or touches the screen
   function restore(y) {
     var cancelled = false, stop = function () { cancelled = true; };
     ["touchstart", "wheel", "keydown", "pointerdown"].forEach(function (t) { addEventListener(t, stop, { once: true, passive: true, capture: true }); });
     [0, 40, 120, 300, 700, 1400].forEach(function (ms) {
-      setTimeout(function () { if (!cancelled && Math.abs((window.scrollY || 0) - y) > 2) window.scrollTo({ top: y, behavior: "auto" }); }, ms);
+      setTimeout(function () { if (!cancelled && Math.abs((window.scrollY || 0) - y) > 2) window.scrollTo({ top: y, behavior: "instant" }); }, ms);
     });
   }
   // leaving a screen by any route (taps, links, the bottom bar) remembers where you were
@@ -774,13 +777,20 @@
     window.navigate = async function (view, params, pushHistory) {
       var prev = depth(), pushes = pushHistory !== false && !(pushHistory && typeof pushHistory === "object" && pushHistory.replace === true);
       if (pushes) remember();
+      // Going Back: keep the page as tall as it was, so the saved spot exists straight away (the list fills in afterwards)
+      // and we do not first show the top and then scroll down.
+      var heldBody = false;
+      if (pushHistory === false) {
+        try { var hk = keyOf(false), hh = hk != null ? heights[hk] : 0; if (hh > 0) { document.body.style.minHeight = hh + "px"; heldBody = true; } } catch (_) {}
+      }
       var r = await orig.apply(this, arguments);
+      if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
       try {
         var st = history.state;
         if (pushes && st && st.view === view && st.lvDepth == null) history.replaceState(Object.assign({}, st, { lvDepth: prev + 1 }), "");
         if (pushHistory === false) {            // Back / forward: return to where this screen was left
           var k = keyOf(false), y = k != null ? scrolls[k] : undefined;
-          if (Number.isFinite(y)) restore(y);
+          if (Number.isFinite(y)) { window.scrollTo({ top: y, behavior: "instant" }); restore(y); }
         }
       } catch (_) {}
       return r;

@@ -405,7 +405,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   rememberOrderHistory(embeddedVendorOrders ? "purchases" : "", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
   const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}${orderSearchWrapHtml()}</div>`;
-  const moreMenu = historyCustomerOrders.length ? `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>` : "";
+  const moreMenu = `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
   let html = `${embeddedVendorOrders || typeof lvPageHero !== "function" ? "" : lvPageHero("orders")}<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
   html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await __buyerCountsP);
