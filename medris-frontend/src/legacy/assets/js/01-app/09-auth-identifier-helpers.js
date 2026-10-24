@@ -341,7 +341,12 @@ function hideLevromartSplash() {
   // Never reveal the app until the whole page has been parsed (the later style blocks are what make cards, buttons and
   // images look right) and the icon stylesheet has arrived; otherwise people briefly see grey, unstyled controls and
   // oversized images. A hard cap keeps a dead CDN from holding the splash forever.
-  if (!lvPageStyled() && elapsed < 1200) {
+  // Also wait (up to ~4 s) until the first screen has real content instead of grey placeholder blocks.
+  try {
+    const a = byId("app");
+    if (elapsed < 4000 && a && a.querySelector("[class*='skel'], .lv-svc-skel")) { setTimeout(() => hideLevromartSplash(), 120); return; }
+  } catch (_) {}
+  if (!lvPageStyled() && elapsed < 3000) {
     setTimeout(() => hideLevromartSplash(), 100);
     return;
   }
