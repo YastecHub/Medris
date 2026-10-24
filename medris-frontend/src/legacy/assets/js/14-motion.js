@@ -1105,6 +1105,8 @@
   function rebuild(car, extra) {
     var vp = car.querySelector("#homePromotionalViewport"); if (!vp) return;
     var n = compose(car, extra); if (!n) return;
+    // a fresh row: the old one still carries listeners that remember the old number of banners (they wrapped the loop too early)
+    var fresh = vp.cloneNode(true); vp.replaceWith(fresh); vp = fresh;
     var order = { length: n };
     vp.dataset.carouselBound = ""; window.__levroCarouselDom = null;
     try { if (typeof homeCarouselTimer !== "undefined" && homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; } } catch (_) {}
@@ -1164,7 +1166,7 @@
     };
   }
   async function inject() {
-    if (busy || Date.now() - (window.__lvCarTouchedAt || 0) < 600000) return;
+    if (busy || Date.now() - (window.__lvCarTouchedAt || 0) < 15000) return;
     var car = document.getElementById("homePromotionalCarousel"); if (!car || typeof window.lvVendorSpot !== "function") return;
     busy = true;
     try {
@@ -1283,7 +1285,7 @@
     document.addEventListener(t, function (e) {
       if (!mine(e)) return;
       window.__lvCarTouchedAt = Date.now();
-      try { homeCarouselPause(30 * 60 * 1000); } catch (_) {}
+      try { homeCarouselPause(10000); } catch (_) {}
     }, { passive: true, capture: true });
   });
 })();
