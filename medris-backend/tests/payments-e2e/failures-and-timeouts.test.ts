@@ -17,6 +17,21 @@ describe("timeouts (unknown outcomes) and failures", () => {
     expect(ok.status).toBe(200);
   });
 
+  it("the Paystack key is missing on the server: a clear 'not available' answer, nothing half-started", async () => {
+    const orderId = await newOrder(w);
+    const saved = process.env.PAYSTACK_SECRET_KEY;
+    delete process.env.PAYSTACK_SECRET_KEY;
+    try {
+      const failed = await startPayment(w, orderId);
+      expect(failed.status).toBe(503);
+      expect(failed.body.error.code).toBe("service_unavailable");
+      expect(await payStatus(orderId)).toBeUndefined();
+    } finally {
+      process.env.PAYSTACK_SECRET_KEY = saved;
+    }
+    expect((await startPayment(w, orderId)).status).toBe(200);
+  });
+
   it("the buyer's confirmation call cannot reach Paystack: nothing is lost, the reconciliation job settles it once", async () => {
     const orderId = await newOrder(w);
     const reference = (await startPayment(w, orderId)).data.reference as string;
