@@ -3324,3 +3324,8 @@ html:root:root body #app#app .lv-fy-soon{box-shadow:none}
 /* Levi sits above everything else and his close button is easy to hit */
 html:root:root:root body #aiChatPanel{z-index:10060!important}
 html:root:root:root body #aiChatPanel .drawer-close-btn{min-width:44px;min-height:44px;position:relative;z-index:3}
+
+/* ---- orders-empty-centred ---- */
+html:root:root:root body #app#app .orders-empty-live{min-height:58vh;justify-content:center;padding-top:1rem}
+html:root:root:root body #app#app .oe-steps{margin-top:1.6rem}
+html:root:root:root body #app#app .oe-actions{margin-top:.9rem}

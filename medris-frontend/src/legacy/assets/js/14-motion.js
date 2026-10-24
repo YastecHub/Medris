@@ -1270,6 +1270,14 @@
 (function () {
   "use strict";
   window.__lvCarTouchedAt = 0;
+  // a pause can only get longer: the row's own short 8-second pause must not cancel the long one set when someone touches it
+  var pauseOrig = window.homeCarouselPause;
+  if (typeof pauseOrig === "function" && !window.__lvPauseMax) {
+    window.__lvPauseMax = true;
+    window.homeCarouselPause = function (ms) {
+      try { var until = Date.now() + ms; if (until > homeCarouselResumeAt) homeCarouselResumeAt = until; } catch (_) { pauseOrig(ms); }
+    };
+  }
   function mine(e) { return e.target && e.target.closest && e.target.closest("#homePromotionalViewport"); }
   ["touchstart", "pointerdown", "wheel", "mousedown"].forEach(function (t) {
     document.addEventListener(t, function (e) {
@@ -1278,4 +1286,27 @@
       try { homeCarouselPause(30 * 60 * 1000); } catch (_) {}
     }, { passive: true, capture: true });
   });
+})();
+
+/* ===== Home: Trending products / services drift one card to the right every 10 seconds (stops while someone is using the row) ===== */
+(function () {
+  "use strict";
+  var reduce = false; try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) {}
+  if (reduce) return;
+  var touched = new WeakMap();
+  ["touchstart", "pointerdown", "wheel", "mousedown"].forEach(function (t) {
+    document.addEventListener(t, function (e) { var row = e.target && e.target.closest && e.target.closest(".trending-scroll"); if (row) touched.set(row, Date.now()); }, { passive: true, capture: true });
+  });
+  setInterval(function () {
+    if (document.hidden) return;
+    document.querySelectorAll("#app .trending-scroll").forEach(function (row) {
+      if (row.scrollWidth <= row.clientWidth + 8) return;                       // everything already fits
+      var r = row.getBoundingClientRect(); if (r.bottom < 0 || r.top > window.innerHeight) return;   // off screen
+      if (Date.now() - (touched.get(row) || 0) < 30000) return;
+      var first = row.firstElementChild, gap = parseFloat(getComputedStyle(row).columnGap) || 12;
+      var step = first ? first.getBoundingClientRect().width + gap : row.clientWidth * 0.8;
+      var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 6;
+      try { row.scrollTo({ left: atEnd ? 0 : row.scrollLeft + step, behavior: "smooth" }); } catch (_) {}
+    });
+  }, 10000);
 })();
