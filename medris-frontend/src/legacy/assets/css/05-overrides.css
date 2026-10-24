@@ -3161,3 +3161,37 @@ html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on{position:abso
 html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on img,html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;border-radius:50%!important;object-fit:cover!important;display:block!important}
 /* ---- orders-no-title ---- */
 html:root:root:root body #app#app .orders-title-row>h2{display:none!important}
+/* ---- service-badge-outline ---- */
+/* service badge on cards: a plain outlined icon, like the add-to-cart button */
+html:root:root:root:root body #app#app .product-card-wrap .card .card-service-btn,html:root:root:root:root body #app#app .card-service-btn{background:transparent!important;border:1.5px solid var(--primary,#3fb97f)!important;color:var(--primary,#3fb97f)!important;box-shadow:none!important}
+html:root:root:root:root body #app#app .card-service-btn i{color:var(--primary,#3fb97f)!important}
+/* ---- winning-vendor-flyers ---- */
+html:root:root body #app#app .home-promotional-slide.lv-wv{container-type:inline-size;background:linear-gradient(135deg,var(--wv-a),var(--wv-b))!important;color:#fff;text-align:left;border:0!important;padding:0!important}
+html:root:root body #app#app .home-promotional-slide.lv-wv::before{display:block!important;content:"";position:absolute;inset:auto;right:-14cqw;top:-18cqw;width:60cqw;height:60cqw;border-radius:50%;background:rgba(255,255,255,.12);filter:none!important;z-index:0}
+html:root:root body #app#app .home-promotional-slide.lv-wv::after{content:"";position:absolute;left:-16cqw;bottom:-26cqw;width:52cqw;height:52cqw;border-radius:50%;border:5cqw solid rgba(255,255,255,.09);z-index:0}
+.lv-wv-in{position:absolute;inset:0;display:block;z-index:1;padding:5cqw}
+.lv-wv-badge{position:absolute;left:5cqw;top:5cqw;display:inline-flex;align-items:center;gap:1.6cqw;padding:1.4cqw 3cqw;border-radius:99px;background:rgba(255,255,255,.18);font-size:3cqw;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.lv-wv-badge i{color:#ffd54a}
+.lv-wv-logo{position:absolute;right:5cqw;top:5cqw;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;background:#fff;color:var(--wv-ink);border:1.2cqw solid #fff;box-shadow:0 2cqw 5cqw rgba(0,0,0,.28);font-weight:900}
+.lv-wv-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.lv-wv-logo-big{width:26cqw;height:26cqw;font-size:8cqw}
+.lv-wv-logo-sm{width:13cqw;height:13cqw;font-size:4.4cqw}
+.lv-wv-name{position:absolute;left:5cqw;top:15cqw;max-width:56cqw;font-size:8.2cqw;line-height:1.05;font-weight:900;letter-spacing:-.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 .6cqw 2cqw rgba(0,0,0,.2)}
+.lv-wv-name-sm{top:13cqw;font-size:5.4cqw;max-width:60cqw;-webkit-line-clamp:1}
+.lv-wv-sub{position:absolute;left:5cqw;top:36cqw;max-width:56cqw;font-size:3.5cqw;font-weight:600;line-height:1.3;opacity:.92}
+.lv-wv-thumbs{position:absolute;left:5cqw;bottom:5cqw;display:flex}
+.lv-wv-thumbs img{width:15cqw;height:15cqw;object-fit:cover;border-radius:3cqw;border:.9cqw solid #fff;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,.25);margin-right:-3.5cqw;background:#fff}
+.lv-wv-cta{position:absolute;right:5cqw;bottom:5cqw;display:inline-flex;align-items:center;gap:2cqw;padding:2.4cqw 4.4cqw;border-radius:99px;background:#fff;color:var(--wv-ink);font-size:3.6cqw;font-weight:800;box-shadow:0 1.5cqw 4cqw rgba(0,0,0,.22)}
+.lv-wv-cta-follow{left:5cqw;right:auto}
+.lv-wv-tiles{position:absolute;left:5cqw;right:5cqw;top:23cqw;display:flex;gap:2.6cqw}
+.lv-wv-tile{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:.6cqw;background:rgba(255,255,255,.95);color:#1b1b2f;border-radius:3.4cqw;padding:1.6cqw;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,.2)}
+.lv-wv-tile img{width:100%;aspect-ratio:1.3/1;object-fit:cover;border-radius:2.2cqw;background:#eee}
+.lv-wv-tile b{font-size:2.9cqw;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-wv-tile i{font-style:normal;font-size:3cqw;font-weight:900;color:var(--wv-ink)}
+.lv-wv-b .lv-wv-cta,.lv-wv-kind-b .lv-wv-cta{bottom:4cqw}
+.lv-wv-more{position:absolute;left:5cqw;bottom:4.5cqw;font-size:3.4cqw;font-weight:800;opacity:.95}
+html:root:root body #app#app .lv-wv .lv-wv-thumbs img{width:15cqw!important;height:15cqw!important;max-width:none!important;border-radius:3cqw!important;object-fit:cover!important}
+html:root:root body #app#app .lv-wv .lv-wv-tile img{width:100%!important;height:auto!important;aspect-ratio:1.3/1;border-radius:2.2cqw!important;object-fit:cover!important}
+html:root:root body #app#app .lv-wv .lv-wv-logo img{width:100%!important;height:100%!important;border-radius:50%!important}
+html:root:root body #app#app .lv-wv-c .lv-wv-name{font-size:7cqw;-webkit-line-clamp:3;top:14cqw}
+html:root:root body #app#app .lv-wv-c .lv-wv-sub{top:41cqw}
