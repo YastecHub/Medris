@@ -3329,3 +3329,19 @@ html:root:root:root body #aiChatPanel .drawer-close-btn{min-width:44px;min-heigh
 html:root:root:root body #app#app .orders-empty-live{min-height:58vh;justify-content:center;padding-top:1rem}
 html:root:root:root body #app#app .oe-steps{margin-top:1.6rem}
 html:root:root:root body #app#app .oe-actions{margin-top:.9rem}
+/* ---- product-page-colours ---- */
+/* the product page uses the app's violet/indigo family instead of green everywhere */
+html:root:root body.product-detail-view{--primary:#5b4bdb!important;--primary-light:#7b6cf0!important;--primary-grad:#5b4bdb!important;--pdp-a:#5b4bdb;--pdp-b:#8b6bff}
+/* ---- settings-toggles ---- */
+html:root:root:root body #app#app #settings-page .settings-inline-btn.active,html:root:root:root body #settings-page .settings-inline-btn.active{background:linear-gradient(135deg,#5b4bdb,#8b6bff)!important;border-color:transparent!important;color:#fff!important;box-shadow:0 6px 14px -6px rgba(91,75,219,.75)!important;font-weight:800}
+html:root:root body.product-detail-view #app .btn:not(.btn-outline):not(.btn-danger):not(.btn-ghost){background:linear-gradient(135deg,var(--pdp-a),var(--pdp-b))!important;border-color:transparent!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(91,75,219,.8)!important}
+html:root:root body.product-detail-view #app .btn.btn-outline{color:var(--pdp-a)!important;border-color:color-mix(in srgb,var(--pdp-a) 45%,transparent)!important;background:transparent!important}
+html:root:root body.product-detail-view #app .product-payment-plan-notice.pay-before{background:color-mix(in srgb,#5b4bdb 9%,var(--card))!important;border-color:color-mix(in srgb,#5b4bdb 28%,transparent)!important}
+html:root:root body.product-detail-view #app .product-payment-plan-notice.pay-before i,html:root:root body.product-detail-view #app .product-payment-plan-notice.pay-before strong{color:#5b4bdb!important}
+html:root:root body.product-detail-view #app .product-payment-plan-notice.pay-after{background:color-mix(in srgb,#f59e0b 11%,var(--card))!important;border-color:color-mix(in srgb,#f59e0b 35%,transparent)!important}
+html:root:root body.product-detail-view #app .product-payment-plan-notice.pay-after i,html:root:root body.product-detail-view #app .product-payment-plan-notice.pay-after strong{color:#b45309!important}
+html:root:root body.product-detail-view #app .product-detail-actions .badge,html:root:root body.product-detail-view #app .product-detail-actions .count-badge{background:#5b4bdb!important;color:#fff!important}
+html:root:root body.product-detail-view #app .product-detail-actions i.fa-heart,html:root:root body.product-detail-view #app .product-detail-actions .fa-heart{color:#e11d48!important}
+html:root:root body.product-detail-view #app .sv-card .sv-name strong,html:root:root body.product-detail-view #app .sv-card .sv-price{color:#5b4bdb!important}
+html:root:root body.product-detail-view #app .delivery-method-row label:has(input:checked){border-color:#5b4bdb!important;background:color-mix(in srgb,#5b4bdb 10%,var(--card))!important}
+html:root:root body.product-detail-view #app input[type=radio],html:root:root body.product-detail-view #app input[type=checkbox]{accent-color:#5b4bdb}

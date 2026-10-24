@@ -36,5 +36,6 @@ Step-by-step procedures: `.agent/skills/start-task`, `finish-task`, `address-rev
 - Start from a fresh branch off the latest `main`; finish with a pull request that a non-technical person can check
   on the Vercel preview (steps + screenshots).
 - Run the checks before saying something works, and report exactly what you ran and what you could not check.
+- Whenever a change affects what the app does with people's data, money, accounts, messages or notifications (or any rule users must follow), check the legal pages (`85-legal-pages.js` and its React copies in `medris-frontend/src/views/{terms,privacy,refund-policy}`) and update the wording and the "Last updated" date in the same branch, in both places. Mention it in the pull request, and say that the text should be reviewed by a lawyer.
 - Keep changes small and on-topic; mention unrelated problems you noticed instead of fixing them in the same branch.
 - Never touch the live database, secrets, real payments or real users' data. Database changes are migration files.
