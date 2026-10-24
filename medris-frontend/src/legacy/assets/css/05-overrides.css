@@ -3044,3 +3044,56 @@ html:root:root:root:root:root body #app#app#app .vd-page .vd-seg .vd-tab{width:1
 html:root:root:root:root:root body #app#app#app .vd-page .vd-seg .vd-tab.active::after{left:12%!important;right:12%!important}
 html:root:root:root:root:root body #app#app#app .vd-page .vd-views{padding:2px!important}
 html:root:root:root:root:root body #app#app#app .vd-page .vd-views button.vd-view{width:2.7rem!important;height:2rem!important}
+
+/* ===== Payout bank picker: one clean card, real bank logos, no stray close button ===== */
+html:root:root:root body .vendor-bank-picker-modal .vendor-bank-picker-content,html:root:root:root body #vendorBankPickerModal .vendor-bank-picker-content{width:min(520px,94vw)!important;max-height:82vh!important;display:flex!important;flex-direction:column!important;padding:0!important;border-radius:22px!important;overflow:hidden!important;background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 24px 60px rgba(15,23,42,.35)!important}
+html:root:root:root body .vendor-bank-picker-header{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:1rem!important;padding:1.1rem 1.1rem .6rem!important;margin:0!important;border:0!important;background:transparent!important}
+html:root:root:root body .vendor-bank-picker-header h3{margin:0!important;font-size:1.1rem!important;font-weight:800!important}
+html:root:root:root body .vendor-bank-picker-header h3 i{display:none!important}
+html:root:root:root body .vendor-bank-picker-header p{margin:.2rem 0 0!important;font-size:.82rem!important;color:var(--text-muted)!important}
+html:root:root:root body .vendor-bank-picker-close{position:static!important;flex:0 0 auto;width:2.2rem!important;height:2.2rem!important;border-radius:50%!important;display:grid!important;place-items:center;background:color-mix(in srgb,var(--text) 7%,var(--card))!important;color:var(--text)!important;border:0!important;box-shadow:none!important;font-size:.95rem}
+html:root:root:root body .vendor-bank-search-wrap{margin:.3rem 1.1rem .6rem!important;background:var(--card)!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:none!important}
+html:root:root:root body .vendor-bank-picker-list{flex:1 1 auto;overflow-y:auto!important;padding:0 1.1rem 1rem!important;margin:0!important;max-height:none!important}
+html:root:root:root body .vendor-bank-option{display:flex!important;align-items:center!important;gap:.85rem!important;width:100%!important;padding:.75rem 0!important;margin:0!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;text-align:left!important}
+html:root:root:root body .vendor-bank-option-icon{flex:0 0 auto;width:2.6rem!important;height:2.6rem!important;border-radius:50%!important;background:#fff!important;border:1px solid var(--border)!important;display:grid!important;place-items:center;overflow:hidden;color:#64748b!important;font-size:1rem;box-shadow:none!important}
+html:root:root:root body .vendor-bank-option-icon img{width:100%;height:100%;object-fit:contain;padding:.25rem}
+html:root:root:root body .vendor-bank-option-main{flex:1 1 auto;min-width:0}
+html:root:root:root body .vendor-bank-option-main strong{font-size:.95rem!important;font-weight:600!important;color:var(--text)!important}
+html:root:root:root body .vendor-bank-option-main small{display:none!important}
+html:root:root:root body .vendor-bank-option.selected .vendor-bank-option-main strong{font-weight:800!important}
+html:root:root:root body .vendor-bank-option>i{color:var(--text-muted)!important;font-size:.8rem}
+html:root:root:root body .vendor-bank-option.selected>i{color:#7c5cf0!important;font-size:1.05rem}
+
+/* ===== Vendor application: section icons in the same soft tinted style as the add-listing form (no glossy gradient tiles) ===== */
+html:root:root body #app .va-page .va-s1{--va-c:#8b6bff}
+html:root:root body #app .va-page .va-s2{--va-c:#4f9bff}
+html:root:root body #app .va-page .va-s3{--va-c:#19c486}
+html:root:root body #app .va-page .va-s4{--va-c:#ff9a62}
+html:root:root body #app .va-page .va-s5{--va-c:#ec6fb0}
+html:root:root body #app .va-page .va-ico{background:color-mix(in srgb,var(--va-c) 16%,var(--card))!important;background-image:none!important;color:var(--va-c)!important;box-shadow:none!important;border-radius:12px!important;width:2.3rem!important;height:2.3rem!important}
+html:root:root body #app .va-page .va-step{background:transparent!important;border:1px solid var(--border)!important;color:var(--text-muted)!important;box-shadow:none!important;font-weight:700!important}
+html:root:root body #app .va-page .va-sec::before{display:none!important}
+html:root:root body #app .va-page .va-sec{box-shadow:none!important;border-radius:18px!important}
+
+/* ===== Product card patterns (chosen in Settings, saved on the device). Default: soft dots ===== */
+html:root:root:root:root body #app#app .product-card-wrap>.card{background-color:var(--card)!important;background-repeat:repeat!important}
+html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.22) 1.3px,transparent 1.6px)!important;background-size:14px 14px!important}
+html[data-card-style="lines"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.09) 0 8px,transparent 8px 16px)!important;background-size:auto!important}
+html[data-card-style="grid"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(rgba(139,107,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.10) 1px,transparent 1px)!important;background-size:16px 16px!important}
+html[data-card-style="glow"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(160deg,rgba(139,107,255,.16),rgba(255,154,98,.08) 55%,transparent 80%)!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
+html[data-card-style="plain"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:none!important}
+html:not([data-card-style="corners"]):root:root:root:root body #app#app .product-card-wrap>.card>h4::after{display:none!important}
+html:root:root:root:root body .lv-cs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.7rem}
+html:root:root:root:root body .lv-cs-tile{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.55rem .4rem .6rem;border:1.5px solid var(--border);border-radius:14px;background:transparent;color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer}
+html:root:root:root:root body .lv-cs-tile.on{border-color:#7c5cf0;background:color-mix(in srgb,#8b6bff 8%,var(--card));font-weight:800}
+html:root:root:root:root body .lv-cs-prev{display:block;width:100%;height:3.1rem;border-radius:9px;border:1px solid var(--border);background-color:var(--card)}
+html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.3) 1.3px,transparent 1.6px);background-size:10px 10px}
+html:root:root:root:root body .lv-cs-lines{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.14) 0 6px,transparent 6px 12px)}
+html:root:root:root:root body .lv-cs-grid2{background-image:linear-gradient(rgba(139,107,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.18) 1px,transparent 1px);background-size:11px 11px}
+html:root:root:root:root body .lv-cs-glow{background-image:linear-gradient(160deg,rgba(139,107,255,.28),rgba(255,154,98,.14) 55%,transparent 80%)}
+html:root:root:root:root body .lv-cs-corners{background-image:radial-gradient(circle at 100% 0,rgba(139,107,255,.45) 0 16px,transparent 17px),radial-gradient(circle at 0 100%,rgba(255,200,61,.5) 0 14px,transparent 15px)}
+
+/* Profile panel: the "Apply to be a vendor" row is not tinted, only its icon jiggles; the header sits tighter now that the title is gone */
+html:root:root:root:root body #profilePanel .vp-cta-jiggle{background:transparent!important}
+html:root:root:root:root body #profilePanel .drawer-header{margin-bottom:0!important;padding-bottom:0!important;min-height:0!important}
+html:root:root:root:root body #profilePanel .profile-panel-header{margin-top:-.2rem!important}
