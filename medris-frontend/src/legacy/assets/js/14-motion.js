@@ -1078,8 +1078,9 @@
     if (!base.length) return;
     var tmp = document.createElement("div"); tmp.innerHTML = extra.join("");
     var wv = Array.prototype.slice.call(tmp.children), order = [];
-    base.forEach(function (b, i) { order.push(b); if (wv.length && i < 3) order.push(wv.shift()); });
-    wv.forEach(function (n) { order.push(n); });
+    // the vendor of the week comes first, then the banners alternate: winner, normal, winner, normal ...
+    var bi = 0;
+    while (wv.length || bi < base.length) { if (wv.length) order.push(wv.shift()); if (bi < base.length) order.push(base[bi++]); }
     var wasLoop = vp.dataset.loop === "1";
     track.replaceChildren.apply(track, order);
     if (order.length > 1) {
@@ -1094,7 +1095,8 @@
     vp.dataset.carouselBound = ""; window.__levroCarouselDom = null;
     try { if (typeof homeCarouselTimer !== "undefined" && homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; } } catch (_) {}
     try { initHomepageCarousel(); } catch (_) {}
-    if (!wasLoop || true) requestAnimationFrame(function () { try { if (typeof homeCarouselGoTo === "function") { vp.style.scrollSnapType = "none"; vp.scrollLeft = (order.length > 1 ? 1 : 0) * homeCarouselStep(vp); requestAnimationFrame(function () { vp.style.scrollSnapType = ""; }); } } catch (_) {} });
+    var jump = function () { try { var st = homeCarouselStep(vp); if (st && order.length > 1) { vp.style.scrollSnapType = "none"; vp.scrollLeft = st; requestAnimationFrame(function () { vp.style.scrollSnapType = ""; }); } } catch (_) {} };
+    requestAnimationFrame(jump); setTimeout(jump, 120); setTimeout(jump, 400);
   }
   async function inject() {
     if (busy) return;
@@ -1140,4 +1142,22 @@
   setInterval(swapProducts, 7000);
   setInterval(swapColours, 11000);
   inject();
+})();
+
+
+/* ===== Home strips: the "Shop from your campus / Follow us / ..." banners fade through nicer colours and their icons wiggle now and then ===== */
+(function () {
+  "use strict";
+  var P = [["#6d28d9", "#be185d"], ["#1d4ed8", "#7c3aed"], ["#e11d48", "#f97316"], ["#0e7490", "#1e3a8a"], ["#c2410c", "#9d174d"], ["#4338ca", "#0ea5e9"], ["#be123c", "#6d28d9"]];
+  var step = 0;
+  function paint() {
+    document.querySelectorAll(".lv-b3-slide").forEach(function (sl, i) {
+      if (sl.classList.contains("s5")) return;     // WhatsApp keeps its own green
+      var c = P[(step + i * 2) % P.length];
+      sl.style.setProperty("--b3-a", c[0]); sl.style.setProperty("--b3-b", c[1]);
+    });
+  }
+  new MutationObserver(function () { if (document.querySelector(".lv-b3-slide:not([style*='--b3-a'])")) paint(); }).observe(document.body, { childList: true, subtree: true });
+  setInterval(function () { if (!document.hidden) { step++; paint(); } }, 9000);
+  paint();
 })();
