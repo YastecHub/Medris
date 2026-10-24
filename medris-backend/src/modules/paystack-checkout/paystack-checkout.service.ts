@@ -22,6 +22,26 @@ const REUSE_SECONDS = 25 * 60;
 /** An attempt that has no link yet is still being set up for this long (a second tap must wait). */
 const SETTING_UP_SECONDS = 90;
 
+/**
+ * A payment that cannot start because this deployment is not fully set up (the Paystack key is missing, or a database
+ * change from migrations 0005-0011 has not been applied) used to surface as an anonymous "Something went wrong". It is
+ * now answered as "unavailable" with its own message, and the original error stays attached so the server log names it.
+ */
+function explainSetupFault(err: unknown): unknown {
+  if (err instanceof AppError) return err;
+  const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
+  const code = e?.code ?? e?.cause?.code ?? "";
+  const text = `${e?.message ?? ""} ${e?.cause?.message ?? ""}`;
+  const missingKey = /PAYSTACK_SECRET_KEY is not configured/.test(text);
+  const missingDbPart = ["42P01", "42703", "42883"].includes(code) || /relation .* does not exist|column .* does not exist|function .* does not exist/.test(text);
+  if (missingKey || missingDbPart) {
+    return new AppError(503, "service_unavailable", "Card payment is not available right now. Please try again later.", undefined, {
+      cause: new Error(`payment setup incomplete (${missingKey ? "PAYSTACK_SECRET_KEY missing" : `database change not applied: ${text.trim().slice(0, 200)}`})`, { cause: err }),
+    });
+  }
+  return err;
+}
+
 interface Step {
   reuse: { reference: string; authorization: { authorization_url?: string; access_code?: string }; grossKobo: number; feeKobo: number; netKobo: number } | null;
   fresh: { reference: string; purpose: string; grossKobo: number; feeKobo: number; netKobo: number; paymentType: string; email: string | null } | null;
@@ -44,6 +64,14 @@ export class PaystackCheckoutService {
 
   async initialize(me: Identity, orderId: string, appOrigin: string) {
     if (!this.checkoutEnabled) throw featureDisabled("Paystack checkout");
+    try {
+      return await this.startPayment(me, orderId, appOrigin);
+    } catch (err) {
+      throw explainSetupFault(err);
+    }
+  }
+
+  private async startPayment(me: Identity, orderId: string, appOrigin: string) {
 
     // 1. decide and record (one transaction; the order row is locked, so two taps are handled one after the other)
     const step = await this.db().asService(async (tx): Promise<Step> => {
