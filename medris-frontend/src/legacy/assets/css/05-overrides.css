@@ -3259,3 +3259,6 @@ html:root:root:root body #app#app .orders-empty-live{overflow:visible}
 html:root:root:root body #app#app .orders-empty-live::before{top:-1rem;width:14rem;height:14rem;margin-left:-7rem;background:radial-gradient(circle closest-side,rgba(139,107,255,.2),rgba(255,154,98,.1) 55%,transparent)}
 .lv-wv-tile{cursor:pointer}.lv-wv-thumbs img{cursor:pointer}
 html:root:root body #app#app .lv-wv .lv-wv-brand img{width:6cqw!important;height:6cqw!important;max-width:none!important;border-radius:50%!important;object-fit:cover!important;position:static!important}
+/* ---- banner-polka-dots ---- */
+/* some flyers get the same scattered polka dots as the product cards (in soft white) */
+html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="3"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="5"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="7"]{background:radial-gradient(rgba(255,255,255,.26) 2px,transparent 2.7px) 0 0/43px 47px,radial-gradient(rgba(255,255,255,.18) 1.5px,transparent 2.1px) 17px 23px/59px 41px,radial-gradient(rgba(255,255,255,.14) 1.2px,transparent 1.8px) 31px 9px/67px 61px,linear-gradient(135deg,var(--wv-a),var(--wv-b))!important}

@@ -1130,7 +1130,7 @@
       if (!html) return html;
       try {
         var box = document.createElement("div"); box.innerHTML = html;
-        box.querySelectorAll(".home-promotional-slide").forEach(flyerize);
+        // the normal banners keep their own uploaded pictures (they already are the designed flyers); only the winner flyers are built here
         var car = box.querySelector("#homePromotionalCarousel"), c = null;
         try { c = JSON.parse(localStorage.getItem("lv-wv-cache") || "null"); } catch (_) {}
         if (car && c && c.w && c.w.vendor_id && Date.now() - c.at < 43200000) {
