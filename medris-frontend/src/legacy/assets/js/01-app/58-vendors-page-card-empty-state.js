@@ -116,7 +116,7 @@ function renderVendorCatChips() {
   // The Vendors rail is only a presentation change; the existing sector filter
   // and click behavior remain unchanged.
   const allArt = levroSectorArt({name:"All"});
-  host.innerHTML = `<button type="button" class="vd-chip vd-chip-all${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><span class="vd-chip-art vd-chip-art-ico"><i class="fa-solid fa-grip" aria-hidden="true"></i></span><span>All categories</span></button>` + list.map((s) => { const art = levroSectorArt(s); return `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" style="--cc:${esc(levroSectorColor(s))}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><span class="vd-chip-art"><img src="${art}" alt="" aria-hidden="true" loading="lazy" decoding="async"></span><span>${esc(s.name)}</span></button>`; }).join("");
+  host.innerHTML = `<button type="button" class="vd-chip vd-chip-all${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><span class="vd-chip-art vd-chip-art-ico"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span><span>All categories</span></button>` + list.map((s) => { const art = levroSectorArt(s); return `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" style="--cc:${esc(levroSectorColor(s))}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><span class="vd-chip-art"><img src="${art}" alt="" aria-hidden="true" loading="lazy" decoding="async"></span><span>${esc(s.name)}</span></button>`; }).join("");
 }
 function vendorCatChipPick(id) {
   const el = byId("vendorSectorFilter"); if (!el) return;
