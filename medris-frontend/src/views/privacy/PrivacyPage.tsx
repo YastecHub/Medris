@@ -14,14 +14,17 @@ export default function PrivacyPage() {
   return (
     <div className="legal-page">
       <h2>Privacy Policy</h2>
-      <p className="muted">Last updated: 2 October 2026</p>
+      <p className="muted">Last updated: 24 October 2026</p>
       <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
       <h3>1. What we collect</h3>
       <ul>
-      <li><strong>Account data:</strong> name, email, phone, city, and (for vendors) business details and verification documents.</li>
+      <li><strong>Account data:</strong> name, email, phone, city, the school or campus you choose, and (for vendors) business details and verification documents such as a student ID card, biodata page or CAC document.</li>
+      <li><strong>Payout details (vendors):</strong> the bank name, account number and account name you add so we can pay you.</li>
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
+      <li><strong>Comments, likes and follows:</strong> comments and replies you post, what you like or follow, and your notification preferences for the vendors you follow. Comments and likes are visible to other users.</li>
+      <li><strong>Leaderboard activity:</strong> for vendors, activity points that decide the weekly leaderboard and Vendor of the Week. The winner's business name, logo and products can be shown on the home page.</li>
       <li><strong>Photos:</strong> profile pictures, vendor product photos, and package/gallery photos you choose to upload.</li>
       <li><strong>Messages and call records:</strong> the messages you send in order conversations, and basic call records (who called whom, when, and whether it was answered, declined or missed). Call audio travels directly between the two devices and is not recorded or stored by Levromart.</li>
       <li><strong>Online status:</strong> while you are using the app we note when you were last active so the person you are chatting with can see that you are online or when you were last seen.</li>
@@ -34,18 +37,23 @@ export default function PrivacyPage() {
 
       <h3>3. Who it's shared with</h3>
       <ul>
-      <li><strong>Paystack:</strong> to process payments.</li>
+      <li><strong>Paystack:</strong> to process payments (we send the order amount and your contact details needed for the payment).</li>
+      <li><strong>Hosting and email providers:</strong> Vercel and Heroku run the app and its servers, and an email provider sends account and order emails.</li>
       <li><strong>Supabase:</strong> our database and file storage provider, which hosts the data described above.</li>
       <li><strong>Google Gemini:</strong> powers the in-app AI assistant; only the text of your chat messages is sent, never your account or order data.</li>
       <li>The vendor or buyer on an order you're part of, so they can fulfill/receive it.</li>
-      <li><strong>Cloudflare:</strong> serves public listing, banner and profile images.</li>
+      <li><strong>Cloudflare:</strong> stores and serves public listing, banner and profile images.</li>
       <li><strong>Browser push services and call-connection servers:</strong> deliver notifications and help two devices connect for a voice call; they handle connection details, not call audio content.</li>
       </ul>
       <p><strong>How long we keep conversations:</strong> an order conversation closes 24 hours after the order is completed and disappears from your chat list. The messages themselves are kept, as a record of what was agreed, for dispute resolution, fraud prevention and legal compliance. Only the two people in the conversation (while it is open) and Levromart administrators can read them. If you order from the same vendor again, the earlier messages reappear in the reopened chat.</p>
       <p>Your conversations with Levi are saved to your account so they're there when you come back, and are visible only to you: searchable, and deletable any time from the chat panel. Levromart's team does not read them unless you turn on "Help improve Levi" in Settings, which is off by default.</p>
 
-      <h3>4. Your choices</h3>
+      <h3>3A. On your device</h3>
+    <p>Levromart saves some choices on your own phone or browser, such as your theme, product-card pattern, saved searches, and a saved copy of the app so it opens fast and works partly offline. You can clear these in your browser or phone settings; some features then reset to their defaults.</p>
+
+    <h3>4. Your choices and rights</h3>
       <p>You can edit your profile information from your account settings. If you want to close your Levromart account, contact Levromart Support; you can also hide the Levi assistant, switch off location sharing and manage notifications in Settings. Closure is subject to necessary legal, transaction, dispute, payment, fraud-prevention, and audit retention requirements. Operational records are not necessarily erased simply because an account is closed.</p>
+    <p>Under the Nigeria Data Protection Act 2023 you may ask to see, correct or delete your personal data, object to some uses of it, and complain to the Nigeria Data Protection Commission. Contact us through a support request and we will respond within a reasonable time. Levromart is meant for people aged 18 and over.</p>
 
       <h3>5. Security</h3>
       <p>Passwords are never stored in plain text (handled by Supabase Auth). Every account, including ones created with Google, has a password on file so account actions that require it (like deleting your account) work consistently. Access to vendor verification documents and payment records is restricted to the account owner and admins.</p>

@@ -98,7 +98,7 @@
       });
       last={html:html,gen:g,view:vw};
       installSmart(this);
-      if(reduce||!this.animate) return;
+      if(reduce||!this.animate||window.__lvSwipeNav) return;
       if(sameNav){ animate(this,[{opacity:.6},{opacity:1}],150); return; }
       var chat=document.body&&document.body.classList.contains("chat-full-page");
       var tabSwitch=!!(TABS[prevView]&&TABS[vw]);

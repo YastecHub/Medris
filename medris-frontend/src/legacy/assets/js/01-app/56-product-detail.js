@@ -99,20 +99,26 @@ window.__levroBaseRenderProductDetail = __levroOriginalRenderProductDetail;
 // Product data fetched ahead of time for the neighbouring products (see the swipe script below), so swiping to one needs no waiting.
 window.__lvPdPre = new Map();
 window.__lvPdTake = function (id) { const k = String(id), e = window.__lvPdPre.get(k); if (!e) return null; window.__lvPdPre.delete(k); return Date.now() - e.at < 90000 ? e : null; };
-window.renderProductDetail = async function(productId){
-  const __pre = window.__lvPdTake(productId);
+window.renderProductDetail = async function(productId, opts){
+  // opts.dry: build the page's HTML for a preview only (no view counted, no page state touched, nothing used up)
+  const dry = !!(opts && opts.dry);
+  const __pre = dry ? (window.__lvPdPre.get(String(productId)) || null) : window.__lvPdTake(productId);
   const {data:p,error}= __pre ? await __pre.first : await sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id',productId).maybeSingle();
   if(!error&&p?.is_service&&p.billing_model==='commission'){
     const own=isOwnVendorId(p.vendor?.id);
     if(!own&&(p.status!=='active'||p.vendor?.verification_status!=='verified'||!p.vendor?.is_active))return '<div class="empty-state">This service is not currently available.</div>';
-    const hint=await getServicePriceHint(productId); const offers=await loadServiceOffers(productId); currentProductDetail=p;
+    const hint=await getServicePriceHint(productId); const offers=await loadServiceOffers(productId); if(!dry) currentProductDetail=p;
     return renderCommissionServiceDetail(p,hint,offers);
   }
   window.__lvPdBase = __pre ? __pre.base : null;
-  return window.__levroBaseRenderProductDetail(productId);
+  if (!dry) return window.__levroBaseRenderProductDetail(productId);
+  const keep = { c: currentProductDetail, a: window.__productGalleryPhotos, b: window.__productGalleryMainIndex, d: window.__productGalleryVarietyOverride, e: window.__productGalleryIndex, f: window.__lastRenderedProductPreview };
+  try { return await window.__levroBaseRenderProductDetail(productId, { dry: true }); }
+  finally { currentProductDetail = keep.c; window.__productGalleryPhotos = keep.a; window.__productGalleryMainIndex = keep.b; window.__productGalleryVarietyOverride = keep.d; window.__productGalleryIndex = keep.e; window.__lastRenderedProductPreview = keep.f; }
 };
 
-async function __levroOriginalRenderProductDetail(productId) {
+async function __levroOriginalRenderProductDetail(productId, opts) {
+  const dry = !!(opts && opts.dry);
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
@@ -123,13 +129,13 @@ async function __levroOriginalRenderProductDetail(productId) {
   const ownListing=isOwnVendorId(product.vendor?.id);
   if(!ownListing && (product.status!=="active" || product.vendor?.verification_status!=="verified" || !product.vendor?.is_active)) return '<div class="empty-state">This product is not currently available.</div>';
   if(variantsError)console.warn("[Levromart] Product varieties could not be loaded:",variantsError);
-  product.variants=loadedProductVariants||[]; currentProductDetail=product;
+  product.variants=loadedProductVariants||[]; if(!dry) currentProductDetail=product;
   // The vendor can only be messaged from a product page while the customer has an
   // accepted, still-open order for it (or within 24h of one being completed).
   const hasOrderedThisProduct=false;
-  sb.rpc("increment_product_view",{p_product_id:productId}).then(()=>{}).catch(()=>{});
+  if(!dry) sb.rpc("increment_product_view",{p_product_id:productId}).then(()=>{}).catch(()=>{});
   const st={avg_rating:product.vendor?.avg_rating??0,review_count:product.vendor?.review_count??0};
-  setTimeout(async()=>{try{const {data:stats}=await sb.rpc("get_vendor_stats",{p_vendor_id:product.vendor.id});const row=(stats&&stats[0])||{};const root=document.querySelector(`.product-detail-card[data-product-detail-id="${CSS.escape(String(productId))}"]`);if(!root)return;root.querySelector("[data-owner-stat=saved]")?.replaceChildren(document.createTextNode(Number(row.favorites_count??0).toLocaleString()));root.querySelector("[data-owner-stat=revenue]")?.replaceChildren(document.createTextNode(naira(Number(row.revenue??0))));root.querySelector("[data-owner-stat=sales]")?.replaceChildren(document.createTextNode(Number(row.sales_count??0).toLocaleString()));}catch(_){}},0);
+  if(!dry) setTimeout(async()=>{try{const {data:stats}=await sb.rpc("get_vendor_stats",{p_vendor_id:product.vendor.id});const row=(stats&&stats[0])||{};const root=document.querySelector(`.product-detail-card[data-product-detail-id="${CSS.escape(String(productId))}"]`);if(!root)return;root.querySelector("[data-owner-stat=saved]")?.replaceChildren(document.createTextNode(Number(row.favorites_count??0).toLocaleString()));root.querySelector("[data-owner-stat=revenue]")?.replaceChildren(document.createTextNode(naira(Number(row.revenue??0))));root.querySelector("[data-owner-stat=sales]")?.replaceChildren(document.createTextNode(Number(row.sales_count??0).toLocaleString()));}catch(_){}},0);
   const canRent=!ownListing&&(product.listing_type==="rent"||product.listing_type==="both"), canBuy=!ownListing&&(product.listing_type==="sale"||product.listing_type==="both");
   const productVariants=Array.isArray(product.variants)?product.variants.slice().sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)):[];
   // Every variety's own photo is part of the swipeable gallery, so swiping the big picture moves through the varieties.
@@ -260,7 +266,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   }
   html += `<div class="card product-reviews-card"><h3 style="margin-top:0;"><i class="fa-solid fa-star"></i> Ratings &amp; reviews</h3><div id="productReviewsBody-${esc(product.id)}" class="product-reviews-body"><p class="muted">Loading reviews…</p></div></div>`;
   html += `<div class="card product-comments-card" data-product-comments-id="${esc(product.id)}"><button type="button" class="product-comments-toggle ${productEngagement?.allow_comments===false?"disabled":""}" onclick="${productEngagement?.allow_comments===false?"":"toggleProductComments('"+esc(product.id)+"')"}" aria-expanded="false" aria-label="${productEngagement?.allow_comments===false?"Comments disabled":"Show product comments"}"><span><i class="fa-regular fa-comment"></i><strong id="productCommentsCount" data-product-id="${esc(product.id)}">0</strong></span><i class="fa-solid fa-chevron-down"></i></button><div id="productCommentsPanel" class="product-comments-panel hidden"></div></div>`;
-  setTimeout(() => hydrateProductReviewSection(product.id), 0);
+  if (!dry) setTimeout(() => hydrateProductReviewSection(product.id), 0);
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
     const { data: related } = await sb.from("products")
@@ -808,8 +814,8 @@ window.lvPdPrefetch = function (id) {
     const el = app(); if (!el) return;
     el.style.transition = "none";
     el.style.transform = `translateX(${dx * 0.85}px)`;
-    el.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
-    if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; dropPeek(); target(d).then((id) => { if (id) { window.lvPdPrefetch?.(id); window.__lvSwipeWarm.id = id; } }).catch(() => {}); }
+    el.style.opacity = window.__lvNext?.ready(dx < 0 ? 1 : -1) ? "" : String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+    if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; dropPeek(); window.__lvNext?.drop(); target(d).then((id) => { if (id) { window.lvPdPrefetch?.(id); window.__lvSwipeWarm.id = id; window.__lvNext?.ensure(d, id); } }).catch(() => {}); }
     // the next product itself rides in beside the finger, so there is never an empty moment
     const wd = dx < 0 ? 1 : -1;
     if (!peek && window.__lvSwipeWarm?.id) { const d = peekFor(window.__lvSwipeWarm.id); if (d) peek = buildPeek(d, wd); }
@@ -856,6 +862,7 @@ window.lvPdPrefetch = function (id) {
     return { el, dir };
   }
   function dropPeek() { if (peek) { try { peek.el.remove(); } catch (_) {} peek = null; } }
+  window.__lvDropPeek = dropPeek;
   // Frozen picture of the page being left: it slides away while the next product is prepared behind it, so the person
   // never sees a loading state or a reload, only one product sliding out and the next sliding in.
   function snapshotOf(el) {
@@ -899,6 +906,17 @@ window.lvPdPrefetch = function (id) {
   async function goToNeighbour(dir, dx) {
     busy = true;
     const el = app();
+    // The next product's full page is already sitting beside this one (it moved with the finger): just finish the slide.
+    if (window.__lvNext && window.__lvNext.ready(dir)) {
+      dropPeek();
+      try { await window.__lvNext.go(dir); }
+      finally {
+        busy = false; window.__lvSwipeNav = false;
+        document.querySelectorAll(".lv-swipe-snap").forEach((n) => n.remove());
+        if (queued) { const d = queued; queued = 0; goToNeighbour(d, 0); }
+      }
+      return;
+    }
     const pk = peek && peek.dir === dir ? peek : null; peek = pk ? null : (dropPeek(), null);
     try {
       const id = await target(dir);
@@ -959,7 +977,7 @@ window.lvPdPrefetch = function (id) {
     const el = app(), dx = e.changedTouches[0].clientX - start.x, dt = Date.now() - start.t;
     clearHint();
     const far = Math.abs(dx) > innerWidth * 0.25, flick = Math.abs(dx) > 45 && dt < 320;
-    if (!far && !flick) { dropPeekAnimated(); reset(el, true); return; }
+    if (!far && !flick) { dropPeekAnimated(); reset(el, true); window.__lvNext?.drop(320); return; }
     const dir = dx < 0 ? 1 : -1;
     // a swipe made while the last one is still settling is kept and played right after it, never lost
     if (busy) { queued = dir; dropPeek(); return; }
@@ -976,4 +994,69 @@ window.lvPdPrefetch = function (id) {
 (function () {
   const mark = () => document.querySelectorAll(".product-detail-card .lv-ccount").forEach((b) => { const z = !Number(b.textContent); if (z !== (b.dataset.zero === "1")) b.dataset.zero = z ? "1" : ""; });
   try { new MutationObserver(mark).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (_) {}
+})();
+
+
+/* ---- the next product's whole page waits beside the one on screen while you swipe ----
+   Its full page (photo, title, price, everything) is built ahead of time without counting a view or changing any page state,
+   and sits just outside the screen inside the same page frame, so it moves with the finger. Letting go simply finishes the
+   slide; the real page then takes over in the very same spot, so nothing disappears or pops back in. */
+(function () {
+  const st = { dir: 0, id: null, el: null, tok: 0, pos: "" };
+  const app = () => document.getElementById("app");
+  function drop(delay) {
+    const el = st.el, host = app(), pos = st.pos;
+    st.tok++; st.el = null; st.id = null; st.dir = 0;
+    const fin = () => { try { el && el.remove(); } catch (_) {} if (host && host.style.position === "relative" && !host.dataset.lvKeepRel) host.style.position = pos; };
+    if (delay) setTimeout(fin, delay); else fin();
+  }
+  async function ensure(dir, id) {
+    if (st.el && st.el.isConnected && st.id === String(id) && st.dir === dir) return;
+    drop();
+    const tok = ++st.tok; st.dir = dir; st.id = String(id);
+    let html;
+    try { html = await window.renderProductDetail(id, { dry: true }); } catch (_) { return; }
+    const host = app();
+    if (tok !== st.tok || typeof html !== "string" || !host || currentView !== "productDetail") return;
+    const t = document.createElement("template"); t.innerHTML = html;
+    t.content.querySelectorAll(".lm-related, video, audio, script").forEach((n) => n.remove());
+    t.content.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    const el = document.createElement("div");
+    el.className = "lv-pd-next"; el.setAttribute("aria-hidden", "true");
+    el.style.cssText = `position:absolute;top:${Math.max(0, window.scrollY - host.offsetTop)}px;left:${dir * 100}%;width:100%;pointer-events:none`;
+    el.appendChild(t.content);
+    st.pos = host.style.position;
+    if (getComputedStyle(host).position === "static") host.style.position = "relative";
+    host.appendChild(el);
+    st.el = el;
+    try { window.__lvDropPeek && window.__lvDropPeek(); } catch (_) {}
+  }
+  function ready(dir) { return !!(st.el && st.el.isConnected && st.dir === dir); }
+  async function go(dir) {
+    const el = app(), id = st.id, W = innerWidth;
+    window.__lvSwipeNav = true;
+    const from = parseFloat((el.style.transform.match(/translateX\(([-0-9.]+)px/) || [])[1]) || 0;
+    const to = -dir * W;
+    el.style.opacity = "";
+    const a = el.animate ? el.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }], { duration: 210, easing: "cubic-bezier(.22,.9,.3,1)", fill: "forwards" }) : null;
+    if (a) { try { await a.finished; } catch (_) {} }
+    el.style.transition = "none"; el.style.transform = `translateX(${to}px)`;
+    if (a) { try { a.cancel(); } catch (_) {} }
+    let done = false;
+    const finish = () => {
+      if (done) return; done = true;
+      try { mo.disconnect(); } catch (_) {}
+      el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "";
+      try { window.scrollTo(0, 0); } catch (_) {}
+      setTimeout(() => { el.style.transition = ""; }, 60);
+    };
+    const mo = new MutationObserver(() => { if (document.querySelector(`#app .product-detail-card[data-product-detail-id="${CSS.escape(String(id))}"]`)) finish(); });
+    mo.observe(el, { childList: true });
+    const guard = setTimeout(finish, 3000);
+    try { await navigate("productDetail", { productId: id }); } catch (_) {}
+    clearTimeout(guard); finish();
+    drop();
+    window.__lvSwipeNav = false;
+  }
+  window.__lvNext = { ensure, ready, go, drop };
 })();
