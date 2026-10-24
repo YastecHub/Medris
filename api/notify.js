@@ -72,6 +72,11 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // PAUSED for now (it was overloading Vercel): the "Orders need your attention" and "order is still waiting" pushes.
+    // Everything else (messages, calls, order updates, a person's own "Order reminder") works as before.
+    // Switch them back on by setting the Vercel variable ORDER_REMINDER_PUSH to "on".
+    const orderReminderPushOn = process.env.ORDER_REMINDER_PUSH === "on";
+
     // Batched 30-second reminders from the database job: push only (no inbox row, no email).
     if (Array.isArray(body.reminders)) {
       const SU = env("SUPABASE_URL");
@@ -80,6 +85,7 @@ module.exports = async function handler(req, res) {
       let sent = 0;
       for (const r of body.reminders.slice(0, 500)) {
         if (!r || !r.user_id) continue;
+        if (r.kind === "orders" && !orderReminderPushOn) continue;
         const out = await sendPush(SU, sh, {
           id: `reminder-${r.kind || "x"}-${r.user_id}`,
           user_id: r.user_id,
@@ -128,6 +134,12 @@ module.exports = async function handler(req, res) {
           sent: 0
         }
       });
+      return;
+    }
+
+    // Automatic order nudges (not the "Order reminder" a person sends themselves) are paused: no push, no email.
+    if (n.type === "order_reminder" && n.title !== "Order reminder" && !orderReminderPushOn) {
+      res.status(200).json({ email: { sent: false, reason: "order reminders paused" }, push: { sent: 0 } });
       return;
     }
 
