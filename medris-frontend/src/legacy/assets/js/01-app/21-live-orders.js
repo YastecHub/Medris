@@ -24,7 +24,7 @@ function refreshVisibleOrderView() {
       if (currentView !== savedView) return;
       if (userIsTypingInApp()) { ordersLiveRefreshTimer = setTimeout(refreshVisibleOrderView, 2500); return; }
       try {
-        await navigate(savedView, savedParams, false);
+        await navigate(savedView, { ...(currentViewParams || savedParams) }, false);   // the page as it is NOW, never as it was when the event arrived
       } catch (err) {
         console.warn("[Levromart] Live order-detail refresh failed:", err);
       }
@@ -45,7 +45,9 @@ function refreshVisibleOrderView() {
     ordersLiveRefreshTimer = setTimeout(async () => {
       if (currentView !== savedView) return;
       document.body.classList.add("orders-refreshing");
-      try { await navigate(savedView, savedParams, false); }
+      // The tab and filters chosen NOW, not the ones from when the live event arrived: otherwise a tap on another tab made just
+      // before the refresh was undone and the list flipped back (the "twitching" between All / Confirmed / Pending).
+      try { await navigate(savedView, { ...(currentViewParams || savedParams) }, false); }
       finally { requestAnimationFrame(() => document.body.classList.remove("orders-refreshing")); }
     }, 50);
   };
