@@ -134,12 +134,22 @@ self.addEventListener('fetch', event => {
       (async () => {
         const cache = await caches.open(RUNTIME);
 
-        const cached = await cache.match(request);
+        // A stylesheet or script must really be one. During a deploy a not-yet-published file can be answered with the
+        // app's own page (status 200); keeping that would leave the screen unstyled or broken until the next version.
+        const wantsKind = request.destination === 'style' ? 'css' : request.destination === 'script' ? 'javascript' : '';
+        const looksRight = response => !wantsKind || response.type === 'opaque' || (response.headers.get('content-type') || '').includes(wantsKind);
+
+        let cached = await cache.match(request);
+        if (cached && !looksRight(cached)) {
+          await cache.delete(request).catch(() => {});
+          cached = undefined;
+        }
 
         const network = fetch(request)
           .then(response => {
             if (
               response &&
+              looksRight(response) &&
               (
                 response.ok ||
                 response.type === 'opaque'
