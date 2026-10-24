@@ -154,7 +154,7 @@ function customerOrderTopHtml(order, ctx) {
     <div><span class="od-muted">Total Amount</span><b class="od-price">${naira(order.total_amount)}</b></div>
     ${order.delivery_fee > 0 ? `<div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
     ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
-    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div>${order.deposit_amount > 0 ? `<p class="od-deposit-note"><i class="fa-solid fa-circle-info"></i> The deposit is a security amount held for rented equipment. It is returned in full once the equipment is back and checked.</p>` : ""}</section>`;
+    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
   // ---- delivery / pickup
   if (isDelivery) {
     const hasPin = order.buyer_lat != null && order.buyer_lng != null;
