@@ -233,8 +233,8 @@ export class PaystackWebhookService {
    * and payouts left "processing" for more than 30, and settles them the way the webhook would have (same event
    * key, so a webhook that arrives later is a duplicate). Safe to run as often as you like.
    */
-  async reconcile(): Promise<{ payments: number; payouts: number; settled: number; problems: number }> {
-    const stalePayments = await this.db().asService((tx) => new PaystackLedgerRepository(tx).staleInitializedTransactions(15, 50));
+  async reconcile(minAgeMinutes = 15): Promise<{ payments: number; payouts: number; settled: number; problems: number }> {
+    const stalePayments = await this.db().asService((tx) => new PaystackLedgerRepository(tx).staleInitializedTransactions(minAgeMinutes, 50));
     const stalePayouts = await this.db().asService((tx) => new PaystackLedgerRepository(tx).staleProcessingPayouts(30, 50));
     let settled = 0;
     let problems = 0;

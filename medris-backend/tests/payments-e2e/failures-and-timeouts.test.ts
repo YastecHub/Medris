@@ -22,6 +22,7 @@ describe("timeouts (unknown outcomes) and failures", () => {
     expect(r.status).toBe(200);
     expect(r.data.missingMigrations).toEqual([]);
     expect(JSON.stringify(r.body)).not.toMatch(/sk_(test|live)_/);
+    expect(r.data.webhook).toMatchObject({ events24h: expect.any(Number), failedEvents: 0 });
     await w.db.query(`drop trigger orders_queue_paystack_refunds on public.orders`);
     const after = await json(await api.get(w, "/payments/health"));
     expect(after.data.missingMigrations).toEqual(["0008"]);

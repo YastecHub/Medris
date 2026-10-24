@@ -74,6 +74,25 @@ if (config.database.liveUrl) {
 } else {
   logger.warn("live updates: LIVE_DATABASE_URL is not set; row changes will not be pushed");
 }
+// Payments safety net: every minute, ask Paystack about card/transfer payments that are still open after 2 minutes and settle
+// the ones that were paid (the same steps and event key as the webhook, so a duplicate is harmless). It does not depend on
+// Paystack's notification arriving or on a Heroku Scheduler job having been created.
+if (config.paystack.checkoutEnabled && config.env !== "test" && process.env.PAYSTACK_SECRET_KEY) {
+  let running = false;
+  const settleWaitingPayments = async () => {
+    if (running) return;
+    running = true;
+    try {
+      const r = await services.paystackWebhook.reconcile(2);
+      if (r.settled > 0 || r.problems > 0) logger.info("payments safety net", r);
+    } catch (err) {
+      logger.warn("payments safety net failed", { err });
+    } finally {
+      running = false;
+    }
+  };
+  setInterval(() => void settleWaitingPayments(), 60_000).unref();
+}
 server.listen(port, () => {
   const url = `http://localhost:${port}`;
   const docs = config.docs.enabled ? { docs: `${url}${DOCS_PATH}`, openapi: `${url}${OPENAPI_PATH}` } : { docs: "disabled (set API_DOCS_ENABLED=true)" };

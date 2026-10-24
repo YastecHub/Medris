@@ -39,6 +39,19 @@ export interface LedgerEvent {
 export class PaystackLedgerRepository {
   constructor(private readonly db: Executor) {}
 
+  /** Is Paystack reaching us? Counts only (no references, no amounts, no people). */
+  async webhookStatus(): Promise<{ last_event_at: string | null; events_24h: number; failed_events: number; waiting_payments: number }> {
+    const row = await jsonRow<{ last_event_at: string | null; events_24h: number; failed_events: number; waiting_payments: number }>(
+      this.db,
+      sql`select
+        (select max(received_at) from public.paystack_events) as last_event_at,
+        (select count(*)::int from public.paystack_events where received_at > now() - interval '1 day') as events_24h,
+        (select count(*)::int from public.paystack_events where error is not null and processed_at is null) as failed_events,
+        (select count(*)::int from public.paystack_transactions where status = 'initialized' and created_at < now() - interval '5 minutes') as waiting_payments`,
+    );
+    return row ?? { last_event_at: null, events_24h: 0, failed_events: 0, waiting_payments: 0 };
+  }
+
   /** Which of the payment database changes are present (one marker object per migration; names only, no data). */
   async setupStatus(): Promise<Record<string, boolean>> {
     const row = await jsonRow<Record<string, boolean>>(
