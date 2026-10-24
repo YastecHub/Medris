@@ -2823,3 +2823,16 @@ html:root:root body #app#app .storefront-profile .storefront-profile-body{displa
 
 /* Storefront: Follow and the bell keep the same breathing space from the right edge as the text has on the left */
 html:root:root body #app#app .storefront-profile .storefront-profile-actions.storefront-public-actions{right:14px!important;inset-inline-end:14px!important;max-width:calc(100% - 114px)!important}
+
+/* Order progress for pay-before orders: placed, confirmed, PAID, out for delivery, delivered (five steps) */
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))){grid-template-columns:repeat(5,minmax(0,1fr))!important;padding:.9rem .1rem!important}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step-dot{width:2.2rem!important;height:2.2rem!important;font-size:.82rem!important}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step::before{top:1.1rem!important}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step-label{font-size:.66rem!important;line-height:1.15}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step{padding:0 .05rem}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(3){--st:#14b8a6}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(4){--st:#8b5cf6}
+html:root body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(5){--st:#16a34a}
+html:root[data-theme="dark"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(3),html:root[data-theme="black"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(3){--st:#2dd4bf}
+html:root[data-theme="dark"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(4),html:root[data-theme="black"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(4){--st:#a78bfa}
+html:root[data-theme="dark"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(5),html:root[data-theme="black"] body #app .od-tracker:has(.od-step:nth-child(5)):not(:has(.od-step:nth-child(6))) .od-step:nth-child(5){--st:#4ade80}

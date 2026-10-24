@@ -8,8 +8,14 @@ const OD_STAGES = [
   { key: "done", icon: "fa-circle-check", label: (d) => d ? "Delivered" : "Completed" },
 ];
 function odIsPayAfter(order) { return String(order.payment_timing || "") === "pay_after"; }
+// Pay-before orders get their own "Paid" step after "Confirmed" (the money is in before anything is handed over).
+const OD_STAGES_PAY_BEFORE = [
+  OD_STAGES[0], OD_STAGES[1],
+  { key: "paid", icon: "fa-wallet", label: () => "Paid" },
+  OD_STAGES[2], OD_STAGES[3],
+];
 function odStagesFor(order) {
-  if (!odIsPayAfter(order)) return OD_STAGES;
+  if (!odIsPayAfter(order)) return OD_STAGES_PAY_BEFORE;
   const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20));
   return [
     OD_STAGES[0], OD_STAGES[1],
@@ -38,11 +44,14 @@ function odStageIndex(order) {
       default: return -1;
     }
   }
+  const rows = Array.isArray(order.payments) ? order.payments : [];
+  const feeType = order.order_type === "rental" ? "rental_fee" : "sale_price";
+  const feePaid = rows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
   switch (String(order.status || "")) {
     case "pending": return 0;
-    case "confirmed": case "payment_unresolved": case "disputed": return 1;
-    case "handed_over": case "returned": return 2;
-    case "completed": return 3;
+    case "confirmed": case "payment_unresolved": case "disputed": return feePaid ? 2 : 1;   // "Paid" once the payment is confirmed
+    case "handed_over": case "returned": return 3;
+    case "completed": return 4;
     default: return -1;
   }
 }
