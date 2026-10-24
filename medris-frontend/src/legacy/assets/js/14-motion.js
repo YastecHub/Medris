@@ -978,7 +978,12 @@
   var busy = false, prodCache = {}, colorCache = {};
   function esc2(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function hueOf(id) { var h = 2166136261; String(id).split("").forEach(function (ch) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }); return (h >>> 0) % 360; }
-  function palette(h) { return "--wv-a:hsl(" + h + ",68%,40%);--wv-b:hsl(" + ((h + 28) % 360) + ",70%,26%);--wv-c:hsl(" + h + ",90%,72%);--wv-ink:hsl(" + h + ",70%,30%)"; }
+  // hand-picked pairs (no greens): the banners cycle through these, each one a step apart, and fade between them
+  var PAL = [["#6d28d9", "#be185d"], ["#1d4ed8", "#7c3aed"], ["#e11d48", "#f97316"], ["#0e7490", "#1e3a8a"], ["#c2410c", "#9d174d"], ["#4338ca", "#0ea5e9"], ["#be123c", "#6d28d9"]];
+  var palStep = 0, logoPal = null;
+  function pickPal(offset) { var list = logoPal ? [logoPal].concat(PAL) : PAL; return list[(palStep + offset) % list.length]; }
+  function palette(offset) { var c = pickPal(offset); return "--wv-a:" + c[0] + ";--wv-b:" + c[1] + ";--wv-ink:" + c[0]; }
+  function rgbHex(h) { var a = (h % 360) / 60, x = 1 - Math.abs(a % 2 - 1), r = 0, g = 0, b = 0; if (a < 1) { r = 1; g = x; } else if (a < 2) { r = x; g = 1; } else if (a < 3) { g = 1; b = x; } else if (a < 4) { g = x; b = 1; } else if (a < 5) { r = x; b = 1; } else { r = 1; b = x; } var f = function (v) { return Math.round((0.18 + v * 0.55) * 255).toString(16).padStart(2, "0"); }; return "#" + f(r) + f(g) + f(b); }
   // the most colourful part of the logo, so the flyer matches it
   function logoHue(url) {
     if (!url) return Promise.resolve(null);
@@ -1006,12 +1011,15 @@
   }
   function products(vid) {
     var c = prodCache[vid]; if (c && Date.now() - c.at < 300000) return Promise.resolve(c.rows);
-    return Promise.resolve(sb.from("products").select("id,name,photos,sale_price,discount_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(12))
+    return Promise.resolve(sb.from("products").select("id,name,photos,sale_price,discount_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(40))
       .then(function (r) {
-        var rows = ((r && r.data) || []).filter(function (p) { return p.photos && p.photos[0]; }).slice(0, 3);
+        var rows = ((r && r.data) || []).filter(function (p) { return p.photos && p.photos[0]; }).slice(0, 24);
         prodCache[vid] = { at: Date.now(), rows: rows }; return rows;
       }).catch(function () { return []; });
   }
+  function pick3(pool) { var a = pool.slice(), out = []; while (a.length && out.length < 3) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); return out; }
+  function thumbsHtml(rows) { return rows.map(function (p) { return '<img src="' + esc2(p.photos[0]) + '" alt="" decoding="async">'; }).join(""); }
+  function tilesHtml(rows) { return rows.map(function (p) { return '<span class="lv-wv-tile"><img src="' + esc2(p.photos[0]) + '" alt="" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join(""); }
   function naira(p) { try { var v = typeof effectivePrice === "function" ? effectivePrice(p) : (p.discount_price || p.sale_price); v = Number(v); return v > 0 ? "₦" + v.toLocaleString("en-NG") : ""; } catch (_) { return ""; } }
   function logoHtml(w, cls) {
     var ini = esc2(String(w.business_name || "?").trim().slice(0, 2).toUpperCase());
@@ -1019,7 +1027,7 @@
   }
   function slide(kind, w, rows, hue) {
     var id = esc2(w.vendor_id), nm = esc2(w.business_name);
-    var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette(hue) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
+    var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette({ a: 0, b: 1, c: 2 }[kind]) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
     var thumbs = rows.map(function (p) { return '<img src="' + esc2(p.photos[0]) + '" alt="" loading="lazy" decoding="async">'; }).join("");
     if (kind === "a") {
       return "<button type=\"button\"" + open + "Vendor of the week: " + nm + '"><span class="lv-wv-in">' +
@@ -1097,10 +1105,11 @@
       var w = spot && ((spot.leaders && spot.leaders[0]) || spot.winner);
       car = document.getElementById("homePromotionalCarousel"); if (!car) return;
       if (!w || !w.vendor_id || !w.business_name) { car.querySelectorAll("[data-wv]").length && removeAll(car); return; }
-      var rows = await products(w.vendor_id);
-      var h = await logoHue(w.logo_url); if (h == null) h = hueOf(w.vendor_id);
+      var pool = await products(w.vendor_id), rows = pick3(pool); window.__lvWvPool = pool;
+      var h = await logoHue(w.logo_url);
+      logoPal = (h != null && (h < 70 || h > 170)) ? [rgbHex(h), rgbHex(h + 40)] : null;
       car = document.getElementById("homePromotionalCarousel"); if (!car) return;
-      var key = w.vendor_id + "|" + h + "|" + rows.map(function (p) { return p.id; }).join(",");
+      var key = w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0);
       if (car.getAttribute("data-wv-key") === key) return;
       var extra = [slide("a", w, rows, h)]; if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h));
       car.setAttribute("data-wv-key", key);
@@ -1111,5 +1120,24 @@
   var t = 0;
   new MutationObserver(function () { if (t || busy) return; if (!document.getElementById("homePromotionalCarousel")) return; t = setTimeout(function () { t = 0; inject(); }, 120); }).observe(document.body, { childList: true, subtree: true });
   setInterval(function () { if (!document.hidden) inject(); }, 120000);
+  // every few seconds: new products on the flyers, new colours on the banners
+  function swapProducts() {
+    var pool = window.__lvWvPool; if (document.hidden || !pool || pool.length < 4) return;
+    var rows = pick3(pool);
+    document.querySelectorAll(".lv-wv-thumbs, .lv-wv-tiles").forEach(function (box) {
+      box.classList.remove("lv-wv-swap"); void box.offsetWidth;
+      box.innerHTML = box.classList.contains("lv-wv-thumbs") ? thumbsHtml(rows) : tilesHtml(rows);
+      box.classList.add("lv-wv-swap");
+    });
+  }
+  function swapColours() {
+    if (document.hidden) return; palStep++;
+    document.querySelectorAll("[data-wv]").forEach(function (sl) {
+      var c = pickPal({ a: 0, b: 1, c: 2 }[sl.getAttribute("data-wv-kind")] || 0);
+      sl.style.setProperty("--wv-a", c[0]); sl.style.setProperty("--wv-b", c[1]); sl.style.setProperty("--wv-ink", c[0]);
+    });
+  }
+  setInterval(swapProducts, 7000);
+  setInterval(swapColours, 11000);
   inject();
 })();

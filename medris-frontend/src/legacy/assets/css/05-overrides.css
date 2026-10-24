@@ -3198,3 +3198,10 @@ html:root:root body #app#app .lv-wv-c .lv-wv-sub{top:41cqw}
 /* ---- hours-dropdown-opens-up ---- */
 /* the working-hours list opens upward so it is not hidden under the Submit button */
 html:root:root:root body #app#app .va-page .ms-wrap .ms-list{top:auto!important;bottom:calc(100% + 6px)!important;max-height:min(46vh,320px)!important;overflow-y:auto!important;z-index:30!important}
+/* ---- winner-flyer-colours ---- */
+@property --wv-a{syntax:"<color>";inherits:true;initial-value:#6d28d9}
+@property --wv-b{syntax:"<color>";inherits:true;initial-value:#be185d}
+@property --wv-ink{syntax:"<color>";inherits:true;initial-value:#6d28d9}
+html:root:root body #app#app .home-promotional-slide.lv-wv{transition:--wv-a 1.6s ease,--wv-b 1.6s ease,--wv-ink 1.6s ease}
+.lv-wv-swap{animation:lvWvIn .6s ease both}
+@keyframes lvWvIn{from{opacity:0;transform:translateY(1.6cqw)}to{opacity:1;transform:none}}
