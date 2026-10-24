@@ -38,7 +38,7 @@ function renderTerms() {
     <ul>
       <li>Comments, replies and reviews must be honest and respectful. Do not post abuse, hate, spam, other people's private details, or anything unlawful. Levromart may hide or remove content and restrict accounts that break these rules.</li>
       <li>Following a vendor lets them reach you with updates; you control the kinds of notifications you receive in Settings.</li>
-      <li>Vendors earn leaderboard points from genuine activity on Levromart. The vendor with the most points for a week is named Vendor of the Week and may be promoted on the home page, including their name, logo and products. Points that come from fake, self-dealt or manipulated activity can be removed, and Levromart may disqualify a vendor. Promotions and rewards may change or end at any time.</li>
+      <li>Vendors earn leaderboard points from genuine activity on Levromart. The vendor with the most points for a week is named Vendor of the Week and is promoted on the home page for the whole of the following week, including their name, logo and products, until the next winner is named. Points that come from fake, self-dealt or manipulated activity can be removed, and Levromart may disqualify a vendor. Promotions and rewards may change or end at any time.</li>
     </ul>
 
     <h3>4B. Levi, our AI assistant</h3>

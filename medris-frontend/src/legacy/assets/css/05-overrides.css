@@ -3345,3 +3345,8 @@ html:root:root body.product-detail-view #app .product-detail-actions i.fa-heart,
 html:root:root body.product-detail-view #app .sv-card .sv-name strong,html:root:root body.product-detail-view #app .sv-card .sv-price{color:#5b4bdb!important}
 html:root:root body.product-detail-view #app .delivery-method-row label:has(input:checked){border-color:#5b4bdb!important;background:color-mix(in srgb,#5b4bdb 10%,var(--card))!important}
 html:root:root body.product-detail-view #app input[type=radio],html:root:root body.product-detail-view #app input[type=checkbox]{accent-color:#5b4bdb}
+
+/* ---- few-products-flyer ---- */
+/* one or two products stay card-sized (centred) instead of stretching across the whole banner */
+html:root:root body #app#app .lv-wv .lv-wv-tiles{justify-content:center}
+html:root:root body #app#app .lv-wv .lv-wv-tile{flex:0 0 28cqw;max-width:28cqw}
