@@ -1034,7 +1034,7 @@
         '<span class="lv-wv-badge"><i class="fa-solid fa-crown"></i> Vendor of the week</span>' +
         logoHtml(w, "lv-wv-logo-big") +
         '<span class="lv-wv-name">' + nm + "</span>" +
-        '<span class="lv-wv-sub">' + (Number(w.points) ? Number(w.points).toLocaleString("en-NG") + " points this week" : "Top of the leaderboard") + "</span>" +
+        '<span class="lv-wv-sub">' + (Number(w.points) ? "Won last week with " + Number(w.points).toLocaleString("en-NG") + " points" : "Last week\u2019s winner") + "</span>" +
         (thumbs ? '<span class="lv-wv-thumbs">' + thumbs + "</span>" : "") +
         '<span class="lv-wv-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
     }
@@ -1125,10 +1125,12 @@
     { k: "win", act: "leaderboard", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true, foot: '<i class="fa-solid fa-globe"></i> levromart.com' },
     { k: "request", act: "requestEquipment", link: "?levro=requestEquipment", label: "Can't find it? Request it.", h1: "Can't find it?", h2: "Request it.", sub: "Tell vendors what you need. They come to you with offers.", cta: "Request an item", ph: "request", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star", "fa-box"] }
   ];
-  var SOC = [["fa-instagram", "#e1306c"], ["fa-tiktok", "#111"], ["fa-facebook-f", "#1877f2"], ["fa-x-twitter", "#000"], ["fa-linkedin-in", "#0a66c2"], ["fa-substack", "#ff6719"], ["fa-whatsapp", "#25d366"]];
+  var SOC = [["fa-instagram", "#e1306c"], ["fa-tiktok", "#111"], ["fa-facebook-f", "#1877f2"], ["fa-x-twitter", "#000"], ["fa-linkedin-in", "#0a66c2"], ["substack", "#ff6719"], ["fa-whatsapp", "#25d366"]];
+  // the icon font has no Substack logo, so it is drawn here
+  var SUBSTACK = '<svg viewBox="0 0 24 24" width="55%" height="55%" fill="#fff" aria-hidden="true"><path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812V24L12 18.11 22.54 24V10.812H1.46zM22.54 0H1.46v2.836h21.08V0z"/></svg>';
   function fyHtml(d) {
     var tiles = d.tiles.map(function (t, i) { return '<span class="lv-fy-t lv-fy-t' + (i + 1) + '">' + (t === "star" ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-solid ' + t + '"></i>') + "</span>"; }).join("");
-    var soc = d.social ? '<span class="lv-fy-soc">' + SOC.map(function (x) { return '<span style="background:' + x[1] + '"><i class="fa-brands ' + x[0] + '"></i></span>'; }).join("") + "</span>" : "";
+    var soc = d.social ? '<span class="lv-fy-soc">' + SOC.map(function (x) { return '<span style="background:' + x[1] + '">' + (x[0] === "substack" ? SUBSTACK : '<i class="fa-brands ' + x[0] + '"></i>') + "</span>"; }).join("") + "</span>" : "";
     return '<span class="lv-wv-in"><span class="lv-fy-brand"><img src="/icon-192.png" alt="" width="40" height="40"><b>levromart</b></span>' +
       (d.soon ? '<span class="lv-fy-soon">COMING SOON</span>' : "") +
       '<span class="lv-fy-h"><em>' + d.h1 + "</em><strong>" + d.h2 + "</strong></span>" +
@@ -1171,9 +1173,9 @@
     busy = true;
     try {
       var spot = await window.lvVendorSpot();
-      var w = spot && ((spot.leaders && spot.leaders[0]) || spot.winner);
+      var w = spot && spot.winner;   // the vendor who WON last week keeps the banners for this whole week (not whoever is leading right now)
       car = document.getElementById("homePromotionalCarousel"); if (!car) return;
-      if (!w || !w.vendor_id || !w.business_name) { car.querySelectorAll("[data-wv]").length && removeAll(car); return; }
+      if (!w || !w.vendor_id || !w.business_name) { try { localStorage.removeItem("lv-wv-cache"); } catch (_) {} car.querySelectorAll("[data-wv]").length && removeAll(car); return; }
       var pool = await products(w.vendor_id), rows = pick3(pool); window.__lvWvPool = pool;
       var h = await logoHue(w.logo_url);
       logoPal = (h != null && (h < 70 || h > 170)) ? [rgbHex(h), rgbHex(h + 40)] : null;
