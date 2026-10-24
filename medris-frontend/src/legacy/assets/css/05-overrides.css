@@ -3247,3 +3247,6 @@ html:root:root:root body #app#app .orders-empty-live>strong{font-size:1.25rem}
 .oe-step small{font-size:.68rem;line-height:1.3;color:var(--muted)}
 .oe-ico{display:inline-flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;border-radius:50%;background:linear-gradient(135deg,var(--oe),color-mix(in srgb,var(--oe) 55%,#fff));color:#fff;font-size:1rem;box-shadow:0 6px 14px -6px var(--oe)}
 @media(prefers-reduced-motion:reduce){.oe-float{animation:none}}
+/* ---- banner-polka-dots ---- */
+/* some flyers get the same scattered polka dots as the product cards (in soft white) */
+html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="3"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="5"],html:root:root body #app#app .home-promotional-slide.lv-wv[data-pal="7"]{background:radial-gradient(rgba(255,255,255,.26) 2px,transparent 2.7px) 0 0/43px 47px,radial-gradient(rgba(255,255,255,.18) 1.5px,transparent 2.1px) 17px 23px/59px 41px,radial-gradient(rgba(255,255,255,.14) 1.2px,transparent 1.8px) 31px 9px/67px 61px,linear-gradient(135deg,var(--wv-a),var(--wv-b))!important}
