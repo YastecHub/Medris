@@ -3135,7 +3135,7 @@ html:root:root body #app .va-page .va-sec{box-shadow:none!important;border-radiu
 
 /* ===== Product card patterns (chosen in Settings, saved on the device). Default: soft dots ===== */
 html:root:root:root:root body #app#app .product-card-wrap>.card{background-color:var(--card)!important;background-repeat:repeat!important}
-html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.22) 1.3px,transparent 1.6px)!important;background-size:14px 14px!important}
+html[data-card-style="dots"]:root:root:root:root body #app#app .product-card-wrap>.card,html:not([data-card-style]):root:root:root:root body #app#app .product-card-wrap>.card{background-image:radial-gradient(rgba(139,107,255,.26) 1.6px,transparent 2px)!important;background-size:28px 28px!important}
 html[data-card-style="lines"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.09) 0 8px,transparent 8px 16px)!important;background-size:auto!important}
 html[data-card-style="grid"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(rgba(139,107,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.10) 1px,transparent 1px)!important;background-size:16px 16px!important}
 html[data-card-style="glow"]:root:root:root:root body #app#app .product-card-wrap>.card{background-image:linear-gradient(160deg,rgba(139,107,255,.16),rgba(255,154,98,.08) 55%,transparent 80%)!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
@@ -3145,7 +3145,7 @@ html:root:root:root:root body .lv-cs-grid{display:grid;grid-template-columns:rep
 html:root:root:root:root body .lv-cs-tile{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.55rem .4rem .6rem;border:1.5px solid var(--border);border-radius:14px;background:transparent;color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer}
 html:root:root:root:root body .lv-cs-tile.on{border-color:#7c5cf0;background:color-mix(in srgb,#8b6bff 8%,var(--card));font-weight:800}
 html:root:root:root:root body .lv-cs-prev{display:block;width:100%;height:3.1rem;border-radius:9px;border:1px solid var(--border);background-color:var(--card)}
-html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.3) 1.3px,transparent 1.6px);background-size:10px 10px}
+html:root:root:root:root body .lv-cs-dots{background-image:radial-gradient(rgba(139,107,255,.34) 1.3px,transparent 1.7px);background-size:16px 16px}
 html:root:root:root:root body .lv-cs-lines{background-image:repeating-linear-gradient(135deg,rgba(139,107,255,.14) 0 6px,transparent 6px 12px)}
 html:root:root:root:root body .lv-cs-grid2{background-image:linear-gradient(rgba(139,107,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(139,107,255,.18) 1px,transparent 1px);background-size:11px 11px}
 html:root:root:root:root body .lv-cs-glow{background-image:linear-gradient(160deg,rgba(139,107,255,.28),rgba(255,154,98,.14) 55%,transparent 80%)}
@@ -3159,3 +3159,5 @@ html:root:root:root:root body #profilePanel .profile-panel-header{margin-top:-.2
 /* "Who's winning?" slide: the winner's logo is a small circle again, not stretched over the whole strip */
 html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on{position:absolute!important;display:block!important;left:auto!important;right:1rem!important;top:50%!important;transform:translateY(-50%)!important;width:4.2rem!important;height:4.2rem!important;max-width:4.2rem!important;border-radius:50%!important;overflow:hidden!important;border:3px solid #fff!important;background:#fff!important;box-shadow:0 6px 12px rgba(0,0,0,.3)!important;filter:none!important;font-size:inherit!important}
 html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on img,html:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;border-radius:50%!important;object-fit:cover!important;display:block!important}
+/* ---- orders-no-title ---- */
+html:root:root:root body #app#app .orders-title-row>h2{display:none!important}
