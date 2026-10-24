@@ -2940,3 +2940,76 @@ html:root body #app .search-page .sr-row .sr-price{background:transparent!import
 html:root body #app .search-page .sr-row .sr-cart{width:2.3rem;height:2.3rem;border-radius:12px;border:1px solid var(--border)!important;background:transparent!important;color:var(--text)!important;box-shadow:none!important}
 html:root body #app .search-page .sr-row .sr-type{background:transparent!important;color:var(--text-muted)!important;font-style:normal;font-weight:600}
 html:root body #app .search-page .sr-row .sr-thumb,html:root body #app .search-page .sr-row img{border-radius:14px!important}
+
+/* ===== Refurbish round: the calm look of the search page for Vendors, Request, Orders, Notifications, Messages, Leaderboard ===== */
+/* no big banners on the working pages */
+html:root:root:root body #app#app .lv-hero2{display:none!important}
+
+/* Vendors */
+html:root:root:root body #app#app .vd-page{padding-top:.4rem}
+html:root:root:root body #app#app .vd-page .vd-seg{display:flex!important;grid-template-columns:none!important;gap:1.35rem!important;width:100%!important;margin:.2rem 0 1rem!important;padding:0 .2rem!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;background:transparent!important;overflow-x:auto;scrollbar-width:none}
+html:root:root:root body #app#app .vd-page .vd-seg .vd-tab{flex:0 0 auto!important;width:auto!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.45rem 0 .7rem!important;font-size:.92rem!important;font-weight:600!important;color:var(--text-muted)!important;position:relative}
+html:root:root:root body #app#app .vd-page .vd-seg .vd-tab.active{color:var(--text)!important;font-weight:800!important}
+html:root:root:root body #app#app .vd-page .vd-seg .vd-tab.active::after{display:block!important;content:""!important;position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#8b6bff}
+html:root:root:root body #app#app .vd-page .vd-search{background:var(--card)!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:none!important}
+html:root:root:root body #app#app .vd-page .vd-search:focus-within{border-color:color-mix(in srgb,#8b6bff 60%,var(--border))!important;box-shadow:0 0 0 3px color-mix(in srgb,#8b6bff 14%,transparent)!important}
+html:root:root:root body #app#app .vd-page .vd-grid.vendors-list-mode{display:block!important}
+html:root:root:root body #app#app .vd-page .vd-grid.vendors-list-mode .vd-card{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding:.95rem 0!important;margin:0!important}
+html:root:root:root body #app#app .vd-page .vd-grid.vendors-list-mode .vd-card::before,html:root:root:root body #app#app .vd-page .vd-grid.vendors-list-mode .vd-card::after{display:none!important;content:none!important}
+
+/* Request an item */
+html:root:root:root body #app#app .request-equipment-page{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:.2rem 0 1rem!important;max-width:none!important}
+html:root:root:root body #app#app .request-equipment-page>label,html:root:root:root body #app#app .request-equipment-page .flex>div>label{text-transform:none!important;letter-spacing:0!important;font-size:.9rem!important;font-weight:700!important;color:var(--text)!important}
+html:root:root:root body #app#app .request-equipment-page input:not([type=radio]):not([type=file]),html:root:root:root body #app#app .request-equipment-page textarea{background:var(--card)!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:none!important}
+html:root:root:root body #app#app .request-equipment-page .photo-dropzone,html:root:root:root body #app#app .request-equipment-page label[for*="Photo"]{background:transparent!important;border:1.5px dashed var(--border)!important;border-radius:16px!important;box-shadow:none!important}
+
+/* Orders */
+html:root:root:root body #app#app .orders-title-row{margin:.2rem 0 .6rem!important}
+html:root:root:root body #app#app .order-status-pills-rail{border-bottom:1px solid var(--border)!important;gap:1.35rem!important;background:transparent!important}
+html:root:root:root body #app#app .order-status-pill{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.45rem 0 .7rem!important;color:var(--text-muted)!important;font-weight:600!important;position:relative}
+html:root:root:root body #app#app .order-status-pill.active{color:var(--text)!important;font-weight:800!important}
+html:root:root:root body #app#app .order-status-pill.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#8b6bff}
+html:root:root:root body #app#app #orderListWrap .card,html:root:root:root body #app#app #orderListWrap .order-card{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding-left:0!important;padding-right:0!important}
+
+/* Notifications: flat rows separated by a thin line; light-red badges everywhere */
+html:root:root:root body #app#app .notif-item-wrap,html:root:root:root body #app#app .notifications-page-host .notif-item-wrap{border-bottom:1px solid var(--border)!important;border-radius:0!important;margin:0!important;overflow:visible!important;background:transparent!important}
+html:root:root:root body #app#app .notifications-page-host .notif-item-wrap:last-child{border-bottom:1px solid var(--border)!important}
+html:root:root:root body #app#app .notif-item{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+html:root:root:root body #app#app .notif-item.unread,html:root:root:root body #app#app .notifications-page-host .notif-item.unread,html:root:root:root body #app#app .notif-item-wrap .notif-item.unread{background:transparent!important}
+html:root:root:root body #app#app .notifications-page-host .notif-item,html:root:root:root body #app#app .notif-item-wrap .notif-item{background:transparent!important;border-radius:0!important}
+html:root:root:root body .bn-badge,html:root:root:root body .notif-tab-badge,html:root:root:root body .order-tab-badge,html:root:root:root body .orders-perspective-badge,html:root:root:root body .notif-dot{background:color-mix(in srgb,#ef4444 16%,var(--card))!important;color:#dc2626!important;-webkit-text-fill-color:#dc2626!important;box-shadow:none!important;border:0!important;font-weight:700}
+html:root:root[data-theme="dark"] body .bn-badge,html:root:root[data-theme="black"] body .bn-badge,html:root:root[data-theme="dark"] body .notif-tab-badge,html:root:root[data-theme="black"] body .notif-tab-badge,html:root:root[data-theme="dark"] body .order-tab-badge,html:root:root[data-theme="black"] body .order-tab-badge,html:root:root[data-theme="dark"] body .orders-perspective-badge,html:root:root[data-theme="black"] body .orders-perspective-badge,html:root:root[data-theme="dark"] body .notif-dot,html:root:root[data-theme="black"] body .notif-dot{background:color-mix(in srgb,#ef4444 24%,var(--card))!important;color:#fca5a5!important;-webkit-text-fill-color:#fca5a5!important}
+
+/* Messages: plain list with hairlines */
+html:root:root:root body #app#app .messages-toolbar{background:transparent!important;border:0!important;box-shadow:none!important}
+html:root:root:root body #app#app .conv-list-item{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;margin:0!important}
+html:root:root:root body #app#app .conv-list-item.unread{background:color-mix(in srgb,#8b6bff 6%,transparent)!important}
+
+/* Leaderboard: no card boxes, underline tabs */
+html:root:root:root body #app#app .lb-page .lb-card{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding-left:0!important;padding-right:0!important}
+html:root:root:root body #app#app .lb-page .lb-list>*{border-bottom:1px solid var(--border)!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}
+html:root:root:root body #app#app .lb-page .lb-tabs{display:flex!important;gap:1.35rem!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;padding:0 .2rem!important;overflow-x:auto;scrollbar-width:none}
+html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;flex:0 0 auto;padding:.45rem 0 .7rem!important;color:var(--text-muted)!important;font-weight:600!important;position:relative}
+html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab.active,html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab.on{color:var(--text)!important;font-weight:800!important}
+html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab.active::after,html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#8b6bff}
+
+/* Profile panel: opens fast, no "Profile" title, a gentle jiggle on "Apply to be a vendor" */
+html:root:root:root body .side-drawer{transition:transform .2s cubic-bezier(.2,.8,.2,1)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--card)!important}
+html:root:root:root body .drawer-backdrop{transition:opacity .15s ease!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html:root:root:root body #profilePanel .drawer-header h4{display:none!important}
+html:root:root:root body #profilePanel .drawer-header{justify-content:flex-end!important}
+@keyframes lvJiggle{0%,72%,100%{transform:rotate(0)}76%{transform:rotate(-12deg)}80%{transform:rotate(11deg)}84%{transform:rotate(-8deg)}88%{transform:rotate(6deg)}92%{transform:rotate(-3deg)}}
+html:root:root:root body #profilePanel .vp-cta-jiggle{background:color-mix(in srgb,#8b6bff 8%,transparent)!important;border-radius:14px}
+html:root:root:root body #profilePanel .vp-cta-jiggle .vp-ico,html:root:root:root body #profilePanel .vp-cta-jiggle i{animation:lvJiggle 3.6s ease-in-out infinite;transform-origin:50% 60%}
+@media (prefers-reduced-motion:reduce){html:root:root:root body #profilePanel .vp-cta-jiggle .vp-ico,html:root:root:root body #profilePanel .vp-cta-jiggle i{animation:none}}
+
+/* Home: two cards under Featured vendors: the WhatsApp community (Levromart logo with a small WhatsApp badge) and Who's winning */
+html:root:root:root body #app#app .lv-band{display:grid!important;grid-template-columns:1fr 1fr!important;gap:.7rem!important}
+html:root:root:root body #app#app .lv-band .lv-band-c{grid-column:auto!important;min-height:6.6rem!important}
+html:root:root:root body #app#app .lv-band-wa-logo{position:absolute;right:.6rem;top:.6rem;width:3.4rem;height:3.4rem}
+html:root:root:root body #app#app .lv-band-wa-logo img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.3);background:#fff}
+html:root:root:root body #app#app .lv-band-wa-logo i{position:absolute;right:-.25rem;bottom:-.2rem;width:1.35rem;height:1.35rem;border-radius:50%;background:#25d366;color:#fff;font-size:.82rem;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab i{display:none!important}
+html:root:root:root body #app#app .lb-page .lb-tabs .lb-tab::before{display:none!important}
+html:root:root:root body #app#app .lb-page .lb-chip{background:transparent!important;border:1px solid var(--border)!important;color:var(--text-muted)!important;box-shadow:none!important;font-weight:600}
+html:root:root:root body #app#app .lb-page .lb-chip.active{background:color-mix(in srgb,#8b6bff 12%,var(--card))!important;border-color:color-mix(in srgb,#8b6bff 55%,var(--border))!important;color:var(--text)!important}
