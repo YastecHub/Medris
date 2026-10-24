@@ -1642,6 +1642,10 @@
     if(!view&&(meta.request_id||meta.requestId)){view='vendorRequests';params.requestId=meta.request_id||meta.requestId;}
     if(!view&&(meta.conversation_id||meta.conversationId)){view='messages';params.conversationId=meta.conversation_id||meta.conversationId;}
     if(!view) return false;
+    // The "orders need your attention" reminder always says buyerOrders (the customer's page); for a vendor the orders
+    // waiting are on their own Orders page. Orders pushes open the "All" tab so nothing is hidden by an old filter.
+    if(view==='buyerOrders'&&typeof vendor!=='undefined'&&vendor&&profile?.role!=='admin'){view='vendorOrders';params.perspective='sales';}
+    if(view==='vendorOrders'||view==='buyerOrders'){params.status='all';if(view==='vendorOrders'&&!params.perspective)params.perspective='sales';}
     if(view==='messages'&&(params.conversationId||params.conversation_id)) params={...params,conversationId:params.conversationId||params.conversation_id};
     try{await navigate(view,params);if(view==='adminPanel'&&(params.vendorId||params.vendor_id))setTimeout(()=>document.getElementById(`adminVendor-${CSS.escape(String(params.vendorId||params.vendor_id))}`)?.scrollIntoView({behavior:'smooth',block:'center'}),120);return true;}catch(_){return false;}
   }
