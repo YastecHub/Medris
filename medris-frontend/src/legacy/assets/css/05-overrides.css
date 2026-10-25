@@ -3431,3 +3431,77 @@ html:root body #app .customer-following-avatar:not(:has(img)){background:hsl(var
 /* ---- own profile: pen button, the last word (beats the older green outline rules) ---- */
 :root:root:root:root:root:root:root:root body #app .buyer-profile-row-actions button.vendor-profile-edit-btn{border:0!important;border-width:0!important;border-color:transparent!important;outline:0;color:var(--text)!important;background:color-mix(in srgb,var(--text) 6%,transparent)!important;box-shadow:none!important}
 :root:root:root:root:root:root:root:root body #app .buyer-profile-row-actions button.vendor-profile-edit-btn i{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+
+
+/* ================= Vendors map: clean, calm, map-app look ================= */
+html body #app .vmpage[data-style] .leaflet-tile-pane{filter:none!important}
+html body #app .vmpage[data-style="streets"] .leaflet-tile-pane{filter:saturate(1.25) contrast(.98) brightness(1.04) hue-rotate(-4deg)!important}
+html body #app .vmpage[data-style="night"] .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) saturate(.7) brightness(.82) contrast(.95)!important}
+.vmpage #vmpMap{background:#e8eaed}
+.vmpage[data-style="night"] #vmpMap{background:#1a1d24}
+.vmpage .leaflet-control-attribution{font-size:.56rem;opacity:.8;background:rgba(255,255,255,.72);color:#475569;border-radius:8px 0 0 0}
+.vmpage[data-style="night"] .leaflet-control-attribution,.vmpage[data-style="satellite"] .leaflet-control-attribution{background:rgba(15,17,22,.6);color:#cbd5e1}
+/* top bar: one white pill, like a map app's search box */
+html body #app .vmpage .vmp-top{right:4.2rem}
+html body #app .vmpage .vmp-bar{background:#fff;color:#1f2937;border:0;box-shadow:0 2px 8px rgba(60,64,67,.30),0 1px 2px rgba(60,64,67,.20);padding:.15rem .7rem .15rem .2rem}
+html body #app .vmpage .vmp-bar input{color:#1f2937}
+html body #app .vmpage .vmp-bar .vmp-back,html body #app .vmpage .vmp-bar-ic{color:#5f6368}
+html body #app .vmpage .vmp-chip{background:#fff;color:#3c4043;border:0;box-shadow:0 1px 4px rgba(60,64,67,.30);font-weight:600}
+html body #app .vmpage .vmp-chip.on{background:#e8f0fe;color:#1a73e8;box-shadow:0 1px 4px rgba(26,115,232,.35)}
+:root[data-theme="dark"] body #app .vmpage .vmp-bar,:root[data-theme="black"] body #app .vmpage .vmp-bar{background:#2b2f36;color:#e8eaed}
+:root[data-theme="dark"] body #app .vmpage .vmp-bar input,:root[data-theme="black"] body #app .vmpage .vmp-bar input{color:#e8eaed}
+:root[data-theme="dark"] body #app .vmpage .vmp-chip,:root[data-theme="black"] body #app .vmpage .vmp-chip{background:#2b2f36;color:#e8eaed}
+:root[data-theme="dark"] body #app .vmpage .vmp-chip.on,:root[data-theme="black"] body #app .vmpage .vmp-chip.on{background:#1f3a5f;color:#8ab4f8}
+/* round white buttons: map type (top right) and my location (above the cards) */
+html body #app .vmpage .vmp-fab{width:44px;height:44px;border:0;border-radius:50%;background:#fff;color:#5f6368;box-shadow:0 2px 8px rgba(60,64,67,.35);display:grid;place-items:center}
+html body #app .vmpage .vmp-fab.on{color:#1a73e8}
+:root[data-theme="dark"] body #app .vmpage .vmp-fab,:root[data-theme="black"] body #app .vmpage .vmp-fab{background:#2b2f36;color:#e8eaed}
+html body #app .vmpage .vmp-fabs{top:.7rem;right:.7rem;gap:0}
+html body #app .vmpage .vmp-bottom{background:none;padding-bottom:.7rem;display:flex;flex-direction:column}
+html body #app .vmpage .vmp-locate{align-self:flex-end;margin:0 .8rem .6rem 0;pointer-events:auto}
+/* map type sheet */
+.vmp-sheet-wrap{position:absolute;inset:0;z-index:700}
+.vmp-sheet-wrap.hidden{display:none}
+.vmp-sheet-back{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.vmp-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card,#fff);color:var(--text,#202124);border-radius:22px 22px 0 0;padding:.9rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.25);animation:vmpSheetUp .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes vmpSheetUp{from{transform:translateY(100%)}to{transform:none}}
+.vmp-sheet-head{display:flex;align-items:center;justify-content:space-between;margin:.2rem 0 .7rem}
+.vmp-sheet-head strong{font-size:1rem}
+.vmp-sheet-head button{width:34px;height:34px;border:0;border-radius:50%;background:color-mix(in srgb,var(--text,#202124) 8%,transparent);color:inherit}
+.vmp-types{display:flex;gap:.9rem;flex-wrap:wrap;margin-bottom:1rem}
+.vmp-types button{display:flex;flex-direction:column;align-items:center;gap:.35rem;border:0;background:none;color:inherit;font-weight:600;width:4.8rem}
+.vmp-types small{font-size:.75rem}
+.vmp-type-pic{width:3.6rem;height:3.6rem;border-radius:14px;display:grid;place-items:center;font-size:1.3rem;color:#fff;border:2px solid transparent;background:#9aa0a6}
+.vmp-types button.on .vmp-type-pic{border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.25)}
+.vmp-types button.on small{color:#1a73e8}
+.vmp-type-streets{background:linear-gradient(135deg,#d7ecd0 0 45%,#fce9b2 45% 60%,#c8dcf6 60%)}.vmp-type-streets i{color:#5f6368}
+.vmp-type-satellite{background:linear-gradient(135deg,#2f4f2f,#51612f 50%,#2c3e50)}
+.vmp-type-terrain{background:linear-gradient(135deg,#cfe0b8,#b9a77c 55%,#8aa56b)}.vmp-type-terrain i{color:#4a5a3a}
+.vmp-type-night{background:linear-gradient(135deg,#1d2230,#2e3650)}
+.vmp-type-names{background:#e8f0fe}.vmp-type-names i{color:#1a73e8}
+/* route card with travel times */
+.vmp-route{margin:0 .8rem .55rem;background:var(--card,#fff);color:var(--text,#202124);border-radius:18px;padding:.65rem .8rem .55rem;box-shadow:0 3px 14px rgba(60,64,67,.35);pointer-events:auto}
+.vmp-route.hidden{display:none}
+.vmp-route-top{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
+.vmp-route-top strong{font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-route-top span{font-size:.78rem;color:var(--text-muted,#5f6368);white-space:nowrap}
+.vmp-modes{display:flex;gap:.4rem;margin:.5rem 0 .3rem}
+.vmp-modes button{flex:1;display:flex;flex-direction:column;align-items:center;gap:.12rem;padding:.4rem .2rem;border:0;border-radius:12px;background:color-mix(in srgb,var(--text,#202124) 6%,transparent);color:var(--text,#202124);font-size:.7rem}
+.vmp-modes button i{font-size:1.05rem;color:#5f6368}
+.vmp-modes button b{font-size:.78rem}
+.vmp-modes button.on{background:#e8f0fe;color:#1a73e8}.vmp-modes button.on i{color:#1a73e8}
+.vmp-route small{font-size:.66rem;color:var(--text-muted,#5f6368)}
+/* vendor cards: one endless row, snapping to the middle */
+html body #app .vmpage .vmp-rail{scroll-snap-type:x mandatory;padding:.1rem calc(50% - min(41%,155px)) .2rem;gap:.7rem}
+html body #app .vmpage .vmp-card{scroll-snap-align:center;border:0;border-radius:20px;box-shadow:0 3px 14px rgba(60,64,67,.35);flex:0 0 min(82%,310px);transition:transform .2s ease,box-shadow .2s ease}
+html body #app .vmpage .vmp-card.on{box-shadow:0 0 0 2.5px #1a73e8,0 6px 18px rgba(26,115,232,.35);transform:translateY(-3px)}
+html body #app .vmpage .vmp-card-act button{background:#1a73e8}
+html body #app .vmpage .vmp-card-act a{background:#e8f0fe;color:#1a73e8}
+/* pins and clusters */
+html body #app .vmpage .vmp-pin{box-shadow:0 3px 10px rgba(0,0,0,.35)!important;border-color:#fff}
+html body #app .vmpage .vmp.vmp-sel .vmp-pin{transform:scale(1.28);box-shadow:0 6px 16px rgba(0,0,0,.45),0 0 0 4px rgba(26,115,232,.45)!important}
+html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!important;border:3px solid #1a73e8;box-shadow:0 3px 10px rgba(0,0,0,.3);font-weight:800}
+.leaflet-tooltip.vmp-tip{background:#fff;color:#202124;border:0;border-radius:8px;padding:.15rem .5rem;font-size:.7rem;font-weight:700;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.leaflet-tooltip-bottom.vmp-tip::before{display:none}
+.vmp-me-dot{background:#1a73e8!important}
+.vmp-me.has-head::before{content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:conic-gradient(from calc(var(--vmp-head,0deg) - 28deg),rgba(26,115,232,.5) 0 56deg,transparent 56deg);-webkit-mask:radial-gradient(circle,transparent 7px,#000 8px);mask:radial-gradient(circle,transparent 7px,#000 8px)}

@@ -631,7 +631,7 @@
   // if the RPC fails.
   function applyFollowUiState(wrap,following){
     const btn=wrap.querySelector('.follow-btn');
-    if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following, tap to unfollow':'Follow vendor';}
+    if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i><span class="follow-btn-label">'+(following?'Following':'Follow')+'</span>';btn.title=following?'Following, tap to unfollow':'Follow vendor';}
     const bell=wrap.querySelector('.follow-settings-btn');
     if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications';}
   }
