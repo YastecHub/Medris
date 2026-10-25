@@ -330,6 +330,11 @@ function lvPageStyled() {
     if (document.readyState === "loading") return false;
     const fa = document.querySelector('link[rel="stylesheet"][href*="font-awesome"]');
     if (fa && !fa.sheet && navigator.onLine !== false) return false;
+    // our own five style files: the last three sit lower in the page, so on a slow connection the app can be parsed
+    // before they arrive. Showing the page then is the unstyled "half-built" screen people must never see.
+    const own = document.querySelectorAll('link[rel="stylesheet"][href*="/assets/css/"]');
+    for (let i = 0; i < own.length; i++) if (!own[i].sheet && navigator.onLine !== false) return false;
+    if (own.length < 5 && document.readyState !== "complete") return false;
     return true;
   } catch (_) { return true; }
 }
@@ -350,7 +355,7 @@ function hideLevromartSplash() {
     const a = byId("app");
     if (elapsed < 4000 && a && a.querySelector("[class*='skel'], .lv-svc-skel")) { setTimeout(() => hideLevromartSplash(), 120); return; }
   } catch (_) {}
-  if (!lvPageStyled() && elapsed < 3000) {
+  if (!lvPageStyled() && elapsed < 9000) {
     setTimeout(() => hideLevromartSplash(), 100);
     return;
   }
