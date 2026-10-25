@@ -106,6 +106,7 @@
       var chat=document.body&&document.body.classList.contains("chat-full-page");
       var tabSwitch=!!(TABS[prevView]&&TABS[vw]);
       if(chat) animate(this,[{opacity:0},{opacity:1}],180);
+      else if(vw==="home"&&!goingBack&&tabSwitch) animate(this,[{opacity:.55},{opacity:1}],110);   // Home just appears: no slide, no wait
       else if(goingBack) animate(this,[{opacity:.2,transform:"translateX(-30%)"},{opacity:1,transform:"none"}],230);
       else if(tabSwitch&&NAVPOS[prevView]!=null&&NAVPOS[vw]!=null&&NAVPOS[prevView]!==NAVPOS[vw]){
         // the bottom bar: the page comes in from the side the tapped tab is on
@@ -451,7 +452,7 @@
       var d = r && r.data;
       var legacy = document.getElementById("payoutLegacy"); if (legacy) legacy.classList.add("hidden");
       box.innerHTML = d && d.verified
-        ? '<div class="ve-bank"><span class="ve-bank-ico"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>' + esc(d.accountName || "") + '</strong><small>' + esc(d.bankName || "") + " ···" + esc(d.accountLast4 || "") + '</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Verified</span></div>'
+        ? '<div class="ve-bank"><span class="ve-bank-ico" data-bank-code="' + esc((typeof vendor !== "undefined" && vendor && vendor.bank_code) || "") + '"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>' + esc(d.accountName || "") + '</strong><small>' + esc(d.bankName || "") + " ···" + esc(d.accountLast4 || "") + '</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Verified</span></div>'
         : '<div class="ve-bank ve-bank-empty"><span class="ve-bank-ico"><i class="fa-solid fa-triangle-exclamation"></i></span><div class="ve-bank-copy"><strong>Account not verified</strong><small>Add your bank below and confirm the name to be paid.</small></div></div>';
     } catch (_) {}
   };
@@ -944,7 +945,18 @@
 /* ===== Bank pickers: show each bank's own logo (small pictures kept with the app); a plain bank icon when there is none ===== */
 (function () {
   "use strict";
+  function dressBank() {
+    document.querySelectorAll(".ve-bank-ico[data-bank-code]:not([data-lvlogo])").forEach(function (holder) {
+      holder.setAttribute("data-lvlogo", "1");
+      var code = String(holder.getAttribute("data-bank-code") || "").replace(/[^a-zA-Z0-9._-]/g, "");
+      if (!code) return;
+      var img = new Image(); img.alt = ""; img.decoding = "async";
+      img.onload = function () { holder.innerHTML = ""; holder.classList.add("has-logo"); holder.appendChild(img); };
+      img.src = "/bank-logos/" + code + ".webp";
+    });
+  }
   function dress() {
+    dressBank();
     document.querySelectorAll(".vendor-bank-option:not([data-lvlogo])").forEach(function (btn) {
       btn.setAttribute("data-lvlogo", "1");
       var code = String(btn.getAttribute("data-bank-code") || "").replace(/[^a-zA-Z0-9._-]/g, "");

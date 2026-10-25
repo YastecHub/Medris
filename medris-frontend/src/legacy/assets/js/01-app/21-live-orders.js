@@ -129,11 +129,11 @@ let orderPollTick = 0;
 function startOrderSignaturePoll() {
   if (orderSignatureTimer) return;
   // Realtime does the instant work; this check only catches a dropped or sleeping connection. An open order is checked
-  // every 4 seconds (the query is two tiny selects), order lists every 12.
+  // every 4 seconds (the query is two tiny selects), order lists every 8.
   orderSignatureTimer = setInterval(async () => {
     if (document.hidden || !session) return;
     if (!["orderDetail", "buyerOrders", "vendorOrders", "orderHistory"].includes(currentView)) { __orderSigs.clear(); return; }
-    if (currentView !== "orderDetail" && (++orderPollTick % 3) !== 0) return;
+    if (currentView !== "orderDetail" && (++orderPollTick % 2) !== 0) return;
     const key = currentView + ":" + (currentViewParams?.orderId || "");
     try {
       const sig = await currentOrderSignature();
@@ -148,7 +148,9 @@ function startOrderSignaturePoll() {
 let orderBadgeTimer = null;
 // Any order change also moves the Orders badge and the pending counts in the profile menu.
 function onOrderLiveEvent() {
-  refreshVisibleOrderView();
+  // a new or changed order: forget what was remembered for the order lists and redraw the open one now
+  try { if (typeof __ordersTabCache !== "undefined") __ordersTabCache.clear(); } catch (_) {}
+  refreshVisibleOrderView(true);
   clearTimeout(orderBadgeTimer);
   orderBadgeTimer = setTimeout(() => { try { window.__ordCnt = null; refreshNotifications(false).then(() => { try { renderBottomNav(); } catch (_) {} }).catch(() => {}); } catch (_) {} }, 700);
 }
@@ -209,3 +211,11 @@ function subscribeOrderUpdates() {
   }
 }
 
+
+// Called when a notification arrives (a new order, a payment, a status change): the order lists are redrawn straight away,
+// even if the live order channel itself missed it (a phone that slept, a table that does not broadcast).
+window.lvOrdersNudge = function () {
+  try { if (typeof __ordersTabCache !== "undefined") __ordersTabCache.clear(); } catch (_) {}
+  window.__ordCnt = null;
+  try { refreshVisibleOrderView(true); } catch (_) {}
+};
