@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>if(!/\/$|\.html$/.test(location.pathname)){document.write('<base href="'+location.pathname+'/">')}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>LevroMart · Pitch deck</title>
 <meta name="description" content="LevroMart: the campus marketplace where students discover, trust and order from verified vendors. Interactive pitch deck.">
@@ -446,6 +447,45 @@ h2{font-size:4.8rem;margin-top:.7rem}
 .st b{font-size:7rem}
 .perks{margin-right:10.6rem}
 #s11 .mil .card{padding:2rem 1.8rem}#s11 .mil b{font-size:4.4rem}#s11 .mil span{font-size:1.2rem}#s11 .closing{font-size:4.4rem;margin-top:3rem}
+
+/* ---- real slide-deck behaviour: one slide at a time, sliding between them ---- */
+.deck{position:fixed;inset:0;height:auto;overflow:hidden;scroll-snap-type:none}
+.slide{position:absolute;inset:0;min-height:0;opacity:0;visibility:hidden;pointer-events:none;transform:translateX(7%) scale(.94);filter:blur(.6rem);
+ transition:transform .75s cubic-bezier(.65,0,.2,1),opacity .55s ease,filter .75s ease,visibility 0s linear .75s}
+.slide.before{transform:translateX(-7%) scale(.94)}
+.slide.cur{opacity:1;visibility:visible;pointer-events:auto;transform:none;filter:none;transition:transform .75s cubic-bezier(.2,.7,.2,1),opacity .55s ease .1s,filter .6s ease,visibility 0s}
+.slide .bg i{transition:transform 1.4s cubic-bezier(.2,.7,.2,1)}
+.slide:not(.cur) .bg i{transform:translate(4rem,-3rem) scale(1.12)}
+.slide.before:not(.cur) .bg i{transform:translate(-4rem,3rem) scale(.9)}
+.slide .rv{opacity:0;transform:translateY(1.8rem)}
+.slide.cur .rv{opacity:1;transform:none}
+.foot{position:absolute;left:0;right:0;bottom:-3.2rem;margin:0}
+.cqr{bottom:-3.4rem}
+.body{padding-bottom:1rem}
+.fin{display:grid;grid-template-columns:1fr 46rem;gap:3rem;align-items:center}
+.finl h1{font-size:7.4rem;line-height:1}
+.finq{display:flex;gap:1.2rem;margin-top:3rem}.finq .pill{font-size:2rem;padding:1rem 2.2rem}
+.finr{display:flex;flex-direction:column;align-items:center;gap:2rem}
+.bigqr{background:#fff;border-radius:3rem;padding:2.2rem;box-shadow:0 2.4rem 5rem rgba(0,0,0,.4)}
+.bigqr img{width:36rem;height:36rem}
+.finr b{font-size:2.8rem;font-weight:900;letter-spacing:-.03em}
+#s12 .cqr{display:none}
+#s11 .mil{grid-template-columns:1fr;gap:1.4rem;margin-top:2rem}
+#s11 .mil .card{display:flex;align-items:baseline;gap:2rem;padding:2rem 2.6rem}
+#s11 .mil b{font-size:6rem}#s11 .mil span{margin:0;font-size:1.6rem}
+@media (max-width:900px){
+ .deck{position:static;overflow:visible}
+ .slide{position:relative;min-height:100vh;opacity:1;visibility:visible;pointer-events:auto;transform:none;filter:none}
+ .slide .rv{opacity:1;transform:none}
+ .slide .bg i{transform:none!important}
+ .foot{position:static}.cqr{bottom:0}
+ .fin{display:flex;flex-direction:column}.finl h1{font-size:3.4rem}.bigqr img{width:22rem;height:22rem}
+}
+html.print .deck{position:static;overflow:visible}
+html.print .slide{position:relative;opacity:1;visibility:visible;transform:none;filter:none;transition:none}
+html.print .slide .bg i{transform:none!important;transition:none}
+.cbrand{display:none}
+.perks{margin-bottom:5rem}#s8 .body{padding-bottom:5.4rem}#s8 .risk{padding-right:2rem}
 /* ---------- navigation chrome ---------- */
 .chrome{position:fixed;z-index:50;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:1.1rem 2.4rem;pointer-events:none}
 .chrome>*{pointer-events:auto}
@@ -531,7 +571,7 @@ html.print .printonly{display:block!important}
   </div>
 </div>
 <nav class="dots-nav" id="dotsNav" aria-label="Slides"></nav>
-<div class="arrows"><button id="prev" type="button" aria-label="Previous slide"><svg class="icn" data-i="chev-up"></svg></button><span class="ct" id="ct">1 / 11</span><button id="next" type="button" aria-label="Next slide"><svg class="icn" data-i="chev-down"></svg></button></div>
+<div class="arrows"><button id="prev" type="button" aria-label="Previous slide"><svg class="icn" data-i="chev-left"></svg></button><span class="ct" id="ct">1 / 12</span><button id="next" type="button" aria-label="Next slide"><svg class="icn" data-i="chev-right"></svg></button></div>
 
 <main class="deck" id="deck">
 
@@ -885,10 +925,26 @@ html.print .printonly{display:block!important}
           <div class="card"><b data-pp="t">1,100</b><span data-pp="t">Vendors</span></div>
           <div class="card"><b data-pp="t">₦1M</b><span data-pp="t">Monthly revenue</span></div>
         </div>
-        <p class="closing rv" style="--d:4" data-pp="t">Easier to find. Easier to trust. <em>Easier to transact.</em></p>
+        
       </div>
     </div>
     <div class="cqr"><img src="assets/img/qr-all.png" alt="QR code for all LevroMart links" data-pp="img"><span data-pp="t">SCAN TO VISIT</span></div>
+    <div class="foot"><div class="fl"><img class="flogo" src="assets/img/logo.png" alt="" data-pp="img"><span class="fname" data-pp="t">LevroMart</span><i class="sep"></i><span class="sstrip"><img src="assets/img/socials-strip.png" alt="LinkedIn, TikTok, Instagram, Facebook, Substack, X" data-pp="img"><svg class="wa" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#25d366"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7.5 17.2l.7-2.5a5.3 5.3 0 1 1 1.9 1.8z"/></svg></span><span class="fhandle" data-pp="t">@levromart</span></div><div class="fr"><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></div></div>
+  </div>
+</section>
+
+<section class="slide dark" id="s12" data-title="Thank you">
+  <div class="bg"><i class="c1" style="width:60rem;height:60rem;right:-20rem;top:-24rem"></i><i class="c2" style="width:44rem;height:44rem;left:-14rem;bottom:-22rem"></i><i class="c3" style="width:20rem;height:20rem;left:46rem;bottom:-8rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="heart"></svg><span data-pp="t">Thank you</span></div><span class="topr"><span class="num" data-pp="t">12</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
+    <div class="body fin">
+      <div class="finl">
+        <h1 class="rv" style="--d:1" data-pp="t">Easier to find.<br>Easier to trust.<br><em>Easier to transact.</em></h1>
+        <div class="finq rv" style="--d:3"><span class="pill gold-p"><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span class="pill"><span data-pp="t">@levromart</span></span></div>
+      </div>
+      <div class="finr rv" style="--d:2"><div class="bigqr"><img src="assets/img/qr-all.png" alt="QR code for the LevroMart website and every social page" data-pp="img"></div><b data-pp="t">Scan once. Find us everywhere.</b></div>
+    </div>
     <div class="foot"><div class="fl"><img class="flogo" src="assets/img/logo.png" alt="" data-pp="img"><span class="fname" data-pp="t">LevroMart</span><i class="sep"></i><span class="sstrip"><img src="assets/img/socials-strip.png" alt="LinkedIn, TikTok, Instagram, Facebook, Substack, X" data-pp="img"><svg class="wa" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#25d366"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7.5 17.2l.7-2.5a5.3 5.3 0 1 1 1.9 1.8z"/></svg></span><span class="fhandle" data-pp="t">@levromart</span></div><div class="fr"><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></div></div>
   </div>
 </section>
@@ -927,6 +983,7 @@ home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points
 list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
 coins:'<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><line x1="16.71" y1="13.88" x2="17.01" y2="13.88"/>',
 chart:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+heart:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
 rocket:'<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
 gift:'<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
 code:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
@@ -934,8 +991,8 @@ link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><pa
 arrow:'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
 download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
 maximize:'<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>',
-'chev-up':'<polyline points="18 15 12 9 6 15"/>',
-'chev-down':'<polyline points="6 9 12 15 18 9"/>'
+'chev-left':'<polyline points="15 18 9 12 15 6"/>',
+'chev-right':'<polyline points="9 18 15 12 9 6"/>'
 };
 document.querySelectorAll("svg[data-i]").forEach(s=>{s.setAttribute("viewBox","0 0 24 24");s.innerHTML=ICONS[s.dataset.i]||""});
 
@@ -973,23 +1030,28 @@ const st=document.createElement("style");st.textContent="@keyframes grow{from{tr
 const deck=document.getElementById("deck"),slides=[...document.querySelectorAll(".slide")];
 const isPrint=new URLSearchParams(location.search).has("print");
 if(isPrint)document.documentElement.classList.add("print");
+const mobile=matchMedia("(max-width:900px)");
 const nav=document.getElementById("dotsNav");
 nav.innerHTML=slides.map((s,i)=>`<button type="button" aria-label="Go to slide ${i+1}: ${s.dataset.title.replace(/&amp;/g,"&")}" data-i="${i}"></button>`).join("");
 let cur=0;
-function setCur(i){cur=i;[...nav.children].forEach((b,k)=>b.classList.toggle("on",k===i));document.getElementById("ct").textContent=(i+1)+" / "+slides.length;document.getElementById("prog").style.width=((i+1)/slides.length*100)+"%";history.replaceState(null,"","#"+(i+1))}
-const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");if(e.intersectionRatio>.55)setCur(slides.indexOf(e.target));if(e.target.id==="s1")countUp()}}),{root:deck,threshold:[.15,.6]});
-slides.forEach(s=>io.observe(s));
-if(isPrint)slides.forEach(s=>s.classList.add("in"));
-function go(i){i=Math.max(0,Math.min(slides.length-1,i));slides[i].scrollIntoView({behavior:"smooth",block:"start"})}
+function paint(){slides.forEach((s,k)=>{s.classList.toggle("cur",k===cur);s.classList.toggle("before",k<cur);s.classList.toggle("in",k===cur)});[...nav.children].forEach((b,k)=>b.classList.toggle("on",k===cur));document.getElementById("ct").textContent=(cur+1)+" / "+slides.length;document.getElementById("prog").style.width=((cur+1)/slides.length*100)+"%";try{history.replaceState(null,"","#"+(cur+1))}catch(e){}if(cur===0)countUp()}
+function go(i){i=Math.max(0,Math.min(slides.length-1,i));if(mobile.matches){slides[i].scrollIntoView({behavior:"smooth",block:"start"});cur=i;return}cur=i;paint()}
+if(isPrint){slides.forEach(s=>s.classList.add("in","cur"))}
+else if(mobile.matches){const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");if(e.intersectionRatio>.55){cur=slides.indexOf(e.target);[...nav.children].forEach((b,k)=>b.classList.toggle("on",k===cur));document.getElementById("ct").textContent=(cur+1)+" / "+slides.length;document.getElementById("prog").style.width=((cur+1)/slides.length*100)+"%";if(cur===0)countUp()}}}),{threshold:[.15,.6]});slides.forEach(s=>io.observe(s))}
+else{const n=parseInt(location.hash.slice(1),10);if(n>=1&&n<=slides.length)cur=n-1;paint()}
 nav.addEventListener("click",e=>{const b=e.target.closest("button");if(b)go(+b.dataset.i)});
 document.getElementById("prev").onclick=()=>go(cur-1);document.getElementById("next").onclick=()=>go(cur+1);
 addEventListener("keydown",e=>{if(["ArrowDown","ArrowRight","PageDown"," "].includes(e.key)){e.preventDefault();go(cur+1)}else if(["ArrowUp","ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();go(cur-1)}else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);else if(e.key==="f"||e.key==="F")fs()});
+/* swipe + wheel */
+let tx=null,ty=null,wheelLock=0;
+deck.addEventListener("touchstart",e=>{if(e.target.closest("#stage"))return;tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+deck.addEventListener("touchend",e=>{if(tx==null||mobile.matches)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy))go(cur+(dx<0?1:-1))},{passive:true});
+deck.addEventListener("wheel",e=>{if(mobile.matches||isPrint)return;const now=Date.now();if(now<wheelLock||Math.abs(e.deltaY)+Math.abs(e.deltaX)<25)return;wheelLock=now+800;go(cur+((e.deltaY||e.deltaX)>0?1:-1))},{passive:true});
 function fs(){if(!document.fullscreenElement)document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();else document.exitFullscreen()}
 document.getElementById("btnFs").onclick=fs;
 const dl=document.getElementById("dl");document.getElementById("btnDl").onclick=e=>{e.stopPropagation();dl.classList.toggle("open")};addEventListener("click",()=>dl.classList.remove("open"));
-if(location.hash){const n=parseInt(location.hash.slice(1),10);if(n>1&&n<=slides.length)setTimeout(()=>slides[n-1].scrollIntoView(),50)}
 /* count-up for the opening numbers */
-let counted=false;function countUp(){if(counted||isPrint)return;counted=true;document.querySelectorAll("[data-count]").forEach(n=>{const t=+n.dataset.count,suf=n.dataset.suffix||"";let s=null;const f=ts=>{s=s||ts;const p=Math.min(1,(ts-s)/1100);n.textContent=Math.round(t*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)})}
+var counted=false;function countUp(){if(counted||isPrint)return;counted=true;document.querySelectorAll("[data-count]").forEach(n=>{const t=+n.dataset.count,suf=n.dataset.suffix||"";let s=null;const f=ts=>{s=s||ts;const p=Math.min(1,(ts-s)/1100);n.textContent=Math.round(t*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)})}
 /* MVP phone: tabs, auto-advance, swipe */
 (function(){
   const tabs=[...document.querySelectorAll("#tabs .tab")],imgs=[...document.querySelectorAll("#stage .scr img")];let i=0,t=null,sx=null;
