@@ -25,7 +25,15 @@ export interface RpcEntry {
   run: (s: AppServices, me: Identity | null, a: Args) => Promise<unknown>;
   /** The rate limit shared with the matching /api/v1 route. */
   limit?: RateLimitRule;
+  /**
+   * The answer may be kept in memory for `ttlMs` (rpc.controller.ts). `everyone`: it never depends on who asks (counts,
+   * school names...). `signedOut`: it may depend on the caller, so only signed-out visitors share it.
+   */
+  cache?: { ttlMs: number; who: "everyone" | "signedOut" };
 }
+
+const PUBLIC_30S = { ttlMs: 30_000, who: "everyone" } as const;
+const SIGNED_OUT_30S = { ttlMs: 30_000, who: "signedOut" } as const;
 
 /* ------------------------------------------------------------- arguments */
 
@@ -154,7 +162,7 @@ export const RPC: Record<string, RpcEntry> = {
   update_voice_call: { run: (s, me, a) => s.calls.update(me, id(a.p_call_id), id(a.p_status)).then(nothing), limit: L.calls },
 
   // Campus
-  campus_school_names: { run: (s) => s.campus.schoolNames() },
+  campus_school_names: { run: (s) => s.campus.schoolNames(), cache: { ttlMs: 300_000, who: "everyone" } },
   submit_campus_school: { run: (s, me, a) => s.campus.submit(me, str(a.p_name)), limit: L.campus },
   admin_campus_submissions: { run: (s, me) => s.campus.pending(me) },
   admin_review_campus_school: {
@@ -173,8 +181,8 @@ export const RPC: Record<string, RpcEntry> = {
   },
 
   // Catalogue
-  search_products_full_v2: { run: (s, me, a) => s.catalogue.search(me, str(a.p_query), or(num(a.p_limit), 20)) },
-  search_product_ids: { run: (s, me, a) => s.catalogue.searchIds(me, str(a.p_query)) },
+  search_products_full_v2: { run: (s, me, a) => s.catalogue.search(me, str(a.p_query), or(num(a.p_limit), 20)), cache: SIGNED_OUT_30S },
+  search_product_ids: { run: (s, me, a) => s.catalogue.searchIds(me, str(a.p_query)), cache: SIGNED_OUT_30S },
   create_vendor_sector: { run: (s, me, a) => s.catalogue.createSector(me, str(a.p_name)).then(pick("id")), limit: L.catalogue },
   create_vendor_category: {
     run: (s, me, a) =>
@@ -182,7 +190,7 @@ export const RPC: Record<string, RpcEntry> = {
     limit: L.catalogue,
   },
   get_or_create_custom_sector: { run: (s, me, a) => s.catalogue.customSector(me, str(a.p_name)).then(pick("id")), limit: L.catalogue },
-  get_service_price_hint: { run: (s, _me, a) => s.catalogue.servicePriceHint(id(a.p_listing_id)) },
+  get_service_price_hint: { run: (s, _me, a) => s.catalogue.servicePriceHint(id(a.p_listing_id)), cache: PUBLIC_30S },
 
   // Checkout
   create_sale_order: {
@@ -264,21 +272,21 @@ export const RPC: Record<string, RpcEntry> = {
   admin_list_conversations: { run: (s, me, a) => s.conversations.adminList(me, str(a.p_search), or(num(a.p_limit), 100)) },
 
   // Engagement
-  get_favorite_counts: { run: (s, _me, a) => s.engagement.favoriteCounts(ids(a.p_product_ids)) },
-  get_package_favorite_counts: { run: (s, _me, a) => s.engagement.packageFavoriteCounts(ids(a.p_package_ids)) },
-  get_product_comment_counts: { run: (s, _me, a) => s.engagement.productCommentCounts(ids(a.p_product_ids)) },
-  get_package_comment_counts: { run: (s, _me, a) => s.engagement.packageCommentCounts(ids(a.p_package_ids)) },
-  get_comment_authors: { run: (s, _me, a) => s.engagement.commentAuthors(ids(a.p_user_ids)) },
-  get_vendor_stats: { run: (s, _me, a) => s.engagement.vendorStats(id(a.p_vendor_id)) },
+  get_favorite_counts: { run: (s, _me, a) => s.engagement.favoriteCounts(ids(a.p_product_ids)), cache: PUBLIC_30S },
+  get_package_favorite_counts: { run: (s, _me, a) => s.engagement.packageFavoriteCounts(ids(a.p_package_ids)), cache: PUBLIC_30S },
+  get_product_comment_counts: { run: (s, _me, a) => s.engagement.productCommentCounts(ids(a.p_product_ids)), cache: PUBLIC_30S },
+  get_package_comment_counts: { run: (s, _me, a) => s.engagement.packageCommentCounts(ids(a.p_package_ids)), cache: PUBLIC_30S },
+  get_comment_authors: { run: (s, _me, a) => s.engagement.commentAuthors(ids(a.p_user_ids)), cache: PUBLIC_30S },
+  get_vendor_stats: { run: (s, _me, a) => s.engagement.vendorStats(id(a.p_vendor_id)), cache: PUBLIC_30S },
   increment_product_view: { run: (s, _me, a) => s.engagement.countProductView(id(a.p_product_id)).then(nothing) },
   increment_vendor_profile_view: { run: (s, _me, a) => s.engagement.countProfileView(id(a.p_vendor_id)).then(nothing) },
-  get_product_reviews: { run: (s, _me, a) => s.engagement.productReviews(id(a.p_product_id)) },
+  get_product_reviews: { run: (s, _me, a) => s.engagement.productReviews(id(a.p_product_id)), cache: PUBLIC_30S },
   get_reviewable_order_for_product: { run: (s, me, a) => s.engagement.reviewableOrder(me, id(a.p_product_id)) },
 
   // Follows
   get_vendor_follow_state: { run: (s, me, a) => s.follows.followState(me, id(a.p_vendor_id)) },
   get_vendor_follow_states: { run: (s, me, a) => s.follows.followStates(me, ids(a.p_vendor_ids)) },
-  get_vendor_follower_counts: { run: (s, _me, a) => s.follows.followerCounts(ids(a.p_vendor_ids)) },
+  get_vendor_follower_counts: { run: (s, _me, a) => s.follows.followerCounts(ids(a.p_vendor_ids)), cache: PUBLIC_30S },
   get_vendor_followers: { run: (s, me, a) => s.follows.followers(me, id(a.p_vendor_id)) },
   get_vendor_followers_v2: { run: (s, me, a) => s.follows.followersDetailed(me, id(a.p_vendor_id)) },
   get_vendor_follower_customers: { run: (s, me, a) => s.follows.followerCustomers(me, id(a.p_vendor_id)) },
@@ -349,9 +357,9 @@ export const RPC: Record<string, RpcEntry> = {
   admin_cancel_confirmed_overdue_order: { run: (s, me, a) => s.paymentClaims.cancelOverdue(me, id(a.p_order_id)), limit: L.paymentClaims },
 
   // Points and referrals
-  get_points_leaderboard: { run: (s, me, a) => s.points.leaderboard(me, or(str(a.p_period), "week"), or(num(a.p_limit), 100)) },
-  get_past_week_winners: { run: (s, _me, a) => s.points.pastWinners(or(num(a.p_limit), 12)) },
-  get_vendor_spotlight: { run: (s, me) => s.points.spotlight(me) },
+  get_points_leaderboard: { run: (s, me, a) => s.points.leaderboard(me, or(str(a.p_period), "week"), or(num(a.p_limit), 100)), cache: SIGNED_OUT_30S },
+  get_past_week_winners: { run: (s, _me, a) => s.points.pastWinners(or(num(a.p_limit), 12)), cache: PUBLIC_30S },
+  get_vendor_spotlight: { run: (s, me) => s.points.spotlight(me), cache: SIGNED_OUT_30S },
   get_my_points_summary: { run: (s, me) => s.points.summary(me) },
   get_my_points_activity: { run: (s, me, a) => s.points.activity(me, or(num(a.p_limit), 40), str(a.p_before)) },
   validate_referral_code: { run: (s, _me, a) => s.points.validateCode(str(a.p_code)), limit: L.points },
