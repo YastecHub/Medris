@@ -82,6 +82,12 @@ export class WithdrawalsRepository {
     return row!.id;
   }
 
+  /** How many requests under `belowKobo` this shop made in the last 24 hours (a limit against spamming small requests). */
+  async smallRequestsToday(vendorId: string, belowKobo: number): Promise<number> {
+    const row = await jsonRow<{ n: number }>(this.db, sql`select count(*)::int as n from public.withdrawal_requests where vendor_id = ${vendorId} and amount_kobo < ${belowKobo} and created_at > now() - interval '24 hours'`);
+    return row?.n ?? 0;
+  }
+
   async attach(requestId: string, payoutIds: string[]): Promise<void> {
     if (!payoutIds.length) return;
     await this.db.execute(sql`update public.vendor_payouts set withdrawal_id = ${requestId} where id in (${sql.join(payoutIds.map((x) => sql`${x}::uuid`), sql`, `)})`);
@@ -117,13 +123,14 @@ export class WithdrawalsRepository {
   }
 
   /** Requests for the admin screen, with what the admin must see before approving: open disputes and how long the shop has been around. */
-  adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string })[]> {
+  adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string; account_changed_at: string | null })[]> {
     return jsonRows(
       this.db,
       sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at,
                  (select count(*)::int from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open') as disputes,
                  coalesce((select array_agg(distinct d.order_id) from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open'), '{}') as dispute_orders,
-                 v.account_name, v.bank_name, v.created_at as shop_since
+                 v.account_name, v.bank_name, v.created_at as shop_since,
+                 case when v.payout_verified_at is not null and v.payout_verified_at > w.created_at - interval '24 hours' then v.payout_verified_at end as account_changed_at
           from public.withdrawal_requests w join public.vendors v on v.id = w.vendor_id
           where (${status}::text is null or w.status = ${status})
           order by (w.status = 'requested') desc, w.created_at desc limit ${limit}`,
@@ -138,6 +145,10 @@ export class WithdrawalsRepository {
                  (extract(epoch from (now() - payout_verified_at)) / 3600)::float as verified_age_hours
           from public.vendors where user_id = ${userId} and deleted_at is null limit 1`,
     );
+  }
+
+  vendorById(id: string): Promise<{ verified_age_hours: number | null } | null> {
+    return jsonRow(this.db, sql`select (extract(epoch from (now() - payout_verified_at)) / 3600)::float as verified_age_hours from public.vendors where id = ${id}`);
   }
 
   /** Reopening a dispute: what is there, and is the money already gone? */

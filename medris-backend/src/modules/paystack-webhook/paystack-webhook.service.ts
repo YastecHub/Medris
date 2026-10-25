@@ -1,3 +1,4 @@
+import { REFUND_TRANSFER_PREFIX, applyRefundTransferEvent } from "../buyer-wallet/buyer-wallet.service.js";
 import { notifyPayoutSent } from "../vendor-payouts/vendor-payouts.service.js";
 import crypto from "node:crypto";
 import { requireEnv } from "../../config/env.js";
@@ -173,6 +174,10 @@ export class PaystackWebhookService {
 
   private async transferEvent(tx: Tx, ledger: PaystackLedgerRepository, data: Obj, to: "success" | "failed" | "reversed"): Promise<string> {
     const reference = String(data.reference ?? "");
+    if (reference.startsWith(REFUND_TRANSFER_PREFIX)) {
+      const done = await applyRefundTransferEvent(tx, reference, to, String(data.reason ?? data.message ?? `Transfer ${to}`).slice(0, 300));
+      return done ?? "ignored: no refund withdrawal with that reference";
+    }
     const payout = reference ? await ledger.payoutByReference(reference) : null;
     if (!payout) return "ignored: no payout with that reference";
     if (payout.status === to) return "duplicate: already " + to;

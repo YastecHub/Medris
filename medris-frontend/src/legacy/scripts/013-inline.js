@@ -8,11 +8,11 @@
     const root=document.querySelector(`[data-comment-id="${CSS.escape(String(id))}"]`);
     const btn=root?.querySelector('.product-comment-action');if(!btn)return;
     if(btn.dataset.likeBusy==="1")return;
-    const icon=btn.querySelector('i'),count=btn.querySelector('.comment-like-count'),wasLiked=btn.classList.contains('active');
+    const icon=btn.querySelector('i'),rowN=root.querySelector('.lv-cr-n'),count=rowN||btn.querySelector('.comment-like-count'),wasLiked=btn.classList.contains('active');
     const oldCount=Math.max(0,Number(count?.textContent||0)),nextLiked=!wasLiked,nextCount=Math.max(0,oldCount+(nextLiked?1:-1));
     btn.classList.toggle('active',nextLiked);if(icon)icon.className=`fa-${nextLiked?'solid':'regular'} fa-heart`;
     if(nextLiked){btn.style.color='#ef4444';if(icon)icon.style.color='#ef4444'}else{btn.style.removeProperty('color');icon?.style.removeProperty('color')}
-    if(count)count.textContent=String(nextCount);else if(nextCount>0){const n=document.createElement('span');n.className='comment-like-count';n.textContent=String(nextCount);btn.appendChild(n)}
+    if(rowN)rowN.textContent=nextCount>0?String(nextCount):'';else if(count)count.textContent=String(nextCount);else if(nextCount>0){const n=document.createElement('span');n.className='comment-like-count';n.textContent=String(nextCount);btn.appendChild(n)}
     btn.dataset.likeBusy='1';
     try{
       const table=kind==='package'?'package_comment_likes':'product_comment_likes';
@@ -21,13 +21,14 @@
       if(r.error&&!/duplicate/i.test(r.error.message||''))throw r.error;
       /* the like is saved; refresh the list quietly (never turns a saved like into an error) */
       try{
+        if(rowN)throw 0; /* the number on screen is already right: redrawing the list would make it flicker */
         if(kind==='package'&&currentViewParams?.packageId)window.loadPackageComments?.(currentViewParams.packageId,{showLoading:false});
         if(kind==='product'&&currentProductDetail?.id)window.loadProductComments?.(currentProductDetail.id,{showLoading:false});
       }catch(_){}
     }catch(e){
       btn.classList.toggle('active',wasLiked);if(icon)icon.className=`fa-${wasLiked?'solid':'regular'} fa-heart`;
       if(wasLiked){btn.style.color='#ef4444';if(icon)icon.style.color='#ef4444'}else{btn.style.removeProperty('color');icon?.style.removeProperty('color')}
-      if(count)count.textContent=String(oldCount);else btn.querySelector('.comment-like-count')?.remove();
+      if(rowN)rowN.textContent=oldCount>0?String(oldCount):'';else if(count)count.textContent=String(oldCount);else btn.querySelector('.comment-like-count')?.remove();
       showToast(e.message||'Could not update comment like.','error');
     }finally{delete btn.dataset.likeBusy}
   }

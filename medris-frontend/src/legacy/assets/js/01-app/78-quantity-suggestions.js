@@ -72,6 +72,13 @@ async function confirmOrderAsVendor(orderId) {
 // api/order-payout-action.js's vendor-decline action).
 async function vendorDeclineOrder(orderId, fromStatus) {
   const isConfirmed = fromStatus === "confirmed";
+  // once the buyer has paid, the shop cannot cancel by itself: it asks Levromart
+  if (isConfirmed) {
+    try {
+      const { data: paidRows } = await sb.from("payments").select("id").eq("order_id", orderId).eq("status", "paid").in("payment_type", ["sale_price", "rental_fee", "delivery_deposit_20"]).limit(1);
+      if (paidRows && paidRows.length) { window.lvAskCancel(orderId); return; }
+    } catch (_) {}
+  }
   const proceed = await showConfirmDialog(
     isConfirmed
       ? "Use this only to undo a mistake. The customer will be told, and any payment they already made is refunded automatically."
@@ -123,19 +130,13 @@ async function confirmHandOverOrder(orderId) {
 // marks it handed over, cancelling requires a dispute instead.
 async function buyerCancelOrder(orderId, feePaid) {
   const msg = feePaid
-    ? "Cancel this order? You already paid, so this refunds your payment in full back to your original payment method via Paystack."
-    : "Cancel this order? The vendor confirmed it but you haven't paid yet, so there's nothing to refund.";
-  if (!(await showConfirmDialog(msg, { title: "Cancel order", okLabel: "Cancel order", danger: true }))) return;
+    ? "You can cancel until the vendor marks the order out for delivery. You will get back what you paid for the order. Paystack's payment fee is not refunded."
+    : "Cancel this order? You have not paid yet, so there is nothing to refund.";
+  if (!(await showConfirmDialog(msg, { title: "Cancel this order?", okLabel: "Yes, cancel it", cancelLabel: "Keep order", danger: true }))) return;
   try {
-    const res = await fetch("/api/order-payout-action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "buyer-cancel", orderId, accessToken: session.access_token }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Could not cancel this order.");
-    if (json.refundError) showToast("Order cancelled. There was a hiccup issuing your refund, our team will sort it out.", "info");
-    else if (json.refunded) showToast("Order cancelled and refunded.", "success");
+    const { data, error } = await sb.rpc("buyer_cancel_order", { p_order_id: orderId });
+    if (error) throw new Error(error.message || "Could not cancel this order.");
+    if (data?.refunded) showToast("Order cancelled. Your refund is on its way.", "success");
     else showToast("Order cancelled.", "success");
     await navigate("orderDetail", { orderId });
   } catch (err) {
@@ -182,7 +183,7 @@ async function submitNotReceived() {
 // every other status change, this one also has to actually move money, so
 // it goes through a serverless endpoint instead of a plain RPC call.
 async function confirmReceivedOrder(orderId) {
-  if (!(await showConfirmDialog("Confirm that you have received this order. This completes the order. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
+  if (!(await showConfirmDialog("Confirm that you have received this order. This completes the order, and you can no longer cancel it or report a problem with it. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
   try {
     const { error } = await sb.rpc("buyer_confirm_received", { p_order_id: orderId });
     if (error) throw error;

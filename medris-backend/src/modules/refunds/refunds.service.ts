@@ -1,6 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
+import { BuyerWalletRepository } from "../../database/repositories/buyer-wallet.repository.js";
 import { PaystackRefundsRepository } from "../../database/repositories/paystack-refunds.repository.js";
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, koboToNaira, nairaToKobo } from "../../integrations/paystack/index.js";
 import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
@@ -69,6 +70,16 @@ export class RefundsService {
         return next;
       });
       if (!work) break;
+      // a buyer with a refunds wallet gets the money there; everyone else gets it back on the card
+      const toWallet = await this.db().asService(async (tx) => {
+        const put = await new BuyerWalletRepository(tx).creditRefund({ id: work.id, order_id: work.order_id, buyer_id: work.buyer_id, amount_kobo: work.amount_kobo });
+        if (put) await new NotificationWriter(tx).create({ userId: work.buyer_id, type: "refund_in_wallet", title: "Refund added to your wallet", body: `${naira(work.amount_kobo)} is in your refunds wallet. Open your wallet to withdraw it.`, targetView: "buyerProfile", actorId: null });
+        return put;
+      });
+      if (toWallet) {
+        out.started++;
+        continue;
+      }
       try {
         await getPaystackClient().createRefund({ transaction: work.transaction_reference, amountKobo: Number(work.amount_kobo) });
         await this.db().asService((tx) => this.tellPeople(tx, work));

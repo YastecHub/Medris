@@ -82,22 +82,40 @@ describe("withdrawals", () => {
     expect(list.status).toBe(200);
   });
 
-  it("below the minimum nothing happens", async () => {
+  it("a small amount is still asked of an admin, never sent at once", async () => {
     await clean();
+    const o = await done(500, 60);
+    const r = await call("request_withdrawal", w.vendor.token);
+    expect(r.status).toBe(200);
+    expect(r.data).toMatchObject({ sent_kobo: 0 });
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [o])).toMatchObject({ status: "on_hold" });
+    expect(await rowOf(w, `select kind from public.withdrawal_requests where status = 'requested'`)).toMatchObject({ kind: "approval" });
+  });
+
+  it("amounts under 1,000 naira can be requested only 3 times a day", async () => {
+    await clean();
+    for (let i = 0; i < 3; i++) {
+      await done(500, 60);
+      expect((await call("request_withdrawal", w.vendor.token)).status).toBe(200);
+      await w.db.query(`update public.withdrawal_requests set status = 'rejected' where status = 'requested'`);
+    }
     await done(500, 60);
     const r = await call("request_withdrawal", w.vendor.token);
     expect(r.status).toBe(400);
-    expect(JSON.stringify(r.body)).toContain("smallest withdrawal");
+    expect(JSON.stringify(r.body)).toContain("3 times a day");
   });
 
-  it("a recent bank change blocks withdrawing", async () => {
+  it("a recent bank change sends everything to an admin, who is shown the change", async () => {
     await clean();
-    await done(5000, 60);
+    const o = await done(5000, 60);
     await w.db.query(`update public.vendors set payout_verified_at = now() - interval '2 hours' where id = $1`, [w.vendor.shop]);
     const r = await call("request_withdrawal", w.vendor.token);
-    expect(r.status).toBe(400);
+    expect(r.status).toBe(200);
+    expect(r.data).toMatchObject({ sent_kobo: 0 });
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [o])).toMatchObject({ status: "on_hold" });
+    const list = await call("admin_list_withdrawals", w.admin.token, { p_status: "requested" });
+    expect(list.data[0].account_changed_at).toBeTruthy();
     await w.db.query(`update public.vendors set payout_verified_at = now() - interval '3 days' where id = $1`, [w.vendor.shop]);
-    expect((await call("request_withdrawal", w.vendor.token)).status).toBe(200);
   });
 
   it("a resolved dispute can be reopened until its money is sent", async () => {
