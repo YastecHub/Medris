@@ -3381,14 +3381,14 @@ html:root body #app .storefront-profile .storefront-cover > .storefront-banner-m
 /* ---- Vendor-of-the-week banners: products flow in one after another (the .lv-stag switch is set by 14-motion.js).
    Kept even in Calm mode because it is short and only plays when the banner slides into view. ---- */
 @keyframes lvWvRise{from{opacity:0;transform:translateY(7cqw) scale(.9)}to{opacity:1;transform:none}}
-html.lv-stag .lv-wv-b .lv-wv-tile,html.lv-stag .lv-wv-a .lv-wv-thumbs img{opacity:0}
-html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-b .lv-wv-tile,html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-a .lv-wv-thumbs img{opacity:1;animation:lvWvRise .62s cubic-bezier(.2,.9,.25,1.1) both!important}
+html.lv-stag .lv-wv-b .lv-wv-tile,html.lv-stag .lv-wv-a .lv-wv-thumbs img,html.lv-stag .lv-wv-c .lv-wv-thumbs img{opacity:0}
+html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-b .lv-wv-tile,html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-a .lv-wv-thumbs img,html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-c .lv-wv-thumbs img{opacity:1;animation:lvWvRise .62s cubic-bezier(.2,.9,.25,1.1) both!important}
 html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-tile:nth-child(1),html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(1){animation-delay:.12s!important}
 html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-tile:nth-child(2),html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(2){animation-delay:.36s!important}
 html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-tile:nth-child(3),html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(3){animation-delay:.6s!important}
 html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(4){animation-delay:.84s!important}
 html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(n+5){animation-delay:1.05s!important}
-@media (prefers-reduced-motion:reduce){html.lv-stag .lv-wv-b .lv-wv-tile,html.lv-stag .lv-wv-a .lv-wv-thumbs img{opacity:1!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){html.lv-stag .lv-wv-b .lv-wv-tile,html.lv-stag .lv-wv-a .lv-wv-thumbs img,html.lv-stag .lv-wv-c .lv-wv-thumbs img{opacity:1!important;animation:none!important}}
 
 /* ---- sellers who are not students ---- */
 .lv-sv .sv-nostudent{display:flex;align-items:flex-start;gap:.7rem;margin:.6rem 0 .9rem;padding:.8rem .9rem;border:1.5px solid color-mix(in srgb,#8b6bff 50%,var(--border,#dde));border-radius:14px;background:color-mix(in srgb,#8b6bff 8%,transparent);cursor:pointer}
@@ -3418,3 +3418,16 @@ html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(n+5){ani
 :root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:#60a5fa!important}
 :root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:rgba(96,165,250,.09)!important;border-color:rgba(96,165,250,.25)!important}
 :root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#60a5fa!important;background:rgba(96,165,250,.16)!important}
+
+/* Follow banner: three random products at the bottom right, level with the Follow button */
+html:root:root body #app#app .lv-wv-c .lv-wv-thumbs.lv-wv-thumbs-r{left:auto;right:5cqw;bottom:5cqw;flex-direction:row-reverse}
+html:root:root body #app#app .lv-wv-c .lv-wv-thumbs.lv-wv-thumbs-r img{width:13cqw!important;height:13cqw!important;margin-right:0;margin-left:-1.5cqw}
+html:root:root body #app#app .lv-wv-c .lv-wv-thumbs.lv-wv-thumbs-r img:last-child{margin-left:0}
+
+/* Vendors you follow: initials get their own soft colour (same hue as everywhere else the app shows initials) */
+html:root body #app .customer-following-avatar:not(:has(img)){background:hsl(var(--av-h,150) 68% 90%)!important;color:hsl(var(--av-h,150) 50% 28%)!important}
+:root[data-theme="dark"] body #app .customer-following-avatar:not(:has(img)),:root[data-theme="black"] body #app .customer-following-avatar:not(:has(img)){background:hsl(var(--av-h,150) 38% 22%)!important;color:hsl(var(--av-h,150) 75% 82%)!important}
+
+/* ---- own profile: pen button, the last word (beats the older green outline rules) ---- */
+:root:root:root:root:root:root:root:root body #app .buyer-profile-row-actions button.vendor-profile-edit-btn{border:0!important;border-width:0!important;border-color:transparent!important;outline:0;color:var(--text)!important;background:color-mix(in srgb,var(--text) 6%,transparent)!important;box-shadow:none!important}
+:root:root:root:root:root:root:root:root body #app .buyer-profile-row-actions button.vendor-profile-edit-btn i{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}

@@ -1052,6 +1052,7 @@
       logoHtml(w, "lv-wv-logo-big") +
       '<span class="lv-wv-name">Follow ' + nm + "</span>" +
       '<span class="lv-wv-sub">Be first to see new products, deals and updates.</span>' +
+      (thumbs ? '<span class="lv-wv-thumbs lv-wv-thumbs-r">' + thumbs + "</span>" : "") +
       '<span class="lv-wv-cta lv-wv-cta-follow"><i class="fa-solid fa-user-plus"></i> Follow</span></span></button>';
   }
   window.lvWvTap = function (e, kind, vid) {
@@ -1361,7 +1362,7 @@
   }
   function scan(){
     var vp=document.getElementById("homePromotionalViewport");
-    var list=document.querySelectorAll(".lv-wv.lv-wv-a,.lv-wv.lv-wv-b"); if(!list.length) return;
+    var list=document.querySelectorAll(".lv-wv.lv-wv-a,.lv-wv.lv-wv-b,.lv-wv.lv-wv-c"); if(!list.length) return;
     if(!io||io.__vp!==vp){ if(io) io.disconnect(); mk(vp); io.__vp=vp; seen=new WeakSet(); }
     document.documentElement.classList.add("lv-stag");
     list.forEach(function(s){ if(!seen.has(s)){ seen.add(s); io.observe(s); } });

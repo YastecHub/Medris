@@ -194,6 +194,8 @@ function renderVendorsDirectory() {
   </div>`;
   setTimeout(async () => {
     try {
+      // cards from the last visit appear at once; the fresh list then replaces them only if something changed
+      if (Array.isArray(window.__allVendors) && window.__allVendors.length) { try { filterVendorsDirectory(); } catch (_) {} }
       await loadVendorsDirectory();
       if (buyerDistanceAutoEnabled) scheduleAutomaticLocationRefresh();
       else updateVendorsLocationUI();
@@ -234,6 +236,11 @@ async function loadVendorsDirectory() {
   // Vendor discovery must remain usable even when an optional enrichment
   // query (products, packages, sectors, follower counts) is temporarily slow
   // or unavailable. The vendor list itself is the primary page content.
+  // the extra lists (products, packages) are asked for at the same moment as the vendors, not one after the other
+  const __enrichStart = Promise.allSettled([
+    sb.from("products").select("vendor_id, name, description, listing_type, is_service, category:categories(name)").eq("status", "active"),
+    sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
+  ]);
   const vendorResult = await sb.from("vendors")
     .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, cover_url, cover_image_url, lat, lng")
     .eq("verification_status", "verified")
@@ -257,10 +264,14 @@ async function loadVendorsDirectory() {
 
   // These enrichments are useful for search/filtering but must never prevent
   // the verified vendor directory from rendering.
-  const [productsRes, packagesRes, sectorsRes] = await Promise.allSettled([
-    sb.from("products").select("vendor_id, name, description, listing_type, is_service, category:categories(name)").eq("status", "active"),
-    sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
-    sectors.length ? Promise.resolve({ data: sectors, error: null }) : levroData.catalogue.sectors("sort_order")
+  // show the cards straight away from the vendor list itself; search words, categories and counts fill in right after
+  if (!(Array.isArray(window.__allVendors) && window.__allVendors.length)) {
+    window.__allVendors = vendors.map((v) => ({ ...v, categories: [], searchText: String(v.business_name || "").toLowerCase(), canBuy: true, canRent: false, follower_count: 0 }));
+    try { filterVendorsDirectory(); } catch (_) {}
+  }
+  const [[productsRes, packagesRes], sectorsRes] = await Promise.all([
+    __enrichStart,
+    Promise.allSettled([sectors.length ? Promise.resolve({ data: sectors, error: null }) : levroData.catalogue.sectors("sort_order")]).then((r) => r[0]),
   ]);
 
   const products = productsRes.status === "fulfilled" && !productsRes.value?.error ? (productsRes.value.data || []) : [];

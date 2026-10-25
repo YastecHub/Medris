@@ -121,6 +121,8 @@ function openClearCartSheet() {
     if (error) { ok.disabled = false; showToast(error.message || "Couldn't clear your cart.", "error"); return; }
     close();
     showToast("Cart cleared.", "success");
+    // the red badge must drop to zero at once, not after the next refresh
+    try { buyerCartCount = 0; window.__cartCountVal = 0; window.__cartCountAt = Date.now(); } catch (_) {}
     try { updateCartFab(); } catch (_) {}
     refreshNotifications();
     navigate("cart", {}, false);
