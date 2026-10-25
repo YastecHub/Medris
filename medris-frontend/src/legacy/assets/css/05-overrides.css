@@ -3796,3 +3796,22 @@ html body #app .od-page .od-vendor-alert{border-bottom:0!important}
 .ve-bank-ico img{width:100%;height:100%;object-fit:contain;border-radius:8px}
 .lvw-comm-two{grid-template-columns:1fr 1fr!important}
 .lvw-comm-note{margin:.2rem 0 .4rem;font-size:.88rem;line-height:1.5;color:var(--muted,#6b7280)}
+
+/* ===== Pay in the app: a clean bottom sheet ===== */
+#lvPayModal.lvp{align-items:flex-end!important;justify-content:center;padding:0!important}
+#lvPayModal.lvp .lv-pm-card{width:100%!important;max-width:30rem!important;margin:0!important;border-radius:26px 26px 0 0!important;border:0!important;padding:.55rem 1.25rem calc(1.2rem + env(safe-area-inset-bottom,0px))!important;background:var(--card,#fff)!important;box-shadow:0 -16px 44px -18px rgba(0,0,0,.45)!important;animation:lvwUp .22s cubic-bezier(.2,.8,.2,1)}
+.lvp-grab{width:2.6rem;height:.3rem;border-radius:99px;background:color-mix(in srgb,var(--text,#111) 18%,transparent);margin:.1rem auto .8rem}
+.lvp-top{display:flex;align-items:center;justify-content:space-between}
+.lvp-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:999px;background:rgba(22,160,106,.14);color:#0f7a52;font-size:.76rem;font-weight:800}
+.lvp-x{width:2.2rem;height:2.2rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--text,#111) 8%,transparent);color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.lvp-amt-label{margin-top:1rem;text-align:center;font-size:.85rem;color:var(--muted,#6b7280)}
+.lvp-amt{text-align:center;font-size:2.5rem;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:.1rem 0 1rem;font-variant-numeric:tabular-nums}
+.lvp-rows{list-style:none;margin:0 0 .9rem;padding:.2rem .95rem;border-radius:16px;background:color-mix(in srgb,var(--text,#111) 4%,var(--card,#fff))}
+.lvp-rows li{display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;font-size:.95rem}
+.lvp-rows li+li{border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)}
+.lvp-rows span{color:var(--muted,#6b7280)}
+.lvp-note{display:flex;gap:.6rem;align-items:flex-start;margin:0 0 1.1rem;font-size:.82rem;line-height:1.45;color:var(--muted,#6b7280)}
+.lvp-note i{color:#16a06a;margin-top:.15rem}
+.lvp-pay{width:100%;min-height:3.4rem;border:0;border-radius:16px;background:#16a06a;color:#fff;-webkit-text-fill-color:#fff;font:inherit;font-weight:800;font-size:1.05rem;cursor:pointer;box-shadow:0 12px 24px -14px rgba(22,160,106,.9)}
+.lvp-pay:disabled{opacity:.7}
+.lvp-cancel{width:100%;margin-top:.4rem;min-height:2.8rem;border:0;background:transparent;color:var(--muted,#6b7280);font:inherit;font-weight:700;font-size:.92rem;cursor:pointer}

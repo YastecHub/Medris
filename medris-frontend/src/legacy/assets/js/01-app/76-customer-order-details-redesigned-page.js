@@ -88,7 +88,7 @@ function odInfoCard(order, isDelivery) {
   if (odIsPayAfter(order) && t === "confirmed") { const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20)); return { icon: "fa-wallet", head: `Pay the first ${pct}% to start`, body: `This is a pay-after-delivery order. Pay ${pct}% now; the remaining ${100 - pct}% is paid after delivery.` }; }
   if (odIsPayAfter(order) && t === "handed_over") { const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20)); return { icon: "fa-money-bill-transfer", head: `Second payment: remaining ${100 - pct}%`, body: "Your first payment is done. Pay the remaining balance to complete this order." }; }
   if (t === "confirmed" && typeof orderIsFullyPaid === "function" && orderIsFullyPaid(order)) return { icon: "fa-wallet", head: "Payment received", body: "The vendor is getting your order ready. You will see it move to “Out for delivery” as soon as they send it." };
-  if (t === "confirmed") return { icon: "fa-circle-check", head: "The vendor accepted your order", body: "Pay the vendor, then tap “I’ve paid the vendor” so they can hand your order over." };
+  if (t === "confirmed") return { icon: "fa-circle-check", head: "The vendor accepted your order", body: "Pay securely in the app with Paystack. Your money is held by Levromart until you confirm you have your order." };
   if (t === "handed_over") return { icon: "fa-truck-fast", head: isDelivery ? "Your order is on its way" : "Your order has been handed over", body: order.order_type === "rental" ? "Return the equipment when you're done. The vendor will mark it returned." : "Check everything, then confirm once you've received it. If you do nothing and raise no issue, it is marked received automatically after 48 hours." };
   if (t === "returned") return { icon: "fa-rotate-left", head: "Equipment is back with the vendor", body: "Confirm to complete the order and release the deposit." };
   if (t === "completed") return { icon: "fa-circle-check", head: "Order completed", body: "Thank you for shopping on Levromart." };
@@ -149,7 +149,7 @@ function customerOrderTopHtml(order, ctx) {
     if (m === "cash") return "Cash";
     if (m === "transfer") return "Bank transfer";
     if (m === "card") return "Card";
-    return paid.length ? "Paid" : (["pending", "cancelled"].includes(order.status) ? "Not paid yet" : "Pay the vendor directly");
+    return paid.length ? "Paid" : (["pending", "cancelled"].includes(order.status) ? "Not paid yet" : "Pay in the app");
   })();
   h += `<section class="od-card"><h3>Payment Summary</h3><div class="od-pay-grid">
     <div><span class="od-muted">Total Amount</span><b class="od-price">${naira(order.total_amount)}</b></div>
