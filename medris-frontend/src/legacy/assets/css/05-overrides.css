@@ -3568,3 +3568,36 @@ html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!importa
 #bottomNav .bn-ind{position:absolute;left:0;top:0;height:3px;width:30px;border-radius:0 0 4px 4px;background:var(--lv-nav-ind,#5ef2b0);pointer-events:none;will-change:transform;z-index:2;opacity:0}
 /* settings: the "On" pill for Notifications looks like the other On buttons */
 html:root:root:root body #settings-page .settings-status-pill.active{background:linear-gradient(135deg,#5b4bdb,#8b6bff)!important;border-color:transparent!important;color:#fff!important;box-shadow:0 6px 14px -6px rgba(91,75,219,.75)!important;font-weight:800}
+
+/* bottom bar: straight and flush with the bottom of the phone (no rounded top corners), a thin line on top,
+   and a blue sliding line on the active tab */
+@media (max-width:720px){
+:root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;margin:0!important;border-radius:0!important;border:0!important;border-top:1px solid color-mix(in srgb,var(--text,#111) 10%,transparent)!important;box-shadow:0 -1px 10px rgba(0,0,0,.05)!important;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;background:color-mix(in srgb,var(--bg,#fff) 97%,transparent)!important;-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px)}
+:root[data-theme="dark"]:root:root:root body #bottomNav.bottom-nav,:root[data-theme="black"]:root:root:root body #bottomNav.bottom-nav{border-top-color:rgba(255,255,255,.1)!important;box-shadow:none!important}
+:root:root:root:root body #bottomNav .bottom-nav-item.active::before{display:none!important}
+}
+:root:root:root body #bottomNav .bn-ind{background:var(--lv-nav-blue)!important;height:3px!important}
+
+/* storefront profile picture: round, a little larger, no white ring - a gap the colour of the page cuts it out of the banner */
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row{margin-top:-56px!important}
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar,
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar-button{width:108px!important;height:108px!important;min-width:108px!important;min-height:108px!important;padding:0!important;border:0!important;background:var(--card,#eef2ef)!important;box-shadow:0 0 0 5px var(--bg,#fff),0 3px 14px rgba(0,0,0,.16)!important;outline:0!important}
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar::before,
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar::after{display:none!important}
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar-button{background:transparent!important}
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;border:0!important;border-radius:50%!important}
+
+/* bottom bar: slim, LinkedIn height (icon over a small label, about 50px plus the phone's bottom edge), one colour for line, icon and label */
+:root{--lv-nav-blue:#2f5bd8}
+:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#6c93ff}
+@media (max-width:720px){
+:root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{padding:0 4px env(safe-area-inset-bottom,0px)!important;align-items:stretch!important}
+:root:root:root:root body #bottomNav .bottom-nav-item.bottom-nav-item{min-height:50px!important;height:50px!important;padding:6px 2px 4px!important;gap:2px!important;justify-content:center!important}
+:root:root:root:root body #bottomNav .bottom-nav-item .bn-icon{height:22px!important;width:auto!important;min-width:22px!important;font-size:19px!important;display:flex!important;align-items:center;justify-content:center}
+:root:root:root:root body #bottomNav .bottom-nav-item>span:last-child{font-size:.63rem!important;line-height:1.1!important;font-weight:600!important}
+:root:root:root:root body #bottomNav .bottom-nav-item.active,:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:var(--lv-nav-blue)!important;-webkit-text-fill-color:var(--lv-nav-blue)!important}
+:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon{transform:none!important}
+html:root:root:root body{padding-bottom:calc(3.6rem + env(safe-area-inset-bottom,0px))!important}
+}
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar,
+html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar img{max-width:none!important;max-height:none!important}
