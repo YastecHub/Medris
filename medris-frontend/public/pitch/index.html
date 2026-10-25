@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LevroMart · Pitch deck · AMSUL Business Pitch Competition 2026</title>
+<meta name="description" content="LevroMart: the campus marketplace where students discover, trust and order from verified vendors. Interactive pitch deck for the AMSUL Business Pitch Competition 2026.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1b0d3d">
+<link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LevroMart · Pitch deck">
+<meta property="og:description" content="Easier to find. Easier to trust. Easier to transact.">
+<style>
+@font-face{font-family:"Outfit";font-style:normal;font-weight:100 900;font-display:swap;src:url(assets/fonts/outfit-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Outfit";font-style:normal;font-weight:100 900;font-display:swap;src:url(assets/fonts/outfit-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  --ink:#1b0d3d; --ink2:#2c1790; --violet:#6a3df0; --violet2:#8b6bff; --lav:#ead9ff; --lav2:#c7b2fb;
+  --mint:#27f0b0; --green:#0f9d6a; --gold:#ffc83d; --gold2:#ffd43b; --coral:#ff6b7a; --pink:#ec6fb0; --white:#fff;
+  --muted:#5b4a8a; --card:rgba(255,255,255,.72); --line:rgba(27,13,61,.12);
+  --u:min(calc(100vw/120),calc(100vh/67.5)); /* 1u = 16px on a 1920x1080 screen */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:var(--u);scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#1b0d3d;overflow-x:hidden;line-height:1.25}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+b,strong{font-weight:800}
+.icn{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:-.12em;flex:none}
+
+/* ---------- deck engine ---------- */
+.deck{height:100vh;height:100dvh;overflow-y:auto;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+.slide{position:relative;min-height:100vh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;overflow:hidden;isolation:isolate}
+.frame{position:relative;z-index:3;width:112rem;height:60rem;display:flex;flex-direction:column}
+.bg{position:absolute;inset:0;z-index:0}
+.bg i{position:absolute;display:block;border-radius:50%}
+.dots{position:absolute;inset:0;z-index:1;pointer-events:none}
+.dark .dots{background-image:radial-gradient(rgba(255,255,255,.17) .13rem,transparent .17rem),radial-gradient(rgba(139,107,255,.35) .11rem,transparent .16rem);background-size:1.9rem 1.9rem,3.1rem 2.7rem;background-position:0 0,.9rem 1.3rem}
+.light .dots{background-image:radial-gradient(rgba(106,61,240,.17) .13rem,transparent .17rem),radial-gradient(rgba(255,200,61,.35) .11rem,transparent .16rem);background-size:1.9rem 1.9rem,3.3rem 2.9rem;background-position:0 0,1.1rem .8rem}
+.dark{color:#fff;background:linear-gradient(135deg,#1b0d3d 0%,#2c1790 55%,#4a28c7 100%)}
+.light{color:var(--ink);background:linear-gradient(150deg,#f5eeff 0%,#ead9ff 45%,#cdb9fb 100%)}
+.gold{color:var(--ink);background:linear-gradient(140deg,#ffe269 0%,#ffd43b 55%,#ffc125 100%)}
+.gold .dots{background-image:radial-gradient(rgba(120,80,0,.18) .13rem,transparent .17rem);background-size:1.9rem 1.9rem}
+.violet{color:#fff;background:linear-gradient(135deg,#5b21f5 0%,#8b3df0 50%,#c026d3 115%)}
+.violet .dots{background-image:radial-gradient(rgba(255,255,255,.2) .13rem,transparent .17rem),radial-gradient(rgba(255,200,61,.4) .11rem,transparent .16rem);background-size:1.9rem 1.9rem,3.3rem 2.9rem;background-position:0 0,1.1rem .8rem}
+.mintbg{color:var(--ink);background:linear-gradient(150deg,#effff8 0%,#dff6ee 40%,#d9ccff 120%)}
+.mintbg .dots{background-image:radial-gradient(rgba(15,157,106,.2) .13rem,transparent .17rem),radial-gradient(rgba(106,61,240,.18) .11rem,transparent .16rem);background-size:1.9rem 1.9rem,3.3rem 2.9rem;background-position:0 0,1.1rem .8rem}
+.c1{background:rgba(255,255,255,.1)}.light .c1,.mintbg .c1{background:rgba(255,255,255,.55)}.gold .c1{background:rgba(255,255,255,.35)}
+.c2{border:2.4rem solid rgba(255,255,255,.07);background:none!important}.light .c2,.mintbg .c2{border-color:rgba(106,61,240,.08)}.gold .c2{border-color:rgba(255,255,255,.28)}
+.c3{background:rgba(255,200,61,.28)}.violet .c3{background:rgba(255,200,61,.3)}
+
+/* floating tiles (same language as the app's flyers) */
+.tile{position:absolute;display:grid;place-items:center;width:4.4rem;height:4.4rem;border-radius:1.3rem;background:#fff;color:var(--violet);font-size:2rem;box-shadow:0 .9rem 2rem rgba(27,13,61,.28);z-index:4;animation:bob 5s ease-in-out infinite;transform:rotate(var(--r,0deg))}
+.tile.t-dark{background:#0d3a2b;color:#fff}.tile.t-gold{background:var(--gold);color:var(--ink)}.tile.t-violet{background:linear-gradient(135deg,#8fb2ff,#9a6bff);color:#fff}.tile.t-mint{background:var(--mint);color:var(--ink)}.tile.t-coral{background:var(--coral);color:#fff}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-.9rem) rotate(calc(var(--r,0deg) + 5deg))}}
+.tile:nth-of-type(2n){animation-delay:-1.4s}.tile:nth-of-type(3n){animation-delay:-2.6s}
+
+/* typography */
+.kicker{font-size:1.3rem;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:var(--violet2);display:flex;align-items:center;gap:1rem}
+.dark .kicker,.violet .kicker{color:var(--mint)}.gold .kicker{color:var(--ink2)}.mintbg .kicker{color:var(--green)}
+.kicker .icn{font-size:1.7rem}
+h1,h2{font-weight:900;letter-spacing:-.045em;line-height:.98}
+h2{font-size:5.6rem;margin-top:1.1rem;max-width:100rem}
+h2 em,h1 em{font-style:normal;color:var(--violet)}
+.dark h2 em,.dark h1 em,.violet h2 em{color:var(--mint)}
+.gold h2 em{color:var(--ink2)}.mintbg h2 em{color:var(--green)}
+.lead{font-size:1.9rem;font-weight:500;line-height:1.38;color:var(--muted);max-width:62rem}
+.dark .lead,.violet .lead{color:rgba(255,255,255,.82)}.gold .lead{color:#4a3500}.mintbg .lead{color:#2f4a40}
+.small{font-size:1.15rem;font-weight:500;opacity:.78;line-height:1.4}
+.hl{background:linear-gradient(transparent 62%,rgba(255,200,61,.75) 62%,rgba(255,200,61,.75) 92%,transparent 92%)}
+.card{background:var(--card);border:.1rem solid rgba(255,255,255,.7);border-radius:2rem;box-shadow:0 1.4rem 3rem rgba(60,20,150,.14);backdrop-filter:blur(.6rem)}
+.dark .card,.violet .card{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);box-shadow:0 1.4rem 3rem rgba(0,0,0,.25)}
+.gold .card{background:rgba(255,255,255,.55);border-color:rgba(255,255,255,.7)}
+.pill{display:inline-flex;align-items:center;gap:.7rem;padding:.7rem 1.5rem;border-radius:99rem;background:#fff;color:var(--ink);font-weight:800;font-size:1.3rem;box-shadow:0 .6rem 1.4rem rgba(27,13,61,.18)}
+.dark .pill{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;border:.1rem solid rgba(255,255,255,.25)}
+.pill.gold-p{background:var(--gold);color:var(--ink);border:0}
+.ico{display:grid;place-items:center;width:4.6rem;height:4.6rem;border-radius:1.4rem;font-size:2.3rem;color:#fff;background:linear-gradient(135deg,var(--violet),var(--violet2));box-shadow:0 .8rem 1.6rem rgba(106,61,240,.4);flex:none}
+.ico.g{background:linear-gradient(135deg,#0f9d6a,#27d49b);box-shadow:0 .8rem 1.6rem rgba(15,157,106,.35)}
+.ico.o{background:linear-gradient(135deg,#ff8a3d,#ffc83d);color:var(--ink);box-shadow:0 .8rem 1.6rem rgba(255,138,61,.35)}
+.ico.p{background:linear-gradient(135deg,#ec6fb0,#ff6b7a);box-shadow:0 .8rem 1.6rem rgba(236,111,176,.35)}
+.ico.b{background:linear-gradient(135deg,#2f7bff,#6ac4ff);box-shadow:0 .8rem 1.6rem rgba(47,123,255,.35)}
+
+.top{display:flex;align-items:center;justify-content:space-between;height:5rem;flex:none}
+.brand{display:flex;align-items:center;gap:1.1rem;font-weight:900;font-size:2.1rem;letter-spacing:-.03em}
+.brand img{width:3.6rem;height:3.6rem;border-radius:26%;box-shadow:0 0 0 .22rem #fff,0 .6rem 1.2rem rgba(0,0,0,.3)}
+.brand small{font-size:1.05rem;letter-spacing:.3em;font-weight:800;color:var(--mint);margin-left:.4rem}
+.light .brand small,.gold .brand small{color:var(--green)}
+.num{font-weight:800;font-size:1.3rem;letter-spacing:.16em;opacity:.7}
+.foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:1.2rem;font-weight:700;opacity:.8;height:3.6rem;flex:none}
+.foot span{display:flex;gap:.7rem;align-items:center}
+.body{flex:1;position:relative;min-height:0}
+
+/* phones */
+.phone{position:relative;border-radius:3.4rem;background:#0f0a22;padding:.7rem;box-shadow:0 2.4rem 5rem rgba(10,0,50,.45),inset 0 0 0 .14rem rgba(255,255,255,.18);width:var(--pw,17rem)}
+.phone::before{content:"";position:absolute;top:1.15rem;left:50%;width:30%;height:.85rem;border-radius:1rem;background:#0f0a22;transform:translateX(-50%);z-index:3}
+.phone .scr{border-radius:2.8rem;overflow:hidden;background:#fff;aspect-ratio:390/844}
+.phone .scr img{width:100%;height:100%;object-fit:cover;object-position:top}
+.phone.tilt{transform:rotate(var(--r,0deg))}
+
+/* ---------- slide 1 ---------- */
+#s1 h1{font-size:7.6rem;max-width:62rem;margin-top:3rem}
+#s1 .body{display:grid;grid-template-columns:62rem 1fr}
+.chips{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:2.4rem}
+.stat{display:flex;flex-direction:column;padding:1.2rem 2rem;min-width:13rem}
+.stat b{font-size:3.6rem;font-weight:900;letter-spacing:-.04em;line-height:1}
+.stat span{font-size:1.15rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-top:.5rem;opacity:.75}
+.who{margin-top:2.2rem;font-size:1.6rem;font-weight:600;opacity:.9;line-height:1.5}
+.who b{color:var(--mint)}
+.heroph{position:absolute;right:0;top:-2rem;width:46rem;height:56rem}
+.heroph .phone{position:absolute}
+.badge-row{position:absolute;right:0;bottom:.5rem;display:flex;align-items:center;gap:1.8rem}
+.badge-row img.bd{height:5.4rem}
+.qrb{background:#fff;border-radius:1.4rem;padding:.7rem;text-align:center;color:var(--ink);font-size:.9rem;font-weight:800;letter-spacing:.12em;box-shadow:0 1rem 2rem rgba(0,0,0,.3)}
+.qrb img{width:9rem;height:9rem}
+
+/* ---------- slide 2 ---------- */
+#s2 .body{display:grid;grid-template-columns:1fr 46rem;gap:3rem;padding-top:1.5rem}
+.chatmap{position:relative;height:25rem;margin-top:1rem}
+.chat{position:absolute;padding:1.1rem 2rem;border-radius:1.5rem;background:#fff;box-shadow:0 1rem 2.2rem rgba(60,20,150,.18);font-weight:800;font-size:2rem;transform:rotate(var(--r,0deg));line-height:1.1}
+.chat small{display:block;font-size:1rem;letter-spacing:.2em;text-transform:uppercase;color:var(--violet);margin-bottom:.3rem}
+.quote{font-size:4rem;font-weight:900;letter-spacing:-.04em;color:var(--violet)}
+.pr{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;margin-top:1.4rem}
+.pr .card{padding:1.7rem}
+.pr h3{font-size:1.9rem;font-weight:800;margin-top:1.1rem;letter-spacing:-.02em}
+.pr p{font-size:1.4rem;font-weight:500;margin-top:.5rem;color:var(--muted);line-height:1.35}
+.mk{padding:2.4rem;display:flex;flex-direction:column;gap:1.4rem;height:100%}
+.mk .row{display:flex;align-items:baseline;justify-content:space-between;border-bottom:.1rem solid var(--line);padding-bottom:1.1rem}
+.mk .row:last-of-type{border:0}
+.mk .row b{font-size:4rem;font-weight:900;letter-spacing:-.04em;color:var(--violet)}
+.mk .row span{font-size:1.35rem;font-weight:700;color:var(--muted);text-align:right;max-width:20rem;line-height:1.25}
+.mk h4{font-size:1.2rem;letter-spacing:.24em;text-transform:uppercase;font-weight:800;color:var(--violet2)}
+
+/* ---------- slide 3 ---------- */
+#s3 .body{display:grid;grid-template-columns:50rem 1fr;gap:3.4rem;padding-top:1.6rem}
+.pil{display:flex;flex-direction:column;gap:1.3rem;margin-top:2.2rem}
+.pil div{display:flex;gap:1.6rem;align-items:center;padding:1.3rem 1.8rem}
+.pil b{display:block;font-size:2.2rem;letter-spacing:-.02em}
+.pil span{font-size:1.4rem;font-weight:500;opacity:.82;line-height:1.3}
+.cmp{width:100%;border-collapse:separate;border-spacing:0 .5rem;font-size:1.35rem}
+.cmp th{font-size:1.1rem;letter-spacing:.14em;text-transform:uppercase;font-weight:800;text-align:center;padding:.4rem .6rem;opacity:.8;vertical-align:bottom}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp td{padding:1rem 1.2rem;background:rgba(255,255,255,.1);text-align:center;font-weight:700}
+.cmp td:first-child{border-radius:1.2rem 0 0 1.2rem;font-weight:600;background:rgba(255,255,255,.07)}
+.cmp td:last-child{border-radius:0 1.2rem 1.2rem 0}
+.cmp td.us{background:rgba(39,240,176,.2);color:var(--mint);font-size:1.7rem;font-weight:900}
+.cmp .no{opacity:.4}.cmp .mid{color:var(--gold)}
+.perks{display:grid;grid-template-columns:repeat(5,1fr);gap:1.2rem;margin-top:1.6rem}
+.perks div{padding:1.4rem 1.4rem}
+.perks b{display:block;font-size:1.55rem;margin-top:.9rem;letter-spacing:-.01em}
+.perks span{display:block;font-size:1.15rem;font-weight:500;opacity:.8;margin-top:.35rem;line-height:1.3}
+
+/* ---------- slide 4 (MVP) ---------- */
+#s4 .body{display:grid;grid-template-columns:58rem 1fr;gap:2rem}
+.mvp{position:relative;display:flex;gap:2rem;align-items:center;justify-content:center}
+.stage{position:relative;width:27rem;height:55rem}
+.stage .phone{position:absolute;left:50%;top:50%;width:25rem;transform:translate(-50%,-50%)}
+.stage .scr{position:relative}
+.stage .scr img{position:absolute;inset:0;opacity:0;transition:opacity .6s ease,transform .6s ease;transform:scale(1.02)}
+.stage .scr img.on{opacity:1;transform:none}
+.tabs{display:flex;flex-direction:column;gap:.7rem;width:27rem}
+.tab{display:flex;gap:1.1rem;align-items:center;padding:1rem 1.3rem;border-radius:1.4rem;border:.1rem solid transparent;background:rgba(255,255,255,.55);font-weight:800;font-size:1.45rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);transition:.25s;width:100%}
+.tab small{display:block;font-weight:500;font-size:1.05rem;opacity:.7;margin-top:.15rem}
+.tab .icn{font-size:2rem;color:var(--violet)}
+.tab.on{background:#fff;border-color:var(--violet2);box-shadow:0 1rem 2rem rgba(106,61,240,.25);transform:translateX(.8rem)}
+.right4{display:flex;flex-direction:column;justify-content:center;padding-left:1rem}
+.tr{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:2.2rem}
+.tr .card{padding:1.6rem 1.8rem}
+.tr b{font-size:4.4rem;font-weight:900;letter-spacing:-.05em;line-height:1;color:var(--violet)}
+.tr span{display:block;font-size:1.1rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-top:.7rem;color:var(--muted)}
+.feat{display:grid;grid-template-columns:1fr 1fr;gap:.9rem 1.6rem;margin-top:2rem;font-size:1.45rem;font-weight:600}
+.feat div{display:flex;gap:.9rem;align-items:center}
+.feat .icn{font-size:2rem;color:var(--violet);background:#fff;border-radius:.9rem;padding:.45rem;width:2.9rem;height:2.9rem;box-shadow:0 .4rem .9rem rgba(106,61,240,.2)}
+.caption{position:absolute;left:0;right:0;bottom:-.2rem;text-align:center;font-weight:800;font-size:1.3rem;color:var(--violet)}
+
+/* ---------- slide 5 ---------- */
+#s5 .body{display:grid;grid-template-columns:1fr 1fr;gap:2.4rem;padding-top:1.8rem}
+.opt{padding:2.6rem 2.8rem;position:relative}
+.opt .lab{font-size:1.15rem;letter-spacing:.3em;font-weight:800;opacity:.65}
+.opt .big{font-size:8.2rem;font-weight:900;letter-spacing:-.06em;line-height:1;margin-top:.8rem}
+.opt .big small{font-size:2.1rem;letter-spacing:0;font-weight:800;margin-left:.6rem}
+.opt p{font-size:1.5rem;font-weight:600;margin-top:1rem;line-height:1.35;max-width:38rem}
+.opt .tagl{position:absolute;right:2rem;top:2rem}
+.fut{display:flex;gap:.9rem;flex-wrap:wrap;margin-top:1.1rem}
+.fut span{padding:.7rem 1.4rem;border:.14rem dashed rgba(27,13,61,.45);border-radius:99rem;font-weight:700;font-size:1.25rem}
+.ue{margin-top:1.8rem;padding:1.8rem 2.4rem}
+.ue table{width:100%;border-collapse:collapse;font-size:1.45rem}
+.ue th{font-size:1.05rem;letter-spacing:.16em;text-transform:uppercase;text-align:right;padding:.3rem .8rem .9rem;opacity:.7;font-weight:800}
+.ue th:first-child{text-align:left}
+.ue td{padding:.65rem .8rem;border-top:.1rem solid rgba(27,13,61,.14);text-align:right;font-weight:800}
+.ue td:first-child{text-align:left;font-weight:600}
+.ue td.hi{color:var(--ink2);font-size:1.8rem;font-weight:900}
+.wide2{grid-column:1/-1}
+
+/* ---------- slide 6 ---------- */
+#s6 .body{display:grid;grid-template-columns:1.12fr 1fr;gap:2.6rem;padding-top:1.4rem}
+.cmp.l{font-size:1.28rem}
+.cmp.l td{background:rgba(255,255,255,.7)}.cmp.l td:first-child{background:rgba(255,255,255,.55)}
+.cmp.l td.us{background:var(--violet);color:#fff;font-size:1.6rem}
+.cmp.l th{color:var(--ink)}
+.cmp.l .no{opacity:.35}.cmp.l .mid{color:#c78500}
+.gtm{display:flex;flex-direction:column;gap:.9rem}
+.gtm .it{display:flex;gap:1.3rem;align-items:center;padding:1.05rem 1.5rem}
+.gtm .it b{font-size:1.65rem;display:block;letter-spacing:-.01em}
+.gtm .it span{font-size:1.2rem;font-weight:500;color:var(--muted);line-height:1.3}
+.road{display:flex;align-items:center;gap:.5rem;margin-top:1.6rem;font-weight:800;font-size:1.25rem;flex-wrap:wrap;letter-spacing:.06em}
+.road span{padding:.6rem 1.2rem;border-radius:99rem;background:#fff;box-shadow:0 .5rem 1.1rem rgba(60,20,150,.15)}
+.road span.now{background:var(--violet);color:#fff}
+.road .icn{font-size:1.5rem;color:var(--violet)}
+
+/* ---------- slide 7 ---------- */
+#s7 .body{display:grid;grid-template-columns:1fr 1fr;gap:3rem;padding-top:1.6rem}
+.mult{display:flex;gap:2rem;margin-top:1.6rem;align-items:flex-end}
+.mult .m{padding:1.8rem 2.4rem}
+.mult b{font-size:7rem;font-weight:900;letter-spacing:-.06em;line-height:.95}
+.mult .m:first-child b{color:var(--mint)}.mult .m:last-child b{color:var(--gold)}
+.mult span{display:block;font-size:1.2rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-top:.6rem;opacity:.8}
+.sc{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-top:1.8rem}
+.sc .card{padding:1.4rem 1.6rem;display:flex;gap:1.2rem;align-items:flex-start}
+.sc b{font-size:1.5rem;display:block;letter-spacing:-.01em}
+.sc span{font-size:1.15rem;font-weight:500;opacity:.8;line-height:1.3;display:block;margin-top:.2rem}
+.chartbox{padding:2rem 2.4rem;display:flex;flex-direction:column}
+.chartbox h4{font-size:1.15rem;letter-spacing:.2em;text-transform:uppercase;font-weight:800;opacity:.75}
+.chartbox svg{width:100%;flex:1;margin-top:1rem;overflow:visible}
+
+/* ---------- slide 8 ---------- */
+#s8 .body{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;padding-top:1.8rem}
+.pill4{padding:2.2rem 2.2rem}
+.pill4 h3{font-size:2.4rem;font-weight:900;letter-spacing:-.03em;margin-top:1.2rem}
+.pill4 ul{list-style:none;margin-top:1.1rem;display:flex;flex-direction:column;gap:.85rem}
+.pill4 li{font-size:1.3rem;font-weight:500;line-height:1.32;padding-left:1.8rem;position:relative;color:#274237}
+.pill4 li::before{content:"";position:absolute;left:0;top:.5rem;width:.8rem;height:.8rem;border-radius:50%;background:var(--green)}
+.pill4 li b{color:var(--ink)}
+.risk{grid-column:1/-1;padding:1.5rem 2.2rem;display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:1.6rem;align-items:start}
+.risk .rh{font-size:1.15rem;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--violet);align-self:center;max-width:13rem;line-height:1.3}
+.risk div.r b{display:block;font-size:1.3rem}
+.risk div.r span{font-size:1.1rem;font-weight:500;color:#41345f;line-height:1.3;display:block;margin-top:.25rem}
+
+/* ---------- slide 9 ---------- */
+#s9 .body{display:grid;grid-template-columns:52rem 1fr;gap:2.4rem;padding-top:1.4rem}
+.pl{padding:1.8rem 2.2rem}
+.pl table{width:100%;border-collapse:collapse;font-size:1.5rem}
+.pl th{font-size:1.05rem;letter-spacing:.16em;text-transform:uppercase;text-align:right;padding:.3rem .6rem .8rem;opacity:.75;font-weight:800}
+.pl th:first-child{text-align:left}
+.pl td{padding:.75rem .6rem;border-top:.1rem solid rgba(255,255,255,.16);text-align:right;font-weight:700}
+.pl td:first-child{text-align:left;font-weight:500;opacity:.9}
+.pl tr.tot td{font-weight:900;font-size:1.75rem}
+.pl .neg{color:#ff9aa6}.pl .pos{color:var(--mint)}
+.kp{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-top:1.2rem}
+.kp .card{padding:1.2rem 1.6rem}
+.kp b{display:block;font-size:2.8rem;font-weight:900;letter-spacing:-.04em;line-height:1}
+.kp span{display:block;font-size:1.05rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-top:.5rem;opacity:.75}
+.assume{font-size:1.02rem;font-weight:500;opacity:.7;line-height:1.4;margin-top:1rem}
+
+/* ---------- slide 10 ---------- */
+#s10 .body{padding-top:1.4rem}
+.team{display:grid;grid-template-columns:repeat(9,1fr);gap:1.1rem;margin-top:1.6rem}
+.mem{position:relative}
+.mem .ph{aspect-ratio:3/4;border-radius:1.6rem;overflow:hidden;background:linear-gradient(160deg,#fff,#e5d6ff);box-shadow:0 1.1rem 2.2rem rgba(60,20,150,.22);display:grid;place-items:center;color:var(--violet2);font-size:3.2rem}
+.mem .ph img{width:100%;height:100%;object-fit:cover;object-position:top}
+.mem .ph.empty{border:.2rem dashed rgba(106,61,240,.5);background:rgba(255,255,255,.5)}
+.mem b{display:block;font-size:1.35rem;margin-top:.9rem;letter-spacing:-.01em;line-height:1.15}
+.mem span{display:block;font-size:.98rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin-top:.35rem;line-height:1.3}
+.skills{display:flex;gap:1rem;flex-wrap:wrap;margin-top:2.2rem}
+
+/* ---------- slide 11 ---------- */
+#s11 .body{display:grid;grid-template-columns:1fr 1fr;gap:2.6rem;padding-top:1.4rem}
+.ask{display:flex;gap:2.2rem;align-items:center}
+.donut{width:21rem;height:21rem;flex:none}
+.legend{display:flex;flex-direction:column;gap:.9rem;font-size:1.35rem;font-weight:600}
+.legend div{display:flex;gap:1rem;align-items:center}
+.legend i{width:1.3rem;height:1.3rem;border-radius:.4rem;flex:none}
+.legend b{margin-left:auto;padding-left:1.4rem}
+.amount{font-size:9rem;font-weight:900;letter-spacing:-.06em;line-height:.9;color:var(--gold)}
+.amount small{font-size:2.4rem;font-weight:800;letter-spacing:0;color:#fff;margin-left:.8rem}
+.mil{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1.6rem}
+.mil .card{padding:1.2rem 1.4rem}
+.mil b{display:block;font-size:2.4rem;font-weight:900;letter-spacing:-.04em}
+.mil span{display:block;font-size:1rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-top:.4rem;opacity:.8;line-height:1.3}
+.sup{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.3rem}
+.qrs{display:flex;gap:1rem;margin-top:1.8rem;align-items:flex-start}
+.qrs .q{text-align:center;font-size:1rem;font-weight:800;letter-spacing:.06em}
+.qrs img{width:8.4rem;height:8.4rem;margin-bottom:.4rem}
+.closing{font-size:3.4rem;font-weight:900;letter-spacing:-.04em;line-height:1.02;margin-top:1.4rem}
+.closing em{font-style:normal;color:var(--gold)}
+
+
+/* ---------- fit pass: keep every slide inside its 60rem frame ---------- */
+.top{height:4.4rem}
+h2{font-size:4.8rem;margin-top:.7rem}
+.body{min-height:0}
+#s1 .body,#s2 .body,#s3 .body,#s4 .body,#s7 .body,#s9 .body,#s11 .body{grid-template-rows:minmax(0,1fr)}
+#s1 h1{font-size:6.3rem;margin-top:1.4rem}
+#s1 .lead{margin-top:1.4rem!important}
+#s1 .chips{margin-top:1.8rem}#s1 .who{margin-top:1.6rem}
+.heroph .phone{transform-origin:center}
+.chatmap{height:15rem;margin-top:.4rem}
+.chat{white-space:nowrap;font-size:1.8rem;padding:.9rem 1.7rem}
+.quote{font-size:3rem}
+.pr{margin-top:1rem}.pr .card{padding:1.3rem}.pr h3{font-size:1.7rem;margin-top:.8rem}.pr p{font-size:1.25rem}
+.pr .ico{width:3.6rem;height:3.6rem;font-size:1.8rem}
+.mk{padding:2rem;gap:1rem}.mk .row b{font-size:3.4rem}.mk .row{padding-bottom:.8rem}
+#s3 .lead{font-size:1.7rem}
+.pil{gap:.9rem;margin-top:1.4rem}.pil div{padding:.9rem 1.5rem}.pil b{font-size:2rem}.pil span{font-size:1.3rem}
+.pil .ico{width:4rem;height:4rem;font-size:2rem}
+.cmp td{padding:.75rem 1rem}.cmp{border-spacing:0 .4rem}
+.perks{margin-top:1.1rem;gap:1rem}.perks div{padding:1.1rem 1.2rem}.perks b{margin-top:.6rem;font-size:1.45rem}.perks span{font-size:1.08rem}
+.opt{padding:1.8rem 2.4rem}.opt .big{font-size:6.4rem}.opt p{font-size:1.4rem;margin-top:.7rem}
+#s5 .body{padding-top:1.2rem;gap:1.8rem;align-content:start}
+.ue{margin-top:.2rem;padding:1.3rem 2.2rem}.ue td{padding:.5rem .8rem}.ue th{padding-bottom:.5rem}
+.fut{margin-top:.8rem}.fut span{padding:.5rem 1.2rem;font-size:1.15rem}
+#s5 .foot>span:last-child{max-width:84rem;text-align:right;font-size:1.05rem;line-height:1.25;font-weight:600}
+.cmp.l td{padding:.65rem .9rem}
+.road{margin-top:1.1rem}
+#s6 .gtm .it{padding:.9rem 1.4rem}
+.mult{margin-top:1.2rem}.mult .m{padding:1.2rem 2rem}.mult b{font-size:5.6rem}
+#s7 .lead{font-size:1.65rem}
+.sc{margin-top:1.2rem;gap:.9rem}.sc .card{padding:1rem 1.3rem}.sc span{font-size:1.08rem}
+.pill4{padding:1.8rem 2rem}.pill4 ul{gap:.7rem;margin-top:.9rem}.pill4 h3{margin-top:.9rem}
+.pl{padding:1.3rem 2rem}.pl td{padding:.5rem .6rem}.pl tr.tot td{font-size:1.65rem}
+.kp{grid-template-columns:repeat(4,1fr);gap:.8rem;margin-top:.9rem}.kp .card{padding:1rem 1.1rem}.kp b{font-size:2.2rem}.kp span{font-size:.92rem;letter-spacing:.08em}
+.assume{font-size:1rem;margin-top:.8rem}
+.chartbox{min-height:0;overflow:hidden}
+.team{margin-top:1.4rem}.skills{margin-top:1.8rem}
+.amount{font-size:7.2rem}.donut{width:16rem;height:16rem}.legend{font-size:1.25rem;gap:.7rem}
+#s11 .ask{margin-top:1.2rem!important}.sup{margin-top:1rem}
+.mil{margin-top:1.2rem}.closing{font-size:3rem}.qrs{margin-top:1.4rem}
+
+
+.opt .big{font-size:7.6rem}.opt{padding:2.2rem 2.6rem}
+#s5 .body{gap:2.2rem}.ue{padding:1.8rem 2.4rem}.ue td{padding:.8rem .8rem}.ue table{font-size:1.55rem}.fut{margin-top:1.2rem}
+.road{font-size:1.15rem;gap:.35rem}.road span{padding:.5rem .9rem}
+.pl td{padding:.75rem .6rem}.pl{padding:1.6rem 2.2rem}.kp b{font-size:2.5rem}.kp .card{padding:1.2rem 1.2rem}.assume{font-size:1.12rem}
+.team{margin-top:2.6rem}.mem b{font-size:1.5rem}.mem span{font-size:1.05rem}.skills{margin-top:3rem}
+.amount{font-size:8rem}.donut{width:19rem;height:19rem}.legend{font-size:1.35rem}
+.qrs img{width:9.6rem;height:9.6rem}.mil b{font-size:2.7rem}.closing{font-size:3.5rem}
+
+/* ---------- navigation chrome ---------- */
+.chrome{position:fixed;z-index:50;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:1.1rem 2.4rem;pointer-events:none}
+.chrome>*{pointer-events:auto}
+.cbrand{display:flex;align-items:center;gap:.9rem;font-weight:900;font-size:1.55rem;letter-spacing:-.03em;color:#fff;mix-blend-mode:normal;text-shadow:0 .2rem .6rem rgba(0,0,0,.25)}
+.cbrand img{width:2.8rem;height:2.8rem;border-radius:26%}
+.cact{display:flex;gap:.8rem;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:.7rem;padding:.8rem 1.5rem;border-radius:99rem;border:0;font-family:inherit;font-weight:800;font-size:1.2rem;cursor:pointer;background:#fff;color:var(--ink);box-shadow:0 .5rem 1.4rem rgba(0,0,0,.25);transition:transform .2s}
+.btn:hover{transform:translateY(-.15rem)}
+.btn.pri{background:linear-gradient(135deg,var(--gold),#ffb020)}
+.menu{position:relative}
+.menu .dd{position:absolute;right:0;top:calc(100% + .6rem);min-width:18rem;background:#fff;border-radius:1.4rem;padding:.6rem;box-shadow:0 1.2rem 3rem rgba(0,0,0,.3);display:none}
+.menu.open .dd{display:block}
+.dd a{display:flex;gap:.8rem;align-items:center;padding:.9rem 1.1rem;border-radius:1rem;font-weight:800;font-size:1.2rem}
+.dd a:hover{background:#f2eaff}
+.dots-nav{position:fixed;z-index:50;right:1.6rem;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:.8rem}
+.dots-nav button{width:1rem;height:1rem;border-radius:50%;border:.14rem solid rgba(255,255,255,.9);background:transparent;cursor:pointer;padding:0;transition:.25s;box-shadow:0 0 .6rem rgba(0,0,0,.35)}
+.dots-nav button.on{background:var(--gold);border-color:var(--gold);transform:scale(1.5)}
+.arrows{position:fixed;z-index:50;left:50%;bottom:1.2rem;transform:translateX(-50%);display:flex;gap:.8rem;align-items:center;color:#fff;font-weight:800;font-size:1.15rem}
+.arrows button{width:3.6rem;height:3.6rem;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:1.7rem;box-shadow:0 .5rem 1.2rem rgba(0,0,0,.3)}
+.arrows .ct{background:rgba(27,13,61,.7);padding:.6rem 1.2rem;border-radius:99rem;backdrop-filter:blur(.4rem)}
+.prog{position:fixed;z-index:60;left:0;top:0;height:.35rem;background:linear-gradient(90deg,var(--mint),var(--gold));width:0;transition:width .3s}
+
+/* reveal animation */
+.rv{opacity:0;transform:translateY(1.8rem);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1);transition-delay:calc(var(--d,0)*90ms)}
+.slide.in .rv{opacity:1;transform:none}
+
+/* ---------- small screens: stack the slides ---------- */
+@media (max-width:900px){
+  html{font-size:16px}
+  .frame{width:100%;height:auto;padding:5.2rem 1.4rem 6rem}
+  .slide{align-items:flex-start}
+  .body{display:flex!important;flex-direction:column;gap:1.6rem;padding-top:1rem!important}
+  h2{font-size:3rem}#s1 h1{font-size:3.4rem;margin-top:1.4rem}
+  .lead{font-size:1.15rem}.kicker{font-size:.8rem}
+  .heroph{position:relative;width:100%;height:30rem;top:0}
+  .heroph .phone{--pw:13rem}
+  .badge-row{position:relative;margin-top:1rem}
+  .chatmap{height:17rem}.chat{font-size:1.1rem;padding:.7rem 1rem}
+  .pr,.perks,.tr,.kp,.mil,.sc{grid-template-columns:1fr 1fr}
+  .team{grid-template-columns:repeat(3,1fr)}
+  .mvp{flex-direction:column}.tabs{width:100%;flex-direction:row;flex-wrap:wrap}.tab{width:auto;font-size:.8rem;padding:.5rem .8rem}.tab small{display:none}
+  .stage{width:100%;height:36rem}.stage .phone{width:15rem}
+  .cmp,.ue table,.pl table{font-size:.78rem}
+  .opt .big{font-size:4rem}.amount{font-size:4.6rem}.mult b{font-size:3.6rem}
+  .risk{grid-template-columns:1fr 1fr}
+  .tile{display:none}
+  .ask{flex-direction:column;align-items:flex-start}
+  .dots-nav{display:none}.cbrand span{display:none}
+  h2 br{display:none}
+}
+
+/* ---------- print / PDF: exactly one 1920x1080 page per slide ---------- */
+html.print{font-size:16px}
+html.print body{background:#fff}
+html.print .deck{height:auto;overflow:visible;scroll-snap-type:none}
+html.print .slide{width:1920px;height:1080px;min-height:0;page-break-after:always;break-after:page;display:flex}
+html.print .frame{width:1792px;height:960px}
+html.print .chrome,html.print .dots-nav,html.print .arrows,html.print .prog{display:none}
+html.print .rv{opacity:1!important;transform:none!important;transition:none!important}
+html.print .tile{animation:none}
+html.print .stage .scr img{transition:none}
+html.print .noprint{display:none!important}
+html.print .printonly{display:block!important}
+.printonly{display:none}
+@page{size:1920px 1080px;margin:0}
+@media print{html{font-size:16px}.chrome,.dots-nav,.arrows,.prog{display:none}.deck{height:auto;overflow:visible}.slide{width:1920px;height:1080px;min-height:0;break-after:page}.frame{width:1792px;height:960px}.rv{opacity:1!important;transform:none!important}.tile{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile{animation:none}.rv{transition:none;opacity:1;transform:none}.deck{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+<div class="chrome">
+  <a class="cbrand" href="/"><img src="assets/img/logo.png" alt=""><span>LevroMart</span></a>
+  <div class="cact">
+    <button class="btn" id="btnFs" type="button"><svg class="icn" data-i="maximize"></svg> Present</button>
+    <div class="menu" id="dl">
+      <button class="btn pri" id="btnDl" type="button"><svg class="icn" data-i="download"></svg> Download deck</button>
+      <div class="dd">
+        <a href="LevroMart-Pitch-Deck.pdf" download><svg class="icn" data-i="download"></svg> PDF (best for email)</a>
+        <a href="LevroMart-Pitch-Deck.pptx" download><svg class="icn" data-i="download"></svg> PowerPoint (.pptx)</a>
+      </div>
+    </div>
+  </div>
+</div>
+<nav class="dots-nav" id="dotsNav" aria-label="Slides"></nav>
+<div class="arrows"><button id="prev" type="button" aria-label="Previous slide"><svg class="icn" data-i="chev-up"></svg></button><span class="ct" id="ct">1 / 11</span><button id="next" type="button" aria-label="Next slide"><svg class="icn" data-i="chev-down"></svg></button></div>
+
+<main class="deck" id="deck">
+
+<!-- 1 · INTRO -->
+<section class="slide dark" id="s1" data-title="Intro">
+  <div class="bg"><i class="c1" style="width:60rem;height:60rem;right:-16rem;top:-22rem"></i><i class="c2" style="width:46rem;height:46rem;left:-14rem;bottom:-20rem"></i><i class="c3" style="width:18rem;height:18rem;right:30rem;bottom:-7rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="brand rv"><img src="assets/img/logo.png" alt="LevroMart logo" data-pp="img"><span data-pp="t">LevroMart</span><small data-pp="t">BUY · SELL · CONNECT</small></div><div class="pill gold-p rv" style="--d:1"><svg class="icn" data-i="award"></svg><span data-pp="t">AMSUL Business Pitch Competition 2026</span></div></div>
+    <div class="body">
+      <div>
+        <h1 class="rv" style="--d:1" data-pp="t">Finding what you need locally shouldn’t require <em>remembering where you saw it.</em></h1>
+        <p class="lead rv" style="--d:2;margin-top:2rem" data-pp="t">LevroMart is the campus marketplace where students discover, trust and order from verified vendors, all in one app.</p>
+        <div class="chips rv" style="--d:3">
+          <div class="card stat"><b data-count="200" data-suffix="+" data-pp="t">200+</b><span data-pp="t">Registered users</span></div>
+          <div class="card stat"><b data-count="50" data-suffix="+" data-pp="t">50+</b><span data-pp="t">Active vendors</span></div>
+          <div class="card stat"><b data-count="180" data-suffix="+" data-pp="t">180+</b><span data-pp="t">Live listings</span></div>
+        </div>
+        <p class="who rv" style="--d:4" data-pp="t"><b>Founder &amp; CEO:</b> Kennis Dede &nbsp;·&nbsp; <b>Team LevroMart</b> (9 members) &nbsp;·&nbsp; Lagos, Nigeria</p>
+      </div>
+      <div class="heroph rv" style="--d:2">
+        <div class="phone tilt" style="--pw:21rem;--r:-5deg;left:1rem;top:5.5rem"><div class="scr"><img src="assets/img/app-home.webp" alt="LevroMart home screen" data-pp="img"></div></div>
+        <div class="phone tilt" style="--pw:21rem;--r:6deg;left:21rem;top:1rem"><div class="scr"><img src="assets/img/app-search.webp" alt="LevroMart search" data-pp="img"></div></div>
+        <span class="tile t-gold" style="--r:-8deg;left:-3rem;top:3rem"><svg class="icn" data-i="bag"></svg></span>
+        <span class="tile t-violet" style="--r:10deg;right:-1rem;top:40rem"><svg class="icn" data-i="star"></svg></span>
+        <span class="tile" style="--r:-6deg;left:14rem;bottom:2rem"><svg class="icn" data-i="cart"></svg></span>
+      </div>
+      <div class="badge-row rv" style="--d:5"><img class="bd" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"><div class="qrb"><img src="assets/img/qr-web.png" alt="QR code for levromart.com" data-pp="img">SCAN TO VISIT</div></div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span class="num" data-pp="t">01</span></div>
+  </div>
+</section>
+
+<!-- 2 · PROBLEM & MARKET GAP -->
+<section class="slide light" id="s2" data-title="Problem &amp; market gap">
+  <div class="bg"><i class="c1" style="width:50rem;height:50rem;left:-14rem;top:-18rem"></i><i class="c3" style="width:22rem;height:22rem;right:-6rem;bottom:-8rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="target"></svg><span data-pp="t">The problem &amp; the gap</span></div><span class="num" data-pp="t">02</span></div>
+    <div class="body">
+      <div>
+        <h2 class="rv" style="--d:1" data-pp="t">Campus commerce is <em>fragmented.</em></h2>
+        <div class="chatmap rv" style="--d:2">
+          <span class="chat" style="--r:-4deg;left:0;top:6.5rem"><small>chat</small><span data-pp="t">WhatsApp</span></span>
+          <span class="chat" style="--r:3deg;left:11rem;top:0"><small>dms</small><span data-pp="t">Instagram</span></span>
+          <span class="chat" style="--r:-2deg;left:24rem;top:6.5rem"><small>scroll…</small><span data-pp="t">Old chats</span></span>
+          <span class="chat" style="--r:4deg;left:33rem;top:0"><small>“ask tunde”</small><span data-pp="t">Personal contacts</span></span>
+          <span class="chat" style="--r:-3deg;left:47rem;top:6rem"><small>“i heard…”</small><span data-pp="t">Word of mouth</span></span>
+        </div>
+        <p class="quote rv" style="--d:3" data-pp="t">“Who sells this again?”</p>
+        <div class="pr rv" style="--d:4">
+          <div class="card"><span class="ico"><svg class="icn" data-i="search"></svg></span><h3 data-pp="t">Hard to find &amp; trust</h3><p data-pp="t">Outdated info, lost chats and unanswered messages hide good vendors.</p></div>
+          <div class="card"><span class="ico o"><svg class="icn" data-i="store"></svg></span><h3 data-pp="t">Vendors have no home</h3><p data-pp="t">Student sellers run on status updates: no storefront, no order tracking.</p></div>
+          <div class="card"><span class="ico p"><svg class="icn" data-i="shield"></svg></span><h3 data-pp="t">No structure or recourse</h3><p data-pp="t">Payments, delivery and disputes happen off-platform, with no record.</p></div>
+        </div>
+      </div>
+      <div class="card mk rv" style="--d:3">
+        <h4 data-pp="t">Who we serve &amp; the opportunity</h4>
+        <div class="row"><b data-pp="t">100K+</b><span data-pp="t">students in Lagos (UNILAG &amp; LASU alone)</span></div>
+        <div class="row"><b data-pp="t">≈2.5M</b><span data-pp="t">students across Nigeria’s tertiary institutions</span></div>
+        <div class="row"><b data-pp="t">≈14M</b><span data-pp="t">students in Africa: the long-term horizon</span></div>
+        <div class="row"><b data-pp="t">₦10.8B</b><span data-pp="t">yearly revenue pool in Nigeria at a 3% take rate*</span></div>
+        <p class="small" data-pp="t">Buyers: students &amp; the campus community. Sellers: student vendors and small campus businesses. *Assumes ₦12,000 spent per student per month through vendors (≈₦360B a year). Enrolment: NUC (2018), UNESCO/World Bank; UNILAG and LASU published figures.</p>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 3 · SOLUTION -->
+<section class="slide dark" id="s3" data-title="Solution &amp; value">
+  <div class="bg"><i class="c1" style="width:56rem;height:56rem;right:-18rem;bottom:-24rem"></i><i class="c2" style="width:40rem;height:40rem;left:-12rem;top:-18rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="zap"></svg><span data-pp="t">The solution</span></div><span class="num" data-pp="t">03</span></div>
+    <div class="body">
+      <div>
+        <h2 class="rv" style="--d:1" data-pp="t">Meet <em>LevroMart.</em></h2>
+        <p class="lead rv" style="--d:2;margin-top:1.2rem" data-pp="t">One structured place for the whole campus commerce journey.</p>
+        <div class="pil">
+          <div class="card rv" style="--d:3"><span class="ico"><svg class="icn" data-i="search"></svg></span><p><b data-pp="t">Discover</b><span data-pp="t">Products, services, rentals and packages from vendors near you, by campus, category or map.</span></p></div>
+          <div class="card rv" style="--d:4"><span class="ico g"><svg class="icn" data-i="shield"></svg></span><p><b data-pp="t">Connect</b><span data-pp="t">Verified vendor storefronts, in-app chat and negotiation. Follow your favourites.</span></p></div>
+          <div class="card rv" style="--d:5"><span class="ico o"><svg class="icn" data-i="bag"></svg></span><p><b data-pp="t">Transact</b><span data-pp="t">Order, pay, track and rate, with a record and a dispute process behind every sale.</span></p></div>
+        </div>
+      </div>
+      <div class="rv" style="--d:3">
+        <table class="cmp" aria-label="LevroMart versus alternatives">
+          <thead><tr><th></th><th data-pp="t">WhatsApp / IG</th><th data-pp="t">General e-commerce</th><th data-pp="t">Classifieds</th><th data-pp="t">LevroMart</th></tr></thead>
+          <tbody>
+            <tr><td data-pp="t">Campus-aware discovery</td><td class="no">✕</td><td class="mid">Part</td><td class="mid">Part</td><td class="us">✓</td></tr>
+            <tr><td data-pp="t">Verified vendors</td><td class="no">✕</td><td>✓</td><td class="no">✕</td><td class="us">✓</td></tr>
+            <tr><td data-pp="t">Storefront + order tracking</td><td class="no">✕</td><td>✓</td><td class="no">✕</td><td class="us">✓</td></tr>
+            <tr><td data-pp="t">Chat &amp; negotiation in-app</td><td>✓</td><td class="no">✕</td><td class="mid">Part</td><td class="us">✓</td></tr>
+            <tr><td data-pp="t">Request an item from vendors</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="us">✓</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:.8rem" data-pp="t">✓ yes · “Part” = partly · ✕ no. Our assessment of typical features.</p>
+      </div>
+    </div>
+    <div class="perks rv" style="--d:5">
+      <div class="card"><span class="ico b" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="send"></svg></span><b data-pp="t">Request an item</b><span data-pp="t">Can’t find it? Post a request; vendors in that sector who opt in send you offers.</span></div>
+      <div class="card"><span class="ico o" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="award"></svg></span><b data-pp="t">Vendor of the Week</b><span data-pp="t">A free week of promotion for the top vendor. Our live growth campaign.</span></div>
+      <div class="card"><span class="ico p" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="tag"></svg></span><b data-pp="t">Name your price</b><span data-pp="t">Negotiable listings, rentals and services booked in the same app.</span></div>
+      <div class="card"><span class="ico g" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="chat"></svg></span><b data-pp="t">Levi, our assistant</b><span data-pp="t">An AI helper that finds products and answers questions.</span></div>
+      <div class="card"><span class="ico" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="gift"></svg></span><b data-pp="t">Promos coming</b><span data-pp="t">Launch offers and referral rewards to grow buyers and sales.</span></div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 4 · MVP -->
+<section class="slide light" id="s4" data-title="The product">
+  <div class="bg"><i class="c1" style="width:56rem;height:56rem;left:-18rem;bottom:-26rem"></i><i class="c3" style="width:26rem;height:26rem;right:-8rem;top:-9rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="phone"></svg><span data-pp="t">The MVP · live today</span></div><span class="num" data-pp="t">04</span></div>
+    <div class="body">
+      <div class="mvp rv" style="--d:1">
+        <div class="tabs" id="tabs">
+          <button class="tab on" type="button" data-s="0"><svg class="icn" data-i="home"></svg><span>Home<small>Campus-aware discovery</small></span></button>
+          <button class="tab" type="button" data-s="1"><svg class="icn" data-i="search"></svg><span>Search<small>Find it in seconds</small></span></button>
+          <button class="tab" type="button" data-s="2"><svg class="icn" data-i="pin"></svg><span>Vendors map<small>Local discovery</small></span></button>
+          <button class="tab" type="button" data-s="3"><svg class="icn" data-i="store"></svg><span>Storefront<small>Every vendor gets a home</small></span></button>
+          <button class="tab" type="button" data-s="4"><svg class="icn" data-i="bag"></svg><span>Product<small>Buy, rent or negotiate</small></span></button>
+          <button class="tab" type="button" data-s="5"><svg class="icn" data-i="list"></svg><span>Orders<small>Every transaction tracked</small></span></button>
+          <button class="tab" type="button" data-s="6"><svg class="icn" data-i="send"></svg><span>Request an item<small>Vendors come to you</small></span></button>
+          <button class="tab" type="button" data-s="7"><svg class="icn" data-i="award"></svg><span>Leaderboard<small>Vendor of the Week</small></span></button>
+        </div>
+        <div class="stage" id="stage">
+          <div class="phone"><div class="scr">
+            <img class="on" src="assets/img/app-home.webp" alt="Home" data-pp="img">
+            <img src="assets/img/app-search.webp" alt="Search">
+            <img src="assets/img/app-vendors-map.webp" alt="Vendors map">
+            <img src="assets/img/app-storefront.webp" alt="Vendor storefront">
+            <img src="assets/img/app-product.webp" alt="Product page">
+            <img src="assets/img/app-orders.webp" alt="Orders">
+            <img src="assets/img/app-request.webp" alt="Request an item">
+            <img src="assets/img/app-leaderboard.webp" alt="Vendor leaderboard">
+          </div></div>
+        </div>
+      </div>
+      <div class="right4">
+        <h2 class="rv" style="--d:2;font-size:4.6rem" data-pp="t">A real product, <em>already live.</em></h2>
+        <p class="lead rv" style="--d:3;margin-top:1.4rem" data-pp="t">Students and vendors are using it now. Tap through the screens to see what they see.</p>
+        <div class="tr rv" style="--d:4">
+          <div class="card"><b data-pp="t">200+</b><span data-pp="t">Registered users</span></div>
+          <div class="card"><b data-pp="t">50+</b><span data-pp="t">Active vendors</span></div>
+          <div class="card"><b data-pp="t">180+</b><span data-pp="t">Live listings</span></div>
+        </div>
+        <div class="feat rv" style="--d:5">
+          <div><svg class="icn" data-i="pin"></svg><span data-pp="t">Distance-sorted, campus filters</span></div>
+          <div><svg class="icn" data-i="chat"></svg><span data-pp="t">In-app chat &amp; negotiation</span></div>
+          <div><svg class="icn" data-i="bell"></svg><span data-pp="t">Push alerts for orders</span></div>
+          <div><svg class="icn" data-i="shield"></svg><span data-pp="t">Verified vendors &amp; disputes</span></div>
+        </div>
+        <p class="small rv" style="--d:6;margin-top:1.4rem" data-pp="t">Current stage: pre-revenue. Building and validating the marketplace network in Lagos; billing and payments are rolling out next.</p>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 5 · BUSINESS MODEL & UNIT ECONOMICS -->
+<section class="slide gold" id="s5" data-title="Business model">
+  <div class="bg"><i class="c1" style="width:50rem;height:50rem;right:-14rem;top:-20rem"></i><i class="c2" style="width:36rem;height:36rem;left:-10rem;bottom:-16rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="coins"></svg><span data-pp="t">Business model &amp; unit economics</span></div><span class="num" data-pp="t">05</span></div>
+    <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Vendors pay when <em>LevroMart creates value.</em></h2>
+    <div class="body" style="padding-top:1.6rem">
+      <div class="card opt rv" style="--d:2"><span class="pill tagl" data-pp="t">Option 01</span><div class="lab" data-pp="t">COMMISSION</div><div class="big" data-pp="t">3%<small data-pp="t">per completed sale</small></div><p data-pp="t">No sale, no commission. Aligned with the vendor from day one.</p></div>
+      <div class="card opt rv" style="--d:3"><span class="pill tagl" data-pp="t">Option 02</span><div class="lab" data-pp="t">FLAT LISTING FEE</div><div class="big" data-pp="t">₦999<small data-pp="t">per listing / month</small></div><p data-pp="t">Predictable pricing, no commission on that listing. One mode per listing, never both.</p></div>
+      <div class="card ue rv wide2" style="--d:4">
+        <table>
+          <thead><tr><th data-pp="t">Unit economics (per active vendor)</th><th data-pp="t">Year 1</th><th data-pp="t">Year 2</th><th data-pp="t">Year 3</th></tr></thead>
+          <tbody>
+            <tr><td data-pp="t">Avg revenue per vendor / month (ARPV)</td><td data-pp="t">₦1,640</td><td data-pp="t">₦2,110</td><td data-pp="t">₦2,690</td></tr>
+            <tr><td data-pp="t">Acquisition cost per active vendor (CAC)</td><td data-pp="t">₦14,100</td><td data-pp="t">₦8,300</td><td data-pp="t">₦12,200</td></tr>
+            <tr><td data-pp="t">Lifetime value, 24 months at 92% margin (LTV)</td><td data-pp="t">₦36,200</td><td data-pp="t">₦46,700</td><td data-pp="t">₦59,300</td></tr>
+            <tr><td data-pp="t">LTV : CAC &nbsp;·&nbsp; payback</td><td class="hi" data-pp="t">2.6× · 9.4 mo</td><td class="hi" data-pp="t">5.6× · 4.3 mo</td><td class="hi" data-pp="t">4.8× · 5.0 mo</td></tr>
+          </tbody>
+        </table>
+        <div class="fut"><span style="border:0;padding-left:0;font-weight:800" data-pp="t">NEXT REVENUE LAYERS (Year 2+):</span><span data-pp="t">Premium visibility</span><span data-pp="t">Vendor of the Week sponsorship &amp; ads</span><span data-pp="t">Business tools</span><span data-pp="t">Payment automation</span><span data-pp="t">Partnerships</span></div>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">Assumptions: GMV per active vendor ₦40K→₦55K/month; 60% of vendors on commission; CAC = marketing spend ÷ new active vendors.</span></div>
+  </div>
+</section>
+
+<!-- 6 · COMPETITION & GO-TO-MARKET -->
+<section class="slide light" id="s6" data-title="Competition &amp; go-to-market">
+  <div class="bg"><i class="c1" style="width:44rem;height:44rem;right:-12rem;bottom:-18rem"></i><i class="c3" style="width:20rem;height:20rem;left:-6rem;top:-8rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="megaphone"></svg><span data-pp="t">Market, competitors &amp; reaching customers</span></div><span class="num" data-pp="t">06</span></div>
+    <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">We win where others <em>don’t go: the campus.</em></h2>
+    <div class="body">
+      <div class="rv" style="--d:2">
+        <table class="cmp l">
+          <thead><tr><th></th><th data-pp="t">WhatsApp &amp; IG vendors</th><th data-pp="t">Jumia / Konga</th><th data-pp="t">Jiji / FB Marketplace</th><th data-pp="t">LevroMart</th></tr></thead>
+          <tbody>
+            <tr><td data-pp="t">Focus on campus buyers</td><td>Part</td><td class="no">✕</td><td class="no">✕</td><td class="us">✓</td></tr>
+            <tr><td data-pp="t">Fees for tiny sellers</td><td>Free</td><td class="mid">High</td><td class="mid">Ads</td><td class="us">3% / ₦999</td></tr>
+            <tr><td data-pp="t">Order tracking &amp; records</td><td class="no">✕</td><td>✓</td><td class="no">✕</td><td class="us">✓</td></tr>
+            <tr><td data-pp="t">Needs own logistics network</td><td>No</td><td class="mid">Yes</td><td>No</td><td class="us">No</td></tr>
+            <tr><td data-pp="t">Vendors discoverable by distance</td><td class="no">✕</td><td class="no">✕</td><td class="mid">Part</td><td class="us">✓</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:.8rem" data-pp="t">Our advantage: students are the founders and the users; the vendors are their classmates; every campus we open makes the next one cheaper.</p>
+        <div class="road"><span class="now" data-pp="t">UNILAG</span><svg class="icn" data-i="arrow"></svg><span data-pp="t">LASU</span><svg class="icn" data-i="arrow"></svg><span data-pp="t">Lagos campuses</span><svg class="icn" data-i="arrow"></svg><span data-pp="t">South-West</span><svg class="icn" data-i="arrow"></svg><span data-pp="t">Nigeria</span><svg class="icn" data-i="arrow"></svg><span data-pp="t">Africa</span></div>
+      </div>
+      <div class="gtm">
+        <div class="card it rv" style="--d:3"><span class="ico o"><svg class="icn" data-i="award"></svg></span><p><b data-pp="t">Vendor of the Week campaign</b><span data-pp="t">A free week of promotion pulls vendors in, and their followers follow.</span></p></div>
+        <div class="card it rv" style="--d:4"><span class="ico"><svg class="icn" data-i="users"></svg></span><p><b data-pp="t">Campus ambassadors &amp; activations</b><span data-pp="t">Hostel and faculty reps onboard vendors; orientation-week stalls with QR codes.</span></p></div>
+        <div class="card it rv" style="--d:5"><span class="ico p"><svg class="icn" data-i="chat"></svg></span><p><b data-pp="t">Social &amp; community</b><span data-pp="t">TikTok, Instagram, LinkedIn and a WhatsApp community, one @levromart.</span></p></div>
+        <div class="card it rv" style="--d:6"><span class="ico g"><svg class="icn" data-i="gift"></svg></span><p><b data-pp="t">Promos &amp; referrals</b><span data-pp="t">Launch offers and referral rewards to lift first orders and repeat use.</span></p></div>
+        <div class="card it rv" style="--d:7"><span class="ico b"><svg class="icn" data-i="truck"></svg></span><p><b data-pp="t">Delivery partners</b><span data-pp="t">Campus logistics such as Run It (partnership in progress, not yet live).</span></p></div>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 7 · SCALABILITY -->
+<section class="slide dark" id="s7" data-title="Scalability">
+  <div class="bg"><i class="c1" style="width:54rem;height:54rem;left:-16rem;bottom:-24rem"></i><i class="c2" style="width:38rem;height:38rem;right:-10rem;top:-14rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="trend"></svg><span data-pp="t">Scalability model</span></div><span class="num" data-pp="t">07</span></div>
+    <div class="body">
+      <div>
+        <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Revenue grows <em>22×.</em> Costs grow 5×.</h2>
+        <p class="lead rv" style="--d:2;margin-top:1.2rem" data-pp="t">Vendors bring their own stock and (mostly) their own delivery. We sell software, so each new vendor costs almost nothing to serve.</p>
+        <div class="mult rv" style="--d:3"><div class="card m"><b data-pp="t">22×</b><span data-pp="t">Revenue, Year 1 → Year 3</span></div><div class="card m"><b data-pp="t">5.5×</b><span data-pp="t">Costs, Year 1 → Year 3</span></div></div>
+        <div class="sc">
+          <div class="card rv" style="--d:4"><span class="ico g" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="layers"></svg></span><p><b data-pp="t">Asset-light</b><span data-pp="t">No inventory, no fleet, no warehouses.</span></p></div>
+          <div class="card rv" style="--d:5"><span class="ico" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="zap"></svg></span><p><b data-pp="t">Automated operations</b><span data-pp="t">Order reminders, auto-cancel, auto-complete, payment matching, Levi support.</span></p></div>
+          <div class="card rv" style="--d:6"><span class="ico o" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="repeat"></svg></span><p><b data-pp="t">Repeatable campus playbook</b><span data-pp="t">1,100+ Nigerian institutions are already in the app, including medical colleges.</span></p></div>
+          <div class="card rv" style="--d:7"><span class="ico b" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="server"></svg></span><p><b data-pp="t">Cloud stack</b><span data-pp="t">Installable web app, managed database, CDN: capacity on demand.</span></p></div>
+        </div>
+      </div>
+      <div class="card chartbox rv" style="--d:3">
+        <h4 data-pp="t">Active vendors &amp; monthly revenue, by month</h4>
+        <svg id="chartScale" viewBox="0 0 640 520" preserveAspectRatio="xMidYMid meet"></svg>
+        <p class="small" data-pp="t">Base case. Registered vendors 1,100 (M12) → 3,600 (M24) → 8,500 (M36); about 45–60% active. Network effects (follows, leaderboard, requests) lower the cost of each new vendor.</p>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 8 · SUSTAINABILITY -->
+<section class="slide mintbg" id="s8" data-title="Sustainability">
+  <div class="bg"><i class="c1" style="width:50rem;height:50rem;right:-14rem;bottom:-20rem"></i><i class="c3" style="width:20rem;height:20rem;left:-6rem;top:-8rem;background:rgba(39,240,176,.3)"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="leaf"></svg><span data-pp="t">Sustainability strategy</span></div><span class="num" data-pp="t">08</span></div>
+    <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Built to last: <em>economic, operational, environmental.</em></h2>
+    <div class="body">
+      <div class="card pill4 rv" style="--d:2"><span class="ico g"><svg class="icn" data-i="coins"></svg></span><h3 data-pp="t">Economic</h3><ul>
+        <li><b>Recurring, aligned revenue:</b> commission only on completed sales, or a flat monthly listing fee.</li>
+        <li><b>Lean costs:</b> a student team on stipends; infrastructure under ₦150K a month in Year 1.</li>
+        <li><b>Break-even in month 19</b>, with a funded runway and a 36% cash buffer.</li></ul></div>
+      <div class="card pill4 rv" style="--d:3"><span class="ico"><svg class="icn" data-i="shield"></svg></span><h3 data-pp="t">Operational</h3><ul>
+        <li><b>Trust built in:</b> vendor verification, ratings, dispute process, order records.</li>
+        <li><b>Self-running workflows:</b> reminders, auto-cancel, auto-complete, payment matching.</li>
+        <li><b>Compliance:</b> Terms, Privacy and Refund policies updated Oct 2026; NDPA-aware data handling.</li></ul></div>
+      <div class="card pill4 rv" style="--d:4"><span class="ico o"><svg class="icn" data-i="leaf"></svg></span><h3 data-pp="t">Environmental &amp; social</h3><ul>
+        <li><b>Rent, resell, reuse:</b> rentals and second-hand listings extend product life.</li>
+        <li><b>Hyperlocal buying:</b> distance-sorted results mean shorter trips and fewer parcels.</li>
+        <li><b>Student income:</b> small vendors earn online, without a shop or ads budget.</li></ul></div>
+      <div class="card risk rv" style="--d:5">
+        <div class="rh" data-pp="t">Honest weaknesses &amp; how we manage them</div>
+        <div class="r"><b data-pp="t">Pre-revenue</b><span data-pp="t">Billing goes live first; a funded runway to month 19.</span></div>
+        <div class="r"><b data-pp="t">Small user base</b><span data-pp="t">Campus activations, ambassadors, Vendor of the Week.</span></div>
+        <div class="r"><b data-pp="t">Delivery not live</b><span data-pp="t">Pickup first; campus partner (Run It) in progress.</span></div>
+        <div class="r"><b data-pp="t">WhatsApp habit</b><span data-pp="t">We keep chat, and add storefronts, records and trust.</span></div>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 9 · FINANCIAL HEALTH -->
+<section class="slide dark" id="s9" data-title="Financial health">
+  <div class="bg"><i class="c1" style="width:52rem;height:52rem;left:-16rem;top:-22rem"></i><i class="c2" style="width:40rem;height:40rem;right:-12rem;bottom:-18rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="chart"></svg><span data-pp="t">Financial health &amp; P&amp;L</span></div><span class="num" data-pp="t">09</span></div>
+    <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">From pre-revenue to <em>break-even in 19 months.</em></h2>
+    <div class="body">
+      <div>
+        <div class="card pl rv" style="--d:2">
+          <table>
+            <thead><tr><th data-pp="t">Base case (₦ million)</th><th data-pp="t">Year 1</th><th data-pp="t">Year 2</th><th data-pp="t">Year 3</th></tr></thead>
+            <tbody>
+              <tr><td data-pp="t">Revenue</td><td data-pp="t">5.3</td><td data-pp="t">32.5</td><td data-pp="t">115.0</td></tr>
+              <tr><td data-pp="t">Operating costs</td><td data-pp="t">15.9</td><td data-pp="t">30.4</td><td data-pp="t">86.8</td></tr>
+              <tr class="tot"><td data-pp="t">Net profit / (loss)</td><td class="neg" data-pp="t">(10.6)</td><td class="pos" data-pp="t">2.1</td><td class="pos" data-pp="t">28.1</td></tr>
+              <tr><td data-pp="t">Active vendors (year end)</td><td data-pp="t">577</td><td data-pp="t">2,160</td><td data-pp="t">5,100</td></tr>
+              <tr><td data-pp="t">Monthly revenue, month 3 / 12 / 24 / 36</td><td colspan="3" style="text-align:right" data-pp="t">₦0.18M · ₦1.0M · ₦4.8M · ₦14.2M</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="kp rv" style="--d:3">
+          <div class="card"><b style="color:var(--mint)" data-pp="t">Month 19</b><span data-pp="t">Monthly break-even</span></div>
+          <div class="card"><b style="color:var(--gold)" data-pp="t">₦14.7M</b><span data-pp="t">Peak cash need (month 18)</span></div>
+          <div class="card"><b data-pp="t">92%</b><span data-pp="t">Contribution margin per vendor</span></div>
+          <div class="card"><b data-pp="t">₦20M</b><span data-pp="t">Ask: covers the peak + 36% buffer</span></div>
+        </div>
+        <p class="assume rv" style="--d:4" data-pp="t">Costs: team stipends and hires (₦0.45M → ₦2.6M/month), campus marketing (₦0.65M → ₦3.0M), infrastructure, legal and 8% support. Revenue starts in month 3. Downside check: 30% fewer vendors moves break-even to about month 27.</p>
+      </div>
+      <div class="card chartbox rv" style="--d:3">
+        <h4 data-pp="t">Monthly revenue vs costs, and cash position (₦M)</h4>
+        <svg id="chartPL" viewBox="0 0 640 560" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">Projections are estimates built on stated assumptions, to be validated with live billing data.</span></div>
+  </div>
+</section>
+
+<!-- 10 · TEAM -->
+<section class="slide light" id="s10" data-title="Team">
+  <div class="bg"><i class="c1" style="width:56rem;height:56rem;right:-18rem;top:-26rem"></i><i class="c3" style="width:22rem;height:22rem;left:-8rem;bottom:-9rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="users"></svg><span data-pp="t">The team</span></div><span class="num" data-pp="t">10</span></div>
+    <div class="body">
+      <h2 class="rv" style="--d:1" data-pp="t">Nine students, <em>one marketplace.</em></h2>
+      <p class="lead rv" style="--d:2;margin-top:1.2rem;max-width:90rem" data-pp="t">Product, technology, finance, growth, community and research: every function a two-sided marketplace needs.</p>
+      <div class="team rv" id="team" style="--d:3"></div>
+      <div class="skills rv" style="--d:4"><span class="pill"><svg class="icn" data-i="code"></svg><span data-pp="t">Built and shipped the live product</span></span><span class="pill"><svg class="icn" data-i="users"></svg><span data-pp="t">Vendor &amp; campus relationships</span></span><span class="pill"><svg class="icn" data-i="chart"></svg><span data-pp="t">Finance &amp; growth planning</span></span></div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+  </div>
+</section>
+
+<!-- 11 · ASK & CONCLUSION -->
+<section class="slide violet" id="s11" data-title="The ask">
+  <div class="bg"><i class="c1" style="width:56rem;height:56rem;right:-18rem;top:-22rem"></i><i class="c2" style="width:42rem;height:42rem;left:-14rem;bottom:-20rem"></i><i class="c3" style="width:18rem;height:18rem;left:40rem;bottom:-7rem"></i></div>
+  <div class="dots"></div>
+  <div class="frame">
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="rocket"></svg><span data-pp="t">The ask &amp; use of resources</span></div><span class="num" data-pp="t">11</span></div>
+    <div class="body">
+      <div>
+        <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Turn early adoption into a <em>scalable marketplace.</em></h2>
+        <div class="rv" style="--d:2;margin-top:1.2rem"><div class="amount" data-pp="t">₦20M<small data-pp="t">seed support</small></div></div>
+        <div class="ask rv" style="--d:3;margin-top:1.8rem">
+          <svg class="donut" id="donut" viewBox="0 0 200 200"></svg>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="sup rv" style="--d:4"><span class="pill gold-p"><svg class="icn" data-i="users"></svg><span data-pp="t">Mentorship: marketplace ops &amp; fundraising</span></span><span class="pill"><svg class="icn" data-i="link"></svg><span data-pp="t">Partnerships: logistics, payments, student unions</span></span></div>
+      </div>
+      <div>
+        <h4 class="kicker rv" style="--d:2" data-pp="t">What the next 12 months deliver</h4>
+        <div class="mil rv" style="--d:3">
+          <div class="card"><b data-pp="t">1,000+</b><span data-pp="t">Users by month 3</span></div>
+          <div class="card"><b data-pp="t">10,000</b><span data-pp="t">Users by month 12</span></div>
+          <div class="card"><b data-pp="t">1,100</b><span data-pp="t">Vendors by month 12</span></div>
+          <div class="card"><b data-pp="t">₦1M</b><span data-pp="t">Monthly revenue by month 12</span></div>
+        </div>
+        <p class="closing rv" style="--d:4" data-pp="t">Easier to find. Easier to trust. <em>Easier to transact.</em></p>
+        <div class="qrs rv" style="--d:5">
+          <div class="q"><img src="assets/img/qr-web.png" alt="Website" data-pp="img"><span data-pp="t">levromart.com</span></div>
+          <div class="q"><img src="assets/img/qr-instagram.png" alt="Instagram" data-pp="img"><span data-pp="t">Instagram</span></div>
+          <div class="q"><img src="assets/img/qr-tiktok.png" alt="TikTok" data-pp="img"><span data-pp="t">TikTok</span></div>
+          <div class="q"><img src="assets/img/qr-linkedin.png" alt="LinkedIn" data-pp="img"><span data-pp="t">LinkedIn</span></div>
+          <div class="q"><img src="assets/img/qr-whatsapp.png" alt="WhatsApp community" data-pp="img"><span data-pp="t">Join community</span></div>
+        </div>
+        <p class="small rv" style="--d:6;margin-top:1rem" data-pp="t">Thank you · @levromart · AMSUL Business Pitch Competition 2026</p>
+      </div>
+    </div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · Buy · Sell · Connect</span></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* ---------------- icons ---------------- */
+const ICONS={
+search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+bag:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+cart:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
+chat:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+award:'<circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>',
+trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
+box:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+truck:'<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+repeat:'<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+globe:'<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+bell:'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+layers:'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+phone:'<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+megaphone:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>',
+target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+send:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
+server:'<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+store:'<path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>',
+home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+coins:'<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><line x1="16.71" y1="13.88" x2="17.01" y2="13.88"/>',
+chart:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+rocket:'<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+gift:'<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
+code:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+arrow:'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+maximize:'<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>',
+'chev-up':'<polyline points="18 15 12 9 6 15"/>',
+'chev-down':'<polyline points="6 9 12 15 18 9"/>'
+};
+document.querySelectorAll("svg[data-i]").forEach(s=>{s.setAttribute("viewBox","0 0 24 24");s.innerHTML=ICONS[s.dataset.i]||""});
+
+/* ---------------- model (base case, see README of the deck) ---------------- */
+const MODEL={"rows": [{"m": 1, "vendors": 91, "active": 42, "rev": 0, "cost": 1290000.0, "profit": -1290000.0, "cum": -1290000.0}, {"m": 2, "vendors": 151, "active": 70, "rev": 0, "cost": 1290000.0, "profit": -1290000.0, "cum": -2580000.0}, {"m": 3, "vendors": 250, "active": 117, "rev": 184570.3124999999, "cost": 1304765.625, "profit": -1120195.3125, "cum": -3700195.3125}, {"m": 4, "vendors": 311, "active": 148, "rev": 235205.07177068343, "cost": 1308816.4057416546, "profit": -1073611.3339709712, "cum": -4773806.646470971}, {"m": 5, "vendors": 386, "active": 186, "rev": 299638.18227828026, "cost": 1313971.0545822624, "profit": -1014332.8723039821, "cum": -5788139.518774954}, {"m": 6, "vendors": 480, "active": 234, "rev": 381607.20000000007, "cost": 1320528.5760000001, "profit": -938921.376, "cum": -6727060.894774954}, {"m": 7, "vendors": 551, "active": 272, "rev": 448848.29265129694, "cost": 1325907.8634121038, "profit": -877059.5707608069, "cum": -7604120.465535761}, {"m": 8, "vendors": 633, "active": 316, "rev": 527785.8840919986, "cost": 1332222.8707273598, "profit": -804436.9866353612, "cum": -8408557.452171123}, {"m": 9, "vendors": 727, "active": 368, "rev": 620431.8630973306, "cost": 1339634.5490477865, "profit": -719202.685950456, "cum": -9127760.138121579}, {"m": 10, "vendors": 834, "active": 428, "rev": 729140.7930359128, "cost": 1348331.263442873, "profit": -619190.4704069602, "cum": -9746950.60852854}, {"m": 11, "vendors": 958, "active": 497, "rev": 856667.7739477282, "cost": 1358533.4219158182, "profit": -501865.64796809, "cum": -10248816.256496629}, {"m": 12, "vendors": 1100, "active": 577, "rev": 1006235.9999999997, "cost": 1370498.88, "profit": -364262.88000000024, "cum": -10613079.13649663}, {"m": 13, "vendors": 1214, "active": 645, "rev": 1297217.6531161913, "cost": 2423777.4122492955, "profit": -1126559.7591331042, "cum": -11739638.895629734}, {"m": 14, "vendors": 1340, "active": 720, "rev": 1462176.8733348309, "cost": 2436974.1498667863, "profit": -974797.2765319555, "cum": -12714436.172161689}, {"m": 15, "vendors": 1480, "active": 804, "rev": 1647751.7092910933, "cost": 2451820.1367432876, "profit": -804068.4274521943, "cum": -13518504.599613883}, {"m": 16, "vendors": 1633, "active": 898, "rev": 1856480.6746729475, "cost": 2468518.453973836, "profit": -612037.7793008883, "cum": -14130542.378914772}, {"m": 17, "vendors": 1803, "active": 1003, "rev": 2091210.904546698, "cost": 2487296.872363736, "profit": -396085.96781703783, "cum": -14526628.34673181}, {"m": 18, "vendors": 1990, "active": 1119, "rev": 2355135.263631367, "cost": 2508410.821090509, "profit": -153275.55745914206, "cum": -14679903.904190952}, {"m": 19, "vendors": 2197, "active": 1249, "rev": 2651833.8735178933, "cost": 2532146.7098814314, "profit": 119687.16363646183, "cum": -14560216.74055449}, {"m": 20, "vendors": 2425, "active": 1394, "rev": 2985320.580593898, "cost": 2558825.646447512, "profit": 426494.9341463861, "cum": -14133721.806408104}, {"m": 21, "vendors": 2677, "active": 1556, "rev": 3360094.947577949, "cost": 2588807.595806236, "profit": 771287.3517717132, "cum": -13362434.454636391}, {"m": 22, "vendors": 2955, "active": 1736, "rev": 3781200.4198276857, "cost": 2622496.0335862148, "profit": 1158704.386241471, "cum": -12203730.06839492}, {"m": 23, "vendors": 3261, "active": 1936, "rev": 4254289.393787349, "cost": 2660343.151502988, "profit": 1593946.2422843608, "cum": -10609783.826110559}, {"m": 24, "vendors": 3600, "active": 2160, "rev": 4785695.999999998, "cost": 2702855.6799999997, "profit": 2082840.3199999984, "cum": -8526943.50611056}, {"m": 25, "vendors": 3867, "active": 2320, "rev": 5996155.799677044, "cost": 6949692.463974164, "profit": -953536.6642971197, "cum": -9480480.170407679}, {"m": 26, "vendors": 4154, "active": 2493, "rev": 6487548.536510945, "cost": 6989003.882920875, "profit": -501455.3464099299, "cum": -9981935.516817609}, {"m": 27, "vendors": 4463, "active": 2678, "rev": 7018853.091478499, "cost": 7031508.24731828, "profit": -12655.155839781277, "cum": -9994590.67265739}, {"m": 28, "vendors": 4794, "active": 2876, "rev": 7593287.081327497, "cost": 7077462.9665062, "profit": 515824.1148212971, "cum": -9478766.557836093}, {"m": 29, "vendors": 5150, "active": 3090, "rev": 8214325.887008359, "cost": 7127146.070960669, "profit": 1087179.8160476899, "cum": -8391586.741788402}, {"m": 30, "vendors": 5532, "active": 3319, "rev": 8885723.191583233, "cost": 7180857.855326659, "profit": 1704865.336256574, "cum": -6686721.405531828}, {"m": 31, "vendors": 5942, "active": 3565, "rev": 9611533.14685866, "cost": 7238922.651748693, "profit": 2372610.495109968, "cum": -4314110.91042186}, {"m": 32, "vendors": 6383, "active": 3830, "rev": 10396134.297374565, "cost": 7301690.743789965, "profit": 3094443.5535846, "cum": -1219667.3568372605}, {"m": 33, "vendors": 6857, "active": 4114, "rev": 11244255.400503814, "cost": 7369540.432040305, "profit": 3874714.9684635093, "cum": 2655047.611626249}, {"m": 34, "vendors": 7366, "active": 4420, "rev": 12161003.29233304, "cost": 7442880.2633866435, "profit": 4718123.028946397, "cum": 7373170.640572646}, {"m": 35, "vendors": 7913, "active": 4748, "rev": 13151892.960767852, "cost": 7522151.436861428, "profit": 5629741.523906424, "cum": 13002912.16447907}, {"m": 36, "vendors": 8500, "active": 5100, "rev": 14222880.00000001, "cost": 7607830.4, "profit": 6615049.600000009, "cum": 19617961.76447908}], "summary": {"Y1": {"rev": 5290131.37337323, "cost": 15903210.509869859, "profit": -10613079.136496628, "end_active": 577, "end_reg": 1100}, "Y2": {"rev": 32528408.2938979, "cost": 30442272.66351183, "profit": 2086135.6303860692, "end_active": 2160, "end_reg": 3600}, "Y3": {"rev": 114983592.68542352, "cost": 86838687.41483389, "profit": 28144905.270589635, "end_active": 5100, "end_reg": 8500}}, "be": 19, "peak": -14679903.904190952};
+
+/* ---------------- team (edit names, roles and photos here) ---------------- */
+const TEAM=[
+ {n:"Kennis Dede",r:"Founder & CEO",p:"team-kennis.webp"},
+ {n:"Yasir Oyebo",r:"Chief Technology Officer",p:"team-yasir.webp"},
+ {n:"Korede Bankole",r:"Finance & Business Development Lead",p:"team-korede.webp"},
+ {n:"Faith Alalu",r:"Growth & Marketing Lead",p:"team-faith.webp"},
+ {n:"Emmanuel Mbonu",r:"Research & Publicity Lead",p:"team-emmanuel.webp"},
+ {n:"Oluwanifemi Bayewu",r:"Vendor & Community Growth Lead",p:"team-oluwanifemi.webp"},
+ {n:"Team member 7",r:"Role to be added",p:""},
+ {n:"Team member 8",r:"Role to be added",p:""},
+ {n:"Team member 9",r:"Role to be added",p:""}
+];
+document.getElementById("team").innerHTML=TEAM.map(m=>`<div class="mem"><div class="ph${m.p?"":" empty"}">${m.p?`<img src="assets/img/${m.p}" alt="${m.n}" data-pp="img">`:`<svg class="icn" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`}</div><b data-pp="t">${m.n}</b><span data-pp="t">${m.r}</span></div>`).join("");
+
+/* ---------------- charts ---------------- */
+const NS="http://www.w3.org/2000/svg";
+function el(t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e}
+(function scaleChart(){
+  const svg=document.getElementById("chartScale"),W=640,H=520,L=56,R=20,T=24,B=64;
+  const rows=MODEL.rows,pts=[1,3,6,9,12,15,18,21,24,27,30,33,36];
+  const maxA=5400,maxR=15;
+  const x=m=>L+(W-L-R)*(m-1)/35, ya=v=>T+(H-T-B)*(1-v/maxA), yr=v=>T+(H-T-B)*(1-v/maxR);
+  svg.appendChild(el("rect",{x:0,y:0,width:W,height:H,fill:"none"}));
+  [0,.25,.5,.75,1].forEach(f=>{const y=T+(H-T-B)*f;svg.appendChild(el("line",{x1:L,x2:W-R,y1:y,y2:y,stroke:"rgba(255,255,255,.14)"}));svg.appendChild(el("text",{x:L-8,y:y+4,"text-anchor":"end",fill:"rgba(255,255,255,.65)","font-size":13,"font-weight":700},Math.round(maxA*(1-f)).toLocaleString()))});
+  pts.forEach(m=>{svg.appendChild(el("text",{x:x(m),y:H-B+26,"text-anchor":"middle",fill:"rgba(255,255,255,.65)","font-size":13,"font-weight":700},"M"+m))});
+  // bars: active vendors
+  const bw=(W-L-R)/36*.62;
+  pts.forEach((m,i)=>{const r=rows[m-1],y=ya(r.active);const b=el("rect",{x:x(m)-bw/2,y:y,width:bw,height:H-B-y,rx:5,fill:"url(#gA)"});b.style.transformOrigin=`${x(m)}px ${H-B}px`;b.style.animation=`grow .9s ${i*60}ms both ease-out`;svg.appendChild(b)});
+  // line: monthly revenue (₦M)
+  let d="";rows.forEach((r,i)=>{d+=(i?"L":"M")+x(r.m).toFixed(1)+" "+yr(r.rev/1e6).toFixed(1)+" "});
+  const path=el("path",{d,fill:"none",stroke:"#ffc83d","stroke-width":4,"stroke-linecap":"round","stroke-linejoin":"round"});svg.appendChild(path);
+  const defs=el("defs",{});const g=el("linearGradient",{id:"gA",x1:0,y1:0,x2:0,y2:1});g.appendChild(el("stop",{offset:0,"stop-color":"#27f0b0"}));g.appendChild(el("stop",{offset:1,"stop-color":"#6a3df0","stop-opacity":.7}));defs.appendChild(g);svg.insertBefore(defs,svg.firstChild);
+  // legend
+  svg.appendChild(el("rect",{x:L+8,y:6,width:16,height:12,rx:3,fill:"#27f0b0"}));svg.appendChild(el("text",{x:L+30,y:17,fill:"#fff","font-size":14,"font-weight":800},"Active vendors (left)"));
+  svg.appendChild(el("line",{x1:L+230,x2:L+256,y1:12,y2:12,stroke:"#ffc83d","stroke-width":4,"stroke-linecap":"round"}));svg.appendChild(el("text",{x:L+264,y:17,fill:"#fff","font-size":14,"font-weight":800},"Monthly revenue, ₦M (scale 0–15)"));
+  [[12,"1.0"],[24,"4.8"],[36,"14.2"]].forEach(([m,t])=>{const r=rows[m-1];svg.appendChild(el("circle",{cx:x(m),cy:yr(r.rev/1e6),r:6,fill:"#ffc83d",stroke:"#1b0d3d","stroke-width":2.5}));svg.appendChild(el("text",{x:x(m)-(m===36?10:0),y:yr(r.rev/1e6)-14,"text-anchor":m===36?"end":"middle",fill:"#ffc83d","font-size":15,"font-weight":900},"₦"+t+"M"))});
+})();
+(function plChart(){
+  const svg=document.getElementById("chartPL"),W=640,H=560,L=52,R=18,T=28,B=150;
+  const rows=MODEL.rows;
+  const x=m=>L+(W-L-R)*(m-1)/35;
+  // top panel: monthly revenue vs cost
+  const ph=H-T-B-120;const maxV=15;const y=v=>T+ph*(1-v/maxV);
+  [0,5,10,15].forEach(v=>{svg.appendChild(el("line",{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:"rgba(255,255,255,.14)"}));svg.appendChild(el("text",{x:L-8,y:y(v)+4,"text-anchor":"end",fill:"rgba(255,255,255,.65)","font-size":13,"font-weight":700},v))});
+  let dr="",dc="";rows.forEach((r,i)=>{dr+=(i?"L":"M")+x(r.m).toFixed(1)+" "+y(r.rev/1e6).toFixed(1)+" ";dc+=(i?"L":"M")+x(r.m).toFixed(1)+" "+y(r.cost/1e6).toFixed(1)+" "});
+  svg.appendChild(el("path",{d:dc,fill:"none",stroke:"#ff9aa6","stroke-width":4,"stroke-linecap":"round","stroke-linejoin":"round"}));
+  svg.appendChild(el("path",{d:dr,fill:"none",stroke:"#27f0b0","stroke-width":4.5,"stroke-linecap":"round","stroke-linejoin":"round"}));
+  // break-even marker
+  const be=MODEL.be,bx=x(be);
+  svg.appendChild(el("line",{x1:bx,x2:bx,y1:T-6,y2:H-B+4,stroke:"#ffc83d","stroke-width":2.2,"stroke-dasharray":"6 6"}));
+  svg.appendChild(el("circle",{cx:bx,cy:y(rows[be-1].rev/1e6),r:7,fill:"#ffc83d",stroke:"#1b0d3d","stroke-width":3}));
+  svg.appendChild(el("text",{x:bx-10,y:T+8,"text-anchor":"end",fill:"#ffc83d","font-size":15,"font-weight":900},"Break-even · month "+be));
+  svg.appendChild(el("text",{x:L+4,y:T-8,fill:"#27f0b0","font-size":14,"font-weight":800},"● Revenue"));
+  svg.appendChild(el("text",{x:L+100,y:T-8,fill:"#ff9aa6","font-size":14,"font-weight":800},"● Costs"));
+  // bottom panel: cumulative cash (cash balance incl. ₦20M ask)
+  const top2=T+ph+56,ph2=100,minC=-20,maxC=40;const y2=v=>top2+ph2*(1-(v-minC)/(maxC-minC));
+  svg.appendChild(el("text",{x:L,y:top2-14,fill:"#fff","font-size":14,"font-weight":800},"Cash balance with the ₦20M ask (₦M)"));
+  [0,20,40].forEach(v=>{svg.appendChild(el("line",{x1:L,x2:W-R,y1:y2(v),y2:y2(v),stroke:v===0?"rgba(255,255,255,.4)":"rgba(255,255,255,.12)"}));svg.appendChild(el("text",{x:L-8,y:y2(v)+4,"text-anchor":"end",fill:"rgba(255,255,255,.65)","font-size":13,"font-weight":700},v))});
+  let dk="";rows.forEach((r,i)=>{dk+=(i?"L":"M")+x(r.m).toFixed(1)+" "+y2((r.cum+20e6)/1e6).toFixed(1)+" "});
+  svg.appendChild(el("path",{d:dk,fill:"none",stroke:"#ffc83d","stroke-width":4,"stroke-linecap":"round","stroke-linejoin":"round"}));
+  const low=rows.reduce((a,r)=>r.cum<a.cum?r:a,rows[0]);
+  svg.appendChild(el("circle",{cx:x(low.m),cy:y2((low.cum+20e6)/1e6),r:6,fill:"#fff",stroke:"#1b0d3d","stroke-width":2.5}));
+  svg.appendChild(el("text",{x:x(low.m)+12,y:y2((low.cum+20e6)/1e6)+22,fill:"#fff","font-size":14,"font-weight":800},"Low ₦"+((low.cum+20e6)/1e6).toFixed(1)+"M"));
+  [1,6,12,18,24,30,36].forEach(m=>svg.appendChild(el("text",{x:x(m),y:H-14,"text-anchor":"middle",fill:"rgba(255,255,255,.65)","font-size":13,"font-weight":700},"M"+m)));
+})();
+(function donut(){
+  const parts=[["Customer & campus acquisition",35,"#ffc83d"],["Vendor growth & onboarding",20,"#27f0b0"],["Product & technology",20,"#fff"],["Team & operations",15,"#ff9aa6"],["Compliance & contingency",10,"#8fb2ff"]];
+  const svg=document.getElementById("donut"),R=78,C=2*Math.PI*R;let off=0;
+  svg.appendChild(el("circle",{cx:100,cy:100,r:R,fill:"none",stroke:"rgba(255,255,255,.12)","stroke-width":30}));
+  parts.forEach(([n,v,c])=>{const len=C*v/100;const s=el("circle",{cx:100,cy:100,r:R,fill:"none",stroke:c,"stroke-width":30,"stroke-dasharray":`${len-2} ${C-len+2}`,"stroke-dashoffset":-off,transform:"rotate(-90 100 100)"});svg.appendChild(s);off+=len});
+  svg.appendChild(el("text",{x:100,y:98,"text-anchor":"middle",fill:"#fff","font-size":30,"font-weight":900},"₦20M"));svg.appendChild(el("text",{x:100,y:120,"text-anchor":"middle",fill:"rgba(255,255,255,.8)","font-size":12,"font-weight":800},"USE OF FUNDS"));
+  document.getElementById("legend").innerHTML=parts.map(([n,v,c])=>`<div><i style="background:${c}"></i><span data-pp="t">${n}</span><b data-pp="t">${v}% · ₦${(20*v/100).toFixed(1).replace(".0","")}M</b></div>`).join("");
+})();
+const st=document.createElement("style");st.textContent="@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}";document.head.appendChild(st);
+
+/* ---------------- deck behaviour ---------------- */
+const deck=document.getElementById("deck"),slides=[...document.querySelectorAll(".slide")];
+const isPrint=new URLSearchParams(location.search).has("print");
+if(isPrint)document.documentElement.classList.add("print");
+const nav=document.getElementById("dotsNav");
+nav.innerHTML=slides.map((s,i)=>`<button type="button" aria-label="Go to slide ${i+1}: ${s.dataset.title.replace(/&amp;/g,"&")}" data-i="${i}"></button>`).join("");
+let cur=0;
+function setCur(i){cur=i;[...nav.children].forEach((b,k)=>b.classList.toggle("on",k===i));document.getElementById("ct").textContent=(i+1)+" / "+slides.length;document.getElementById("prog").style.width=((i+1)/slides.length*100)+"%";history.replaceState(null,"","#"+(i+1))}
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");if(e.intersectionRatio>.55)setCur(slides.indexOf(e.target));if(e.target.id==="s1")countUp()}}),{root:deck,threshold:[.15,.6]});
+slides.forEach(s=>io.observe(s));
+if(isPrint)slides.forEach(s=>s.classList.add("in"));
+function go(i){i=Math.max(0,Math.min(slides.length-1,i));slides[i].scrollIntoView({behavior:"smooth",block:"start"})}
+nav.addEventListener("click",e=>{const b=e.target.closest("button");if(b)go(+b.dataset.i)});
+document.getElementById("prev").onclick=()=>go(cur-1);document.getElementById("next").onclick=()=>go(cur+1);
+addEventListener("keydown",e=>{if(["ArrowDown","ArrowRight","PageDown"," "].includes(e.key)){e.preventDefault();go(cur+1)}else if(["ArrowUp","ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();go(cur-1)}else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);else if(e.key==="f"||e.key==="F")fs()});
+function fs(){if(!document.fullscreenElement)document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();else document.exitFullscreen()}
+document.getElementById("btnFs").onclick=fs;
+const dl=document.getElementById("dl");document.getElementById("btnDl").onclick=e=>{e.stopPropagation();dl.classList.toggle("open")};addEventListener("click",()=>dl.classList.remove("open"));
+if(location.hash){const n=parseInt(location.hash.slice(1),10);if(n>1&&n<=slides.length)setTimeout(()=>slides[n-1].scrollIntoView(),50)}
+/* count-up for the opening numbers */
+let counted=false;function countUp(){if(counted||isPrint)return;counted=true;document.querySelectorAll("[data-count]").forEach(n=>{const t=+n.dataset.count,suf=n.dataset.suffix||"";let s=null;const f=ts=>{s=s||ts;const p=Math.min(1,(ts-s)/1100);n.textContent=Math.round(t*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)})}
+/* MVP phone: tabs, auto-advance, swipe */
+(function(){
+  const tabs=[...document.querySelectorAll("#tabs .tab")],imgs=[...document.querySelectorAll("#stage .scr img")];let i=0,t=null,sx=null;
+  function show(k){i=(k+imgs.length)%imgs.length;imgs.forEach((m,j)=>m.classList.toggle("on",j===i));tabs.forEach((b,j)=>b.classList.toggle("on",j===i))}
+  function auto(){clearInterval(t);if(isPrint)return;t=setInterval(()=>show(i+1),3600)}
+  tabs.forEach((b,j)=>b.addEventListener("click",()=>{show(j);auto()}));
+  const st=document.getElementById("stage");
+  st.addEventListener("pointerdown",e=>{sx=e.clientX;st.setPointerCapture(e.pointerId)});
+  st.addEventListener("pointerup",e=>{if(sx==null)return;const dx=e.clientX-sx;sx=null;if(Math.abs(dx)>40){show(i+(dx<0?1:-1));auto()}});
+  st.style.touchAction="pan-y";
+  auto();
+  if(isPrint){ /* the PDF shows five phones side by side instead of one */
+    const stage=document.getElementById("stage"),scr=[0,2,3,6];stage.innerHTML="";stage.style.cssText="width:58rem;height:52rem;position:relative";
+    scr.forEach((k,j)=>{const p=document.createElement("div");p.className="phone";p.style.cssText=`transform:rotate(${[-4,2,-2,4][j]}deg);width:14.6rem;position:absolute;left:${j*14.4}rem;top:${[5,0,6,1][j]}rem;z-index:${[1,2,2,1][j]}`;p.innerHTML=`<div class="scr"><img style="position:static;opacity:1;transform:none" src="${imgs[k].getAttribute("src")}" alt="" data-pp="img"></div>`;stage.appendChild(p)});
+    document.getElementById("tabs").style.display="none";
+  }
+})();
+</script>
+</body>
+</html>
