@@ -3777,3 +3777,10 @@ html:root body #app .ve-card input:focus,html:root body #app .ve-card select:foc
 .ve-bank-empty .ve-bank-ico{background:#d99a1c}
 .ve-bankform{margin-top:.5rem}
 #payoutLegacy.hidden{display:none}
+
+.lvw-live{display:inline-flex;align-items:center;gap:.3rem;margin-left:.45rem;padding:.12rem .5rem;border-radius:999px;background:rgba(255,255,255,.16);font-size:.64rem;font-weight:800;font-style:normal;letter-spacing:.03em}
+.lvw-live i{width:.42rem;height:.42rem;border-radius:50%;background:#5ef2b0;animation:lvwPulse 1.8s ease-in-out infinite}
+@keyframes lvwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.lvw-bal.lvw-flash{animation:lvwFlash .9s ease}
+@keyframes lvwFlash{0%{opacity:.35;transform:translateY(3px)}100%{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.lvw-live i,.lvw-bal.lvw-flash{animation:none}}

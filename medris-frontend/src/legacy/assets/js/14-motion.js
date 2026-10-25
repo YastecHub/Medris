@@ -1591,7 +1591,7 @@
     var eye = hidden();
     var balance = d ? d.pending + d.onWay : 0;
     return '<div class="lvw-card' + (compact ? " is-compact" : "") + '">' +
-      '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
+      '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet <em class="lvw-live"><i></i>Live</em></span>' +
       '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
       '<div class="lvw-bal-label">Balance not yet in your bank</div>' +
       '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div>' +
@@ -1615,9 +1615,42 @@
   async function refresh(force) {
     if (typeof vendor === "undefined" || !vendor) return;
     paint();
+    startLive();
     await load(force);
     paint();
   }
+
+  // ---- live: the wallet follows the database as it changes (a payment lands, an order completes, a payout is sent)
+  var liveFor = null, liveChannel = null, liveTimer = 0, lastLive = 0;
+  function liveRefresh() {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(function () {
+      if (!document.querySelector("[data-lv-wallet]")) return;
+      lastLive = Date.now();
+      load(true).then(function () { paint(); flash(); });
+    }, 500);
+  }
+  function flash() { document.querySelectorAll(".lvw-bal").forEach(function (e) { e.classList.remove("lvw-flash"); void e.offsetWidth; e.classList.add("lvw-flash"); }); }
+  function startLive() {
+    try {
+      if (typeof vendor === "undefined" || !vendor || !vendor.id || typeof sb === "undefined" || !sb.channel) return;
+      if (liveFor === vendor.id && liveChannel) return;
+      if (liveChannel) { try { sb.removeChannel(liveChannel); } catch (_) {} }
+      liveFor = vendor.id;
+      var uid = session && session.user && session.user.id;
+      var ch = sb.channel("wallet-" + vendor.id)
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: "vendor_id=eq." + vendor.id }, liveRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, liveRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "vendor_payouts", filter: "vendor_id=eq." + vendor.id }, liveRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "commission_charges", filter: "vendor_id=eq." + vendor.id }, liveRefresh);
+      if (uid) ch = ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "user_id=eq." + uid }, liveRefresh);
+      liveChannel = ch.subscribe();
+    } catch (_) {}
+  }
+  // safety net: if a change is missed (a dropped connection, a table that does not broadcast), the wallet still catches up
+  setInterval(function () { if (!document.hidden && document.querySelector("[data-lv-wallet]") && Date.now() - lastLive > 15000) liveRefresh(); }, 20000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && document.querySelector("[data-lv-wallet]")) liveRefresh(); });
+  window.addEventListener("online", liveRefresh);
   window.lvWalletToggle = function () { setHidden(!hidden()); paint(); };
 
   // ---- the wallet page: Transactions and Commission tabs
