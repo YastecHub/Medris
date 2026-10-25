@@ -7,14 +7,14 @@ const SUPA = "https://example.supabase.co/rest/v1";
 const BACKEND = "https://api.example.dev";
 let supabaseCalls: string[];
 
-async function setup(ready: boolean, backend: (url: string, init?: RequestInit) => Promise<Response>) {
+async function setup(ready: boolean | "pending", backend: (url: string, init?: RequestInit) => Promise<Response>) {
   vi.resetModules();
   vi.stubEnv("VITE_SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("VITE_SUPABASE_ANON_KEY", "anon");
   vi.stubEnv("VITE_VAPID_PUBLIC_KEY", "vapid");
   vi.stubEnv("VITE_BACKEND_URL", BACKEND);
   // GET /api/v1/data-api (readiness) goes through the global fetch; the queries through the client's own fetch.
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ready }), { status: 200 })));
+  vi.stubGlobal("fetch", vi.fn(async () => (ready === "pending" ? new Promise<Response>(() => {}) : new Response(JSON.stringify({ ready }), { status: 200 }))));
   const restFetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.startsWith(SUPA)) {
       supabaseCalls.push(`${init?.method ?? "GET"} ${url.slice(SUPA.length)}`);
@@ -33,7 +33,8 @@ async function setup(ready: boolean, backend: (url: string, init?: RequestInit) 
 beforeEach(() => {
   supabaseCalls = [];
   vi.stubGlobal("window", globalThis);
-  vi.stubGlobal("localStorage", { getItem: () => null, setItem() {}, removeItem() {} });
+  const store = new Map<string, string>();
+  vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, String(v)), removeItem: (k: string) => void store.delete(k) });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -48,6 +49,31 @@ describe("sb.from through the backend's data API", () => {
     expect(await (await query("/favorites?select=id", init)).json()).toEqual([{ id: 1 }]);
     expect(backend).toHaveBeenCalledWith(`${BACKEND}/rest/v1/favorites?select=id`, init);
     expect(supabaseCalls).toEqual([]);
+  });
+
+  it("remembers a recent 'ready': the first query of the next visit goes straight to the backend", async () => {
+    const backend = vi.fn(async () => new Response("[]", { status: 200 }));
+    localStorage.setItem("medris:data-api-ready", String(Date.now()));
+    // Readiness is still re-checked in the background; it never answers here, so only the remembered flag can route it.
+    const { query } = await setup("pending", backend);
+    await query("/products?select=id");
+    expect(backend).toHaveBeenCalledTimes(1);
+    expect(supabaseCalls).toEqual([]);
+  });
+
+  it("forgets 'ready' when the backend could not be reached", async () => {
+    localStorage.setItem("medris:data-api-ready", String(Date.now()));
+    const { query } = await setup("pending", async () => Promise.reject(new TypeError("Failed to fetch")));
+    await query("/products?select=id");
+    expect(localStorage.getItem("medris:data-api-ready")).toBeNull();
+    expect(supabaseCalls).toEqual(["GET /products?select=id"]);
+  });
+
+  it("without a remembered answer, the first queries wait on Supabase until the check says ready", async () => {
+    const backend = vi.fn();
+    const { query } = await setup("pending", backend);
+    await query("/products?select=id");
+    expect(backend).not.toHaveBeenCalled();
   });
 
   it("stays on Supabase while the data API is not ready", async () => {

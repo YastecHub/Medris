@@ -49,6 +49,22 @@ type Legacy<T> = () => PromiseLike<GatewayResult<T>>;
 
 const BUILD_FEATURES = defaultFeatureList(import.meta.env.VITE_BACKEND_FEATURES, appConfig.backendUrl);
 let features = enabledFeatures(BUILD_FEATURES);
+
+// Open the connection to the backend while the page is still loading, so the first request does not also pay for
+// the DNS lookup and the TLS handshake (several hundred milliseconds on a mobile network).
+try {
+  if (appConfig.backendUrl && typeof document !== "undefined" && document.head && features.size) {
+    for (const rel of ["preconnect", "dns-prefetch"]) {
+      const link = document.createElement("link");
+      link.rel = rel;
+      link.href = appConfig.backendUrl;
+      if (rel === "preconnect") link.crossOrigin = "anonymous";
+      document.head.appendChild(link);
+    }
+  }
+} catch {
+  /* a hint only */
+}
 const warned = new Set<string>();
 
 function toGatewayError(err: unknown): GatewayError {

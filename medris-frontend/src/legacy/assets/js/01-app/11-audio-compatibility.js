@@ -215,11 +215,16 @@ function playNotificationSound(n) {
 }
 
 // Play fresh unread notifications while the app is open.
+// The live notifications channel already plays the sound the moment a notification arrives; this check is the
+// safety net. While that channel is connected it runs once a minute instead of every 6 seconds.
 const __notifSoundBoot = Date.now() - 8000;
+let __notifSoundLastCheck = 0;
 
 setInterval(async () => {
   try {
     if (document.hidden || !session?.user?.id || !soundEnabled) return;
+    if (window.__notificationRealtimeStatus === "SUBSCRIBED" && Date.now() - __notifSoundLastCheck < 60000) return;
+    __notifSoundLastCheck = Date.now();
 
     const { data } = await levroData.notifications.recentUnread(
       session.user.id, 5
