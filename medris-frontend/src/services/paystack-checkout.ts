@@ -5,8 +5,8 @@
 
 export type PaystackOutcome = "paid" | "failed" | "pending";
 
-/** Delays between checks after the buyer comes back: 1 s, 2 s, 4 s, then every 8 s, up to about a minute. */
-export function pollDelays(totalMs = 60_000): number[] {
+/** Delays between checks after the buyer comes back: 1 s, 2 s, 4 s, then every 8 s, up to about two minutes (transfers can take a little while). */
+export function pollDelays(totalMs = 120_000): number[] {
   const out: number[] = [];
   let spent = 0;
   let next = 1000;
@@ -21,7 +21,9 @@ export function pollDelays(totalMs = 60_000): number[] {
 /** What a status answer means for the screen. */
 export function outcomeOf(status: string | undefined): PaystackOutcome {
   if (status === "success" || status === "refunded" || status === "partially_refunded") return "paid";
-  if (status === "failed" || status === "abandoned") return "failed";
+  // Paystack says "abandoned" for a payment that is simply not finished YET (a bank transfer or OPay still going through), so it
+  // keeps waiting; only "failed" is final.
+  if (status === "failed") return "failed";
   return "pending";
 }
 

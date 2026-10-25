@@ -12,13 +12,13 @@ describe("Paystack checkout polling", () => {
   it("backs off 1 s, 2 s, 4 s, then every 8 s, for about a minute", () => {
     const d = pollDelays();
     expect(d.slice(0, 5)).toEqual([1000, 2000, 4000, 8000, 8000]);
-    expect(d.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(60_000);
-    expect(d.reduce((a, b) => a + b, 0)).toBeLessThan(70_000);
+    expect(d.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(120_000);
+    expect(d.reduce((a, b) => a + b, 0)).toBeLessThan(130_000);
   });
   it("reads statuses the way the screen needs", () => {
     expect(outcomeOf("success")).toBe("paid");
     expect(outcomeOf("failed")).toBe("failed");
-    expect(outcomeOf("abandoned")).toBe("failed");
+    expect(outcomeOf("abandoned")).toBe("pending"); // not finished yet, keep waiting
     expect(outcomeOf("initialized")).toBe("pending");
     expect(outcomeOf(undefined)).toBe("pending");
   });

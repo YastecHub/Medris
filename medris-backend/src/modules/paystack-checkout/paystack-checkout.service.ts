@@ -184,7 +184,7 @@ export class PaystackCheckoutService {
     });
     if (!found || !found.allowed) throw notFound("Payment not found.");
 
-    if (found.t.status === "initialized") {
+    if (found.t.status === "initialized" || found.t.status === "abandoned") {   // "abandoned" can still become paid (a transfer that is still going through)
       try {
         await new PaystackWebhookService(this.db).confirmByReference(reference);
       } catch (err) {
