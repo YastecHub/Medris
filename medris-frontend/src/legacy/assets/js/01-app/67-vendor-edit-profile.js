@@ -11,13 +11,6 @@ async function renderVendorEditProfile() {
   const vendorEditSectorOptions = (Array.isArray(sectors) ? sectors : [])
     .filter((sector) => sector?.id && String(sector?.name || "").trim())
     .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" }));
-  const [{ data: owed }, { data: commissionDeadline }] = await Promise.all([
-    sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
-    sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
-  ]);
-  const commissionOwed = Number(owed || 0);
-  const earliestCommissionDueAt = commissionDeadline?.[0]?.earliest_due_at || null;
-  const commissionIsOverdue = !!earliestCommissionDueAt && new Date(earliestCommissionDueAt).getTime() <= Date.now();
   const { data: billingPreview } = await sb.rpc("compute_monthly_billing_amount", { p_vendor_id: v.id });
   const bp = (billingPreview && billingPreview[0]) || { listing_count: 0, amount: 0 };
   setTimeout(loadBankOptions, 0);
@@ -27,13 +20,12 @@ async function renderVendorEditProfile() {
   }, 0);
   setTimeout(() => { toggleVendorDeliveryFeeMode(); updateVeDeliveryPerKmExample(); }, 0);
 
-  return `${commissionOwed > 0 ? commissionCardHtml(commissionOwed, commissionIsOverdue, earliestCommissionDueAt, commissionIsOverdue ? "Your 7-day payment window has elapsed. Your storefront is paused until this balance is settled." : "Pay anytime before the deadline. Your storefront stays active until then, and we will remind you 5, 3, 2 and 1 days before.") : ""}
-  ${v.verification_status === "verified" ? `
+  return `  ${v.verification_status === "verified" ? `
   <div class="dash-actions" style="max-width:480px;margin:0 auto 1rem;">
     <button class="quick-action outline" onclick="navigate('storefront',{vendorId:'${v.id}'})"><span class="quick-action-icon"><i class='fa-solid fa-store'></i></span><span>Storefront</span></button>
     <button class="quick-action outline" onclick="toggleVendorActive(${v.is_active})"><span class="quick-action-icon"><i class='fa-solid fa-${v.is_active ? "pause" : "play"}'></i></span><span>${v.is_active ? "Pause" : "Resume"}</span></button>
   </div>` : ""}
-  <div class="card lv-flat" style="max-width:480px;margin:0 auto;">
+  <div class="card lv-flat ve-card" style="max-width:480px;margin:0 auto;">
     <h2>Edit business profile</h2>
     <div id="vendorEditError" class="error-text hidden"></div>
     <div class="vendor-cover-editor" style="margin:0 0 1rem;">
@@ -61,7 +53,7 @@ async function renderVendorEditProfile() {
     <label>Address (leave blank if you're an online-only business)</label><input id="veAddress" value="${esc(v.address || "")}" />
     <label>City</label><input id="veCity" value="${esc(v.city || "")}" />
     <label>Phone *</label><input id="vePhone" type="tel" value="${esc(v.phone || "")}" />
-    <label>WhatsApp number</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const w=byId('veWhatsappVisible'); if(w) w.disabled=!this.value.trim();" />
+    <label>WhatsApp number *</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const w=byId('veWhatsappVisible'); if(w) w.disabled=!this.value.trim();" />
     <div class="switch-row" style="margin-top:.45rem;">
       <span class="switch-label-text">Show WhatsApp number to buyers</span>
       <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible !== false ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
@@ -69,12 +61,12 @@ async function renderVendorEditProfile() {
     <p class="muted vendor-profile-setting-note">Delivery is configured separately for each product or service listing.</p>
     <label>About your business</label><textarea id="veBio" rows="3">${esc(v.bio || "")}</textarea>
     <div class="flex" style="margin-top:0.8rem;">
-      <button class="btn" onclick="submitVendorEditProfile()">Save changes</button>
-      <button class="btn btn-outline" onclick="navigate('vendorDashboard')">Cancel</button>
+      <button class="ve-btn ve-btn-primary" onclick="submitVendorEditProfile()">Save changes</button>
+      <button class="ve-btn ve-btn-ghost" onclick="navigate('vendorDashboard')">Cancel</button>
     </div>
   </div>
 
-  <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
+  <div class="card lv-flat ve-card" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-clock"></i> Working hours ${infoPopoverHtml("veHoursInfo", "Customers see these on your storefront. Turn off a day you're closed, or set start/end times for the days you're open.")}</h2>
     <p class="muted" style="font-size:0.85rem;">${v.opening_hours ? esc(v.opening_hours) : "Not set yet."}</p>
     <div class="accordion-section" id="veHoursAccordion">
@@ -89,11 +81,11 @@ async function renderVendorEditProfile() {
       <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_messages !== false ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
     </div>
     <div class="flex" style="margin-top:1rem;">
-      <button class="btn" onclick="submitVendorEditProfile()">Save changes</button>
+      <button class="ve-btn ve-btn-primary" onclick="submitVendorEditProfile()">Save changes</button>
     </div>
   </div>
 
-  <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
+  <div class="card lv-flat ve-card" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-location-dot"></i> Shop location ${infoPopoverHtml("veLocationInfo", "This is what customers see on the map and what Levi uses to point people to your nearest listing. Tap \"Use my current location\" while you're actually at the shop, then drag the pin to fine-tune if the GPS lands a little off.")}</h2>
     ${v.lat != null ? `<p class="muted" style="font-size:0.82rem;"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Location set.</p>` : `<p class="muted" style="font-size:0.82rem;">Not set yet, customers can't find you on the map until you set this.</p>`}
     <div id="veLocationMap" style="height:220px;border-radius:0.8rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;margin-top:0.9rem;"></div>
@@ -101,21 +93,21 @@ async function renderVendorEditProfile() {
     <input type="hidden" id="veLng" value="${v.lng ?? ""}" />
     <p class="muted" style="font-size:0.78rem;margin-top:0.55rem;"><i class="fa-solid fa-hand-pointer"></i> Tap anywhere on the map to choose a shop location, or drag the pin.</p>
     <div class="flex" style="margin-top:0.8rem;">
-      <button class="btn btn-sm" id="veUseLocationBtn" onclick="useMyLocationForVendor()"><i class="fa-solid fa-location-crosshairs"></i> Use my current location</button>
-      <button class="btn btn-sm btn-outline" onclick="saveVendorLocationPreset()"><i class="fa-solid fa-bookmark"></i> Save as location</button>
+      <button class="ve-btn ve-btn-primary" id="veUseLocationBtn" onclick="useMyLocationForVendor()"><i class="fa-solid fa-location-crosshairs"></i> Use my current location</button>
+      <button class="ve-btn ve-btn-ghost" onclick="saveVendorLocationPreset()"><i class="fa-solid fa-bookmark"></i> Save as location</button>
     </div>
     <div class="vendor-location-presets" id="veLocationPresets"></div>
   </div>
 
-  <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
-    <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly through Paystack on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. Funds typically land in your account the next business day after a sale.`)}</h2>
+  <div class="card lv-flat ve-card" id="payoutSection" style="max-width:480px;margin:1.2rem auto 0;">
+    <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. The money is sent after the buyer confirms receipt, or after 48 hours with no problem raised. Banks usually credit it the same day or the next business day.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
     <div id="payoutVerifiedBox"></div>
-    ${v.paystack_subaccount_code
-      ? `<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · <span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
-       <button class="btn btn-sm btn-outline" onclick="byId('bankFormWrap').classList.toggle('hidden')">Change bank account</button>`
-      : `<div class="banner banner-warning" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-triangle-exclamation"></i> Not set up yet.</strong> Until you add your bank, order payments go to Levromart and you'll be paid out manually.</div>`}
-    <div id="bankFormWrap" class="${v.paystack_subaccount_code ? "hidden" : ""}" style="margin-top:0.8rem;">
+    <div id="payoutLegacy">${v.paystack_subaccount_code
+      ? `<div class="ve-bank"><span class="ve-bank-ico"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>${esc(v.account_name || "Your account")}</strong><small><span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Payouts on</span></div>`
+      : `<div class="ve-bank ve-bank-empty"><span class="ve-bank-ico"><i class="fa-solid fa-triangle-exclamation"></i></span><div class="ve-bank-copy"><strong>Not set up yet</strong><small>Until you add your bank, order payments go to Levromart and you will be paid out manually.</small></div></div>`}</div>
+    ${v.paystack_subaccount_code ? `<button type="button" class="ve-btn ve-btn-ghost ve-btn-wide" id="veChangeBankBtn" onclick="lvChangeBank()"><i class="fa-solid fa-pen"></i> Change bank account</button>` : ""}
+    <div id="bankFormWrap" class="ve-bankform ${v.paystack_subaccount_code ? "hidden" : ""}">
       <label>Bank</label>
       <button type="button" id="veBankPickerBtn" class="bank-picker-trigger" onclick="openVendorBankPicker()" aria-haspopup="dialog" aria-expanded="false">
         <span id="veBankPickerLabel">${esc(getBankDisplayName(v.bank_code, v.bank_name) || "Select a bank")}</span>
@@ -124,7 +116,7 @@ async function renderVendorEditProfile() {
       <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === String(v.bank_code || "") ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
       <label>Account number</label>
       <input id="veAccountNumber" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${esc(v.account_number || "")}" />
-      <button class="btn btn-sm ${v.paystack_subaccount_code ? "" : "levro-pulse-attention"}" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
+      <button class="ve-btn ve-btn-primary ve-btn-wide ${v.paystack_subaccount_code ? "" : "levro-pulse-attention"}" style="margin-top:0.8rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
     </div>
   </div>
 `;
@@ -515,8 +507,8 @@ async function submitVendorEditProfile() {
   const business_name = byId("veBusinessName").value.trim();
   const sector_id = byId("veSector")?.value || "";
   const phone = byId("vePhone").value.trim();
-  if (!personalName || !business_name || !phone) {
-    errorEl.textContent = "Your name, business name and phone are required.";
+  if (!personalName || !business_name || !phone || !(byId("veWhatsapp")?.value || "").trim()) {
+    errorEl.textContent = "Your name, business name, phone and WhatsApp number are required.";
     errorEl.classList.remove("hidden");
     return;
   }
@@ -739,3 +731,15 @@ async function saveVendorLocation() {
   showToast("Shop location saved. Customers can now find you on the map.", "success");
 }
 
+
+// "Change bank account": opens the bank form and scrolls straight to it, so nobody has to hunt for it
+function lvChangeBank() {
+  const wrap = byId("bankFormWrap");
+  if (!wrap) return;
+  wrap.classList.remove("hidden");
+  byId("veChangeBankBtn")?.classList.add("hidden");
+  setTimeout(() => {
+    wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => { try { byId("veAccountNumber")?.focus({ preventScroll: true }); } catch (_) {} }, 450);
+  }, 40);
+}

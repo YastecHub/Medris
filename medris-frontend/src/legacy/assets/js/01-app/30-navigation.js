@@ -245,7 +245,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // exists; otherwise kick off one bounded refresh before rendering.
   const protectedRouteViews = new Set([
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
-    "vendorEarnings","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
+    "vendorEarnings","vendorWallet","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","wishlist","buyerOrders","orderHistory","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminPayments",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
@@ -433,6 +433,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminPeople": html = await renderAdminPeople(); break;
       case "adminFeedback": html = await renderAdminFeedback(); break;
       case "vendorSuggestionsInbox": html = await renderVendorSuggestionsInbox(); break;
+      case "vendorWallet": html = await renderVendorWallet(); break;
       case "adminUsers": html = await renderAdminUsers(); break;
       case "adminFinance": html = await renderAdminFinance(); break;
       case "adminCampuses": html = await window.renderAdminCampuses(); break;
@@ -475,6 +476,7 @@ async function navigate(view, params = {}, pushHistory = true) {
             case "vendorProducts": html = await renderVendorProducts(); break;
             case "vendorPackages": html = await renderVendorPackages(); break;
             case "vendorEarnings": html = await renderVendorEarnings(); break;
+            case "vendorWallet": html = await renderVendorWallet(); break;
             case "vendorFollowers": html = await renderVendorFollowersPage(); break;
             case "vendorFollowerNetwork": html = await renderVendorFollowerNetwork(params.vendorId); break;
             case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;

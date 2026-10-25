@@ -449,9 +449,10 @@
       if (!box) return;
       var r = await window.levroData.payments.myPayoutAccount();
       var d = r && r.data;
+      var legacy = document.getElementById("payoutLegacy"); if (legacy) legacy.classList.add("hidden");
       box.innerHTML = d && d.verified
-        ? '<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Account verified.</strong> ' + esc(d.accountName || "") + " · " + esc(d.bankName || "") + " ···" + esc(d.accountLast4 || "") + "</div>"
-        : '<div class="banner banner-warning" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-triangle-exclamation"></i> Account not verified.</strong> Add your bank below and confirm the name to be paid.</div>';
+        ? '<div class="ve-bank"><span class="ve-bank-ico"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>' + esc(d.accountName || "") + '</strong><small>' + esc(d.bankName || "") + " ···" + esc(d.accountLast4 || "") + '</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Verified</span></div>'
+        : '<div class="ve-bank ve-bank-empty"><span class="ve-bank-ico"><i class="fa-solid fa-triangle-exclamation"></i></span><div class="ve-bank-copy"><strong>Account not verified</strong><small>Add your bank below and confirm the name to be paid.</small></div></div>';
     } catch (_) {}
   };
 })();
@@ -1531,7 +1532,7 @@
 (function () {
   "use strict";
   var HIDE = "lv-wallet-hide", TTL = 45000;
-  var cache = null, loading = null, filter = "all";
+  var cache = null, loading = null, filter = "all", tab = "tx";
   function hidden() { try { return localStorage.getItem(HIDE) === "1"; } catch (_) { return false; } }
   function setHidden(v) { try { localStorage.setItem(HIDE, v ? "1" : "0"); } catch (_) {} }
   function money(n) { return hidden() ? "₦ ••••" : "₦" + Number(n || 0).toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
@@ -1545,11 +1546,14 @@
       var v = typeof vendor !== "undefined" ? vendor : null;
       if (!v || !v.id) return null;
       var res = await Promise.all([
-        sb.from("orders").select("id,status,created_at,completed_at,payments(payment_type,amount,status,method,provider_reference,paid_at)").eq("vendor_id", v.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(300),
+        sb.from("orders").select("id,status,created_at,completed_at,items:order_items(quantity,product:products(name)),payments(payment_type,amount,status,method,provider_reference,paid_at)").eq("vendor_id", v.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(300),
         sb.from("vendor_payouts").select("order_id,amount_kobo,status,created_at,updated_at").eq("vendor_id", v.id),
-        sb.from("commission_charges").select("order_id,amount").eq("vendor_id", v.id)
+        sb.from("commission_charges").select("order_id,amount,status,created_at,paid_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(300),
+        sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
+        sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id })
       ]);
       var orders = (res[0] && res[0].data) || [], payouts = (res[1] && res[1].data) || [], charges = (res[2] && res[2].data) || [];
+      var owed = Number((res[3] && res[3].data) || 0), dueAt = res[4] && res[4].data && res[4].data[0] ? res[4].data[0].earliest_due_at : null;
       var payoutBy = {}; payouts.forEach(function (p) { payoutBy[p.order_id] = p; });
       var commBy = {}; charges.forEach(function (c) { commBy[c.order_id] = (commBy[c.order_id] || 0) + Number(c.amount || 0); });
       var tx = [], pending = 0, onWay = 0, paidOut = 0;
@@ -1569,10 +1573,13 @@
         } else if (o.status === "completed") state = "onway";
         else state = "pending";
         if (state === "pending") pending += amount; else if (state === "onway") onWay += amount; else paidOut += amount;
-        tx.push({ id: o.id, state: state, amount: amount, comm: comm, date: date, orderStatus: o.status });
+        var names = (o.items || []).map(function (i) { return i && i.product && i.product.name; }).filter(Boolean);
+        var title = names.length ? names[0] + (names.length > 1 ? " +" + (names.length - 1) + " more" : "") : "Order";
+        tx.push({ id: o.id, state: state, amount: amount, gross: gross, comm: comm, date: date, title: title });
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
-      var data = { pending: pending, onWay: onWay, paidOut: paidOut, tx: tx, hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
+      var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
+      var data = { pending: pending, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
       cache = { at: Date.now(), data: data };
       return data;
     })().catch(function () { return null; }).finally(function () { loading = null; });
@@ -1593,54 +1600,88 @@
         '<div><span>On its way</span><b>' + (d ? money(d.onWay) : "—") + '</b><small>to your bank</small></div>' +
         '<div><span>Paid out</span><b>' + (d ? money(d.paidOut) : "—") + '</b><small>all time</small></div>' +
       '</div>' +
-      '<div class="lvw-actions"><button type="button" class="lvw-btn" onclick="lvWalletHistory()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
+      '<div class="lvw-actions"><button type="button" class="lvw-btn" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
       '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvWalletHow()"><i class="fa-solid fa-circle-info"></i> How it works</button>' +
-      (compact ? "" : '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="openVendorPayoutSetup && openVendorPayoutSetup()"><i class="fa-solid fa-building-columns"></i> Bank</button>') + '</div>' +
-      (d && !d.hasPayout ? '<button type="button" class="lvw-warn" onclick="openVendorPayoutSetup && openVendorPayoutSetup()"><i class="fa-solid fa-triangle-exclamation"></i> Add your bank account so we can pay you <i class="fa-solid fa-chevron-right"></i></button>' : "") +
+      (compact ? "" : '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvGoToPayout()"><i class="fa-solid fa-building-columns"></i> Bank</button>') + '</div>' +
+      (d && d.owed > 0 ? '<button type="button" class="lvw-warn lvw-warn-red" onclick="lvWalletOpen(\'commission\')"><i class="fa-solid fa-hand-holding-dollar"></i> Commission to pay: ' + money(d.owed) + ' <i class="fa-solid fa-chevron-right"></i></button>' : "") +
+      (d && !d.hasPayout ? '<button type="button" class="lvw-warn" onclick="lvGoToPayout()"><i class="fa-solid fa-triangle-exclamation"></i> Add your bank account so we can pay you <i class="fa-solid fa-chevron-right"></i></button>' : "") +
     '</div>';
   }
   function paint() {
     var d = cache && cache.data;
     document.querySelectorAll("[data-lv-wallet]").forEach(function (el) { el.innerHTML = card(d, el.getAttribute("data-lv-wallet") === "compact"); });
+    var pg = document.getElementById("lvwPageBody"); if (pg) pg.innerHTML = pageBody();
   }
   async function refresh(force) {
     if (typeof vendor === "undefined" || !vendor) return;
     paint();
     await load(force);
     paint();
-    var m = document.getElementById("lvwSheet"); if (m) m.querySelector(".lvw-sheet-body").innerHTML = sheetBody();
   }
-  window.lvWalletToggle = function () { setHidden(!hidden()); paint(); var m = document.getElementById("lvwSheet"); if (m) m.querySelector(".lvw-sheet-body").innerHTML = sheetBody(); };
+  window.lvWalletToggle = function () { setHidden(!hidden()); paint(); };
 
-  function sheetBody() {
-    var d = cache && cache.data;
-    if (!d) return '<p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p>';
+  // ---- the wallet page: Transactions and Commission tabs
+  function txList(d) {
     var chips = [["all", "All"], ["pending", "Pending"], ["onway", "On its way"], ["paid", "Paid out"]];
     var rows = d.tx.filter(function (t) { return filter === "all" || t.state === filter; });
-    return '<div class="lvw-sum"><div><span>Pending</span><b>' + money(d.pending) + '</b></div><div><span>On its way</span><b>' + money(d.onWay) + '</b></div><div><span>Paid out</span><b>' + money(d.paidOut) + '</b></div></div>' +
-      '<div class="lvw-chips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
+    return '<div class="lvw-chips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
       (rows.length ? '<ul class="lvw-list">' + rows.map(function (t) {
-        return '<li onclick="document.getElementById(\'lvwSheet\')?.remove();navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : "fa-hourglass-half") + '"></i></span>' +
-          '<div class="lvw-li"><strong>Order #' + esc(String(t.id).slice(0, 8).toUpperCase()) + '</strong><small>' + LABEL[t.state] + " · " + esc(when(t.date)) + (t.comm ? " · after " + esc(money(t.comm)) + " commission" : "") + '</small></div>' +
+        return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : "fa-hourglass-half") + '"></i></span>' +
+          '<div class="lvw-li"><strong>' + esc(t.title) + '</strong><small>#' + esc(String(t.id).slice(0, 8).toUpperCase()) + " · " + LABEL[t.state] + " · " + esc(when(t.date)) + '</small>' + (t.comm ? '<small>Sale ' + esc(money(t.gross)) + ' − commission ' + esc(money(t.comm)) + '</small>' : "") + '</div>' +
           '<b class="lvw-amt ' + t.state + '">' + money(t.amount) + '</b></li>';
       }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-regular fa-credit-card"></i><strong>Nothing here yet</strong><span>Payments made through Levromart appear here.</span></div>');
   }
-  window.lvWalletFilter = function (f) { filter = f; var m = document.getElementById("lvwSheet"); if (m) m.querySelector(".lvw-sheet-body").innerHTML = sheetBody(); };
-  function openSheet(title, bodyHtml, withEye) {
+  function commissionPane(d) {
+    var rows = d.charges.slice(0, 60);
+    return '<div class="lvw-comm"><div class="lvw-comm-top"><div><span>Owed now</span><b>' + money(d.owed) + '</b></div><div><span>Rate</span><b>' + esc(String(d.rate)) + '%</b></div><div><span>Collected so far</span><b>' + money(d.commissionTotal - d.owed) + '</b></div></div>' +
+      (d.owed > 0 ? '<div class="lvw-comm-due">' + (d.dueAt ? "Pay before " + esc(when(d.dueAt)) + ". Your storefront stays active until then." : "Pay when you can; reminders come before the deadline.") + '</div><button type="button" class="lvw-btn lvw-btn-wide" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ' + money(d.owed) + ' now</button><div id="commissionError" class="error-text hidden"></div>' : '<div class="lvw-comm-due ok"><i class="fa-solid fa-circle-check"></i> You owe nothing right now.</div>') +
+      '<h4 class="lvw-h4">Commission breakdown</h4>' +
+      (rows.length ? '<ul class="lvw-list">' + rows.map(function (c) {
+        var st = c.status === "paid" ? "paid" : c.status === "waived" ? "pending" : "onway";
+        return '<li' + (c.order_id ? ' onclick="navigate(\'orderDetail\',{orderId:\'' + esc(c.order_id) + '\'})"' : "") + '><span class="lvw-ico ' + st + '"><i class="fa-solid fa-percent"></i></span><div class="lvw-li"><strong>' + (c.order_id ? "Order #" + esc(String(c.order_id).slice(0, 8).toUpperCase()) : "Commission") + '</strong><small>' + (c.status === "paid" ? "Paid" : c.status === "waived" ? "Waived" : "Owed") + " · " + esc(when(c.paid_at || c.created_at)) + '</small></div><b class="lvw-amt ' + st + '">' + money(c.amount) + '</b></li>';
+      }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-solid fa-percent"></i><strong>No commission yet</strong><span>Levromart takes ' + esc(String(d.rate)) + '% of each completed sale.</span></div>') + '</div>';
+  }
+  function pageBody() {
+    var d = cache && cache.data;
+    if (!d) return '<p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p>';
+    return '<div class="lvw-tabs"><button type="button" class="' + (tab === "tx" ? "on" : "") + '" onclick="lvWalletOpen(\'tx\')">Transactions</button><button type="button" class="' + (tab === "commission" ? "on" : "") + '" onclick="lvWalletOpen(\'commission\')">Commission' + (d.owed > 0 ? ' <i class="lvw-dotred"></i>' : "") + '</button></div>' +
+      (tab === "tx" ? txList(d) : commissionPane(d));
+  }
+  window.lvWalletFilter = function (f) { filter = f; paint(); };
+  window.lvWalletOpen = function (t) { tab = t || "tx"; if (typeof currentView !== "undefined" && currentView === "vendorWallet") paint(); else { window.__lvWalletTab = tab; navigate("vendorWallet"); } };
+  window.renderVendorWallet = async function () {
+    if (typeof session === "undefined" || !session || typeof vendor === "undefined" || !vendor) return '<div class="empty-state">Access denied.</div>';
+    if (window.__lvWalletTab) { tab = window.__lvWalletTab; window.__lvWalletTab = null; }
+    setTimeout(function () { refresh(true); }, 30);
+    return '<div class="lvw-page"><div class="lvw-page-head"><button type="button" class="lvw-back" onclick="navigate(\'vendorDashboard\')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2>Wallet</h2></div>' +
+      '<div class="lvw" data-lv-wallet="page">' + card(cache && cache.data, false) + '</div><div id="lvwPageBody">' + pageBody() + '</div></div>';
+  };
+  window.lvGoToPayout = function () {
+    var go = function () {
+      var sec = document.getElementById("payoutSection"); if (!sec) return false;
+      var wrap = document.getElementById("bankFormWrap"); if (wrap) wrap.classList.remove("hidden");
+      sec.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(function () { var i = document.getElementById("veAccountNumber"); if (i) { try { i.focus({ preventScroll: true }); } catch (_) {} } }, 500);
+      return true;
+    };
+    if (typeof currentView !== "undefined" && currentView === "vendorEditProfile" && go()) return;
+    Promise.resolve(navigate("vendorEditProfile")).then(function () { var n = 0; var t = setInterval(function () { if (go() || ++n > 30) clearInterval(t); }, 150); });
+  };
+
+  function openSheet(title, bodyHtml) {
     var old = document.getElementById("lvwSheet"); if (old) old.remove();
     var m = document.createElement("div");
-    m.id = "lvwSheet"; m.className = "modal lvw-sheet-wrap open";
-    m.innerHTML = '<div class="modal-content lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-head"><h3>' + esc(title) + '</h3>' + (withEye ? '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="Show or hide amounts"><i class="fa-regular fa-eye"></i></button>' : "") + '<button type="button" class="lvw-eye" onclick="document.getElementById(\'lvwSheet\').remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body">' + bodyHtml + '</div></div>';
+    m.id = "lvwSheet"; m.className = "lvw-sheet-wrap";
+    m.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-grab" aria-hidden="true"></div><div class="lvw-sheet-head"><h3>' + esc(title) + '</h3><button type="button" class="lvw-eye lvw-eye-dark" onclick="document.getElementById(\'lvwSheet\').remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body">' + bodyHtml + '</div></div>';
     m.addEventListener("click", function (e) { if (e.target === m) m.remove(); });
     document.body.appendChild(m);
   }
-  window.lvWalletHistory = function () { filter = "all"; openSheet("Wallet history", sheetBody(), true); refresh(true); };
   window.lvWalletHow = function () {
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
       '<li><b>On its way.</b> The order is complete and your money is being sent to your bank. Bank transfers normally arrive the next business day; weekends and public holidays can add a day or two.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
-      '<li>Amounts are after Levromart\'s commission. Orders you were paid for directly (bank transfer to you) do not appear here.</li></ul>', false);
+      '<li>Amounts are after Levromart\'s commission. Orders you were paid for directly (bank transfer to you) do not appear here.</li></ul>');
   };
 
   function wrapRenderers() {
