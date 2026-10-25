@@ -26,16 +26,19 @@ function priceHeroInner(o, suffix) {
 // doesn't exist yet at that moment, so focus a throw-away input first, then hand focus over
 // to the real search box the instant it renders -- one tap, keyboard up.
 function openSearchFromHeader() {
-  let temp = null;
+  // The search page is drawn straight away, inside the tap itself (iPhones only open the keyboard for a focus() made
+  // inside the tap), so there is no wait and no throw-away input. The normal navigation then runs behind it.
   try {
-    temp = document.createElement("input");
-    temp.type = "search"; temp.setAttribute("aria-hidden", "true"); temp.tabIndex = -1;
-    temp.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0;pointer-events:none";
-    document.body.appendChild(temp); temp.focus({ preventScroll: true });
+    const host = byId("app");
+    if (host && typeof renderSearchPage === "function" && currentView !== "search") {
+      document.body.classList.add("search-full-page");
+      host.innerHTML = renderSearchPage();
+      const real = byId("searchPageInput");
+      if (real) real.focus({ preventScroll: true });
+    }
   } catch (_) {}
-  const finish = () => { const real = byId("searchPageInput"); if (real) { real.focus(); try { real.setSelectionRange(real.value.length, real.value.length); } catch (_) {} } try { temp?.remove(); } catch (_) {} };
+  const finish = () => { const real = byId("searchPageInput"); if (real && document.activeElement !== real) { real.focus(); try { real.setSelectionRange(real.value.length, real.value.length); } catch (_) {} } };
   Promise.resolve(navigate("search")).then(() => { finish(); setTimeout(finish, 120); }).catch(finish);
-  setTimeout(() => { try { temp?.remove(); } catch (_) {} }, 3000);
 }
 function servicePriceSuffix(p) { return p.is_service && p.service_price_unit && p.service_price_unit !== "flat" ? "/" + p.service_price_unit : ""; }
 // Escapes text for HTML. Quotes are escaped too: this is used inside attribute values (aria-label="...", alt="...",

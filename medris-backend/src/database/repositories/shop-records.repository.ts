@@ -7,6 +7,7 @@ import { jsonReturning, jsonRow, jsonRows } from "../json.js";
 export interface StudentVerificationInput {
   matric_number: string | null;
   matric_pending: boolean;
+  not_student?: boolean;
   faculty: string | null;
   department: string | null;
   level: string | null;
@@ -50,12 +51,12 @@ export class ShopRecordsRepository {
    */
   async submitStudentVerification(vendorId: string, r: StudentVerificationInput): Promise<void> {
     await this.db.execute(sql`
-      insert into public.vendor_student_verification (vendor_id, matric_number, matric_pending, faculty, department, level, id_card_url, biodata_url,
+      insert into public.vendor_student_verification (vendor_id, matric_number, matric_pending, not_student, faculty, department, level, id_card_url, biodata_url,
                                                       selfie_url, face_distance, face_match, face_liveness, face_checked_at, face_v, status)
-      values (${vendorId}, ${r.matric_number}, ${r.matric_pending}, ${r.faculty}, ${r.department}, ${r.level}, ${r.id_card_url}, ${r.biodata_url},
+      values (${vendorId}, ${r.matric_number}, ${r.matric_pending}, ${r.not_student === true}, ${r.faculty}, ${r.department}, ${r.level}, ${r.id_card_url}, ${r.biodata_url},
               ${r.selfie_url}, ${r.face_distance}::real, ${r.face_match}, ${r.face_liveness}::boolean, ${r.face_checked_at}::timestamptz, coalesce(${r.face_v}::int, 0), 'pending')
       on conflict (vendor_id) do update set
-        matric_number = excluded.matric_number, matric_pending = excluded.matric_pending, faculty = excluded.faculty, department = excluded.department,
+        matric_number = excluded.matric_number, matric_pending = excluded.matric_pending, not_student = excluded.not_student, faculty = excluded.faculty, department = excluded.department,
         level = excluded.level, id_card_url = excluded.id_card_url, biodata_url = excluded.biodata_url, selfie_url = excluded.selfie_url,
         face_distance = excluded.face_distance, face_match = excluded.face_match, face_liveness = excluded.face_liveness,
         face_checked_at = excluded.face_checked_at, face_v = excluded.face_v, status = 'pending', updated_at = now()`);

@@ -41,7 +41,19 @@ const ORDER_ROUTE_SNAPSHOT_PREFIX = "levromart-order-route-v1:";
 // Persist the last REAL rendered page, not a loading shell. This makes navigation
 // cache-first across reloads so users see the page they asked for immediately
 // while the live renderer silently reconciles fresh Supabase data underneath.
-const ROUTE_HTML_SNAPSHOT_PREFIX = "levromart-route-html-v2:";
+// The saved copy is tied to the release that made it. A copy saved by an older release has older markup; painted under
+// the new styles it showed a jumbled page (stray icons under the name) until the real page arrived.
+const LV_BUILD_TAG = (() => { try { const m = /[?&]v=(\d+)/.exec(document.querySelector('link[href*="01-base.css"]')?.getAttribute("href") || ""); return m ? m[1] : "0"; } catch (_) { return "0"; } })();
+const ROUTE_HTML_SNAPSHOT_PREFIX = "levromart-route-html-v2-b" + LV_BUILD_TAG + ":";
+(function dropOldRouteSnapshots() {
+  try {
+    [sessionStorage, localStorage].forEach((st) => {
+      const old = [];
+      for (let i = 0; i < st.length; i++) { const k = st.key(i); if (k && k.indexOf("levromart-route-html-v2") === 0 && k.indexOf(ROUTE_HTML_SNAPSHOT_PREFIX) !== 0) old.push(k); }
+      old.forEach((k) => st.removeItem(k));
+    });
+  } catch (_) {}
+})();
 const ROUTE_HTML_SNAPSHOT_MAX = 500000;
 function persistedRouteHtmlKey(view, params = {}) {
   return `${ROUTE_HTML_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;

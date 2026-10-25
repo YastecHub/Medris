@@ -3350,3 +3350,71 @@ html:root:root body.product-detail-view #app input[type=radio],html:root:root bo
 /* one or two products stay card-sized (centred) instead of stretching across the whole banner */
 html:root:root body #app#app .lv-wv .lv-wv-tiles{justify-content:center}
 html:root:root body #app#app .lv-wv .lv-wv-tile{flex:0 0 28cqw;max-width:28cqw}
+
+/* ---- place-order panel: neutral ink and grey; the only colour is the green Place order button ---- */
+:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:var(--text,#111)!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;border-color:transparent!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:color-mix(in srgb,var(--text,#111) 5%,var(--card,#fff))!important;border-color:color-mix(in srgb,var(--text,#111) 12%,transparent)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantName,:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:currentColor!important;color:var(--text,#111)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i{color:var(--text-muted,#667)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:var(--text,#111)!important;background:color-mix(in srgb,var(--text,#111) 7%,transparent)!important;color:var(--text,#111)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked) *{color:inherit!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row input[type=radio]{accent-color:var(--text,#111)}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i{color:var(--text-muted,#667)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice{background:color-mix(in srgb,var(--text,#111) 5%,transparent)!important;border-color:color-mix(in srgb,var(--text,#111) 14%,transparent)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i{color:var(--text-muted,#667)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong{color:var(--text,#111)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box i,:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box svg{color:var(--text-muted,#667)!important;stroke:currentColor}
+
+/* ---- order tabs (Orders from customers / My purchases): switch at once, no fade ---- */
+:root:root:root body #app .vendor-orders-perspective-tabs button,:root:root:root body #app .vendor-orders-perspective-tabs button::after{transition:none!important}
+
+/* ---- own profile: the pen button matches the settings button (neutral ink, no green) ---- */
+html:root body #app .buyer-profile-row-actions .vendor-profile-edit-btn{width:2.5rem!important;height:2.5rem!important;min-width:0;margin:0!important;border:0!important;border-radius:50%!important;background:color-mix(in srgb,var(--text) 6%,transparent)!important;color:var(--text)!important;box-shadow:none!important;font-size:1.05rem;display:flex!important;align-items:center;justify-content:center}
+html:root body #app .buyer-profile-row-actions .vendor-profile-edit-btn i{color:var(--text)!important}
+html:root body #app .buyer-profile-row-actions .vendor-profile-edit-btn:active{background:color-mix(in srgb,var(--text) 14%,transparent)!important}
+
+/* ---- storefront banner arrow: always the opposite of the picture behind it (white on dark, dark on light) ----
+   Done with a blend mode because the photos live on a host that does not let the app read their pixels. */
+html:root body #app .storefront-profile .storefront-cover > .storefront-banner-more{mix-blend-mode:difference;isolation:auto}
+html:root body #app .storefront-profile .storefront-cover > .storefront-banner-more i{color:#fff!important;-webkit-text-fill-color:#fff!important;filter:none!important;text-shadow:none!important}
+
+/* ---- Vendor-of-the-week banners: products flow in one after another (the .lv-stag switch is set by 14-motion.js).
+   Kept even in Calm mode because it is short and only plays when the banner slides into view. ---- */
+@keyframes lvWvRise{from{opacity:0;transform:translateY(7cqw) scale(.9)}to{opacity:1;transform:none}}
+html.lv-stag .lv-wv-b .lv-wv-tile,html.lv-stag .lv-wv-a .lv-wv-thumbs img{opacity:0}
+html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-b .lv-wv-tile,html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-a .lv-wv-thumbs img{opacity:1;animation:lvWvRise .62s cubic-bezier(.2,.9,.25,1.1) both!important}
+html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-tile:nth-child(1),html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(1){animation-delay:.12s!important}
+html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-tile:nth-child(2),html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(2){animation-delay:.36s!important}
+html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-tile:nth-child(3),html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(3){animation-delay:.6s!important}
+html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(4){animation-delay:.84s!important}
+html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(n+5){animation-delay:1.05s!important}
+@media (prefers-reduced-motion:reduce){html.lv-stag .lv-wv-b .lv-wv-tile,html.lv-stag .lv-wv-a .lv-wv-thumbs img{opacity:1!important;animation:none!important}}
+
+/* ---- sellers who are not students ---- */
+.lv-sv .sv-nostudent{display:flex;align-items:flex-start;gap:.7rem;margin:.6rem 0 .9rem;padding:.8rem .9rem;border:1.5px solid color-mix(in srgb,#8b6bff 50%,var(--border,#dde));border-radius:14px;background:color-mix(in srgb,#8b6bff 8%,transparent);cursor:pointer}
+.lv-sv .sv-nostudent input{width:1.4rem!important;height:1.4rem!important;flex:none;margin:.1rem 0 0!important;padding:0!important;-webkit-appearance:checkbox!important;appearance:auto!important;accent-color:#7c5cf0;border:0!important;box-shadow:none!important;background:none!important}
+.lv-sv .sv-nostudent span{display:flex;flex-direction:column;gap:.15rem}.lv-sv .sv-nostudent b{font-size:.95rem}.lv-sv .sv-nostudent small{font-size:.78rem;opacity:.75}
+.lv-sv .sv-stu.hidden{display:none}
+.lv-nsv{color:#2f7bff;font-size:.8em;margin-left:.15rem}
+.lv-nsv-pill{display:inline-flex;align-items:center;gap:.35rem;margin-left:.5rem;padding:.2rem .65rem;border-radius:99px;background:color-mix(in srgb,#2f7bff 14%,transparent);color:#2f7bff;font-size:.78rem;font-weight:700;white-space:nowrap}
+:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong i,:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i.fa-wallet{color:var(--text-muted,#667)!important;-webkit-text-fill-color:currentColor!important}
+:root:root:root:root:root:root:root body #app .card:has(#buyQty) .lv-pen-ico,:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box label svg{color:var(--text-muted,#667)!important;stroke:var(--text-muted,#667)!important}
+:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:var(--text,#111)!important;text-decoration:underline}
+
+/* ---- place-order panel, final palette: standard professional colours. Blue for information and selection, amber for the
+   payment notice, ink for text, and green only on the Place order button ---- */
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:#2563eb!important;background:rgba(37,99,235,.12)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:rgba(37,99,235,.07)!important;border-color:rgba(37,99,235,.20)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice{color:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i{color:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#2563eb!important;background:rgba(37,99,235,.10)!important;color:var(--text,#111)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row input[type=radio]{accent-color:#2563eb}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i{color:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice{background:rgba(245,158,11,.13)!important;border-color:rgba(245,158,11,.40)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong i,:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i.fa-wallet{color:#d97706!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .lv-pen-ico,:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box label svg{color:#2563eb!important;stroke:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:#2563eb!important;text-decoration:underline}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i,:root[data-theme="black"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:#60a5fa!important;background:rgba(96,165,250,.16)!important}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:#60a5fa!important}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:rgba(96,165,250,.09)!important;border-color:rgba(96,165,250,.25)!important}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#60a5fa!important;background:rgba(96,165,250,.16)!important}

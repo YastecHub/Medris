@@ -1351,3 +1351,21 @@
   setTimeout(function () { check(true); }, 4000);          // shortly after opening
   setInterval(function () { if (!document.hidden) check(false); }, 300000);
 })();
+
+/* ---- Vendor-of-the-week banners: the products come up one after another when the banner slides into view ---- */
+(function(){
+  if(!("IntersectionObserver" in window)) return;
+  var io=null, seen=new WeakSet();
+  function mk(vp){
+    io=new IntersectionObserver(function(es){ es.forEach(function(e){ e.target.classList.toggle("lv-wv-live",e.isIntersecting&&e.intersectionRatio>=0.55); }); },{root:vp||null,threshold:[0,0.55,0.8]});
+  }
+  function scan(){
+    var vp=document.getElementById("homePromotionalViewport");
+    var list=document.querySelectorAll(".lv-wv.lv-wv-a,.lv-wv.lv-wv-b"); if(!list.length) return;
+    if(!io||io.__vp!==vp){ if(io) io.disconnect(); mk(vp); io.__vp=vp; seen=new WeakSet(); }
+    document.documentElement.classList.add("lv-stag");
+    list.forEach(function(s){ if(!seen.has(s)){ seen.add(s); io.observe(s); } });
+  }
+  var q=0; new MutationObserver(function(){ if(q) return; q=setTimeout(function(){ q=0; scan(); },80); }).observe(document.documentElement,{childList:true,subtree:true});
+  scan();
+})();

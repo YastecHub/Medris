@@ -260,6 +260,7 @@ export const submitStudentVerification = defineRoute({
       z.object({
         matric_number: text(50).default(null),
         matric_pending: z.boolean().default(false),
+        not_student: z.boolean().default(false),
         faculty: text(200).default(null),
         department: text(200).default(null),
         level: text(50).default(null),

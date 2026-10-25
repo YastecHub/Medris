@@ -224,17 +224,17 @@ export class AdminVendorsService {
       if (!["approved", "rejected", "pending"].includes(status)) throw badRequest("Invalid status.");
       const row = await shops.studentVerification(vendorId);
       if (!row) throw notFound("No verification submitted for this vendor.");
-      if (status === "approved" && (row.matric_pending || sqlTrim(row.matric_number ?? "") === "")) {
+      if (status === "approved" && !row.not_student && (row.matric_pending || sqlTrim(row.matric_number ?? "") === "")) {
         throw badRequest("This vendor has not added a matric number yet, so they cannot be verified.");
       }
       const owner = await shops.decideStudentVerification(vendorId, status, note, adminId);
       await notify.createQuietly({
         userId: owner,
         type: "student_verification",
-        title: status === "approved" ? "Student verification approved" : status === "rejected" ? "Student verification needs attention" : "Student verification updated",
+        title: status === "approved" ? (row.not_student ? "Seller verification approved" : "Student verification approved") : status === "rejected" ? "Student verification needs attention" : "Student verification updated",
         body:
           status === "approved"
-            ? "Your student details were verified. A Verified student badge now shows on your store."
+            ? row.not_student ? "Your account was verified. A Verified seller badge now shows on your store." : "Your student details were verified. A Verified student badge now shows on your store."
             : status === "rejected"
               ? note == null || note === ""
                 ? "Please re-upload clearer documents and submit again."

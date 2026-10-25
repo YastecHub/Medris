@@ -746,6 +746,17 @@ window.lvPdPrefetch = function (id) {
 /* ---- swipe the page sideways to move to the vendor's next / previous product ----
    The page follows the finger (like a carousel) with a small arrow at the edge that grows as you drag; let go past
    a third of the screen, or flick, and it slides away and the next product slides in. Let go early and it springs back. */
+// While a swipe hands the page to the next product, the page keeps its old height for a moment. The new page builds
+// its lower sections (related products, reviews) a little later; without this the page collapses and grows again,
+// which looked like it was bulging in and out.
+window.__lvHoldHeight = function (el) {
+  try {
+    if (!el) return;
+    const tok = (window.__lvHoldTok = (window.__lvHoldTok || 0) + 1);
+    el.style.setProperty("min-height", Math.ceil(el.getBoundingClientRect().height) + "px", "important");
+    setTimeout(() => { if (window.__lvHoldTok === tok) el.style.removeProperty("min-height"); }, 2800);
+  } catch (_) {}
+};
 (function () {
   let t0 = null, lock = null, hint = null;
   const blocked = "input,textarea,select,button,a,label,.product-gallery-carousel,.product-gallery-track,.product-gallery-main,.product-gallery-thumbs,.product-gallery-varieties,.product-comments-panel,.lv-cmt-sheet,.modal,.drawer,[role=dialog],.horizontal-scroll,.carousel,.hscroll,#lvCs,#mediaActionSheet";
@@ -906,6 +917,7 @@ window.lvPdPrefetch = function (id) {
   async function goToNeighbour(dir, dx) {
     busy = true;
     const el = app();
+    window.__lvHoldHeight(el);
     // The next product's full page is already sitting beside this one (it moved with the finger): just finish the slide.
     if (window.__lvNext && window.__lvNext.ready(dir)) {
       dropPeek();
@@ -1034,6 +1046,7 @@ window.lvPdPrefetch = function (id) {
   function ready(dir) { return !!(st.el && st.el.isConnected && st.dir === dir); }
   async function go(dir) {
     const el = app(), id = st.id, W = innerWidth;
+    window.__lvHoldHeight(el);
     window.__lvSwipeNav = true;
     const from = parseFloat((el.style.transform.match(/translateX\(([-0-9.]+)px/) || [])[1]) || 0;
     const to = -dir * W;
