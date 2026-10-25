@@ -60,10 +60,16 @@ async function logout() {
   try { localStorage.removeItem("levromart_levi_ask_last"); } catch (_) {}
   try { chatSnapClearAll(); } catch (_) {}
   try { window.__levromartClearPersistedRoute?.(); } catch (_) {}
-  await recordAuthActivity("logout");
-  await sb.auth.signOut();
-  await refreshAuthStateOnce();
+  // The screen signs out at once: the server is told afterwards, in the background (it used to be waited for, which made
+  // Log out stall for a few seconds on a slow connection).
+  const wasSession = session;
+  const note = wasSession?.user?.id ? Promise.race([recordAuthActivity("logout"), new Promise((r) => setTimeout(r, 1500))]) : Promise.resolve();
+  try { session = null; profile = null; vendor = null; favoriteIds = new Set(); packageFavoriteIds = new Set(); buyerCartCount = 0; } catch (_) {}
+  try { closeAllPanels(); } catch (_) {}
+  try { updateAuthUI(); } catch (_) {}
+  try { renderBottomNav(); } catch (_) {}
   navigate("home");
+  note.then(() => sb.auth.signOut()).catch(() => sb.auth.signOut({ scope: "local" }).catch(() => {}));
 }
 
 function startDeleteAccount() {

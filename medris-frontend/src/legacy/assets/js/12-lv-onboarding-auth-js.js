@@ -1410,7 +1410,22 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   function scan(){
     var sx=document.getElementById("signupExtraFields");
     var city=document.getElementById("loginCity");
+    if(city&&!document.getElementById("lvSignupNotStudent")&&!city.parentNode.querySelector("[data-lvcf-wrap='signup']")){
+      // (the tick is added right after the campus field is mounted, below)
+    }
     if(city) mountField(city,{key:"signup",get:function(){return window.__lvSignupCampus;},set:function(id){window.__lvSignupCampus=id;return Promise.resolve();},title:"Which campus are you on?"});
+    if(city&&!document.getElementById("lvSignupNotStudent")){
+      var wrapEl=city.parentNode.querySelector("div[data-lvcf-wrap='signup']"), labEl=city.parentNode.querySelector("label[data-lvcf-wrap='signup']");
+      if(wrapEl&&labEl){
+        var tick=document.createElement("label"); tick.className="lv-su-nostu"; tick.id="lvSignupNotStudent";
+        tick.innerHTML='<input type="checkbox" id="lvSuNoStu"><span>I\'m not a student</span>';
+        labEl.insertAdjacentElement("beforebegin",tick);
+        tick.querySelector("input").addEventListener("change",function(e){
+          var on=e.target.checked; window.__lvSignupCampus=on?"none":""; labEl.classList.toggle("hidden",on); wrapEl.classList.toggle("hidden",on);
+          if(!on){ var b=wrapEl.querySelector("[data-lvcf]"); if(b&&window.lvCampusBtnHtml) b.innerHTML=window.lvCampusBtnHtml(""); }
+        });
+      }
+    }
     ["vaCity","veCity"].forEach(function(cid){
       var el=document.getElementById(cid);
       if(el&&window.lvMountVendorCampus) window.lvMountVendorCampus(el,cid);

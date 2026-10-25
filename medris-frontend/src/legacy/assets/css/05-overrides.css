@@ -3554,3 +3554,10 @@ html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!importa
 /* Sign-in page: with the small "Welcome back" line gone, the headline sits higher */
 #lvAuthEyebrow[hidden]{display:none!important}
 #lvAuthEyebrow[hidden]+h1,#lvAuthEyebrow[hidden]+h2,#lvAuthEyebrow[hidden]~#lvAuthHeadline{margin-top:0}
+
+
+/* Sign-up: plain "I'm not a student" tick, and the eye button on Confirm password */
+.lv-su-nostu{display:flex!important;align-items:center;gap:.55rem;margin:.55rem 0 .15rem;font-weight:600;font-size:.88rem;cursor:pointer}
+.lv-su-nostu input{width:1.15rem!important;height:1.15rem!important;flex:none;margin:0!important;padding:0!important;-webkit-appearance:checkbox!important;appearance:auto!important;accent-color:var(--primary,#0f9d6a);border:0!important;box-shadow:none!important;background:none!important}
+#confirmPasswordWrap .password-input-wrap{position:relative}
+.lv-campus-field.hidden,label.hidden[data-lvcf-wrap]{display:none!important}
