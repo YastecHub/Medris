@@ -113,6 +113,20 @@ make it true:
 Check: open `https://levromart-5212f03a7e44.herokuapp.com/api/v1/live` -> `"changes": true`. Off switch for everyone:
 remove `LIVE_DATABASE_URL` (the app returns to Realtime on the next page load).
 
+### Public answers kept in memory (speed)
+
+The backend keeps answers that are the same for every visitor for a few seconds, so many visitors cost the database
+one query (`medris-backend/src/lib/response-cache.ts`):
+
+- signed-out table reads through `/rest/v1` (products, shops, packages, banners...): 30 seconds;
+- database functions whose answer never depends on who asks (follower / favourite / comment counts, shop stats,
+  reviews, past winners, price hints): 30 seconds; campus names: 5 minutes;
+- functions that may depend on the caller (spotlight, leaderboard, search): shared between signed-out visitors only.
+
+Anything signed in, any write and any failed answer is never kept. Answers carry `X-Levro-Cache: hit|miss`.
+Off switch: Heroku config var `RESPONSE_CACHE_ENABLED=false`. In memory per dyno; with several dynos each keeps its own
+copy (a shared store such as Redis becomes worth it then).
+
 ### Table queries (the data API)
 
 The app's `sb.from()` table queries (about 450 places) go to `/rest/v1` on the backend instead of Supabase once
