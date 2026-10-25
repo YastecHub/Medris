@@ -81,7 +81,9 @@ export class OrderActionsService {
       const o = await orders.order(orderId);
       if (!o) throw notFound("Order not found.");
       if (o.buyer_id !== me.userId) throw forbidden("Only the buyer can confirm receipt.");
-      if (o.awaiting_confirmation_since == null || !["confirmed", "handed_over"].includes(o.status)) throw badRequest("This order is not waiting for your confirmation.");
+      // Once the money is in, the buyer may confirm at any time, even before the shop has marked the order out for delivery
+      // (so nobody is left waiting): migration-free change from the original, which also needed the delivery clock to be running.
+      if (!["confirmed", "handed_over"].includes(o.status) || (o.awaiting_confirmation_since == null && o.status !== "confirmed")) throw badRequest("This order is not waiting for your confirmation.");
       const fee = await orders.hasPaid(orderId, ["sale_price", "rental_fee"]);
       const deposit = o.delivery_method === "delivery" && o.payment_timing === "pay_after" ? await orders.hasPaid(orderId, ["delivery_deposit_20"]) : true;
       if (!fee || !deposit) throw badRequest("All required payments must be confirmed first.");

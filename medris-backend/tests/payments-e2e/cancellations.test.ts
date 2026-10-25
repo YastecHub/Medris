@@ -69,3 +69,15 @@ describe("cancelling paid orders", () => {
     expect(await refundsOf(o)).toHaveLength(0);
   });
 });
+
+describe("confirming receipt early", () => {
+  const w = useWorld();
+  it("the buyer can say they have received a paid order before the shop marks it out for delivery", async () => {
+    const o = await newOrder(w, 4500);
+    expect((await json(await api.post(w, `/orders/${o}/received`, w.buyer.token))).status).toBe(400); // not paid yet
+    await payOrder(w, o);
+    expect((await json(await api.post(w, `/orders/${o}/received`, w.buyer2.token))).status).toBe(403);
+    expect((await json(await api.post(w, `/orders/${o}/received`, w.buyer.token))).status).toBe(200);
+    expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [o]))?.s).toBe("completed");
+  });
+});

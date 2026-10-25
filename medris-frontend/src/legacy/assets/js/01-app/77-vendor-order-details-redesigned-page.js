@@ -22,7 +22,7 @@ function vendorOrderTopHtml(order, ctx) {
   let h = `<div class="od-header"><button type="button" class="od-back" onclick="navigate('vendorOrders',{status:'all'})" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
     <div class="od-header-title"><strong>Order Details</strong><span>${esc(shortId)}</span></div>
     <div class="od-menu-wrap"><button type="button" class="od-more" onclick="toggleOrderDetailMenu(event)" aria-label="More"><i class="fa-solid fa-ellipsis"></i></button>
-      <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button><button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
+      <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button>${st === "confirmed" && (ctx.feePaid || (typeof orderIsFullyPaid === "function" && orderIsFullyPaid(order))) ? `<button type="button" onclick="lvAskCancel('${esc(order.id)}')"><i class="fa-regular fa-circle-xmark"></i> Ask Levromart to cancel</button>` : ""}<button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
   // ---- status card
   h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : tone === "pending" ? "fa-hourglass-half" : tone === "paid" ? "fa-money-check-dollar" : "fa-box-open"}"></i></div>
     <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">${esc(typeLabel)} · ${esc(orderDateTimeStr(order.created_at))}</span>` : `<span class="od-placed">${esc(typeLabel)}</span>`}</div>
@@ -46,10 +46,7 @@ function vendorOrderTopHtml(order, ctx) {
     if (orderCanSuggestQuantity(order)) h += `<div class="od-actions"><button type="button" class="od-btn od-btn-soft" onclick="openSuggestQuantity('${esc(order.id)}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button></div>`;
     h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
   } else if (st === "confirmed" && (orderIsFullyPaid(order) || ctx.feePaid) && !isRental) {
-    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','handed_over')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>` +
-      `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="lvAskCancel('${esc(order.id)}')"><i class="fa-regular fa-circle-xmark"></i> Ask Levromart to cancel</button></div><p class="od-cancel-note">This order is paid, so you cannot cancel it yourself. Levromart reviews your request and refunds the buyer.</p>`;
-  } else if (st === "confirmed" && (orderIsFullyPaid(order) || ctx.feePaid)) {
-    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="lvAskCancel('${esc(order.id)}')"><i class="fa-regular fa-circle-xmark"></i> Ask Levromart to cancel</button></div>`;
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','handed_over')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>`;
   } else if (st === "confirmed" && !orderIsFullyPaid(order)) {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
   } else if (st === "handed_over" && isRental) {
@@ -673,7 +670,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
     // still needs to exist though, in case the vendor confirmed by mistake.
     if (order.status === "confirmed") {
       const paidAlready = (order.payments || []).some((p) => p.status === "paid" && ["sale_price", "rental_fee", "delivery_deposit_20"].includes(String(p.payment_type || "").toLowerCase()));
-      buttons.push(paidAlready ? `<button class="btn btn-sm btn-outline order-action-decline" onclick="lvAskCancel('${order.id}')">Ask Levromart to cancel</button>` : `<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','confirmed')">Cancel order</button>`);
+      if (!paidAlready) buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','confirmed')">Cancel order</button>`);
     }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
@@ -709,6 +706,11 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
   {
     const lmPaidAll = (isDeliveryOrder && order.payment_timing === "pay_after") ? paymentComplete : feePaid;
     const lmDup = order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder;
+    // Paid but not yet marked out for delivery: the buyer can already say they have it (nobody is left waiting), and is told what is happening
+    if (isCustomer && !order.awaiting_confirmation_since && order.status === "confirmed" && order.order_type === "sale" && !order.service_offer_id && lmPaidAll) {
+      buttons.push(`<button class="btn btn-sm" onclick="confirmReceivedOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
+      buttons.push(`<p class="muted" style="font-size:.8rem;margin:.2rem 0 0;"><i class="fa-solid fa-clock"></i> Payment confirmed. We are waiting for the vendor to mark your order as out for delivery. If you already have it, tap “I've received this”. Until then you can still cancel.</p>`);
+    }
     if (isCustomer && order.awaiting_confirmation_since && ["confirmed", "handed_over"].includes(order.status) && order.order_type !== "rental" && !order.service_offer_id && String(order.payout_status || "not_applicable") === "not_applicable" && lmPaidAll && !lmDup) {
       const due = new Date(new Date(order.awaiting_confirmation_since).getTime() + 24 * 3600 * 1000);
       buttons.push(`<button class="btn btn-sm" onclick="confirmReceivedOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);

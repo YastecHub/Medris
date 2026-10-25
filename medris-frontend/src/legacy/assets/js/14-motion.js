@@ -2028,7 +2028,7 @@ window.lvAskCancel = async function (orderId) {
 
   window.lvRefundAccount = async function (fromPopup) {
     var m = sheet(fromPopup ? "Where should we send your refunds?" : "Refund bank account",
-      '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">If an order is cancelled or a problem is settled in your favour, the money is put in your refunds wallet. You can withdraw it to this account any time. It must be an account in your own name.</p>' +
+      '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">If an order is cancelled or a problem is settled in your favour, the money is put in your refunds wallet. You can withdraw it to this account any time. It must be an account in your own name. Check the details carefully: Levromart is not responsible for money sent to an account that was entered wrongly.</p>' +
       '<label class="lvrw-l">Bank</label><select id="lvrwBank" class="lvrw-in"><option value="">Loading banks…</option></select>' +
       '<label class="lvrw-l">Account number</label><input id="lvrwNum" class="lvrw-in" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="off">' +
       '<p id="lvrwMsg" class="lvw-sheet-msg" hidden></p><div id="lvrwName" class="lvrw-name" hidden></div>' +

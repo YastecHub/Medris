@@ -183,7 +183,7 @@ async function submitNotReceived() {
 // every other status change, this one also has to actually move money, so
 // it goes through a serverless endpoint instead of a plain RPC call.
 async function confirmReceivedOrder(orderId) {
-  if (!(await showConfirmDialog("Confirm that you have received this order. This completes the order. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
+  if (!(await showConfirmDialog("Confirm that you have received this order. This completes the order, and you can no longer cancel it or report a problem with it. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
   try {
     const { error } = await sb.rpc("buyer_confirm_received", { p_order_id: orderId });
     if (error) throw error;
