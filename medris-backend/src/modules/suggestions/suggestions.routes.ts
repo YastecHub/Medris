@@ -3,7 +3,7 @@ import { z } from "../../shared/openapi/zod.js";
 import { rateLimit } from "../../middleware/rate-limit.js";
 import { DoneSchema, commonErrors, dataResponse, errorResponses, jsonBody } from "../../shared/openapi/schemas.js";
 import { optionalSignIn, signedIn } from "../../shared/openapi/security.js";
-import { SubmitSuggestionBody, SubmittedSuggestion, SuggestionParams, SuggestionSchema } from "./suggestions.schemas.js";
+import { ReplySuggestionBody, SubmitSuggestionBody, SubmittedSuggestion, SuggestionParams, SuggestionSchema } from "./suggestions.schemas.js";
 
 /** The suggestion box. */
 
@@ -52,4 +52,16 @@ export const markSuggestionRead = defineRoute({
   middleware: [writeLimit] as const,
   request: { params: SuggestionParams },
   responses: { 200: dataResponse(DoneSchema, "Marked."), ...errorResponses(400, 403, 404, 429), ...commonErrors },
+});
+
+export const replyToSuggestion = defineRoute({
+  method: "post",
+  path: "/suggestions/{suggestionId}/reply",
+  tags,
+  summary: "Reply to a suggestion",
+  description: "Replaces reply_to_suggestion(): the shop it was sent to (or an admin, for Levromart) answers once. The sender is notified; an anonymous sender stays anonymous.",
+  security: signedIn,
+  middleware: [writeLimit] as const,
+  request: { params: SuggestionParams, body: jsonBody(ReplySuggestionBody) },
+  responses: { 200: dataResponse(z.object({ success: z.boolean() }), "Sent."), ...errorResponses(400, 403, 404, 415, 429), ...commonErrors },
 });

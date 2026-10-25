@@ -395,6 +395,7 @@ function updateAuthUI() {
         { icon: "fa-lightbulb", tone: "amber", label: "Suggestions", badge: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
         { icon: "fa-compass", tone: "slate", label: "Take a tour", action: "closeAllPanels();showTour()" },
         { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
+        { icon: "fa-lightbulb", tone: "violet", label: "Suggest to Levromart", action: "showSuggestionModal('platform')" },
         { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
       ];
     } else if (profile.role !== "admin") {
@@ -416,6 +417,7 @@ function updateAuthUI() {
         { icon: "fa-shop", tone: "blue", label: "Browse vendors", action: "navigate('vendors')" },
         { icon: "fa-compass", tone: "slate", label: "Take a tour", action: "closeAllPanels();showTour()" },
         { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
+        { icon: "fa-lightbulb", tone: "violet", label: "Suggest to Levromart", action: "showSuggestionModal('platform')" },
         { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
       ];
     }
@@ -453,8 +455,8 @@ function updateAuthUI() {
           ).map(x => `<button type="button" class="lv-pp-stat" onclick="closeAllPanels();${x.a}"><b>${x.n}</b> ${x.t}</button>`).join("")}</div>
           ${(() => {
             const keepGroups = vendor
-              ? [["My shop", "My listings", "Orders", "Earnings", "Followers"], ["Requests", "Suggestions", "Leaderboard", "Refer &amp; earn"], ["Support", "Take a tour"]]
-              : [["Apply to be a vendor", "My orders", "Wishlist", "Vendors you follow"], ["Vendor leaderboard", "Request an item", "Support", "Take a tour"]];
+              ? [["My shop", "My listings", "Orders", "Earnings", "Followers"], ["Requests", "Suggestions", "Leaderboard", "Refer &amp; earn"], ["Support", "Suggest to Levromart", "Take a tour"]]
+              : [["Apply to be a vendor", "My orders", "Wishlist", "Vendors you follow"], ["Vendor leaderboard", "Request an item", "Support", "Suggest to Levromart", "Take a tour"]];
             const row = (l) => `<button type="button" class="lv-pp-row" onclick="closeAllPanels();${l.action}">${l.label === "Settings &amp; Privacy" ? '<svg class="lm-gear" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>' : ""}<span>${l.label.replace("Vendor leaderboard", "Leaderboard")}</span>${l.badge > 0 ? `<em class="lv-pp-badge">${l.badge > 9 ? "9+" : l.badge}</em>` : ""}</button>`;
             const groups = keepGroups.map(names => names.map(n => plainLinks.find(l => l.label === n)).filter(Boolean));
             groups.push([{ label: "Settings &amp; Privacy", action: "navigate('settings')" }, { label: "Log out", action: "logout()" }]);

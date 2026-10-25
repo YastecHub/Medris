@@ -131,16 +131,28 @@
 </div>
 
 <div id="suggestionModal" class="modal hidden">
-  <div class="modal-content" style="max-width:420px;">
-    <h3 id="suggestionModalTitle"><i class="fa-solid fa-comment-medical"></i> Send feedback</h3>
+  <div class="modal-content lv-sg-card" role="dialog" aria-modal="true" aria-labelledby="suggestionModalTitle">
+    <div class="lv-sg-head">
+      <span class="lv-sg-ico" aria-hidden="true"><i class="fa-solid fa-lightbulb"></i></span>
+      <div class="lv-sg-titles">
+        <h3 id="suggestionModalTitle">Send feedback</h3>
+        <p id="suggestionModalSub" class="lv-sg-sub">Tell us what could be better.</p>
+      </div>
+      <button type="button" class="lv-sg-x" onclick="closeSuggestionModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
     <div id="suggestionError" class="error-text hidden"></div>
-    <textarea id="suggestionText" rows="4" placeholder="What's on your mind?" maxlength="2000"></textarea>
-    <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;margin-top:0.6rem;font-size:0.85rem;">
-      <input type="checkbox" id="suggestionAnon" style="width:auto;margin:0;" /> Send anonymously
+    <div class="lv-sg-field">
+      <textarea id="suggestionText" rows="5" placeholder="Write your idea, a problem you noticed, or a thank you..." maxlength="2000" oninput="lvSuggestionCount()"></textarea>
+      <span class="lv-sg-count" id="suggestionCount">0 / 2000</span>
+    </div>
+    <label class="lv-sg-anon" for="suggestionAnon">
+      <input type="checkbox" id="suggestionAnon" />
+      <span class="lv-sg-switch" aria-hidden="true"></span>
+      <span class="lv-sg-anon-copy"><strong>Send anonymously</strong><small>They will not see your name. They can still reply to you.</small></span>
     </label>
-    <div class="install-modal-actions" style="margin-top:0.9rem;">
-      <button class="btn btn-sm btn-outline" onclick="closeSuggestionModal()">Cancel</button>
-      <button class="btn btn-sm" id="suggestionSubmitBtn" onclick="submitSuggestion()"><i class="fa-solid fa-paper-plane"></i> Send</button>
+    <div class="lv-sg-actions">
+      <button type="button" class="lv-sg-btn lv-sg-ghost" onclick="closeSuggestionModal()">Cancel</button>
+      <button type="button" class="lv-sg-btn lv-sg-go" id="suggestionSubmitBtn" onclick="submitSuggestion()"><i class="fa-solid fa-paper-plane"></i> Send</button>
     </div>
   </div>
 </div>

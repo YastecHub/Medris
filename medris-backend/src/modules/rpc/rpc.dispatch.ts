@@ -440,6 +440,7 @@ export const RPC: Record<string, RpcEntry> = {
   },
   get_vendor_suggestions: { run: (s, me) => s.suggestions.vendorSuggestions(me) },
   get_platform_suggestions: { run: (s, me) => s.suggestions.platformSuggestions(me) },
+  reply_to_suggestion: { run: (s, me, a) => s.suggestions.reply(me, id(a.p_suggestion_id), str(a.p_message)), limit: L.suggestions },
   mark_suggestion_read: { run: (s, me, a) => s.suggestions.markRead(me, id(a.p_suggestion_id)).then(nothing), limit: L.suggestions },
 };
 
