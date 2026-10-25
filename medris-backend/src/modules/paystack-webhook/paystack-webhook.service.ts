@@ -248,7 +248,7 @@ export class PaystackWebhookService {
           const result = await this.processVerifiedCharge(eventKey("charge.success", v as Obj, body), reference, v);
           if (result.startsWith("settled")) settled++;
         } else if (v.status === "failed" || v.status === "abandoned") {
-          await this.db().asService((tx) => new PaystackLedgerRepository(tx).setTransactionStatus(reference, v.status as string, ["initialized"]));
+          await this.db().asService((tx) => new PaystackLedgerRepository(tx).setTransactionStatus(reference, v.status as string, ["initialized", "abandoned"]));
         }
       } catch {
         problems++; // unknown outcome: it stays initialized and is looked at again next time
@@ -282,7 +282,7 @@ export class PaystackWebhookService {
       return { paystackStatus: "success", result };
     }
     if (v.status === "failed" || v.status === "abandoned") {
-      await this.db().asService((tx) => new PaystackLedgerRepository(tx).setTransactionStatus(reference, v.status as string, ["initialized"]));
+      await this.db().asService((tx) => new PaystackLedgerRepository(tx).setTransactionStatus(reference, v.status as string, ["initialized", "abandoned"]));
     }
     return { paystackStatus: String(v.status ?? "unknown"), result: null };
   }
