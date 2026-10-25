@@ -4,6 +4,7 @@ import { SuggestionsRepository } from "../../database/repositories/suggestions.r
 import { badRequest, forbidden, notFound } from "../../shared/errors/app-error.js";
 import type { Suggestion } from "./suggestions.schemas.js";
 import { isSqlBlank } from "../../lib/sql-text.js";
+import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
 
 /** The suggestion box: anyone can write to a shop or to Levromart; the shop / admins read it. */
 export class SuggestionsService {
@@ -58,5 +59,43 @@ export class SuggestionsService {
       await repo.markRead(suggestionId);
     });
     return { done: true };
+  }
+
+  /**
+   * Replaces: public.reply_to_suggestion(uuid, text) - the shop the suggestion went to (or an admin, for Levromart) answers once; the
+   * sender is told through a notification, so an anonymous sender stays anonymous.
+   */
+  async reply(me: Identity | null, suggestionId: string, message: string | null | undefined): Promise<{ success: true }> {
+    if (!me) throw forbidden("Authentication required.");
+    const text = (message ?? "").trim();
+    if (text === "") throw badRequest("Write your reply first.");
+    if (text.length > 2000) throw badRequest("That reply is too long.");
+    await this.db().asService(async (tx) => {
+      const repo = new SuggestionsRepository(tx);
+      const access = new AccessRepository(tx);
+      const row = await repo.find(suggestionId);
+      if (!row) throw notFound("Not found.");
+      let name = "Levromart";
+      if (row.target_type === "platform") {
+        if (!(await access.isAdmin(me.userId))) throw forbidden("Not allowed.");
+      } else {
+        const vendorId = await access.liveVendorIdOf(me.userId);
+        if (!vendorId || vendorId !== row.target_vendor_id) throw forbidden("Not allowed.");
+        name = (await repo.shopName(vendorId)) ?? "A shop";
+      }
+      if (row.reply_message != null) throw badRequest("You have already replied to this suggestion.");
+      await repo.setReply(suggestionId, text, me.userId);
+      const quoted = row.message.length > 140 ? `${row.message.slice(0, 140)}...` : row.message;
+      await new NotificationWriter(tx).create({
+        userId: row.sender_id,
+        type: "suggestion_reply",
+        title: `${name} replied to your suggestion`,
+        body: `You wrote: "${quoted}"\nReply: ${text}`,
+        targetView: row.target_type === "vendor" ? "storefront" : null,
+        targetParams: row.target_type === "vendor" ? { vendorId: row.target_vendor_id } : null,
+        actorId: null,
+      });
+    });
+    return { success: true };
   }
 }

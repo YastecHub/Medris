@@ -9,6 +9,8 @@ export const SuggestionSchema = z
     message: z.string(),
     status: z.string(),
     created_at: z.string(),
+    reply_message: z.string().nullable().optional(),
+    replied_at: z.string().nullable().optional(),
   })
   .openapi("Suggestion");
 
@@ -20,6 +22,8 @@ export const SubmitSuggestionBody = z
     isAnonymous: z.boolean().nullish(),
   })
   .openapi("SubmitSuggestionRequest");
+
+export const ReplySuggestionBody = z.object({ message: z.string().max(2000) }).openapi("ReplySuggestionRequest");
 
 export const SuggestionParams = z.object({ suggestionId: idParam });
 

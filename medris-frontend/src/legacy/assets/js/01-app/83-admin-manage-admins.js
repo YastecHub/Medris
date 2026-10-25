@@ -201,24 +201,54 @@ async function denyAppealPrompt(appealId) {
   showToast("Appeal denied.", "success");
   navigate("adminPeople");
 }
-function suggestionRowHtml(s) {
-  return `<div class="ad-row ad-static ${s.status === "new" ? "is-new" : ""}">
-    <div class="flex" style="justify-content:space-between;align-items:flex-start;">
-      <div>
-        <strong>${s.is_anonymous ? "Anonymous" : esc(s.sender_name || "Someone")}</strong>
-        <span class="muted" style="font-size:0.78rem;margin-left:0.4rem;">${new Date(s.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-      </div>
-      ${s.status === "new" ? `<button class="btn btn-sm btn-outline" onclick="markSuggestionRead('${s.id}', this)">Mark read</button>` : `<span class="badge">read</span>`}
-    </div>
-    <p style="margin:0.5rem 0 0;">${esc(s.message)}</p>
-  </div>`;
+function suggestionWhen(d) {
+  try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + " · " + new Date(d).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" }); } catch (_) { return ""; }
 }
-async function markSuggestionRead(id, btn) {
+function suggestionRowHtml(s) {
+  const isNew = s.status === "new";
+  const anon = !!s.is_anonymous;
+  const who = anon ? "Anonymous" : (s.sender_name || "Someone");
+  const initial = anon ? "?" : String(who).trim().charAt(0).toUpperCase() || "?";
+  const replied = !!s.reply_message;
+  return `<article class="sg-card ${isNew ? "is-new" : ""}" id="sg-${esc(s.id)}" data-sg="${esc(s.id)}">
+    <header class="sg-top">
+      <span class="sg-av ${anon ? "is-anon" : ""}" aria-hidden="true">${anon ? '<i class="fa-solid fa-user-secret"></i>' : esc(initial)}</span>
+      <div class="sg-who"><strong>${esc(who)}</strong><span>${esc(suggestionWhen(s.created_at))}</span></div>
+      ${isNew ? '<span class="sg-chip sg-chip-new">New</span>' : replied ? '<span class="sg-chip sg-chip-done"><i class="fa-solid fa-check"></i> Replied</span>' : '<span class="sg-chip">Read</span>'}
+    </header>
+    <p class="sg-msg">${esc(s.message)}</p>
+    ${replied ? `<div class="sg-reply"><span class="sg-reply-label"><i class="fa-solid fa-reply"></i> Your reply${s.replied_at ? " · " + esc(suggestionWhen(s.replied_at)) : ""}</span><p>${esc(s.reply_message)}</p></div>` : `
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn-primary" onclick="openSuggestionReply('${esc(s.id)}')"><i class="fa-solid fa-reply"></i> Reply</button>
+      ${isNew ? `<button type="button" class="sg-btn sg-btn-ghost" onclick="markSuggestionRead('${esc(s.id)}', this)"><i class="fa-solid fa-check"></i> Mark as read</button>` : ""}
+    </div>
+    <div class="sg-compose hidden" id="sgc-${esc(s.id)}">
+      <textarea rows="3" maxlength="2000" placeholder="${anon ? "Write a reply. They stay anonymous, but they will see your answer." : "Write a reply..."}" id="sgt-${esc(s.id)}"></textarea>
+      <div class="sg-compose-actions">
+        <button type="button" class="sg-btn sg-btn-ghost" onclick="closeSuggestionReply('${esc(s.id)}')">Cancel</button>
+        <button type="button" class="sg-btn sg-btn-primary" onclick="sendSuggestionReply('${esc(s.id)}', this)"><i class="fa-solid fa-paper-plane"></i> Send reply</button>
+      </div>
+    </div>`}
+  </article>`;
+}
+function openSuggestionReply(id) {
+  const box = byId("sgc-" + id); if (!box) return;
+  box.classList.remove("hidden");
+  setTimeout(() => { try { byId("sgt-" + id).focus(); } catch (_) {} }, 60);
+}
+function closeSuggestionReply(id) { byId("sgc-" + id)?.classList.add("hidden"); }
+async function sendSuggestionReply(id, btn) {
+  const text = (byId("sgt-" + id)?.value || "").trim();
+  if (!text) { showToast("Write your reply first.", "error"); return; }
   btn.disabled = true;
-  const { error } = await sb.rpc("mark_suggestion_read", { p_suggestion_id: id });
+  const { error } = await sb.rpc("reply_to_suggestion", { p_suggestion_id: id, p_message: text });
   if (error) { showToast(error.message, "error"); btn.disabled = false; return; }
-  btn.closest(".ad-row,.card")?.classList.remove("is-new");
-  btn.outerHTML = `<span class="badge">read</span>`;
+  showToast("Reply sent.", "success");
+  lvSuggestionBadgeDown(byId("sg-" + id)?.classList.contains("is-new"));
+  navigate(currentView === "adminFeedback" ? "adminFeedback" : "vendorSuggestionsInbox", {}, false);
+}
+function lvSuggestionBadgeDown(wasNew) {
+  if (!wasNew) return;
   unreadSuggestionCount = Math.max(0, Number(unreadSuggestionCount || 0) - 1);
   document.querySelectorAll('.admin-dash-tabs [data-admin-view="adminFeedback"]').forEach(tab => {
     const badge = tab.querySelector('.dash-tab-dot');
@@ -227,17 +257,36 @@ async function markSuggestionRead(id, btn) {
       else { const b=document.createElement('span'); b.className='dash-tab-dot'; b.textContent=unreadSuggestionCount>9?'9+':String(unreadSuggestionCount); tab.appendChild(b); }
     } else badge?.remove();
   });
+  document.querySelectorAll("#profilePanel .lv-pp-row").forEach((row) => {
+    if (!/Suggestions/.test(row.textContent || "")) return;
+    const b = row.querySelector(".lv-pp-badge");
+    if (unreadSuggestionCount > 0) { if (b) b.textContent = unreadSuggestionCount > 9 ? "9+" : String(unreadSuggestionCount); } else b?.remove();
+  });
   if (typeof hydrateAdminAttention === 'function') hydrateAdminAttention();
+}
+async function markSuggestionRead(id, btn) {
+  btn.disabled = true;
+  const { error } = await sb.rpc("mark_suggestion_read", { p_suggestion_id: id });
+  if (error) { showToast(error.message, "error"); btn.disabled = false; return; }
+  const card = btn.closest(".sg-card,.ad-row,.card");
+  card?.classList.remove("is-new");
+  card?.querySelector(".sg-chip-new")?.replaceWith(Object.assign(document.createElement("span"), { className: "sg-chip", textContent: "Read" }));
+  btn.remove();
+  lvSuggestionBadgeDown(true);
+}
+function suggestionPageHeader(title, sub, list) {
+  const unread = (list || []).filter((x) => x.status === "new").length;
+  return `<div class="sg-head"><div><h2><i class="fa-solid fa-lightbulb"></i> ${esc(title)}</h2><p class="muted">${esc(sub)}</p></div>${unread ? `<span class="sg-head-badge">${unread} new</span>` : ""}</div>`;
 }
 
 async function renderAdminFeedback() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   const { data: suggestions, error } = await sb.rpc("get_platform_suggestions");
-  let html = `<h2><i class='fa-solid fa-comment-medical'></i> Feedback</h2>`;
+  let html = suggestionPageHeader("Feedback", "What people sent to Levromart. You can reply to every one.", suggestions);
   html += adminNavHtml("adminFeedback");
   if (error) { html += errorStateHtml(error); return html; }
   html += (suggestions && suggestions.length)
-    ? suggestions.map(suggestionRowHtml).join("")
+    ? `<div class="sg-list">${suggestions.map(suggestionRowHtml).join("")}</div>`
     : `<div class="empty-state">No feedback yet.</div>`;
   return html;
 }
@@ -245,12 +294,11 @@ async function renderAdminFeedback() {
 async function renderVendorSuggestionsInbox() {
   if (!session || !vendor) return '<div class="empty-state">Access denied.</div>';
   const { data: suggestions, error } = await sb.rpc("get_vendor_suggestions");
-  let html = `<h2><i class='fa-solid fa-comment-medical'></i> Suggestions</h2>
-  <p class="muted">Feedback buyers have sent about your shop. Some may be anonymous.</p>`;
+  let html = suggestionPageHeader("Suggestions", "Ideas and feedback people sent to your shop. Some are anonymous: you can still reply, and they will see your answer.", suggestions);
   if (error) { html += errorStateHtml(error); return html; }
   html += (suggestions && suggestions.length)
-    ? suggestions.map(suggestionRowHtml).join("")
-    : `<div class="empty-state">Nothing yet.</div>`;
+    ? `<div class="sg-list">${suggestions.map(suggestionRowHtml).join("")}</div>`
+    : `<div class="sg-empty"><i class="fa-regular fa-lightbulb"></i><strong>No suggestions yet</strong><span>When someone sends your shop an idea, it shows up here.</span></div>`;
   return html;
 }
 

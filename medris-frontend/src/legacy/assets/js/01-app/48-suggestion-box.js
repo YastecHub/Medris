@@ -4,18 +4,26 @@
 // get_platform_suggestions/get_vendor_suggestions) so the recipient never
 // sees who sent an anonymous one.
 let suggestionTarget = { type: "platform", vendorId: null };
+function lvSuggestionCount() {
+  const t = byId("suggestionText"), c = byId("suggestionCount");
+  if (t && c) c.textContent = `${t.value.length} / 2000`;
+}
 async function showSuggestionModal(type, vendorId) {
   if (!session) { showLogin(); return; }
   suggestionTarget = { type, vendorId: vendorId || null };
   byId("suggestionText").value = "";
   byId("suggestionAnon").checked = false;
   byId("suggestionError").classList.add("hidden");
-  byId("suggestionModalTitle").innerHTML = `<i class="fa-solid fa-comment-medical"></i> Send feedback to Levromart`;
+  byId("suggestionModalTitle").textContent = "Suggest something to Levromart";
+  byId("suggestionModalSub").textContent = "Your idea goes straight to the Levromart team.";
+  lvSuggestionCount();
   byId("suggestionModal").classList.remove("hidden");
   trackModalOpened("suggestionModal");
+  setTimeout(() => { try { byId("suggestionText").focus({ preventScroll: true }); } catch (_) {} }, 120);
   if (type === "vendor" && vendorId) {
     const { data } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
-    byId("suggestionModalTitle").innerHTML = `<i class="fa-solid fa-comment-medical"></i> Suggest something to ${esc(data?.business_name || "this vendor")}`;
+    byId("suggestionModalTitle").textContent = `Suggest something to ${data?.business_name || "this vendor"}`;
+    byId("suggestionModalSub").textContent = "Help this shop get better. They can reply to you.";
   }
 }
 function closeSuggestionModal() {
@@ -38,7 +46,7 @@ async function submitSuggestion() {
   btn.disabled = false;
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   closeSuggestionModal();
-  showToast("Thanks, sent.", "success");
+  showToast("Sent. Thank you!", "success");
 }
 
 // Admin-only: jump to the (read-only) chat thread between the two parties

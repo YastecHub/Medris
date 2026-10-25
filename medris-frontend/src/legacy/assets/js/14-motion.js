@@ -1662,3 +1662,32 @@
   }
   wrapRenderers(); setTimeout(wrapRenderers, 1200); setTimeout(wrapRenderers, 4000);
 })();
+
+/* ===== Suggestions: the red number on the profile panel is refreshed whenever the panel opens ===== */
+(function () {
+  "use strict";
+  var busy = false;
+  async function refresh() {
+    if (busy || typeof session === "undefined" || !session) return;
+    var isAdmin = typeof profile !== "undefined" && profile && profile.role === "admin";
+    if (!isAdmin && !(typeof vendor !== "undefined" && vendor)) return;
+    busy = true;
+    try {
+      var r = await sb.rpc(isAdmin ? "get_platform_suggestions" : "get_vendor_suggestions");
+      if (r && !r.error && Array.isArray(r.data)) {
+        var n = r.data.filter(function (x) { return String(x.status || "").toLowerCase() === "new"; }).length;
+        if (n !== Number(unreadSuggestionCount || 0)) { unreadSuggestionCount = n; if (typeof updateAuthUI === "function") updateAuthUI(); }
+      }
+    } catch (_) {} finally { busy = false; }
+  }
+  window.lvRefreshSuggestionBadge = refresh;
+  function wrap() {
+    var t = window.toggleProfilePanel;
+    if (typeof t !== "function" || t.__lvSg) return;
+    var w = function () { var out = t.apply(this, arguments); setTimeout(refresh, 50); return out; };
+    w.__lvSg = true; window.toggleProfilePanel = w;
+  }
+  wrap(); setTimeout(wrap, 1500);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
+  setTimeout(refresh, 4000);
+})();
