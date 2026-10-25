@@ -3505,3 +3505,12 @@ html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!importa
 .leaflet-tooltip-bottom.vmp-tip::before{display:none}
 .vmp-me-dot{background:#1a73e8!important}
 .vmp-me.has-head::before{content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:conic-gradient(from calc(var(--vmp-head,0deg) - 28deg),rgba(26,115,232,.5) 0 56deg,transparent 56deg);-webkit-mask:radial-gradient(circle,transparent 7px,#000 8px);mask:radial-gradient(circle,transparent 7px,#000 8px)}
+
+/* Map category chips: plain white pills; the picked one is solid blue with white text (no green anywhere) */
+:root:root:root:root:root:root body #app .vmpage .vmp-chip{background:#fff!important;background-image:none!important;color:#3c4043!important;border:0!important;box-shadow:0 1px 4px rgba(60,64,67,.30)!important}
+:root:root:root:root:root:root body #app .vmpage .vmp-chip.on{background:#1a73e8!important;background-image:none!important;color:#fff!important;box-shadow:0 2px 8px rgba(26,115,232,.45)!important}
+:root[data-theme="dark"]:root:root:root:root body #app .vmpage .vmp-chip,:root[data-theme="black"]:root:root:root:root body #app .vmpage .vmp-chip{background:#2b2f36!important;color:#e8eaed!important}
+:root[data-theme="dark"]:root:root:root:root body #app .vmpage .vmp-chip.on,:root[data-theme="black"]:root:root:root:root body #app .vmpage .vmp-chip.on{background:#8ab4f8!important;color:#0b1b33!important}
+:root:root:root:root:root:root body #app .vmpage .vmp-bar{border:0!important;outline:0!important}
+:root:root:root:root:root:root body #app .vmpage .vmp-fab{background:#fff!important;border:0!important;color:#5f6368!important}
+:root:root:root:root:root:root body #app .vmpage .vmp-fab i{color:#5f6368!important}
