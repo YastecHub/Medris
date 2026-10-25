@@ -91,6 +91,21 @@ async function settleReference(reference, txData) {
       body: JSON.stringify({ status: "paid" }),
     });
   } else {
+    // An order payment. One database function marks the payment paid AND moves the order on (deposit confirms it, a
+    // final payment completes it or starts the buyer's 24-hour confirmation), checking the amount Paystack reports and
+    // doing nothing the second time (the webhook and the buyer's return both land here). Migration 0014.
+    // (lvm_ references belong to the new backend's own checkout, which moves the order itself.)
+    const rpcRes = reference.startsWith("lvm_") ? { ok: false, status: 0 } : await fetch(`${SUPABASE_URL}/rest/v1/rpc/apply_card_payment_to_order`, {
+      method: "POST", headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ p_reference: reference, p_paid_kobo: Number.isFinite(Number(txData?.amount)) ? Number(txData.amount) : null }),
+    });
+    if (rpcRes.ok) {
+      const out = await rpcRes.json().catch(() => null);
+      if (out && out.applied === false && out.reason === "amount_too_low") console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference);
+      return;
+    }
+    // Migration 0014 is not applied yet: keep the old behaviour (payment row only) instead of failing.
+    if (!reference.startsWith("lvm_")) console.error("[settleReference] apply_card_payment_to_order unavailable (", rpcRes.status, "); marking the payment only");
     await fetch(`${SUPABASE_URL}/rest/v1/payments?provider_reference=eq.${encodeURIComponent(reference)}`, {
       method: "PATCH", headers,
       body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
