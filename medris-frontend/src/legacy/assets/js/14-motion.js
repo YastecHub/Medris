@@ -1464,7 +1464,7 @@
 /* ---- a thin line on top of the bottom bar slides to the tab you tap (and the page slides in the same direction) ---- */
 (function(){
   var lastG=null;
-  function geo(nav,it){ var n=nav.getBoundingClientRect(), r=it.getBoundingClientRect(), w=Math.min(34,r.width*.5); return {x:r.left-n.left+(r.width-w)/2,w:w}; }
+  function geo(nav,it){ var n=nav.getBoundingClientRect(), r=it.getBoundingClientRect(), w=Math.max(0,r.width-8); return {x:r.left-n.left+4,w:w}; }
   function put(nav,animate){
     if(!nav) return;
     var it=nav.querySelector(".bottom-nav-item.active"), ind=nav.querySelector(".bn-ind");

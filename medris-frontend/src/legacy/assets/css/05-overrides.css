@@ -3588,8 +3588,8 @@ html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .st
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;border:0!important;border-radius:50%!important}
 
 /* bottom bar: slim, LinkedIn height (icon over a small label, about 50px plus the phone's bottom edge), one colour for line, icon and label */
-:root{--lv-nav-blue:#0f9d6a;--lv-nav-line:#0f9d6a}
-:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#34d399;--lv-nav-line:#34d399}
+:root{--lv-nav-blue:#7c5ce6;--lv-nav-line:#7c5ce6}
+:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#a58bfa;--lv-nav-line:#a58bfa}
 @media (max-width:720px){
 :root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{padding:0 4px env(safe-area-inset-bottom,0px)!important;align-items:stretch!important}
 :root:root:root:root body #bottomNav .bottom-nav-item.bottom-nav-item{min-height:50px!important;height:50px!important;padding:6px 2px 4px!important;gap:2px!important;justify-content:center!important}
@@ -3609,3 +3609,8 @@ html:root body #app>.top-rated-vendors-scroll{content-visibility:auto;contain-in
 html:root body #app>.browse-filter-toolbar{content-visibility:auto;contain-intrinsic-size:auto 40px}
 html:root body #app>#productGrid{content-visibility:auto;contain-intrinsic-size:auto 3000px}
 }
+
+/* the line is straight and flat (no rounded ends); vendors keep green next to the green + button */
+:root:root:root body #bottomNav .bn-ind{border-radius:0!important;height:2px!important}
+:root:root:root body #bottomNav.has-add{--lv-nav-blue:#0f9d6a;--lv-nav-line:#0f9d6a}
+:root[data-theme="dark"]:root:root body #bottomNav.has-add,:root[data-theme="black"]:root:root body #bottomNav.has-add{--lv-nav-blue:#34d399;--lv-nav-line:#34d399}
