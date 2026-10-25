@@ -3794,3 +3794,5 @@ html body #app .od-page .od-vendor-alert{border-bottom:0!important}
 /* payout card: the bank's own logo */
 .ve-bank-ico.has-logo{background:#fff!important;border:1px solid color-mix(in srgb,var(--text,#111) 10%,transparent);padding:.2rem}
 .ve-bank-ico img{width:100%;height:100%;object-fit:contain;border-radius:8px}
+.lvw-comm-two{grid-template-columns:1fr 1fr!important}
+.lvw-comm-note{margin:.2rem 0 .4rem;font-size:.88rem;line-height:1.5;color:var(--muted,#6b7280)}
