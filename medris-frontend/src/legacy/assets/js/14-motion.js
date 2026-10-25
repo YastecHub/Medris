@@ -2052,7 +2052,7 @@ window.lvAskCancel = async function (orderId) {
     // the same bank picker as the shop's payout page: search, and each bank's own logo
     m.querySelector("#lvrwBankBtn").onclick = function () {
       var pk = document.createElement("div");
-      pk.className = "modal vendor-bank-picker-modal open"; pk.style.zIndex = "2147483500";
+      pk.id = "vendorBankPickerModal"; pk.className = "modal vendor-bank-picker-modal open"; pk.style.zIndex = "2147483500";   // same id as the shop's picker: the same look, light and dark
       pk.innerHTML = '<div class="modal-content vendor-bank-picker-content"><div class="vendor-bank-picker-head"><div><div class="vendor-bank-picker-title"><i class="fa-solid fa-building-columns"></i><span>Select your bank</span></div><div class="muted" style="font-size:.76rem;margin-top:.2rem;">' + list.length + ' supported banks and financial institutions</div></div><button type="button" class="drawer-close-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="vendor-bank-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input class="vendor-bank-search" type="search" autocomplete="off" placeholder="Search bank..." aria-label="Search banks"></div><div class="vendor-bank-picker-list"></div></div>';
       document.body.appendChild(pk);
       var box = pk.querySelector(".vendor-bank-picker-list"), q = pk.querySelector(".vendor-bank-search");

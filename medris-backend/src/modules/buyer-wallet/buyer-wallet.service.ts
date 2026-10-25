@@ -3,7 +3,7 @@ import type { DataContext, Identity } from "../../database/context.js";
 import { BuyerWalletRepository } from "../../database/repositories/buyer-wallet.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, koboToNaira, maskAccount } from "../../integrations/paystack/index.js";
-import { badRequest, forbidden, serviceUnavailable } from "../../shared/errors/app-error.js";
+import { badRequest, forbidden, notReadyIfMissing, serviceUnavailable } from "../../shared/errors/app-error.js";
 import { sameAccountName } from "../payout-accounts/payout-accounts.service.js";
 
 /** Paystack does not send less than this. */
@@ -39,7 +39,7 @@ export class BuyerWalletService {
   /** What the wallet screen shows. */
   async summary(me: Identity | null) {
     if (!me) throw forbidden("Please log in to continue.");
-    return this.db().asService(async (tx) => {
+    return this.ready(() => this.db().asService(async (tx) => {
       const repo = new BuyerWalletRepository(tx);
       const account = await repo.account(me.userId);
       const credits = await repo.recentCredits(me.userId);
@@ -54,7 +54,7 @@ export class BuyerWalletService {
         credits,
         withdrawals: await repo.recentWithdrawals(me.userId),
       };
-    });
+    }));
   }
 
   /** The buyer confirms the account name Paystack gave; it is checked again here and saved as a transfer recipient. */
@@ -84,7 +84,7 @@ export class BuyerWalletService {
     } catch (err) {
       throw this.userError(err, "We could not set up refunds for that account.");
     }
-    return this.db().asService(async (tx) => {
+    return this.ready(() => this.db().asService(async (tx) => {
       const repo = new BuyerWalletRepository(tx);
       const before = await repo.account(me.userId);
       await repo.saveAccount(me.userId, { bankCode: input.bankCode, bankName, accountName: found.account_name, last4: input.accountNumber.slice(-4), recipientCode: recipient.recipient_code });
@@ -99,13 +99,13 @@ export class BuyerWalletService {
         });
       }
       return { bank_name: bankName, account_name: found.account_name, last4: input.accountNumber.slice(-4) };
-    });
+    }));
   }
 
   /** Withdraws everything available to the saved account. */
   async withdraw(me: Identity | null) {
     if (!me) throw forbidden("Please log in to continue.");
-    const plan = await this.db().asService(async (tx) => {
+    const plan = await this.ready(() => this.db().asService(async (tx) => {
       const repo = new BuyerWalletRepository(tx);
       const account = await repo.account(me.userId);
       if (!account) throw badRequest("Add your bank account for refunds first.");
@@ -118,7 +118,7 @@ export class BuyerWalletService {
       const id = await repo.insertWithdrawal(me.userId, total, reference);
       await repo.attach(id, credits.map((c) => c.id));
       return { id, reference, total, recipient: account.transfer_recipient_code };
-    });
+    }));
     // the Paystack call is made after that transaction has ended, with the withdrawal's own stable reference
     try {
       const t = await getPaystackClient().initiateTransfer({ amountKobo: plan.total, recipientCode: plan.recipient, reference: plan.reference, reason: "Levromart refund" });
@@ -144,6 +144,15 @@ export class BuyerWalletService {
       await new BuyerWalletRepository(tx).settle(id, to, { code, error });
       if (to === "success") await new NotificationWriter(tx).create({ userId, type: "refund_sent", title: "Refund sent", body: `${naira(total)} was sent to your bank account.`, targetView: "buyerProfile", actorId: null });
     });
+  }
+
+  /** Runs a database step; a wallet whose tables do not exist yet answers "being set up". */
+  private async ready<T>(work: () => Promise<T>): Promise<T> {
+    try {
+      return await work();
+    } catch (err) {
+      throw notReadyIfMissing(err, "The refunds wallet");
+    }
   }
 
   private blocked(account: { verified_age_hours: number } | null): string | null {
