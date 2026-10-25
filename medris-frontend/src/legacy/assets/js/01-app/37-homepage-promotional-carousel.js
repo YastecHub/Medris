@@ -182,10 +182,15 @@ const HOME_CAROUSEL_INTERVAL_MS = 5000;
 let homeCarouselJustDragged = false;
 let homeCarouselTimer = null;
 function homeCarouselStep(viewport) {
+  // The step only changes with the screen width; measuring it forces the browser to lay the whole page out, so it is remembered.
+  const w = window.innerWidth;
+  if (viewport.__stepW === w && viewport.__step) return viewport.__step;
   const first = viewport.querySelector(".home-promotional-slide");
   const second = first?.nextElementSibling;
   if (!first) return 0;
-  return second ? second.offsetLeft - first.offsetLeft : first.offsetWidth;
+  const step = second ? second.offsetLeft - first.offsetLeft : first.offsetWidth;
+  if (step) { viewport.__stepW = w; viewport.__step = step; }
+  return step;
 }
 function homeCarouselGoTo(viewport, domIndex, smooth = true) {
   const step = homeCarouselStep(viewport);

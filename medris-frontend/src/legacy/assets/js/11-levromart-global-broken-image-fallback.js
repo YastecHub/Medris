@@ -856,7 +856,7 @@ function hideLeviFromPanel() {
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
         <span class="lb-spark s1"></span><span class="lb-spark s2"></span><span class="lb-spark s3"></span><span class="lb-spark s4"></span><span class="lb-spark s5"></span>
-        <div class="lb-hero-people" aria-hidden="true"><img src="/lb/person-a.webp" alt="" width="52" height="52" decoding="async"><img src="/lb/person-c.webp" alt="" width="52" height="52" decoding="async"></div>
+        <div class="lb-hero-people lb-hero-prods" id="lbHeroProds"></div>
       </div>
       <div class="lb-scope-seg" id="lbScopeSeg" role="tablist" aria-label="Campus"></div>
       <div class="lb-tabs" role="tablist">${tabsNow().map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
@@ -908,6 +908,18 @@ function hideLeviFromPanel() {
       <div class="lbw-copy"><span class="lbw-tag"><i class="fa-solid fa-crown"></i> Vendor of the Week</span><strong>${esc(w.business_name)}</strong><small>${f(start)} to ${f(end)}</small></div>
       <i class="fa-solid fa-chevron-right lbw-go"></i>`;
     el.onclick = () => navigate("storefront", { vendorId: w.vendor_id });
+    paintHeroProducts(w.vendor_id);
+  }
+  // The winner's own products float in the corner of the header (instead of stock photos of people)
+  async function paintHeroProducts(vid) {
+    const box = $("lbHeroProds"); if (!box || box.dataset.v === String(vid)) return;
+    box.dataset.v = String(vid);
+    try {
+      const r = await sb.from("products").select("id,name,photos").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(12);
+      const rows = ((r && r.data) || []).filter((p) => p.photos && p.photos[0]).slice(0, 3);
+      const again = $("lbHeroProds"); if (!again || again.dataset.v !== String(vid)) return;
+      again.innerHTML = rows.map((p, i) => `<img class="lb-float f${i}" src="${esc(p.photos[0])}" alt="" width="52" height="52" decoding="async" onclick="event.stopPropagation();navigate('productDetail',{productId:'${esc(p.id)}'})">`).join("");
+    } catch (_) {}
   }
   function ensureHeroWinner() {
     paintHeroWinner();

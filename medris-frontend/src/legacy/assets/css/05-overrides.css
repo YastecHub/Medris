@@ -3838,3 +3838,33 @@ html:root body .lvw-wd-go{width:100%;margin-top:1rem;min-height:2.9rem;border-ra
 html:root body .lv-ap-dispute{background:#e5484d!important;color:#fff!important}
 html:root body #app .lvw-tabs{grid-template-columns:repeat(3,1fr)}
 html:root body #app .lvw-tabs button{font-size:.82rem;padding:0 .2rem}
+
+/* ===== Leaderboard: the winner's products float in the header; tabs stay on one row ===== */
+html:root body #app .lb-page .lb-hero>.lb-hero-prods{pointer-events:auto;right:.7rem;top:.5rem;width:9rem;height:4.6rem;display:block}
+html:root body #app .lb-hero-prods .lb-float{position:absolute;width:3rem;height:3rem;border-radius:14px;object-fit:cover;border:2.5px solid #fff;background:#fff;box-shadow:0 8px 18px rgba(20,10,80,.4);cursor:pointer;animation:lbFloat 3.4s ease-in-out infinite}
+html:root body #app .lb-hero-prods .lb-float.f0{right:5.2rem;top:.7rem;transform:rotate(-8deg)}
+html:root body #app .lb-hero-prods .lb-float.f1{right:2.6rem;top:0;width:3.4rem;height:3.4rem;animation-delay:-1.1s;transform:rotate(4deg)}
+html:root body #app .lb-hero-prods .lb-float.f2{right:0;top:1.1rem;animation-delay:-2.2s;transform:rotate(9deg)}
+@keyframes lbFloat{0%,100%{translate:0 0}50%{translate:0 -6px}}
+@media (prefers-reduced-motion:reduce){html:root body #app .lb-hero-prods .lb-float{animation:none}}
+html:root:root:root:root:root body #app#app#app .lb-page .lb-tabs{display:grid!important;grid-auto-flow:column;grid-template-columns:none!important;grid-auto-columns:1fr}
+html:root:root:root:root:root body #app#app#app .lb-page .lb-tabs .lb-tab{font-size:.74rem!important;white-space:nowrap}
+
+/* ===== Pop-ups: one clean look (no heavy shadows or blur) ===== */
+html:root body #confirmModal,html:root body #textPromptModal,html:root body #lvPayModal{background:rgba(15,23,42,.5)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html:root body .modal-content.lv-dlg{max-width:21.5rem!important;border-radius:24px!important;padding:1.5rem 1.25rem 1.2rem!important;text-align:center;background:var(--card,#fff)!important;border:0!important;box-shadow:0 10px 30px -12px rgba(0,0,0,.35)!important}
+html:root body .lv-dlg .lv-dlg-ico{width:3.4rem;height:3.4rem;border-radius:50%;margin:0 auto .8rem;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:rgba(22,160,106,.14);color:#0f7a52}
+html:root body .lv-dlg .lv-dlg-ico.danger{background:rgba(229,72,77,.13);color:#d1343a}
+html:root body .lv-dlg h3{margin:0;font-size:1.2rem;font-weight:800;text-align:center}
+html:root body .lv-dlg #confirmModalMsg,html:root body .lv-dlg #textPromptModalMsg{margin:.55rem 0 1.1rem!important;font-size:.92rem;line-height:1.5;text-align:center}
+html:root body .lv-dlg-chips{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin:0 0 .7rem}
+html:root body .lv-dlg-chips button{border:1px solid color-mix(in srgb,var(--text,#111) 14%,transparent);background:transparent;color:var(--text);border-radius:999px;padding:.38rem .75rem;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}
+html:root body .lv-dlg textarea{width:100%;box-sizing:border-box;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent);padding:.7rem .8rem;font:inherit;font-size:.92rem;background:var(--input-bg,var(--card,#fff));resize:none;text-align:left}
+html:root body .lv-dlg textarea:focus{outline:0;border-color:#16a06a}
+html:root body .lv-dlg .flex{display:flex!important;gap:.6rem;justify-content:stretch!important;margin-top:1rem}
+html:root body .lv-dlg .flex .btn{flex:1;min-height:2.9rem;border-radius:999px;font-weight:800;font-size:.95rem}
+html:root body .lv-dlg .flex .btn:first-child{background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;color:var(--text)!important;box-shadow:none!important}
+html:root body .lv-dlg .flex .btn:last-child{box-shadow:none!important}
+/* the pay sheet: flat, no glow */
+html:root body #lvPayModal.lvp .lv-pm-card{box-shadow:none!important}
+html:root body .lvp-pay{box-shadow:none!important}

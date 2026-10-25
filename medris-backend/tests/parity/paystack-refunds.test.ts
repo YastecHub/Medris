@@ -113,6 +113,7 @@ describe("paystack refunds (issue #99)", () => {
   it("after the vendor's payout has left, the refund is refused", async () => {
     const { orderId } = await paidOrder(1000, "confirmed");
     await db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
+    await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1 and status = 'on_hold' and hold_reason = 'Waiting for the vendor to withdraw'`, [orderId]); // the shop withdrew (migration 0017)
     await db.query(`delete from public.commission_charges where order_id = $1`, [orderId]);
     await payouts.run(); // sends it: now "processing"
     await expect(refunds.refundOrder(as(admin), orderId, { reason: "too late" })).rejects.toThrow(/already been paid/);
@@ -122,6 +123,7 @@ describe("paystack refunds (issue #99)", () => {
   it("a refund and a payout at the same moment never take the same money", async () => {
     const { orderId } = await paidOrder(1000, "confirmed");
     await db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
+    await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1 and status = 'on_hold' and hold_reason = 'Waiting for the vendor to withdraw'`, [orderId]); // the shop withdrew (migration 0017)
     await db.query(`delete from public.commission_charges where order_id = $1`, [orderId]);
     const [r] = await Promise.allSettled([refunds.refundOrder(as(admin), orderId, { reason: "race" }), payouts.run()]);
     const transfers = await db.query<{ status: string }>(`select status from public.vendor_payouts where order_id = $1`, [orderId]);
@@ -134,6 +136,7 @@ describe("paystack refunds (issue #99)", () => {
   it("a full refund holds a payout that has not left yet", async () => {
     const { orderId } = await paidOrder(1000, "confirmed");
     await db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
+    await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1 and status = 'on_hold' and hold_reason = 'Waiting for the vendor to withdraw'`, [orderId]); // the shop withdrew (migration 0017)
     await refunds.refundOrder(as(admin), orderId, { reason: "buyer won the dispute" });
     expect((await db.query<{ status: string }>(`select status from public.vendor_payouts where order_id = $1`, [orderId]))[0]!.status).toBe("on_hold");
   });

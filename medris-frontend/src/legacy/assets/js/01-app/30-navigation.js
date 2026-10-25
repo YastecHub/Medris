@@ -142,6 +142,14 @@ function fastNavigateHome(event) {
 async function levroCommissionGate(view) {
   const restricted = new Set(["vendorDashboard","vendorEditProfile","vendorProducts","vendorPackages","vendorSuggestionsInbox","settings"]);
   if (!restricted.has(view) || !session || profile?.role !== "vendor" || !vendor?.id) return false;
+  // The check is two network round trips: never make a tap wait for it. Check at most every 5 minutes, in the background; a
+  // lock (rare now that commission comes off each payout) still shows its notice as soon as the answer arrives.
+  if (Date.now() - (window.__lvGateAt || 0) < 300000) return false;
+  window.__lvGateAt = Date.now();
+  levroCommissionGateCheck();
+  return false;
+}
+async function levroCommissionGateCheck() {
   try {
     // Repair any stale lock first, then evaluate the actual due_at timestamp.
     // A balance is allowed during its seven-day window. Only a charge whose

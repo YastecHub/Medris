@@ -66,6 +66,7 @@ describe("vendor payouts (issue #98)", () => {
     const ref = viaPaystack ? `lvm_ord_${crypto.randomBytes(6).toString("hex")}` : `manual_${crypto.randomBytes(4).toString("hex")}`;
     await db.query(`insert into public.payments (order_id, payment_type, amount, method, status, provider_reference) values ($1, 'sale_price', $2, $3, 'paid', $4)`, [orderId, naira, viaPaystack ? "card" : "transfer", ref]);
     await db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
+    await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1 and status = 'on_hold' and hold_reason = 'Waiting for the vendor to withdraw'`, [orderId]); // the shop withdrew (migration 0017)
     await db.query(`delete from public.commission_charges where order_id = $1`, [orderId]);
     if (commission > 0) await db.query(`insert into public.commission_charges (vendor_id, order_id, amount, status) values ($1, $2, $3, 'owed')`, [shop, orderId, commission]);
     return orderId;
@@ -78,6 +79,7 @@ describe("vendor payouts (issue #98)", () => {
     expect(await payouts(orderId)).toHaveLength(1);
     await db.query(`update public.orders set status = 'disputed' where id = $1`, [orderId]);
     await db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
+    await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1 and status = 'on_hold' and hold_reason = 'Waiting for the vendor to withdraw'`, [orderId]); // the shop withdrew (migration 0017)
     expect(await payouts(orderId)).toHaveLength(1);
   });
 

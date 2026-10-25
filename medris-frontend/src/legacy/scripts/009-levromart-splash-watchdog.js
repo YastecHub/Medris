@@ -26,6 +26,26 @@
       return true;
     }catch(_){ return true; }
   }
-  setTimeout(function tick(){ if(!styled() && Date.now()-started<10000){ setTimeout(tick,200); return; } try{ window.__levroSplashHidden=true; }catch(_){} hide(); },4500);
+  // On a very slow connection the big app script can still be on its way. Revealing the page then shows raw, jumbled controls
+  // (search box, assistant button, empty cards), so while the app has not arrived the splash stays and says the network is slow.
+  function appArrived(){ return typeof window.renderHome==="function" && typeof window.navigate==="function"; }
+  function slowNotice(){
+    var el=document.getElementById("levromartSplash");
+    if(!el||document.getElementById("lvSlowNet"))return;
+    var d=document.createElement("div");
+    d.id="lvSlowNet";
+    d.setAttribute("role","status");
+    d.style.cssText="position:absolute;left:0;right:0;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:.7rem;padding:0 1.5rem;text-align:center;font-family:inherit";
+    d.innerHTML='<strong style="font-size:1.02rem;color:inherit">Your network is very slow</strong><span style="font-size:.88rem;opacity:.75;line-height:1.4">Still loading. It will open as soon as the connection catches up.</span><button type="button" id="lvSlowRetry" style="margin-top:.2rem;border:0;border-radius:999px;padding:.7rem 1.4rem;font:inherit;font-weight:800;background:#16a06a;color:#fff">Try again</button>';
+    el.appendChild(d);
+    document.getElementById("lvSlowRetry").onclick=function(){ location.reload(); };
+  }
+  setTimeout(function tick(){
+    var waited=Date.now()-started;
+    if(!appArrived() && !window.__levroSplashHidden){ if(waited>6000) slowNotice(); setTimeout(tick,300); return; }
+    var n=document.getElementById("lvSlowNet"); if(n) n.remove();
+    if(!styled() && waited<10000){ setTimeout(tick,200); return; }
+    try{ window.__levroSplashHidden=true; }catch(_){} hide();
+  },4500);
 
 })();
