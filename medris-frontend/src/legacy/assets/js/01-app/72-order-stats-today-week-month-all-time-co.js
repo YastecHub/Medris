@@ -239,13 +239,20 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     ]);
     return { salesCount, purchaseCount };
   }).catch(() => null);
-  const [{ data: allOrdersRaw0, error: allOrdersError }, { data: statsOrders0, error: statsError }] = await Promise.all([
+  const [{ data: __allOrdersRaw0, error: allOrdersError0 }, { data: statsOrders0, error: statsError }] = await Promise.all([
     ordersTabCached(`vo:${vendor.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") })),
     ordersTabCached(`vs2:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, order_type, delivery_method, awaiting_confirmation_since, payments(payment_type,status)").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
   ]);
   // Delivered and paid, just waiting out the buyer's 48-hour window: for the vendor it counts as Completed,
   // so it stops mixing with the orders still needing their attention. A dispute moves it to Disputed as usual.
+  // A slow or failed load must never make orders vanish from a tab: keep the last complete list and use it until a good one arrives.
+  window.__lastVendorOrders = window.__lastVendorOrders || {};
+  const __lastKey = `${vendor.id}:${dateFrom}:${dateTo}`;
+  let allOrdersRaw0 = __allOrdersRaw0;
+  if (Array.isArray(allOrdersRaw0)) window.__lastVendorOrders[__lastKey] = allOrdersRaw0;
+  else if (Array.isArray(window.__lastVendorOrders[__lastKey])) allOrdersRaw0 = window.__lastVendorOrders[__lastKey];
   const vendorEffectiveStatus = (o) => (o && o.awaiting_confirmation_since && ["confirmed", "handed_over"].includes(o.status) && o.order_type !== "rental" && orderIsFullyPaid(o)) ? { ...o, status: "completed", __ackPending: true } : o;
+  const allOrdersError = Array.isArray(__allOrdersRaw0) ? allOrdersError0 : (Array.isArray(allOrdersRaw0) ? null : allOrdersError0);
   const allOrdersRaw = Array.isArray(allOrdersRaw0) ? allOrdersRaw0.map(vendorEffectiveStatus) : allOrdersRaw0;
   const statsOrders = Array.isArray(statsOrders0) ? statsOrders0.map(vendorEffectiveStatus) : statsOrders0;
   const allOrders = allOrdersRaw && status !== "all" ? allOrdersRaw.filter((o) => o.status === status) : allOrdersRaw;

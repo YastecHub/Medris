@@ -3784,3 +3784,13 @@ html:root body #app .ve-card input:focus,html:root body #app .ve-card select:foc
 .lvw-bal.lvw-flash{animation:lvwFlash .9s ease}
 @keyframes lvwFlash{0%{opacity:.35;transform:translateY(3px)}100%{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.lvw-live i,.lvw-bal.lvw-flash{animation:none}}
+
+/* the campus step: the greeting is plain text, no purple box or outline */
+html:root body #lvSetup .st-hero,html:root body #lvSetup .st-hero .b{background:none!important;border:0!important;box-shadow:none!important}
+html:root body #lvSetup .st-hero{padding:0!important}
+html:root body #lvSetup .st-hero .b{padding:0!important}
+/* pending order page: no line above Decline / Confirm */
+html body #app .od-page .od-vendor-alert{border-bottom:0!important}
+/* payout card: the bank's own logo */
+.ve-bank-ico.has-logo{background:#fff!important;border:1px solid color-mix(in srgb,var(--text,#111) 10%,transparent);padding:.2rem}
+.ve-bank-ico img{width:100%;height:100%;object-fit:contain;border-radius:8px}

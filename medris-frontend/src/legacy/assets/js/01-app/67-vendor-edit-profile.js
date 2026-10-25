@@ -104,7 +104,7 @@ async function renderVendorEditProfile() {
     <div id="bankError" class="error-text hidden"></div>
     <div id="payoutVerifiedBox"></div>
     <div id="payoutLegacy">${v.paystack_subaccount_code
-      ? `<div class="ve-bank"><span class="ve-bank-ico"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>${esc(v.account_name || "Your account")}</strong><small><span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Payouts on</span></div>`
+      ? `<div class="ve-bank"><span class="ve-bank-ico" data-bank-code="${esc(v.bank_code || "")}"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>${esc(v.account_name || "Your account")}</strong><small><span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Payouts on</span></div>`
       : `<div class="ve-bank ve-bank-empty"><span class="ve-bank-ico"><i class="fa-solid fa-triangle-exclamation"></i></span><div class="ve-bank-copy"><strong>Not set up yet</strong><small>Until you add your bank, order payments go to Levromart and you will be paid out manually.</small></div></div>`}</div>
     ${v.paystack_subaccount_code ? `<button type="button" class="ve-btn ve-btn-ghost ve-btn-wide" id="veChangeBankBtn" onclick="lvChangeBank()"><i class="fa-solid fa-pen"></i> Change bank account</button>` : ""}
     <div id="bankFormWrap" class="ve-bankform ${v.paystack_subaccount_code ? "hidden" : ""}">

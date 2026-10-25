@@ -477,6 +477,7 @@ function subscribeNotifications() {
         refreshNotifications(false);
         return;
       }
+      if (/order|payment/i.test(String(payload.new.type || ""))) { try { window.lvOrdersNudge?.(); } catch (_) {} }
       playNotificationSound(payload.new);
       try { if (!document.hidden) navigator.vibrate?.([150, 80, 150]); } catch (_) {}
       showToast(payload.new.title, "info");
