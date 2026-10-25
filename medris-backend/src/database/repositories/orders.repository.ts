@@ -120,6 +120,17 @@ export class PaymentsRepository {
     return row ?? null;
   }
 
+  /**
+   * A confirmed Paystack payment for an order started with the older `medris_` checkout: marks the payment paid AND moves the
+   * order on (migration 0014). Returns false when the function is not installed yet, so the caller can fall back.
+   */
+  async applyCardPayment(reference: string, paidKobo: number | null): Promise<boolean> {
+    const found = await jsonRow<{ ok: boolean }>(this.db, sql`select to_regprocedure('public.apply_card_payment_to_order(text,bigint)') is not null as ok`);
+    if (!found?.ok) return false;
+    await this.db.execute(sql`select public.apply_card_payment_to_order(${reference}, ${paidKobo}::bigint)`);
+    return true;
+  }
+
   async markPaidByReference(reference: string, at: string): Promise<number> {
     const rows = await this.db.update(payments).set({ status: "paid", paidAt: at }).where(eq(payments.providerReference, reference)).returning({ id: payments.id });
     return rows.length;

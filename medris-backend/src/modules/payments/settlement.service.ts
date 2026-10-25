@@ -48,5 +48,11 @@ export async function settleReference(reference: string, txData: PaystackTransac
     return;
   }
 
-  await data.asService((tx) => new PaymentsRepository(tx).markPaidByReference(reference, now()));
+  await data.asService(async (tx) => {
+    const payments = new PaymentsRepository(tx);
+    // an order payment: mark it paid and move the order on, once, if the amount matches (migration 0014);
+    // lvm_ references are the new checkout's own and are applied by the Paystack webhook service
+    if (!reference.startsWith("lvm_") && (await payments.applyCardPayment(reference, Number.isFinite(Number(txData?.amount)) ? Number(txData?.amount) : null))) return;
+    await payments.markPaidByReference(reference, now());
+  });
 }
