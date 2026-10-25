@@ -3588,8 +3588,8 @@ html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .st
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;border:0!important;border-radius:50%!important}
 
 /* bottom bar: slim, LinkedIn height (icon over a small label, about 50px plus the phone's bottom edge), one colour for line, icon and label */
-:root{--lv-nav-blue:#6d5bd0;--lv-nav-tint:rgba(139,107,255,.08);--lv-nav-line:#b9a8ff}
-:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#c4b5fd;--lv-nav-tint:rgba(167,139,250,.11);--lv-nav-line:#a78bfa}
+:root{--lv-nav-blue:#0f9d6a;--lv-nav-line:#0f9d6a}
+:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#34d399;--lv-nav-line:#34d399}
 @media (max-width:720px){
 :root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{padding:0 4px env(safe-area-inset-bottom,0px)!important;align-items:stretch!important}
 :root:root:root:root body #bottomNav .bottom-nav-item.bottom-nav-item{min-height:50px!important;height:50px!important;padding:6px 2px 4px!important;gap:2px!important;justify-content:center!important}
@@ -3602,6 +3602,10 @@ html:root:root:root body{padding-bottom:calc(3.6rem + env(safe-area-inset-bottom
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar,
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar img{max-width:none!important;max-height:none!important}
 
-@media (max-width:720px){
-:root:root:root:root body #bottomNav .bottom-nav-item.bottom-nav-item.active{background:var(--lv-nav-tint)!important;border-radius:12px!important}
+
+/* Home opens fast: the long blocks far below the first screen are not laid out until they get near */
+@supports (content-visibility:auto){
+html:root body #app>.top-rated-vendors-scroll{content-visibility:auto;contain-intrinsic-size:auto 274px}
+html:root body #app>.browse-filter-toolbar{content-visibility:auto;contain-intrinsic-size:auto 40px}
+html:root body #app>#productGrid{content-visibility:auto;contain-intrinsic-size:auto 3000px}
 }
