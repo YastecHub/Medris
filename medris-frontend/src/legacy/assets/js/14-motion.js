@@ -1852,7 +1852,7 @@
     function wrapFn(name, build) {
       var f = window[name]; if (typeof f !== "function" || f.__lvw) return;
       var w = async function () { var html = await f.apply(this, arguments); var out = build(String(html == null ? "" : html), arguments); if (out !== null) setTimeout(function () { refresh(false); }, 30); return out === null ? html : out; };
-      w.__lvw = true; window[name] = w;
+      w.__lvw = true; w.__lvrw = f.__lvrw; window[name] = w;   // keep the refunds wallet's mark too
     }
     // the shop's own full profile: the wallet takes the place of the top banner
     wrapFn("renderVendorDashboard", function (html) {
@@ -1933,7 +1933,8 @@
     c.classList.add("lv-dlg");
     var old = c.querySelector(".lv-dlg-ico"); if (old) old.remove();
     var ico = document.createElement("div");
-    ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "");
+    ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "") + (opts.tone === "purple" ? " purple" : "");
+    c.classList.toggle("lv-dlg-purple", opts.tone === "purple");
     ico.innerHTML = '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
     c.insertBefore(ico, c.firstChild);
     var cancel = document.getElementById(prompt ? "textPromptModalCancel" : "confirmModalCancel");
@@ -2100,9 +2101,18 @@ window.lvAskCancel = async function (orderId) {
       setTimeout(function () { refresh(false); }, 30);
       return '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>" + str;
     };
-    w.__lvrw = true; window[name] = w;
+    w.__lvrw = true; w.__lvw = f.__lvw; window[name] = w;   // keep the other wallet's mark so it is never wrapped again on top of this one
   }
-  function wrapAll() { wrapFn("renderBuyerProfile"); wrapFn("renderCustomerOrders"); wrapFn("renderVendorOrders"); }
+  function wrapEdit() {
+    var f = window.renderEditProfile; if (typeof f !== "function" || f.__lvrw) return;
+    var w = function () {
+      var out = f.apply(this, arguments);
+      var add = function (html) { return String(html) + '<div class="lvrw-edit"><div><strong>Refund account</strong><small>Where refunds are sent when an order is cancelled or a problem is settled in your favour.</small></div><button type="button" class="btn btn-outline" onclick="lvRefundAccount()">Add or change</button></div>'; };
+      return out && typeof out.then === "function" ? out.then(add) : add(out);
+    };
+    w.__lvrw = true; window.renderEditProfile = w;
+  }
+  function wrapAll() { wrapFn("renderBuyerProfile"); wrapFn("renderCustomerOrders"); wrapFn("renderVendorOrders"); wrapEdit(); }
   wrapAll(); setTimeout(wrapAll, 1200); setTimeout(wrapAll, 4000);
 
   // every customer is asked once (and again every few days until they add an account)

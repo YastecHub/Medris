@@ -113,8 +113,10 @@ async function confirmHandOverOrder(orderId) {
   const { data: orderForHandover } = await sb.from("orders").select("delivery_method").eq("id",orderId).maybeSingle();
   const isDelivery = orderForHandover?.delivery_method === "delivery";
   const confirmed = await showConfirmDialog(
-    isDelivery ? "Confirm that you have actually delivered this order to the customer. This changes the order to Delivered and tells the customer to complete the remaining payment." : "Confirm that you have physically handed this order to the customer. This changes the order to Handed over and tells the customer to confirm receipt. Only continue if the handover has actually happened.",
-    { title: isDelivery ? "Mark as delivered" : "Mark as handed over", okLabel: isDelivery ? "Yes, mark delivered" : "Yes, mark handed over" }
+    isDelivery
+      ? "The buyer is told that their order is on its way. Only continue once the order is really leaving you."
+      : "The buyer is told that you handed the order over, and they confirm they have it. Only continue if the handover has actually happened.",
+    { title: isDelivery ? "Mark out for delivery?" : "Mark as handed over?", okLabel: isDelivery ? "Yes, it's out for delivery" : "Yes, handed over", cancelLabel: "Go back", tone: "purple", icon: "fa-truck-fast" }
   );
   if (!confirmed) return;
   showToast("Updating order…", "info");

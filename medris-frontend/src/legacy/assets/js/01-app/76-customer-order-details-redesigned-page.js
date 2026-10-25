@@ -79,6 +79,7 @@ function odStatusLabel(order) {
   if (order.__paymentUnresolved) return "Payment unresolved";
   const stage = lvOrderStageLabel(order);
   if (stage) return stage;
+  if (order.status === "handed_over" && order.delivery_method === "delivery" && order.order_type !== "rental") return "Out for delivery";
   return String(order.status || "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 }
 function odInfoCard(order, isDelivery) {

@@ -46,7 +46,7 @@ function vendorOrderTopHtml(order, ctx) {
     if (orderCanSuggestQuantity(order)) h += `<div class="od-actions"><button type="button" class="od-btn od-btn-soft" onclick="openSuggestQuantity('${esc(order.id)}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button></div>`;
     h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
   } else if (st === "confirmed" && (orderIsFullyPaid(order) || ctx.feePaid) && !isRental) {
-    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','handed_over')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>`;
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary od-btn-purple" onclick="confirmHandOverOrder('${esc(order.id)}')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>`;
   } else if (st === "confirmed" && !orderIsFullyPaid(order)) {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
   } else if (st === "handed_over" && isRental) {

@@ -3886,3 +3886,16 @@ html:root body .lvrw-name{margin-top:.8rem;padding:.8rem;border-radius:14px;back
 html:root body .lvrw-name span{font-size:.82rem;opacity:.8}
 html:root body .lvrw-name small{margin-top:.3rem;font-weight:700;color:#0f7a52}
 html:root body .lvrw-later{display:block;margin:.5rem auto 0;border:0;background:transparent;color:var(--muted,#6b7280);font:inherit;font-weight:700;cursor:pointer;padding:.5rem 1rem}
+
+/* ===== Out for delivery is purple (payment confirmed stays teal) ===== */
+html:root body #app .od-tone-handed{--od-tone:#7c5cff;--od-tone-text:#5b3fd6;--od-tone-soft:#e6dffe;background:#f3f0ff}
+:root[data-theme="dark"] body #app .od-tone-handed,:root[data-theme="black"] body #app .od-tone-handed{background:color-mix(in srgb,#7c5cff 16%,var(--card))}
+html:root body #app .od-btn-purple{background:linear-gradient(135deg,#7c5cff,#5b3fd6)!important;color:#fff!important;border-color:transparent!important;box-shadow:none!important}
+html:root body .lv-dlg .lv-dlg-ico.purple{background:rgba(124,92,255,.14);color:#6a4be8}
+html:root body .lv-dlg.lv-dlg-purple .flex .btn:last-child{background:linear-gradient(135deg,#7c5cff,#5b3fd6)!important;color:#fff!important}
+
+/* everything is paid before delivery now: no payment-timing notice on a product */
+html:root body #app .product-payment-plan-notice,html:root body #app .pd-pay-notice{display:none!important}
+html:root body #app .lvrw-edit{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin:1rem 0;padding:.9rem 1rem;border-radius:16px;background:color-mix(in srgb,var(--text,#111) 4%,var(--card,#fff))}
+html:root body #app .lvrw-edit small{display:block;margin-top:.15rem;font-size:.76rem;color:var(--muted,#6b7280);line-height:1.35}
+html:root body #app .lvrw-edit .btn{flex:none;min-height:2.4rem;padding:0 1rem;border-radius:999px;font-size:.85rem}
