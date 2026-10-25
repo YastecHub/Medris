@@ -138,7 +138,7 @@
   function syncAuth(){
     var m=currentMode(), c=COPY[m]||COPY.login;
     var el;
-    if((el=$("lvAuthEyebrow"))) el.textContent=c.e;
+    if((el=$("lvAuthEyebrow"))) { el.textContent=c.e; el.hidden=(m==="login"); }   // the big "Welcome back." says it already
     if((el=$("lvAuthHeadline"))) el.innerHTML=c.h;
     if((el=$("lvAuthSub"))) el.textContent=c.p;
     if((el=$("authSubmitBtn"))) el.textContent=c.btn;

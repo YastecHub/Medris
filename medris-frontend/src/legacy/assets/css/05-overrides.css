@@ -3544,3 +3544,13 @@ html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!importa
 :root:root:root:root:root body #app .vmpage .vmp-modes button.on{background:color-mix(in srgb,var(--text,#202124) 6%,transparent)!important;color:var(--text,#202124)!important}
 :root:root:root:root:root body #app .vmpage .vmp-modes button.on i{color:#5f6368!important}
 :root:root:root:root:root body #app .vmpage .vmp-modes button{pointer-events:none}
+
+
+/* Profile panel: Log out sits right under Settings & Privacy */
+#profilePanel .lv-pp-row.lv-pp-logout{color:#dc2626!important;gap:.6rem}
+#profilePanel .lv-pp-row.lv-pp-logout svg{flex:0 0 auto;margin-right:.7rem;color:#dc2626}
+#profilePanel .lv-pp-row.lv-pp-logout span{color:#dc2626!important;font-weight:700}
+
+/* Sign-in page: with the small "Welcome back" line gone, the headline sits higher */
+#lvAuthEyebrow[hidden]{display:none!important}
+#lvAuthEyebrow[hidden]+h1,#lvAuthEyebrow[hidden]+h2,#lvAuthEyebrow[hidden]~#lvAuthHeadline{margin-top:0}
