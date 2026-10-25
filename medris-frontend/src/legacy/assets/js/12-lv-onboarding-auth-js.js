@@ -2193,7 +2193,9 @@ async function setVendorRequestPref(v){
     sb.rpc("admin_campus_submissions").then(function(r){
       var rows=(r&&r.data)||[]; if(!rows.length){ box.innerHTML=""; return; }
       box.innerHTML='<div class="ac-sec" style="margin-top:0">New schools to confirm ('+rows.length+')</div>'+rows.map(function(x){
-        return '<div class="ac-sub"><div class="ac-sub-h"><span class="ac-ico"><i class="fa-solid fa-graduation-cap"></i></span><div><b>'+e3(x.name)+'</b><small>'+(Number(x.users_count)||0)+' student'+(Number(x.users_count)===1?'':'s')+' · '+(Number(x.vendors_count)||0)+' vendor'+(Number(x.vendors_count)===1?'':'s')+'</small></div></div>'
+        return '<div class="ac-sub"><div class="ac-sub-h"><span class="ac-ico"><i class="fa-solid fa-graduation-cap"></i></span><div><b>'+e3(x.name)+'</b><small>'+(Number(x.users_count)||0)+' student'+(Number(x.users_count)===1?'':'s')+' · '+(Number(x.vendors_count)||0)+' vendor'+(Number(x.vendors_count)===1?'':'s')+'</small>'
+          +(x.submitter_name||x.submitter_email?'<small class="ac-who"><i class="fa-solid fa-user"></i> Requested by <b>'+e3(x.submitter_name||x.submitter_email)+'</b>'+(x.submitter_email&&x.submitter_name?' · '+e3(x.submitter_email):'')+(x.submitter_phone?' · '+e3(x.submitter_phone):'')+'</small>':'')
+          +(x.shop_names?'<small class="ac-who"><i class="fa-solid fa-store"></i> Shops using it: '+e3(x.shop_names)+'</small>':'')+'</div></div>'
           +'<div class="ac-sub-a"><button type="button" class="ok" data-sub="approve" data-n="'+e3(x.name_norm)+'">Approve</button><button type="button" data-sub="merge" data-n="'+e3(x.name_norm)+'">Same as…</button><button type="button" class="no" data-sub="reject" data-n="'+e3(x.name_norm)+'">Reject</button></div></div>';}).join("");
       box.dataset.rows=JSON.stringify(rows);
     }).catch(function(){});

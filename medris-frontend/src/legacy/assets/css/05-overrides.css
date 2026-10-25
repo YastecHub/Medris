@@ -3910,3 +3910,43 @@ html:root body .lvrw-bankbtn{width:100%;display:flex;align-items:center;gap:.7re
 html:root body .lvrw-bankbtn .lvrw-bank-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html:root body .lvrw-bankbtn .ve-bank-ico{width:2.2rem;height:2.2rem;flex:none;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--text,#111) 7%,transparent);overflow:hidden}
 html:root body .lvrw-bankbtn .ve-bank-ico img{width:100%;height:100%;object-fit:contain}
+
+/* ===== Admin: calmer, tidier action buttons (one row, same size, flat) ===== */
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app :is(.ad-btn,.lvsr-acts button,.ac-sub-a button,.lv-ap-acts .btn,.lv-ap-acts button){
+  background-image:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;
+  min-height:2.4rem!important;height:auto!important;padding:.45rem .7rem!important;border-radius:12px!important;
+  font-size:.84rem!important;font-weight:700!important;line-height:1.1!important;letter-spacing:0!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.4rem!important;white-space:nowrap;border-width:1.5px!important;border-style:solid!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app :is(.ad-btn,.lvsr-acts button,.ac-sub-a button,.lv-ap-acts .btn,.lv-ap-acts button) i{font-size:.9em!important;width:auto!important;height:auto!important;margin:0!important}
+/* the rows of buttons: always one line, equal widths */
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app :is(.flex:has(> .ad-btn),.lvsr-acts,.ac-sub-a,.lv-ap-acts){
+  display:grid!important;grid-auto-flow:column!important;grid-auto-columns:minmax(0,1fr)!important;gap:.5rem!important;flex-wrap:nowrap!important;width:100%;justify-content:stretch!important;margin-top:.7rem!important}
+/* colours: approve green, reject amber, delete red, everything else quiet */
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .ad-approve,html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lvsr-acts .ok,html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .ac-sub-a .ok{background:#16a06a!important;border-color:#16a06a!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .ad-reject,html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lvsr-acts .no{background:rgba(245,158,11,.12)!important;border-color:rgba(245,158,11,.55)!important;color:#c77700!important;-webkit-text-fill-color:#c77700!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .ad-delete{background:rgba(224,70,63,.1)!important;border-color:rgba(224,70,63,.5)!important;color:#d1343a!important;-webkit-text-fill-color:#d1343a!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .ad-btn *{color:inherit!important;-webkit-text-fill-color:inherit!important}
+/* admin pages: smaller section header, badges that fit their words, tidy list rows */
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .admin-nav-pick{padding:.55rem .2rem!important;gap:.7rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .admin-nav-pick-ico{width:2.3rem!important;height:2.3rem!important;border-radius:12px!important;font-size:.95rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .admin-nav-pick-txt b{font-size:1.02rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .admin-nav-pick-txt small{font-size:.7rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app h2{font-size:1.15rem!important;margin:.5rem 0!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-row{flex-direction:column!important;align-items:stretch!important;gap:.55rem!important;padding:.8rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main{flex-direction:row!important;flex-wrap:wrap!important;align-items:center!important;gap:.35rem .5rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main>b{font-size:1.05rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main>small{flex:1 1 100%;font-size:.76rem!important;line-height:1.35!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main .badge{display:inline-flex!important;width:auto!important;flex:none!important;padding:.2rem .55rem!important;font-size:.7rem!important;border-radius:999px!important;line-height:1.2!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main .badge i{font-size:.75em!important;margin-right:.25rem}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-totals .stat{padding:.7rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-totals .stat .n{font-size:1.15rem!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .segmented-tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .segmented-tabs button{flex:none!important;white-space:nowrap;font-size:.8rem!important;padding:.5rem .8rem!important}
+.ac-who{display:block;margin-top:.15rem;font-size:.76rem!important;color:var(--text-muted)}
+.ac-who i{width:1rem;opacity:.7}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-acts .btn:not(.btn-outline):not(.btn-danger){background:#16a06a!important;border-color:#16a06a!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-acts .btn-danger{background:rgba(224,70,63,.1)!important;border-color:rgba(224,70,63,.5)!important;color:#d1343a!important;-webkit-text-fill-color:#d1343a!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-acts .btn-outline{background:transparent!important;border-color:color-mix(in srgb,var(--text,#111) 25%,transparent)!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main .lv-ap-acct{background:rgba(245,158,11,.15)!important;color:#c77700!important;border:1px solid rgba(245,158,11,.4);text-transform:none!important;font-weight:700!important;max-width:100%;white-space:normal;line-height:1.25!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main .lv-ap-dispute{background:rgba(229,72,77,.14)!important;color:#d1343a!important;border:1px solid rgba(229,72,77,.4);text-transform:none!important;font-weight:700!important}
+html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main>small{color:var(--muted,#8b919c)!important}

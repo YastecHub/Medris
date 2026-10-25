@@ -218,15 +218,13 @@ export class AdminVendorsService {
     return this.db().asService(async (tx) => ((await new AccessRepository(tx).isAdmin(me?.userId)) ? new ShopsRepository(tx).payouts() : []));
   }
 
-  /** Replaces: public.admin_review_student_verification(uuid, text, text) - approving needs a matric number; the vendor is told. */
+  /** Replaces: public.admin_review_student_verification(uuid, text, text) - an admin may approve even without a matric number yet; the vendor is told. */
   async reviewStudent(me: Identity | null, vendorId: string, status: string, note: string | null): Promise<{ success: true; status: string }> {
     return this.asAdmin(me, "Only admins can review student verification.", async ({ shops, notify, adminId }) => {
       if (!["approved", "rejected", "pending"].includes(status)) throw badRequest("Invalid status.");
       const row = await shops.studentVerification(vendorId);
       if (!row) throw notFound("No verification submitted for this vendor.");
-      if (status === "approved" && !row.not_student && (row.matric_pending || sqlTrim(row.matric_number ?? "") === "")) {
-        throw badRequest("This vendor has not added a matric number yet, so they cannot be verified.");
-      }
+      // (0020) a student without a matric number yet can be verified by an admin who has checked the other documents
       const owner = await shops.decideStudentVerification(vendorId, status, note, adminId);
       await notify.createQuietly({
         userId: owner,
