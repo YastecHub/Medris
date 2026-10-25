@@ -42,7 +42,9 @@ async function refreshAuthState() {
     ensureProfileAndRoleSync.catch(() => {});
   }
 
-  if (session) {
+  // A login made a moment ago was just checked by the server itself: asking again would only add a wait before the app opens.
+  const freshSignIn = window.__lvFreshSignIn && Date.now() - window.__lvFreshSignIn < 20000;
+  if (session && !freshSignIn) {
     let verifiedUser = null, verifyError = null;
     try {
       const r = await sb.auth.getUser();
@@ -115,23 +117,25 @@ async function refreshAuthState() {
 
     // Almost always already settled by now, since it's been running since
     // right before the getUser() round trip above.
-    const resolvedRole = await ensureProfileAndRoleSync;
-    if (resolvedRole) {
-      // The subsequent users query below is still the source of the complete
-      // profile object; this local assignment only prevents a stale value
-      // from being used by code that runs between the two requests.
-      profile = profile || {};
-      profile.role = resolvedRole;
-      profile.role_selected = true;
-    }
-
-    const [profileRes, vendorRes, favsRes, pkgFavsRes] = await Promise.all([
+    const loadAccount = () => Promise.all([
       sb.from("users").select("*").eq("id", userId).single(),
       sb.from("vendors").select("*").eq("user_id", userId).is("deleted_at", null).maybeSingle(),
       levroData.favorites.productIds(userId),
       levroData.favorites.packageIds(userId)
     ]);
+    let resolvedRole, profileRes, vendorRes, favsRes, pkgFavsRes;
+    if (freshSignIn) {
+      // Just signed in: the account certainly exists, so its details are fetched at the same time as the role check
+      // instead of after it (one waiting step fewer). The role from the check is applied to the profile below.
+      let rest;
+      [resolvedRole, rest] = await Promise.all([ensureProfileAndRoleSync, loadAccount()]);
+      [profileRes, vendorRes, favsRes, pkgFavsRes] = rest;
+    } else {
+      resolvedRole = await ensureProfileAndRoleSync;
+      [profileRes, vendorRes, favsRes, pkgFavsRes] = await loadAccount();
+    }
     profile = profileRes.data;
+    if (freshSignIn && resolvedRole && profile) { profile.role = resolvedRole; }
     vendor = profile?.role === "admin" ? null : vendorRes.data;
     // profile.role comes straight from the users row, which
     // sync_current_account_role() (above, SECURITY DEFINER, immune to RLS
