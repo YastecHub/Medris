@@ -1,7 +1,7 @@
 import type { AppServices } from "../../container.js";
 import type { Identity } from "../../database/context.js";
 import type { RateLimitRule } from "../../middleware/rate-limit.js";
-import { unauthenticated } from "../../shared/errors/app-error.js";
+import { notReadyIfMissing, unauthenticated } from "../../shared/errors/app-error.js";
 
 /**
  * The app's database functions (`sb.rpc(name, args)`), answered by the backend's ports.
@@ -69,6 +69,8 @@ const pick =
   (r: { [P in K]: unknown }) =>
     r[key];
 const yes = () => true;
+/** A feature whose database migration is not applied yet answers "being set up" instead of a bare failure. */
+const setup = <T>(what: string, work: Promise<T>): Promise<T> => work.catch((e) => { throw notReadyIfMissing(e, what); });
 
 /* ------------------------------------------------------------ rate limits */
 
@@ -452,20 +454,20 @@ export const RPC: Record<string, RpcEntry> = {
   get_platform_suggestions: { run: (s, me) => s.suggestions.platformSuggestions(me) },
   reply_to_suggestion: { run: (s, me, a) => s.suggestions.reply(me, id(a.p_suggestion_id), str(a.p_message)), limit: L.suggestions },
   // Cancelling paid orders
-  buyer_cancel_order: { run: (s, me, a) => s.cancellations.buyerCancel(me, id(a.p_order_id)), limit: L.withdrawals },
-  request_order_cancellation: { run: (s, me, a) => s.cancellations.request(me, id(a.p_order_id), str(a.p_reason)), limit: L.withdrawals },
-  admin_list_cancellations: { run: (s, me, a) => s.cancellations.adminList(me, str(a.p_status)) },
-  admin_decide_cancellation: { run: (s, me, a) => s.cancellations.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
+  buyer_cancel_order: { run: (s, me, a) => setup("Cancelling orders", s.cancellations.buyerCancel(me, id(a.p_order_id))), limit: L.withdrawals },
+  request_order_cancellation: { run: (s, me, a) => setup("Cancel requests", s.cancellations.request(me, id(a.p_order_id), str(a.p_reason))), limit: L.withdrawals },
+  admin_list_cancellations: { run: (s, me, a) => setup("Cancel requests", s.cancellations.adminList(me, str(a.p_status))) },
+  admin_decide_cancellation: { run: (s, me, a) => setup("Cancel requests", s.cancellations.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason))), limit: L.withdrawals },
   // The buyer's refunds wallet
   get_refund_wallet: { run: (s, me) => s.buyerWallet.summary(me) },
   save_refund_account: { run: (s, me, a) => s.buyerWallet.saveAccount(me, { bankCode: id(a.p_bank_code), accountNumber: id(a.p_account_number), confirmedAccountName: id(a.p_confirmed_name) }), limit: L.refundAccount },
   withdraw_refunds: { run: (s, me) => s.buyerWallet.withdraw(me), limit: L.withdrawals },
   // Withdrawals
-  get_withdrawal_summary: { run: (s, me) => s.withdrawals.summary(me) },
-  request_withdrawal: { run: (s, me) => s.withdrawals.request(me), limit: L.withdrawals },
-  admin_list_withdrawals: { run: (s, me, a) => s.withdrawals.adminList(me, str(a.p_status)) },
-  admin_decide_withdrawal: { run: (s, me, a) => s.withdrawals.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
-  admin_reopen_dispute: { run: (s, me, a) => s.withdrawals.reopenDispute(me, id(a.p_dispute_id), str(a.p_note)), limit: L.withdrawals },
+  get_withdrawal_summary: { run: (s, me) => setup("Withdrawals", s.withdrawals.summary(me)) },
+  request_withdrawal: { run: (s, me) => setup("Withdrawals", s.withdrawals.request(me)), limit: L.withdrawals },
+  admin_list_withdrawals: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.adminList(me, str(a.p_status))) },
+  admin_decide_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason))), limit: L.withdrawals },
+  admin_reopen_dispute: { run: (s, me, a) => setup("Reopening disputes", s.withdrawals.reopenDispute(me, id(a.p_dispute_id), str(a.p_note))), limit: L.withdrawals },
   mark_suggestion_read: { run: (s, me, a) => s.suggestions.markRead(me, id(a.p_suggestion_id)).then(nothing), limit: L.suggestions },
 };
 

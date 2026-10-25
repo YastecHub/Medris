@@ -57,3 +57,16 @@ export const rateLimited = (retryAfterSeconds: number) =>
   new AppError(429, "rate_limited", "Too many requests. Please wait a moment and try again.", { retryAfterSeconds });
 export const featureDisabled = (feature: string) => new AppError(404, "feature_disabled", `${feature} is not enabled on this deployment.`);
 export const serviceUnavailable = (message: string) => new AppError(503, "service_unavailable", message);
+
+/**
+ * A feature whose database tables have not been created yet (a migration waiting to be applied) answers "being set up"
+ * instead of a bare "something went wrong". Anything else is passed on untouched.
+ */
+export function notReadyIfMissing(err: unknown, what: string): Error {
+  const text = (e: unknown): string => (e instanceof Error ? `${e.message} ${text((e as { cause?: unknown }).cause)}` : typeof e === "string" ? e : "");
+  const code = (err as { code?: string; cause?: { code?: string } } | null)?.code ?? (err as { cause?: { code?: string } } | null)?.cause?.code;
+  if (code === "42P01" || code === "42703" || /relation .* does not exist|column .* does not exist/i.test(text(err))) {
+    return serviceUnavailable(`${what} is being set up and is not ready yet. Please try again later.`);
+  }
+  return err instanceof Error ? err : new Error("Unexpected error");
+}

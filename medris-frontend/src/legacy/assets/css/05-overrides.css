@@ -3950,3 +3950,9 @@ html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-a
 html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main .lv-ap-acct{background:rgba(245,158,11,.15)!important;color:#c77700!important;border:1px solid rgba(245,158,11,.4);text-transform:none!important;font-weight:700!important;max-width:100%;white-space:normal;line-height:1.25!important}
 html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main .lv-ap-dispute{background:rgba(229,72,77,.14)!important;color:#d1343a!important;border:1px solid rgba(229,72,77,.4);text-transform:none!important;font-weight:700!important}
 html:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-main>small{color:var(--muted,#8b919c)!important}
+
+/* the bank picker's title row keeps its breathing space inside the card */
+html:root body .vendor-bank-picker-modal .vendor-bank-picker-head{padding:1rem 1rem .5rem!important;box-sizing:border-box}
+html:root body .vendor-bank-picker-modal .vendor-bank-picker-title{gap:.55rem!important}
+html:root body .vendor-bank-picker-modal .vendor-bank-search-wrap{margin:.2rem 1rem .6rem!important}
+html:root body .vendor-bank-picker-modal .vendor-bank-picker-list{padding:0 1rem 1rem!important}
