@@ -88,6 +88,7 @@ const L = {
   serviceOffers: per("service-offers-write", 30),
   shops: per("shops-write", 20),
   suggestions: per("suggestions-write", 20),
+  withdrawals: per("withdrawals-write", 20),
 };
 
 /* ------------------------------------------------------------------ table */
@@ -441,6 +442,12 @@ export const RPC: Record<string, RpcEntry> = {
   get_vendor_suggestions: { run: (s, me) => s.suggestions.vendorSuggestions(me) },
   get_platform_suggestions: { run: (s, me) => s.suggestions.platformSuggestions(me) },
   reply_to_suggestion: { run: (s, me, a) => s.suggestions.reply(me, id(a.p_suggestion_id), str(a.p_message)), limit: L.suggestions },
+  // Withdrawals
+  get_withdrawal_summary: { run: (s, me) => s.withdrawals.summary(me) },
+  request_withdrawal: { run: (s, me) => s.withdrawals.request(me), limit: L.withdrawals },
+  admin_list_withdrawals: { run: (s, me, a) => s.withdrawals.adminList(me, str(a.p_status)) },
+  admin_decide_withdrawal: { run: (s, me, a) => s.withdrawals.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
+  admin_reopen_dispute: { run: (s, me, a) => s.withdrawals.reopenDispute(me, id(a.p_dispute_id), str(a.p_note)), limit: L.withdrawals },
   mark_suggestion_read: { run: (s, me, a) => s.suggestions.markRead(me, id(a.p_suggestion_id)).then(nothing), limit: L.suggestions },
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, handOver } from "./harness.js";
+import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, withdraw, handOver } from "./harness.js";
 import { call } from "../support/fixtures.js";
 
 describe("who may do what, the on/off switch, and Levromart's own fees", () => {
@@ -35,6 +35,7 @@ describe("who may do what, the on/off switch, and Levromart's own fees", () => {
       await payOrder(w, orderId);
       await handOver(w, orderId);
       await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
+      await withdraw(w, orderId);
       const payout = (await rowOf<{ id: string }>(w, `select id from public.vendor_payouts where order_id = $1`, [orderId]))!;
       for (const person of [w.buyer, w.vendor]) {
         expect((await json(await api.post(w, `/admin/orders/${orderId}/refund`, person.token, { reason: "please" }))).status).toBe(403);

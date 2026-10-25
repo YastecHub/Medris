@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { grossUpForBuyerFees, nairaToKobo, paystackFeeOn } from "../../src/integrations/paystack/index.js";
-import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, handOver } from "./harness.js";
+import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, withdraw, handOver } from "./harness.js";
 
 describe("money arithmetic, pay after delivery, secrets in logs", () => {
   const w = useWorld();
@@ -32,6 +32,7 @@ describe("money arithmetic, pay after delivery, secrets in logs", () => {
       await w.db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
       await w.db.query(`delete from public.commission_charges where order_id = $1`, [orderId]);
       if (commission) await w.db.query(`insert into public.commission_charges (vendor_id, order_id, amount, status) values ($1, $2, $3, 'owed')`, [w.vendor.shop, orderId, commission.toFixed(2)]);
+      await withdraw(w, orderId);
       await runJob(w, "vendor-payouts");
       const expected = nairaToKobo(Number(paid.toFixed(2))) - nairaToKobo(commission) - refundKobo;
       const sent = w.paystack.callsTo("POST", "/transfer").at(-1)!.body as { amount: number };
@@ -119,6 +120,7 @@ describe.skipIf(!REAL)("concurrency (real PostgreSQL)", () => {
     await payOrder(w, orderId);
     await handOver(w, orderId);
     await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
+    await withdraw(w, orderId);
     await Promise.all(Array.from({ length: N }, () => runJob(w, "vendor-payouts")));
     expect(w.paystack.callsTo("POST", "/transfer")).toHaveLength(1);
   });
@@ -137,6 +139,7 @@ describe.skipIf(!REAL)("concurrency (real PostgreSQL)", () => {
     await payOrder(w, orderId);
     await handOver(w, orderId);
     await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
+    await withdraw(w, orderId);
     const [refund] = await Promise.all([json(await api.post(w, `/admin/orders/${orderId}/refund`, w.admin.token, { reason: "race" })), runJob(w, "vendor-payouts")]);
     await runJob(w, "paystack-refunds");
     const transfers = w.paystack.callsTo("POST", "/transfer").length;

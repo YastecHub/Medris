@@ -752,10 +752,11 @@ function exportFinancePdf() {
 
 async function renderAdminDisputes() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
-  const [{data:disputes,error:disputeError},{data:unresolved,error:unresolvedError},{data:confirmedOverdue,error:confirmedError}] = await Promise.all([
+  const [{data:disputes,error:disputeError},{data:unresolved,error:unresolvedError},{data:confirmedOverdue,error:confirmedError},{data:resolvedRows}] = await Promise.all([
     sb.from("disputes").select("*, order:orders(id, order_type, buyer_id, vendor_id, payout_status, status, payment_unresolved_at, payment_escalated_at, total_amount, status_changed_at, vendor:vendors(business_name), payments(id,payment_type,amount,status,provider_reference,created_at,paid_at))").eq("status", "open").order("created_at", { ascending: true }),
     sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,payment_unresolved_at,payment_escalated_at,total_amount,status_changed_at,vendor:vendors(business_name),payments(id,payment_type,amount,status,provider_reference,created_at,paid_at)").eq("status","payment_unresolved").not("payment_escalated_at","is",null).order("payment_escalated_at",{ascending:true}),
-    sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,total_amount,status_changed_at,payment_escalated_at,vendor:vendors(business_name),payments(id,payment_type,amount,status,provider_reference,created_at,paid_at)").eq("status","confirmed").not("payment_escalated_at","is",null).order("payment_escalated_at",{ascending:true})
+    sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,total_amount,status_changed_at,payment_escalated_at,vendor:vendors(business_name),payments(id,payment_type,amount,status,provider_reference,created_at,paid_at)").eq("status","confirmed").not("payment_escalated_at","is",null).order("payment_escalated_at",{ascending:true}),
+    sb.from("disputes").select("id,reason,admin_notes,created_at,order:orders(id,order_type,status,total_amount,payout_status,vendor:vendors(business_name))").eq("status","resolved").order("created_at",{ascending:false}).limit(60)
   ]);
   let html = `<h2><i class="fa-solid fa-scale-balanced"></i> Disputes &amp; payment issues</h2>${adminNavHtml("adminDisputes")}`;
   if (disputeError && unresolvedError && confirmedError) return html + errorStateHtml(disputeError);
@@ -767,6 +768,7 @@ async function renderAdminDisputes() {
     <button type="button" class="admin-payment-issue-tab active" data-issue-tab="unresolved" onclick="switchAdminPaymentIssueTab('unresolved')"><i class="fa-solid fa-hourglass-half"></i> Payment unresolved <strong>${issueCounts.unresolved}</strong></button>
     <button type="button" class="admin-payment-issue-tab" data-issue-tab="confirmed" onclick="switchAdminPaymentIssueTab('confirmed')"><i class="fa-solid fa-clock"></i> Confirmed &gt;24h <strong>${issueCounts.confirmed}</strong></button>
     <button type="button" class="admin-payment-issue-tab" data-issue-tab="disputes" onclick="switchAdminPaymentIssueTab('disputes')"><i class="fa-solid fa-scale-balanced"></i> Other disputes <strong>${issueCounts.disputes}</strong></button>
+    <button type="button" class="admin-payment-issue-tab" data-issue-tab="resolved" onclick="switchAdminPaymentIssueTab('resolved')"><i class="fa-solid fa-circle-check"></i> Resolved <strong>${(resolvedRows||[]).length}</strong></button>
   </div>`;
 
   html += `<section class="admin-payment-issue-panel" data-issue-panel="unresolved">`;
@@ -797,11 +799,36 @@ async function renderAdminDisputes() {
     html += `<div class="card"><div class="flex" style="justify-content:space-between;"><a href="#" onclick="navigate('orderDetail',{orderId:'${d.order?.id}'});return false;">${esc(d.order?.vendor?.business_name||"")} · ${esc(d.order?.order_type||"")} order</a><span class="muted" style="text-transform:capitalize;">${paymentIssue?'Payment unresolved · ':''}raised by ${esc(d.raised_by||'unknown')}</span></div><p style="margin:.5rem 0;"><strong>Reason:</strong> ${esc(d.reason||'')}</p>${disputeEvidenceHtml(d.attachments)}${d.vendor_response?`<p style="margin:.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>`:`<p class="muted" style="margin:.5rem 0;">Vendor hasn't responded yet.</p>`}${claim?`<div class="payment-resolution-admin-card"><strong><i class="fa-solid fa-building-columns"></i> Payment claim: ${naira(claim.amount)}</strong><p class="muted" style="margin:.25rem 0 .55rem;">The buyer reported a direct transfer. This claim has not been verified yet.</p><div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminConfirmReportedPayment('${d.order.id}')"><i class="fa-solid fa-check"></i> Verify payment</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment('${d.order.id}')"><i class="fa-solid fa-xmark"></i> Reject claim</button></div></div>`:''}${d.order?.buyer_id&&d.order?.vendor_id?`<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>`:""}${d.order?.payout_status==='held'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}${d.order?.payout_status==='released'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}<div class="flex"><textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea><select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select><button class="btn btn-sm" onclick="resolveDispute('${d.id}','${d.order?.id}','${d.order?.payout_status}')">Mark resolved</button></div></div>`;
   });
   html += `</section>`;
+
+  html += `<section class="admin-payment-issue-panel hidden" data-issue-panel="resolved">`;
+  if (!(resolvedRows||[]).length) html += `<div class="empty-state">No resolved disputes yet.</div>`;
+  (resolvedRows||[]).forEach(d=>{
+    const o=d.order||{};
+    html += `<div class="card"><div class="flex" style="justify-content:space-between;gap:.5rem;flex-wrap:wrap;"><a href="#" onclick="navigate('orderDetail',{orderId:'${esc(o.id||'')}'});return false;">${esc(o.vendor?.business_name||'')} · ${esc(o.order_type||'')} order</a><span class="muted" style="text-transform:capitalize;">Order is now ${esc(String(o.status||'').replace(/_/g,' '))}</span></div><p style="margin:.5rem 0;"><strong>Reason:</strong> ${esc(d.reason||'')}</p>${d.admin_notes?`<p class="muted" style="margin:.3rem 0 .6rem;"><strong>Your notes:</strong> ${esc(d.admin_notes)}</p>`:''}<div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminReopenDispute('${d.id}')"><i class="fa-solid fa-rotate-left"></i> Reopen</button><button class="btn btn-sm btn-outline" onclick="adminRemarkDispute('${d.id}','${esc(o.id||'')}','completed','${esc(o.payout_status||'')}')">Mark completed</button><button class="btn btn-sm btn-outline" onclick="adminRemarkDispute('${d.id}','${esc(o.id||'')}','cancelled','${esc(o.payout_status||'')}')">Mark cancelled</button></div></div>`;
+  });
+  html += `</section>`;
   return html;
 }
 
+window.adminReopenDispute=async function(id){
+  const note=prompt('Why are you reopening it? (optional)','');
+  if(note===null)return;
+  const {error}=await sb.rpc('admin_reopen_dispute',{p_dispute_id:id,p_note:note||null});
+  if(error){showToast(error.message||'Could not reopen the dispute.','error');return;}
+  showToast('Dispute reopened. The buyer and the shop were told.','success');
+  await navigate('adminDisputes',{},false);
+};
+window.adminRemarkDispute=async function(id,orderId,status,payoutStatus){
+  if(status==='cancelled'&&(payoutStatus==='held'||payoutStatus==='released')){showToast('This order was paid online. Reopen the dispute and use "Refund customer in full", so the buyer really gets the money back.','error');return;}
+  if(!(await showConfirmDialog('Mark this order as '+status+'?',{title:'Change outcome',okLabel:'Yes, mark '+status}))) return;
+  const {error}=await sb.rpc('resolve_dispute',{p_dispute_id:id,p_admin_notes:'Outcome changed by admin to '+status+'.',p_new_order_status:status});
+  if(error){showToast(error.message||'Could not change the outcome.','error');return;}
+  showToast('Done.','success');
+  await navigate('adminDisputes',{},false);
+};
+
 window.switchAdminPaymentIssueTab=function(tab){
-  tab=['unresolved','confirmed','disputes'].includes(tab)?tab:'unresolved';
+  tab=['unresolved','confirmed','disputes','resolved'].includes(tab)?tab:'unresolved';
   document.querySelectorAll('.admin-payment-issue-tab').forEach(b=>b.classList.toggle('active',b.dataset.issueTab===tab));
   document.querySelectorAll('.admin-payment-issue-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.issuePanel!==tab));
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { grossUpForBuyerFees } from "../../src/integrations/paystack/index.js";
-import { api, json, newOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, handOver } from "./harness.js";
+import { api, json, newOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, withdraw, handOver } from "./harness.js";
 
 describe("an order paid in full through Paystack (end to end)", () => {
   const w = useWorld();
@@ -35,6 +35,7 @@ describe("an order paid in full through Paystack (end to end)", () => {
     await handOver(w, orderId);
     expect((await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token))).status).toBe(200);
     expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [orderId]))?.s).toBe("completed");
+    await withdraw(w, orderId);
     // commission is recorded once, by the completion itself
     const charges = await w.db.query<{ amount: string }>(`select amount::text from public.commission_charges where order_id = $1`, [orderId]);
     expect(charges.length).toBeLessThanOrEqual(1);

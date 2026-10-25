@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, useWorld, handOver } from "./harness.js";
+import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, useWorld, withdraw, handOver } from "./harness.js";
 
 describe("refunds, disputes, chargebacks and cancellations", () => {
   const w = useWorld();
@@ -79,6 +79,7 @@ describe("refunds, disputes, chargebacks and cancellations", () => {
     const reference = await payOrder(w, orderId);
     await handOver(w, orderId);
     await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token)); // completes: a payout is queued, not yet sent
+    await withdraw(w, orderId);
     expect((await payoutOf(orderId))?.status).toBe("pending");
     await sendWebhook(w, "charge.dispute.create", { transaction: { reference }, due_at: "2026-12-01T00:00:00Z" });
     const held = await payoutOf(orderId);
@@ -98,6 +99,7 @@ describe("refunds, disputes, chargebacks and cancellations", () => {
     await payOrder(w, orderId);
     await handOver(w, orderId);
     await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
+    await withdraw(w, orderId);
     await w.db.query(`insert into public.disputes (order_id, raised_by, reason, status) values ($1, 'buyer', 'Not as described', 'open')`, [orderId]);
     await runJob(w, "vendor-payouts");
     const held = await payoutOf(orderId);

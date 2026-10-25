@@ -532,7 +532,7 @@
    refuses everyone else, this screen is only the window onto it. */
 (function () {
   "use strict";
-  var tab = "payouts", range = "today";
+  var tab = "payouts", range = "today", picked = false;
   function naira(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
   function when(t) { try { return new Date(t).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch (_) { return ""; } }
   function api() { return window.levroData && window.levroData.adminPayments; }
@@ -573,7 +573,26 @@
     else if (kind === "manual") ask("Mark as paid by hand", "How did you pay (reference)?", false, function (t) { return a.markManual(id, t); });
     else if (kind === "refund") ask("Refund this order", "Reason for the refund", true, function (t, amt) { return a.refund(id, { amountNaira: amt, reason: t }); });
   };
-  window.lvPayTab = function (t) { tab = t; navigate("adminPayments", {}, false); };
+  window.lvPayTab = function (t) { tab = t; picked = true; navigate("adminPayments", {}, false); };
+  window.lvWithdrawDecide = function (id, how, hasDispute) {
+    if (how === "reject") return ask("Reject withdrawal", "Reason (the shop will see this)", false, function (t) { return sb.rpc("admin_decide_withdrawal", { p_request_id: id, p_decision: "reject", p_reason: t }); });
+    showConfirmDialog(hasDispute ? "This shop has a disputed order. Only the money of orders without a dispute will be sent. Approve?" : "Approve this withdrawal? The money is sent to the shop's bank within a minute.", { title: "Approve withdrawal", okLabel: "Approve" }).then(async function (yes) {
+      if (!yes) return;
+      var r = await sb.rpc("admin_decide_withdrawal", { p_request_id: id, p_decision: "approve" });
+      if (r.error) return showToast(r.error.message, "error");
+      showToast("Approved. It is sent within a minute.", "success"); navigate("adminPayments", {}, false);
+    });
+  };
+  function withdrawalRow(w) {
+    var open = w.status === "requested", rej = w.status === "rejected";
+    var disp = Number(w.disputes) > 0;
+    var chip = disp ? '<span class="badge badge-danger lv-ap-dispute" title="Open dispute on this shop"><i class="fa-solid fa-triangle-exclamation"></i> Disputed order' + (w.disputes > 1 ? " ×" + w.disputes : "") + "</span> " : "";
+    var links = disp ? (w.dispute_orders || []).map(function (o) { return '<a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(o) + '\'})">Open disputed order</a>'; }).join(" ") : "";
+    var acts = open ? '<button class="btn btn-sm" onclick="lvWithdrawDecide(\'' + esc(w.id) + '\',\'approve\',' + (disp ? "true" : "false") + ')">Approve</button><button class="btn btn-sm btn-outline" onclick="lvWithdrawDecide(\'' + esc(w.id) + '\',\'reject\')">Reject</button>' : "";
+    var age = w.shop_since ? Math.max(1, Math.floor((Date.now() - new Date(w.shop_since).getTime()) / 86400000)) : null;
+    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(Number(w.amount_kobo) / 100) + "</b> " + chip + '<span class="badge ' + (w.status === "approved" ? "badge-success" : rej ? "badge-danger" : "badge-warning") + '">' + esc({ requested: "Waiting", approved: w.kind === "instant" ? "Sent at once" : "Approved", rejected: "Rejected" }[w.status] || w.status) + "</span>" +
+      "<small>" + esc(w.business_name || "") + " · " + when(w.created_at) + (age ? " · shop " + age + " day" + (age === 1 ? "" : "s") + " old" : "") + (w.bank_name ? " · " + esc(w.bank_name) + (w.account_name ? " (" + esc(w.account_name) + ")" : "") : "") + (rej && w.reject_reason ? " · Reason: " + esc(w.reject_reason) : "") + "</small>" + links + '</div><div class="lv-ap-acts">' + acts + "</div></div>";
+  }
   window.lvPayRange = function (r) { range = r; navigate("adminPayments", {}, false); };
 
   function payoutRow(p) {
@@ -601,15 +620,18 @@
     if (sum.error) return nav + '<div class="empty-state">' + esc(sum.error.message || "Only admins can see payments.") + "</div>";
     var s = sum.data, h = s.health, t = s[range];
     var q = { limit: 40 };
-    var rows;
-    if (tab === "payouts") rows = await a.payouts(q);
+    var rows, wd = await sb.rpc("admin_list_withdrawals", { p_status: null });
+    var wdRows = (wd && wd.data) || [], wdOpen = wdRows.filter(function (x) { return x.status === "requested"; }).length;
+    if (!picked && wdOpen) tab = "withdrawals";
+    if (tab === "withdrawals") rows = { data: wdRows };
+    else if (tab === "payouts") rows = await a.payouts(q);
     else if (tab === "held") rows = await a.payouts({ limit: 40, status: "on_hold" });
     else if (tab === "failed") rows = await a.payouts({ limit: 40, status: "failed" });
     else if (tab === "payments") rows = await a.transactions(q);
     else if (tab === "refunds") rows = await a.refunds(q);
     else rows = await a.reports();
-    var list = ((rows && rows.data) || []).map(tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
-    var tabs = [["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
+    var list = ((rows && rows.data) || []).map(tab === "withdrawals" ? withdrawalRow : tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
+    var tabs = [["withdrawals", "Withdrawals" + (wdOpen ? " (" + wdOpen + ")" : "")], ["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
     return nav + '<h2 style="text-align:center;"><i class="fa-solid fa-credit-card"></i> Payments</h2>' +
       (h.needsAttention ? '<div class="banner banner-warning" role="status"><strong><i class="fa-solid fa-triangle-exclamation"></i> ' + h.needsAttention + ' thing(s) need attention.</strong> Stuck or failed payouts and refunds, or mismatches in the last daily check.</div>' : '<div class="banner banner-success" role="status"><i class="fa-solid fa-circle-check"></i> Everything is matching.</div>') +
       '<div class="segmented-tabs">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
@@ -1570,16 +1592,18 @@
       if (!v || !v.id) return null;
       var res = await Promise.all([
         sb.from("orders").select("id,status,created_at,completed_at,items:order_items(quantity,product:products(name)),payments(payment_type,amount,status,method,provider_reference,paid_at)").eq("vendor_id", v.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(150),
-        sb.from("vendor_payouts").select("order_id,amount_kobo,status,created_at,updated_at").eq("vendor_id", v.id),
+        sb.from("vendor_payouts").select("order_id,amount_kobo,status,hold_reason,withdrawal_id,created_at,updated_at").eq("vendor_id", v.id),
         sb.from("commission_charges").select("order_id,amount,status,created_at,paid_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(300),
         sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
-        sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id })
+        sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
+        sb.from("withdrawal_requests").select("id,status,kind,amount_kobo,has_dispute,reject_reason,created_at,decided_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(30)
       ]);
       var orders = (res[0] && res[0].data) || [], payouts = (res[1] && res[1].data) || [], charges = (res[2] && res[2].data) || [];
       var owed = Number((res[3] && res[3].data) || 0), dueAt = res[4] && res[4].data && res[4].data[0] ? res[4].data[0].earliest_due_at : null;
       var payoutBy = {}; payouts.forEach(function (p) { payoutBy[p.order_id] = p; });
       var commBy = {}; charges.forEach(function (c) { commBy[c.order_id] = (commBy[c.order_id] || 0) + Number(c.amount || 0); });
-      var tx = [], pending = 0, onWay = 0, paidOut = 0;
+      var requests = (res[5] && res[5].data) || [];
+      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0;
       orders.forEach(function (o) {
         var paid = (o.payments || []).filter(function (p) { return p.status === "paid" && FEE_TYPES[p.payment_type] && (p.method === "card" || /^(lvm_ord_|medris_)/.test(String(p.provider_reference || ""))); });
         if (!paid.length) return;
@@ -1592,17 +1616,19 @@
           state = Date.now() - new Date(at).getTime() < 2 * 86400000 ? "onway" : "paid";
         } else if (pay) {
           if (pay.status === "success" || pay.status === "paid_manually") { state = "paid"; if (Number(pay.amount_kobo) > 0) amount = Number(pay.amount_kobo) / 100; date = pay.updated_at || pay.created_at; }
+          else if (pay.status === "on_hold" && pay.hold_reason === "Waiting for the vendor to withdraw") state = o.status === "disputed" ? "held" : pay.withdrawal_id ? "asked" : "ready";
           else state = "onway";
-        } else if (o.status === "completed") state = "onway";
+        } else if (o.status === "disputed") state = "held";
+        else if (o.status === "completed") state = "onway";
         else state = "pending";
-        if (state === "pending") pending += amount; else if (state === "onway") onWay += amount; else paidOut += amount;
+        if (state === "pending") pending += amount; else if (state === "ready") ready += amount; else if (state === "held") held += amount; else if (state === "onway" || state === "asked") onWay += amount; else paidOut += amount;
         var names = (o.items || []).map(function (i) { return i && i.product && i.product.name; }).filter(Boolean);
         var title = names.length ? names[0] + (names.length > 1 ? " +" + (names.length - 1) + " more" : "") : "Order";
         tx.push({ id: o.id, state: state, amount: amount, gross: gross, comm: comm, date: date, title: title });
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
       var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
-      var data = { pending: pending, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
+      var data = { pending: pending, ready: ready, held: held, requests: requests, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
       cache = { at: Date.now(), data: data };
       writeStored(data);
       return data;
@@ -1610,10 +1636,10 @@
     return loading;
   }
 
-  var LABEL = { pending: "Pending", onway: "On its way", paid: "Paid out" };
+  var LABEL = { pending: "Pending", ready: "Ready to withdraw", asked: "Awaiting approval", held: "On hold (dispute)", onway: "On its way", paid: "Paid out" };
   function card(d, compact) {
     var eye = hidden();
-    var balance = d ? d.pending + d.onWay : 0;
+    var balance = d ? d.pending + d.onWay + (d.ready || 0) + (d.held || 0) : 0;
     return '<div class="lvw-card' + (compact ? " is-compact" : "") + '">' +
       '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
       '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
@@ -1621,12 +1647,14 @@
       '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div>' +
       '<div class="lvw-split">' +
         '<div><span>Pending</span><b>' + (d ? money(d.pending) : "—") + '</b><small>until the buyer confirms</small></div>' +
+        '<div><span>Ready</span><b>' + (d ? money(d.ready) : "—") + '</b><small>you can withdraw</small></div>' +
         '<div><span>On its way</span><b>' + (d ? money(d.onWay) : "—") + '</b><small>to your bank</small></div>' +
-        '<div><span>Paid out</span><b>' + (d ? money(d.paidOut) : "—") + '</b><small>all time</small></div>' +
       '</div>' +
-      '<div class="lvw-actions"><button type="button" class="lvw-btn" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
-      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvWalletHow()"><i class="fa-solid fa-circle-info"></i> How it works</button>' +
-      (compact ? "" : '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvGoToPayout()"><i class="fa-solid fa-building-columns"></i> Bank</button>') + '</div>' +
+      '<div class="lvw-paidline">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
+      '<div class="lvw-actions"><button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' +
+      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
+      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvWalletHow()"><i class="fa-solid fa-circle-info"></i> Help</button>' +
+      '</div>' +
       (d && !d.hasPayout ? '<button type="button" class="lvw-warn" onclick="lvGoToPayout()"><i class="fa-solid fa-triangle-exclamation"></i> Add your bank account so we can pay you <i class="fa-solid fa-chevron-right"></i></button>' : "") +
     '</div>';
   }
@@ -1670,6 +1698,7 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: "vendor_id=eq." + vendor.id }, liveRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, liveRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "vendor_payouts", filter: "vendor_id=eq." + vendor.id }, liveRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "withdrawal_requests", filter: "vendor_id=eq." + vendor.id }, liveRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "commission_charges", filter: "vendor_id=eq." + vendor.id }, liveRefresh);
       if (uid) ch = ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "user_id=eq." + uid }, liveRefresh);
       liveChannel = ch.subscribe();
@@ -1683,11 +1712,11 @@
 
   // ---- the wallet page: Transactions and Commission tabs
   function txList(d) {
-    var chips = [["all", "All"], ["pending", "Pending"], ["onway", "On its way"], ["paid", "Paid out"]];
+    var chips = [["all", "All"], ["pending", "Pending"], ["ready", "Ready"], ["onway", "On its way"], ["paid", "Paid out"]];
     var rows = d.tx.filter(function (t) { return filter === "all" || t.state === filter; });
     return '<div class="lvw-chips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
       (rows.length ? '<ul class="lvw-list">' + rows.map(function (t) {
-        return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : "fa-hourglass-half") + '"></i></span>' +
+        return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : t.state === "ready" ? "fa-wallet" : t.state === "asked" ? "fa-user-clock" : t.state === "held" ? "fa-scale-balanced" : "fa-hourglass-half") + '"></i></span>' +
           '<div class="lvw-li"><strong>' + esc(t.title) + '</strong><small>#' + esc(String(t.id).slice(0, 8).toUpperCase()) + " · " + LABEL[t.state] + " · " + esc(when(t.date)) + '</small>' + (t.comm ? '<small>Sale ' + esc(money(t.gross)) + ' − commission ' + esc(money(t.comm)) + '</small>' : "") + '</div>' +
           '<b class="lvw-amt ' + t.state + '">' + money(t.amount) + '</b></li>';
       }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-regular fa-credit-card"></i><strong>Nothing here yet</strong><span>Payments made through Levromart appear here.</span></div>');
@@ -1701,12 +1730,21 @@
         return '<li' + (c.order_id ? ' onclick="navigate(\'orderDetail\',{orderId:\'' + esc(c.order_id) + '\'})"' : "") + '><span class="lvw-ico paid"><i class="fa-solid fa-percent"></i></span><div class="lvw-li"><strong>' + (c.order_id ? "Order #" + esc(String(c.order_id).slice(0, 8).toUpperCase()) : "Commission") + '</strong><small>' + esc(when(c.paid_at || c.created_at)) + '</small></div><b class="lvw-amt pending">' + money(c.amount) + '</b></li>';
       }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-solid fa-percent"></i><strong>No commission yet</strong><span>Levromart takes ' + esc(String(d.rate)) + '% of each completed sale.</span></div>') + '</div>';
   }
+  var W_LABEL = { requested: "Waiting for approval", approved: "Approved", rejected: "Not approved" };
+  function withdrawalsPane(d) {
+    var rows = d.requests || [];
+    return rows.length ? '<ul class="lvw-list">' + rows.map(function (r) {
+      var st = r.status === "approved" ? "paid" : r.status === "rejected" ? "held" : "asked";
+      return '<li><span class="lvw-ico ' + st + '"><i class="fa-solid ' + (r.status === "approved" ? "fa-check" : r.status === "rejected" ? "fa-xmark" : "fa-user-clock") + '"></i></span><div class="lvw-li"><strong>' + (r.kind === "instant" ? "Sent to your bank" : "Withdrawal request") + '</strong><small>' + esc(W_LABEL[r.status] || r.status) + " · " + esc(when(r.created_at)) + '</small>' +
+        (r.status === "rejected" && r.reject_reason ? '<small class="lvw-reject">Reason: ' + esc(r.reject_reason) + '</small>' : "") + '</div><b class="lvw-amt ' + st + '">' + money(Number(r.amount_kobo) / 100) + '</b></li>';
+    }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-solid fa-building-columns"></i><strong>No withdrawals yet</strong><span>Tap Withdraw on your wallet when money is ready.</span></div>';
+  }
   function pageBody() {
     if (!cache) readStored();
     var d = cache && cache.data;
     if (!d) return '<p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p>';
-    return '<div class="lvw-tabs"><button type="button" class="' + (tab === "tx" ? "on" : "") + '" onclick="lvWalletOpen(\'tx\')">Transactions</button><button type="button" class="' + (tab === "commission" ? "on" : "") + '" onclick="lvWalletOpen(\'commission\')">Commission</button></div>' +
-      (tab === "tx" ? txList(d) : commissionPane(d));
+    return '<div class="lvw-tabs"><button type="button" class="' + (tab === "tx" ? "on" : "") + '" onclick="lvWalletOpen(\'tx\')">Transactions</button><button type="button" class="' + (tab === "withdrawals" ? "on" : "") + '" onclick="lvWalletOpen(\'withdrawals\')">Withdrawals</button><button type="button" class="' + (tab === "commission" ? "on" : "") + '" onclick="lvWalletOpen(\'commission\')">Commission</button></div>' +
+      (tab === "tx" ? txList(d) : tab === "withdrawals" ? withdrawalsPane(d) : commissionPane(d));
   }
   window.lvWalletFilter = function (f) { filter = f; paint(); };
   window.lvWalletOpen = function (t) { tab = t || "tx"; if (typeof currentView !== "undefined" && currentView === "vendorWallet") paint(); else { window.__lvWalletTab = tab; navigate("vendorWallet"); } };
@@ -1737,10 +1775,45 @@
     m.addEventListener("click", function (e) { if (e.target === m) m.remove(); });
     document.body.appendChild(m);
   }
+  var NOW = function (n) { return "₦" + Number(n / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); };
+  window.lvWalletWithdraw = async function () {
+    openSheet("Withdraw", '<p class="muted" style="text-align:center">Checking your wallet…</p>');
+    var body = document.querySelector("#lvwSheet .lvw-sheet-body");
+    var r = await sb.rpc("get_withdrawal_summary");
+    if (!body) return;
+    if (r.error || !r.data) { body.innerHTML = '<p class="lvw-sheet-msg">' + esc((r.error && r.error.message) || "Withdrawals are not available right now. Please try again shortly.") + "</p>"; return; }
+    var s = r.data, inst = Number(s.instant_kobo), appr = Number(s.approval_kobo), held = Number(s.held_kobo), min = Number(s.min_kobo);
+    var canInst = inst >= min, canAsk = !s.open_request && appr >= min;
+    var h = '<div class="lvw-wd">';
+    if (s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> ' + esc(s.blocked) + "</p>";
+    h += '<div class="lvw-wd-row"><span>Sent to your bank right now</span><b>' + NOW(inst) + '</b></div><small>Money paid for 48 hours ago or more.</small>' +
+      '<div class="lvw-wd-row"><span>Needs Levromart\'s approval</span><b>' + NOW(appr) + '</b></div><small>Paid less than 48 hours ago. We check and reply, you will get a message.</small>';
+    if (held > 0) h += '<div class="lvw-wd-row lvw-wd-held"><span>On hold (disputed order)</span><b>' + NOW(held) + '</b></div><small>This stays held until the dispute is settled. The rest of your money is not affected.</small>';
+    if (s.open_request) h += '<p class="lvw-sheet-msg"><i class="fa-solid fa-user-clock"></i> You already have a request of ' + NOW(Number(s.open_request.amount_kobo)) + ' waiting for approval.</p>';
+    if (!canInst && !canAsk && !s.blocked && !s.open_request) h += '<p class="lvw-sheet-msg">The smallest withdrawal is ' + NOW(min) + '. Keep selling, your money will add up.</p>';
+    var total = (canInst ? inst : 0) + (canAsk ? appr : 0);
+    h += '<button type="button" class="btn lvw-wd-go" id="lvwWdGo"' + (s.blocked || total <= 0 ? " disabled" : "") + '>' + (total > 0 ? "Withdraw " + NOW(total) : "Nothing to withdraw") + "</button></div>";
+    body.innerHTML = h;
+    var go = document.getElementById("lvwWdGo"); if (!go || go.disabled) return;
+    go.onclick = async function () {
+      if (s.has_dispute) {
+        var ok = await showConfirmDialog("One of your orders has a dispute. The money for that order stays on hold until the dispute is settled. You can still withdraw the rest, and Levromart will see the dispute when it checks your request.", { title: "Disputed order", okLabel: "Continue" });
+        if (!ok) return;
+      }
+      go.disabled = true; go.textContent = "Please wait…";
+      var q = await sb.rpc("request_withdrawal");
+      if (q.error) { go.disabled = false; go.textContent = "Try again"; return showToast(q.error.message || "Could not withdraw.", "error"); }
+      var d = q.data || {};
+      var el = document.getElementById("lvwSheet"); if (el) el.remove();
+      showToast(Number(d.sent_kobo) > 0 && Number(d.requested_kobo) > 0 ? NOW(Number(d.sent_kobo)) + " is on its way; " + NOW(Number(d.requested_kobo)) + " is waiting for approval." : Number(d.sent_kobo) > 0 ? NOW(Number(d.sent_kobo)) + " is on its way to your bank." : "Request sent. We will message you when it is approved.", "success");
+      load(true).then(paint);
+    };
+  };
   window.lvWalletHow = function () {
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
-      '<li><b>On its way.</b> The order is complete and your money is being sent to your bank. Bank transfers normally arrive the next business day; weekends and public holidays can add a day or two.</li>' +
+      '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 48 hours ago or more goes straight away; newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
+      '<li><b>On its way.</b> Your money is being sent to your bank. Bank transfers normally arrive the next business day; weekends and public holidays can add a day or two.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
       '<li>Amounts are after Levromart\'s commission. Orders you were paid for directly (bank transfer to you) do not appear here.</li></ul>');
   };
