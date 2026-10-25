@@ -3,6 +3,7 @@ import { VendorFeesService } from "./modules/vendor-fees/vendor-fees.service.js"
 import { RefundsService } from "./modules/refunds/refunds.service.js";
 import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.service.js";
 import { CancellationsService } from "./modules/cancellations/cancellations.service.js";
+import { BuyerWalletService } from "./modules/buyer-wallet/buyer-wallet.service.js";
 import { WithdrawalsService } from "./modules/withdrawals/withdrawals.service.js";
 import { loadConfig, type AppConfig } from "./config/app-config.js";
 import type { DataContext } from "./database/context.js";
@@ -93,6 +94,7 @@ export interface AppServices {
   payoutAccounts: PayoutAccountsService;
   vendorPayouts: VendorPayoutsService;
   withdrawals: WithdrawalsService;
+  buyerWallet: BuyerWalletService;
   cancellations: CancellationsService;
   refunds: RefundsService;
   vendorFees: VendorFeesService;
@@ -168,6 +170,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     payoutAccounts: overrides.payoutAccounts ?? new PayoutAccountsService(data),
     vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
     withdrawals: overrides.withdrawals ?? new WithdrawalsService(data),
+    buyerWallet: overrides.buyerWallet ?? new BuyerWalletService(data),
     refunds: overrides.refunds ?? new RefundsService(data),
     cancellations: overrides.cancellations ?? new CancellationsService(data),
     paymentsAdmin: overrides.paymentsAdmin ?? new PaymentsAdminService(data),

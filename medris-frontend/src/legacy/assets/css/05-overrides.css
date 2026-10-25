@@ -3873,3 +3873,16 @@ html:root body #app .lb-hero-prods .lb-float.swap{animation:lbSwapIn .7s cubic-b
 @keyframes lbSwapIn{from{opacity:0;scale:.6;translate:0 14px}to{opacity:1;scale:1;translate:0 0}}
 html:root body #app .od-cancel-note{margin:.4rem .2rem 0;font-size:.78rem;line-height:1.4;color:var(--muted,#6b7280);text-align:center}
 #prodPaymentTimingSettings{display:none!important}
+
+/* ===== Buyer refunds wallet ===== */
+html:root body #app .lvrw{margin-bottom:.8rem}
+html:root body #app .lvrw-card .lvw-bal{font-size:1.9rem}
+html:root body #app .lvrw-note{font-size:.76rem;opacity:.85;margin-top:.2rem;position:relative;z-index:1}
+html:root body #app .lvrw-acct{margin-top:.6rem;font-size:.76rem;opacity:.9;position:relative;z-index:1}
+html:root body #app .lvrw-acct button{border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer;margin-left:.3rem}
+html:root body .lvrw-l{display:block;margin:.7rem 0 .3rem;font-size:.82rem;font-weight:700}
+html:root body .lvrw-in{width:100%;box-sizing:border-box;min-height:2.9rem;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent);padding:0 .8rem;font:inherit;font-size:.95rem;background:var(--input-bg,var(--card,#fff));color:var(--text)}
+html:root body .lvrw-name{margin-top:.8rem;padding:.8rem;border-radius:14px;background:rgba(22,160,106,.12);display:flex;flex-direction:column;gap:.15rem}
+html:root body .lvrw-name span{font-size:.82rem;opacity:.8}
+html:root body .lvrw-name small{margin-top:.3rem;font-weight:700;color:#0f7a52}
+html:root body .lvrw-later{display:block;margin:.5rem auto 0;border:0;background:transparent;color:var(--muted,#6b7280);font:inherit;font-weight:700;cursor:pointer;padding:.5rem 1rem}
