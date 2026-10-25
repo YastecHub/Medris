@@ -45,8 +45,11 @@ function vendorOrderTopHtml(order, ctx) {
   if (st === "pending") {
     if (orderCanSuggestQuantity(order)) h += `<div class="od-actions"><button type="button" class="od-btn od-btn-soft" onclick="openSuggestQuantity('${esc(order.id)}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button></div>`;
     h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
-  } else if (st === "confirmed" && orderIsFullyPaid(order) && !isRental) {
-    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','handed_over')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>`;
+  } else if (st === "confirmed" && (orderIsFullyPaid(order) || ctx.feePaid) && !isRental) {
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','handed_over')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>` +
+      `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="lvAskCancel('${esc(order.id)}')"><i class="fa-regular fa-circle-xmark"></i> Ask Levromart to cancel</button></div><p class="od-cancel-note">This order is paid, so you cannot cancel it yourself. Levromart reviews your request and refunds the buyer.</p>`;
+  } else if (st === "confirmed" && (orderIsFullyPaid(order) || ctx.feePaid)) {
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="lvAskCancel('${esc(order.id)}')"><i class="fa-regular fa-circle-xmark"></i> Ask Levromart to cancel</button></div>`;
   } else if (st === "confirmed" && !orderIsFullyPaid(order)) {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
   } else if (st === "handed_over" && isRental) {
@@ -668,7 +671,10 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
     // payment obligation as paid (delivery deposit first, then the remaining
     // balance; pickup uses the full payment). A "Cancel order" escape hatch
     // still needs to exist though, in case the vendor confirmed by mistake.
-    if (order.status === "confirmed") buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','confirmed')">Cancel order</button>`);
+    if (order.status === "confirmed") {
+      const paidAlready = (order.payments || []).some((p) => p.status === "paid" && ["sale_price", "rental_fee", "delivery_deposit_20"].includes(String(p.payment_type || "").toLowerCase()));
+      buttons.push(paidAlready ? `<button class="btn btn-sm btn-outline order-action-decline" onclick="lvAskCancel('${order.id}')">Ask Levromart to cancel</button>` : `<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','confirmed')">Cancel order</button>`);
+    }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
   // The "Payment reported" card already carries its own Message vendor button, so skip this one then.
@@ -693,13 +699,11 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
     if (servicePaymentReported) {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Payment reported. Waiting for the vendor to confirm receipt.</p>`);
-    } else if (paymentComplete) {
-      /* fully paid: the buyer can no longer cancel; the order completes when they confirm receipt (or automatically after 48h) */
-    } else if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
-      if (opts.parts) bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button>`);
-      else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
     } else {
-      buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
+      // the buyer may cancel until the vendor marks the order out for delivery (then the status is no longer "confirmed"): no time limit
+      const paidIt = !!paidRow || paymentComplete;
+      if (opts.parts) bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="buyerCancelOrder('${order.id}',${paidIt ? "true" : "false"})"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button>`);
+      else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paidIt ? "true" : "false"})">Cancel order</button>`);
     }
   }
   {

@@ -254,6 +254,8 @@ async function vendorDecline({ orderId, accessToken, reason }, res) {
     { headers: svcAuth }
   );
   const [paidPayment] = await paymentsRes.json();
+  // A shop cannot cancel an order the buyer has paid for: it asks Levromart (request_order_cancellation) and an admin decides.
+  if (paidPayment) { res.status(400).json({ error: "The buyer has already paid for this order, so you cannot cancel it yourself. Use \"Ask Levromart to cancel\" on the order page." }); return; }
 
   const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/vendor_decline_order`, {
     method: "POST",

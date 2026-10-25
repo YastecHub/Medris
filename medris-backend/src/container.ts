@@ -2,6 +2,7 @@ import { PaymentsAdminService } from "./modules/payments-admin/payments-admin.se
 import { VendorFeesService } from "./modules/vendor-fees/vendor-fees.service.js";
 import { RefundsService } from "./modules/refunds/refunds.service.js";
 import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.service.js";
+import { CancellationsService } from "./modules/cancellations/cancellations.service.js";
 import { WithdrawalsService } from "./modules/withdrawals/withdrawals.service.js";
 import { loadConfig, type AppConfig } from "./config/app-config.js";
 import type { DataContext } from "./database/context.js";
@@ -92,6 +93,7 @@ export interface AppServices {
   payoutAccounts: PayoutAccountsService;
   vendorPayouts: VendorPayoutsService;
   withdrawals: WithdrawalsService;
+  cancellations: CancellationsService;
   refunds: RefundsService;
   vendorFees: VendorFeesService;
   paymentsAdmin: PaymentsAdminService;
@@ -167,6 +169,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
     withdrawals: overrides.withdrawals ?? new WithdrawalsService(data),
     refunds: overrides.refunds ?? new RefundsService(data),
+    cancellations: overrides.cancellations ?? new CancellationsService(data),
     paymentsAdmin: overrides.paymentsAdmin ?? new PaymentsAdminService(data),
     vendorFees: overrides.vendorFees ?? new VendorFeesService(data, config.paystack.checkoutEnabled),
     paystackCheckout: overrides.paystackCheckout ?? new PaystackCheckoutService(data, config.paystack.checkoutEnabled),

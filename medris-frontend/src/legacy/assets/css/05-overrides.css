@@ -3871,3 +3871,5 @@ html:root body .lvp-pay{box-shadow:none!important}
 html:root body .lv-ap-acct{background:#f59e0b!important;color:#1f1300!important}
 html:root body #app .lb-hero-prods .lb-float.swap{animation:lbSwapIn .7s cubic-bezier(.2,.9,.25,1.1) var(--d,0s) both,lbFloat 3.4s ease-in-out .7s infinite}
 @keyframes lbSwapIn{from{opacity:0;scale:.6;translate:0 14px}to{opacity:1;scale:1;translate:0 0}}
+html:root body #app .od-cancel-note{margin:.4rem .2rem 0;font-size:.78rem;line-height:1.4;color:var(--muted,#6b7280);text-align:center}
+#prodPaymentTimingSettings{display:none!important}

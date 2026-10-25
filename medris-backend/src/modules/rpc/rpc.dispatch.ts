@@ -442,6 +442,11 @@ export const RPC: Record<string, RpcEntry> = {
   get_vendor_suggestions: { run: (s, me) => s.suggestions.vendorSuggestions(me) },
   get_platform_suggestions: { run: (s, me) => s.suggestions.platformSuggestions(me) },
   reply_to_suggestion: { run: (s, me, a) => s.suggestions.reply(me, id(a.p_suggestion_id), str(a.p_message)), limit: L.suggestions },
+  // Cancelling paid orders
+  buyer_cancel_order: { run: (s, me, a) => s.cancellations.buyerCancel(me, id(a.p_order_id)), limit: L.withdrawals },
+  request_order_cancellation: { run: (s, me, a) => s.cancellations.request(me, id(a.p_order_id), str(a.p_reason)), limit: L.withdrawals },
+  admin_list_cancellations: { run: (s, me, a) => s.cancellations.adminList(me, str(a.p_status)) },
+  admin_decide_cancellation: { run: (s, me, a) => s.cancellations.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
   // Withdrawals
   get_withdrawal_summary: { run: (s, me) => s.withdrawals.summary(me) },
   request_withdrawal: { run: (s, me) => s.withdrawals.request(me), limit: L.withdrawals },

@@ -92,6 +92,19 @@ describe("withdrawals", () => {
     expect(await rowOf(w, `select kind from public.withdrawal_requests where status = 'requested'`)).toMatchObject({ kind: "approval" });
   });
 
+  it("amounts under 1,000 naira can be requested only 3 times a day", async () => {
+    await clean();
+    for (let i = 0; i < 3; i++) {
+      await done(500, 60);
+      expect((await call("request_withdrawal", w.vendor.token)).status).toBe(200);
+      await w.db.query(`update public.withdrawal_requests set status = 'rejected' where status = 'requested'`);
+    }
+    await done(500, 60);
+    const r = await call("request_withdrawal", w.vendor.token);
+    expect(r.status).toBe(400);
+    expect(JSON.stringify(r.body)).toContain("3 times a day");
+  });
+
   it("a recent bank change sends everything to an admin, who is shown the change", async () => {
     await clean();
     const o = await done(5000, 60);

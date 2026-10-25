@@ -82,6 +82,12 @@ export class WithdrawalsRepository {
     return row!.id;
   }
 
+  /** How many requests under `belowKobo` this shop made in the last 24 hours (a limit against spamming small requests). */
+  async smallRequestsToday(vendorId: string, belowKobo: number): Promise<number> {
+    const row = await jsonRow<{ n: number }>(this.db, sql`select count(*)::int as n from public.withdrawal_requests where vendor_id = ${vendorId} and amount_kobo < ${belowKobo} and created_at > now() - interval '24 hours'`);
+    return row?.n ?? 0;
+  }
+
   async attach(requestId: string, payoutIds: string[]): Promise<void> {
     if (!payoutIds.length) return;
     await this.db.execute(sql`update public.vendor_payouts set withdrawal_id = ${requestId} where id in (${sql.join(payoutIds.map((x) => sql`${x}::uuid`), sql`, `)})`);

@@ -583,6 +583,21 @@
       showToast("Approved. It is sent within a minute.", "success"); navigate("adminPayments", {}, false);
     });
   };
+  window.lvCancelDecide = function (id, how) {
+    if (how === "reject") return ask("Reject cancellation", "Reason (the shop will see this)", false, function (t) { return sb.rpc("admin_decide_cancellation", { p_request_id: id, p_decision: "reject", p_reason: t }); });
+    showConfirmDialog("Cancel this paid order and refund the buyer (the Paystack fee is not refunded)?", { title: "Approve cancellation", okLabel: "Cancel the order", cancelLabel: "Go back", danger: true }).then(async function (yes) {
+      if (!yes) return;
+      var r = await sb.rpc("admin_decide_cancellation", { p_request_id: id, p_decision: "approve" });
+      if (r.error) return showToast(r.error.message, "error");
+      showToast("Order cancelled. The refund is queued.", "success"); navigate("adminPayments", {}, false);
+    });
+  };
+  function cancelRow(c) {
+    var open = c.status === "requested";
+    var acts = open ? '<button class="btn btn-sm btn-danger" onclick="lvCancelDecide(\'' + esc(c.id) + '\',\'approve\')">Cancel &amp; refund</button><button class="btn btn-sm btn-outline" onclick="lvCancelDecide(\'' + esc(c.id) + '\',\'reject\')">Reject</button>' : "";
+    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(Number(c.total_amount || 0)) + "</b> " + '<span class="badge ' + (c.status === "approved" ? "badge-success" : c.status === "rejected" ? "badge-danger" : "badge-warning") + '">' + esc({ requested: "Waiting", approved: "Cancelled", rejected: "Rejected" }[c.status] || c.status) + "</span>" +
+      "<small>" + esc(c.business_name || "") + " · " + when(c.created_at) + " · Reason: " + esc(c.reason || "") + (c.status === "rejected" && c.reject_reason ? " · Rejected: " + esc(c.reject_reason) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(c.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
+  }
   function withdrawalRow(w) {
     var open = w.status === "requested", rej = w.status === "rejected";
     var disp = Number(w.disputes) > 0;
@@ -623,16 +638,19 @@
     var q = { limit: 40 };
     var rows, wd = await sb.rpc("admin_list_withdrawals", { p_status: null });
     var wdRows = (wd && wd.data) || [], wdOpen = wdRows.filter(function (x) { return x.status === "requested"; }).length;
-    if (!picked && wdOpen) tab = "withdrawals";
-    if (tab === "withdrawals") rows = { data: wdRows };
+    var cr = await sb.rpc("admin_list_cancellations", { p_status: null });
+    var crRows = (cr && cr.data) || [], crOpen = crRows.filter(function (x) { return x.status === "requested"; }).length;
+    if (!picked && wdOpen) tab = "withdrawals"; else if (!picked && crOpen) tab = "cancellations";
+    if (tab === "cancellations") rows = { data: crRows };
+    else if (tab === "withdrawals") rows = { data: wdRows };
     else if (tab === "payouts") rows = await a.payouts(q);
     else if (tab === "held") rows = await a.payouts({ limit: 40, status: "on_hold" });
     else if (tab === "failed") rows = await a.payouts({ limit: 40, status: "failed" });
     else if (tab === "payments") rows = await a.transactions(q);
     else if (tab === "refunds") rows = await a.refunds(q);
     else rows = await a.reports();
-    var list = ((rows && rows.data) || []).map(tab === "withdrawals" ? withdrawalRow : tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
-    var tabs = [["withdrawals", "Withdrawals" + (wdOpen ? " (" + wdOpen + ")" : "")], ["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
+    var list = ((rows && rows.data) || []).map(tab === "cancellations" ? cancelRow : tab === "withdrawals" ? withdrawalRow : tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
+    var tabs = [["withdrawals", "Withdrawals" + (wdOpen ? " (" + wdOpen + ")" : "")], ["cancellations", "Cancel requests" + (crOpen ? " (" + crOpen + ")" : "")], ["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
     return nav + '<h2 style="text-align:center;"><i class="fa-solid fa-credit-card"></i> Payments</h2>' +
       (h.needsAttention ? '<div class="banner banner-warning" role="status"><strong><i class="fa-solid fa-triangle-exclamation"></i> ' + h.needsAttention + ' thing(s) need attention.</strong> Stuck or failed payouts and refunds, or mismatches in the last daily check.</div>' : '<div class="banner banner-success" role="status"><i class="fa-solid fa-circle-check"></i> Everything is matching.</div>') +
       '<div class="segmented-tabs">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
@@ -1947,3 +1965,15 @@
   wrap("showConfirmDialog", "confirmModal", false);
   wrap("showTextPromptDialog", "textPromptModal", true);
 })();
+
+
+/* ===== A shop cannot cancel an order the buyer has paid for: it asks Levromart (an admin decides, the buyer is refunded) ===== */
+window.lvAskCancel = async function (orderId) {
+  var ok = await showConfirmDialog("The buyer has already paid, so you cannot cancel this order yourself. Send a request to Levromart. If it is approved, the order is cancelled and the buyer is refunded.", { title: "Ask Levromart to cancel?", okLabel: "Write the reason", cancelLabel: "Go back", danger: true });
+  if (!ok) return;
+  var reason = await showTextPromptDialog("Why do you need to cancel?", "Levromart reads this before deciding.", { placeholder: "Write a short reason…", okLabel: "Send request", chips: ["Out of stock", "Cannot deliver to this area", "Price was wrong"], icon: "fa-paper-plane", danger: true });
+  if (reason === null) return;
+  var r = await sb.rpc("request_order_cancellation", { p_order_id: orderId, p_reason: reason });
+  if (r.error) return showToast(r.error.message || "Could not send the request.", "error");
+  showToast("Request sent. Levromart will review it.", "success");
+};

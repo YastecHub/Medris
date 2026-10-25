@@ -11,6 +11,8 @@ export const MIN_WITHDRAWAL_KOBO = 100_000;
 export const INSTANT_AFTER_MS = 48 * 60 * 60 * 1000;
 /** After the bank account is changed, nothing is sent at once for this long: the request goes to an admin, who sees the change (a stolen login cannot empty the wallet at once). */
 export const BANK_CHANGE_WAIT_HOURS = 24;
+/** A shop can ask for amounts under the minimum this many times in 24 hours (stops spamming). */
+export const SMALL_REQUESTS_PER_DAY = 3;
 
 const naira = (kobo: number | string) => "₦" + koboToNaira(Number(kobo)).toLocaleString("en-NG", { maximumFractionDigits: 2 });
 
@@ -61,6 +63,9 @@ export class WithdrawalsService {
       // anything that cannot be sent at once (new money, a small amount, a recently changed bank account) is asked of an admin
       const asking = canInstant ? plan.approval : { total: plan.approval.total + plan.instant.total, orderIds: [...plan.approval.orderIds, ...plan.instant.orderIds], payoutIds: [...plan.approval.payoutIds, ...plan.instant.payoutIds] };
       const canAsk = !open && asking.total > 0;
+      if (canAsk && !canInstant && asking.total < MIN_WITHDRAWAL_KOBO && (await repo.smallRequestsToday(vendor.id, MIN_WITHDRAWAL_KOBO)) >= SMALL_REQUESTS_PER_DAY) {
+        throw badRequest(`You can ask for an amount under ${naira(MIN_WITHDRAWAL_KOBO)} only ${SMALL_REQUESTS_PER_DAY} times a day. Wait until you have more, or try again tomorrow.`);
+      }
       if (!canInstant && !canAsk) {
         if (open) throw conflict("You already have a withdrawal waiting for approval.");
         throw badRequest("There is no money ready to withdraw yet.");
