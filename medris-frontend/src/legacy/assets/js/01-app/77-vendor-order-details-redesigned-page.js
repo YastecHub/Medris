@@ -30,8 +30,8 @@ function vendorOrderTopHtml(order, ctx) {
   // ---- state alert
   const alerts = {
     pending: { icon: "fa-hourglass-half", head: "Customer is waiting for your confirmation", body: "Confirm the order to see who they are and message them in the app, or decline it if you can't fulfil it." },
-    confirmed: { icon: "fa-circle-check", head: "You accepted this order", body: ctx.feePaid ? "Payment is in. Get the order ready and hand it over." : "Waiting for the customer to pay you and report the payment." },
-    handed_over: { icon: "fa-truck-fast", head: isDelivery ? "Order is out for delivery" : "Order handed over", body: isRental ? "Mark it returned once the equipment is back with you." : ctx.feePaid ? "Paid. Waiting for the customer to confirm they received it. Your money is sent to your bank once they confirm (or automatically after 24 hours)." : "The order completes once the customer confirms and payment is settled." },
+    confirmed: { icon: "fa-circle-check", head: "You accepted this order", body: ctx.feePaid ? (isDelivery ? "Payment is in. Get the order ready, then tap “Mark out for delivery” so the customer can follow it." : "Payment is in. Get the order ready, then tap “Mark handed over”.") : "Waiting for the customer to pay you and report the payment." },
+    handed_over: { icon: "fa-truck-fast", head: isDelivery ? "Order is out for delivery" : "Order handed over", body: isRental ? "Mark it returned once the equipment is back with you." : ctx.feePaid ? "Paid. Waiting for the customer to confirm they received it. Your money is sent to your bank once they confirm (or automatically after 48 hours if no issue is raised)." : "The order completes once the customer confirms and payment is settled." },
     returned: { icon: "fa-rotate-left", head: "Equipment returned", body: "Waiting for the customer to confirm so the order can complete." },
     completed: { icon: "fa-circle-check", head: "Order completed", body: "This order is done. Thank you for selling on Levromart." },
     cancelled: { icon: "fa-circle-xmark", head: "This order was cancelled", body: "No further action is needed." },
@@ -45,6 +45,8 @@ function vendorOrderTopHtml(order, ctx) {
   if (st === "pending") {
     if (orderCanSuggestQuantity(order)) h += `<div class="od-actions"><button type="button" class="od-btn od-btn-soft" onclick="openSuggestQuantity('${esc(order.id)}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button></div>`;
     h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
+  } else if (st === "confirmed" && orderIsFullyPaid(order) && !isRental) {
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','handed_over')"><i class="fa-solid fa-truck-fast"></i> ${isDelivery ? "Mark out for delivery" : "Mark handed over"}</button></div>`;
   } else if (st === "confirmed" && !orderIsFullyPaid(order)) {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
   } else if (st === "handed_over" && isRental) {
@@ -692,7 +694,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
     if (servicePaymentReported) {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Payment reported. Waiting for the vendor to confirm receipt.</p>`);
     } else if (paymentComplete) {
-      /* fully paid: the buyer can no longer cancel; the order completes when they confirm receipt (or automatically after 24h) */
+      /* fully paid: the buyer can no longer cancel; the order completes when they confirm receipt (or automatically after 48h) */
     } else if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
       if (opts.parts) bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button>`);
       else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);

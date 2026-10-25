@@ -116,8 +116,15 @@ export async function payOrder(w: World, orderId: string, naira?: number) {
   return reference;
 }
 
+/** The vendor marks a paid order out for delivery / handed over (this starts the buyer's confirmation window). */
+export async function handOver(w: World, orderId: string) {
+  const r = await json(await api.post(w, `/orders/${orderId}/status`, w.vendor.token, { status: "handed_over" }));
+  if (r.status !== 200) throw new Error(`hand over failed: ${r.status} ${JSON.stringify(r.body)}`);
+}
+
 /** The buyer confirms receipt; returns the payout's transfer reference once the worker has queued and sent it. */
 export async function completeAndPayOut(w: World, orderId: string) {
+  await handOver(w, orderId);
   const r = await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
   if (r.status !== 200) throw new Error(`confirm receipt failed: ${r.status} ${JSON.stringify(r.body)}`);
   await runJob(w, "vendor-payouts");

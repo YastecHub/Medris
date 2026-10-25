@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld } from "./harness.js";
+import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, handOver } from "./harness.js";
 import { call } from "../support/fixtures.js";
 
 describe("who may do what, the on/off switch, and Levromart's own fees", () => {
@@ -33,6 +33,7 @@ describe("who may do what, the on/off switch, and Levromart's own fees", () => {
     it("only admins can refund, hold, release, mark paid by hand, or open the money screens", async () => {
       const orderId = await newOrder(w);
       await payOrder(w, orderId);
+      await handOver(w, orderId);
       await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
       const payout = (await rowOf<{ id: string }>(w, `select id from public.vendor_payouts where order_id = $1`, [orderId]))!;
       for (const person of [w.buyer, w.vendor]) {

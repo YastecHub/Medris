@@ -81,7 +81,7 @@ function clearOrderDateFilters(view,status,type,payment,perspective=""){ navigat
 // bringing that problem back).
 const ORDER_BADGE_STATUSES = ["pending", "confirmed", "payment_unresolved"];
 // A fully paid order (delivery: deposit + balance; pickup: the full payment) has nothing left for the vendor to do,
-// so it never counts as "needing attention" for them. Only the buyer's confirmation (or the 24h auto-complete) remains.
+// so it never counts as "needing attention" for them. Only the buyer's confirmation (or the 48h auto-complete) remains.
 function orderIsFullyPaid(o) {
   if (!o || !Array.isArray(o.payments)) return false;
   const feeType = o.order_type === "sale" ? "sale_price" : "rental_fee";
@@ -243,7 +243,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     ordersTabCached(`vo:${vendor.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") })),
     ordersTabCached(`vs2:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, order_type, delivery_method, awaiting_confirmation_since, payments(payment_type,status)").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
   ]);
-  // Delivered and paid, just waiting out the buyer's 24-hour window: for the vendor it counts as Completed,
+  // Delivered and paid, just waiting out the buyer's 48-hour window: for the vendor it counts as Completed,
   // so it stops mixing with the orders still needing their attention. A dispute moves it to Disputed as usual.
   const vendorEffectiveStatus = (o) => (o && o.awaiting_confirmation_since && ["confirmed", "handed_over"].includes(o.status) && o.order_type !== "rental" && orderIsFullyPaid(o)) ? { ...o, status: "completed", __ackPending: true } : o;
   const allOrdersRaw = Array.isArray(allOrdersRaw0) ? allOrdersRaw0.map(vendorEffectiveStatus) : allOrdersRaw0;

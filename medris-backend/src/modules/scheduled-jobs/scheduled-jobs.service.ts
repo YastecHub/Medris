@@ -38,7 +38,7 @@ export type JobName = (typeof JOB_NAMES)[number];
 
 export const JOBS: readonly ScheduledJob[] = [
   { name: "auto-cancel-unconfirmed-orders", schedule: "* * * * *", description: "Cancels orders the vendor has not confirmed within 30 minutes." },
-  { name: "auto-complete-orders", schedule: "*/10 * * * *", description: "Completes paid orders the buyer has not confirmed or disputed within 24 hours." },
+  { name: "auto-complete-orders", schedule: "*/10 * * * *", description: "Completes paid orders the buyer has not confirmed or disputed within 48 hours." },
   { name: "bg-reminders", schedule: "* * * * *", description: "Batched push reminders for unread messages and open orders." },
   { name: "commission-deadline-reminders", schedule: "0 7 * * *", description: "Commission due in 5, 3, 2 or 1 day(s)." },
   { name: "levromart-finalize-points-week", schedule: "5 23 * * 0", description: "Closes finished points weeks and names the winners." },
@@ -129,7 +129,7 @@ export class ScheduledJobsService {
     });
   }
 
-  /** Replaces: public.auto_complete_eligible_orders() - paid orders not confirmed or disputed within 24 hours are completed. */
+  /** Replaces: public.auto_complete_eligible_orders() - paid orders not confirmed or disputed within 48 hours are completed. */
   autoCompleteEligibleOrders(): Promise<number> {
     return this.tx(async (_tx, jobs, notify) => {
       let n = 0;
@@ -140,7 +140,7 @@ export class ScheduledJobsService {
           userId: r.buyer_id,
           type: "order_completed",
           title: "Order marked as received",
-          body: "No issue was reported within 24 hours, so your order was marked as received and completed.",
+          body: "No issue was reported within 48 hours, so your order was marked as received and completed.",
           targetView: "orderDetail",
           targetParams: { orderId: r.id, reviewEligible: true },
         });

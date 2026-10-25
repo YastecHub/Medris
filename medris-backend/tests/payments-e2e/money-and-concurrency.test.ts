@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { grossUpForBuyerFees, nairaToKobo, paystackFeeOn } from "../../src/integrations/paystack/index.js";
-import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld } from "./harness.js";
+import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, handOver } from "./harness.js";
 
 describe("money arithmetic, pay after delivery, secrets in logs", () => {
   const w = useWorld();
@@ -117,6 +117,7 @@ describe.skipIf(!REAL)("concurrency (real PostgreSQL)", () => {
   it("8 payout workers at once make one transfer", async () => {
     const orderId = await newOrder(w, 3500);
     await payOrder(w, orderId);
+    await handOver(w, orderId);
     await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
     await Promise.all(Array.from({ length: N }, () => runJob(w, "vendor-payouts")));
     expect(w.paystack.callsTo("POST", "/transfer")).toHaveLength(1);
@@ -134,6 +135,7 @@ describe.skipIf(!REAL)("concurrency (real PostgreSQL)", () => {
   it("a refund and a payout at the same moment never take the same money", async () => {
     const orderId = await newOrder(w, 3700);
     await payOrder(w, orderId);
+    await handOver(w, orderId);
     await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
     const [refund] = await Promise.all([json(await api.post(w, `/admin/orders/${orderId}/refund`, w.admin.token, { reason: "race" })), runJob(w, "vendor-payouts")]);
     await runJob(w, "paystack-refunds");

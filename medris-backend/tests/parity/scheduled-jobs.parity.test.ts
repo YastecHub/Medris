@@ -59,7 +59,7 @@ describe("parity: scheduled jobs", () => {
     const awaiting = async (delivery: "pickup" | "delivery", payments: [string, string][], extra = "") => {
       const id = await order("confirmed", 30 * H, buyer, delivery);
       for (const [type, status] of payments) await pay(id, type, status);
-      await set(id, `awaiting_confirmation_since = $2${extra}`, [ago(25 * H)]);
+      await set(id, `awaiting_confirmation_since = $2${extra}`, [ago(49 * H)]);
       return id;
     };
     await awaiting("pickup", [["sale_price", "paid"]]); // completed
