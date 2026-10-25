@@ -880,7 +880,9 @@ window.__lvHoldHeight = function (el) {
     el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "";
     const r = el.getBoundingClientRect();
     const snap = el.cloneNode(true);
-    snap.removeAttribute("id");
+    // the frozen copy keeps the page frame's id: nearly every style of a product page is written as "#app ...", so without it the
+    // copy loses its sizes (profile pictures and photos swell, the top and bottom details change) while it slides away
+    snap.id = "app";
     snap.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
     snap.querySelectorAll("video,audio").forEach((n) => n.remove());
     Object.assign(snap.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0", overflow: "hidden", zIndex: "5", pointerEvents: "none", transition: "none", background: "var(--bg,transparent)" });
@@ -1033,6 +1035,8 @@ window.__lvHoldHeight = function (el) {
     const t = document.createElement("template"); t.innerHTML = html;
     t.content.querySelectorAll(".lm-related, video, audio, script").forEach((n) => n.remove());
     t.content.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    // its pictures are fetched now, not when they scroll into view, so nothing pops in (or swells) as the page slides over
+    t.content.querySelectorAll("img").forEach((i) => { i.loading = "eager"; i.decoding = "sync"; });
     const el = document.createElement("div");
     el.className = "lv-pd-next"; el.setAttribute("aria-hidden", "true");
     el.style.cssText = `position:absolute;top:${Math.max(0, window.scrollY - host.offsetTop)}px;left:${dir * 100}%;width:100%;pointer-events:none`;

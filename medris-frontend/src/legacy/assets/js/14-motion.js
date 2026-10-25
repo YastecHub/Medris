@@ -1852,7 +1852,7 @@
     function wrapFn(name, build) {
       var f = window[name]; if (typeof f !== "function" || f.__lvw) return;
       var w = async function () { var html = await f.apply(this, arguments); var out = build(String(html == null ? "" : html), arguments); if (out !== null) setTimeout(function () { refresh(false); }, 30); return out === null ? html : out; };
-      w.__lvw = true; window[name] = w;
+      w.__lvw = true; w.__lvrw = f.__lvrw; window[name] = w;   // keep the refunds wallet's mark too
     }
     // the shop's own full profile: the wallet takes the place of the top banner
     wrapFn("renderVendorDashboard", function (html) {
@@ -1933,7 +1933,8 @@
     c.classList.add("lv-dlg");
     var old = c.querySelector(".lv-dlg-ico"); if (old) old.remove();
     var ico = document.createElement("div");
-    ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "");
+    ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "") + (opts.tone === "purple" ? " purple" : "");
+    c.classList.toggle("lv-dlg-purple", opts.tone === "purple");
     ico.innerHTML = '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
     c.insertBefore(ico, c.firstChild);
     var cancel = document.getElementById(prompt ? "textPromptModalCancel" : "confirmModalCancel");
@@ -1981,7 +1982,7 @@ window.lvAskCancel = async function (orderId) {
 /* ===== Refunds wallet for buyers: refunds land here (not on the card) and are withdrawn to a bank account ===== */
 (function () {
   "use strict";
-  var cache = null, loading = null, popupDone = false;
+  var cache = null, loading = null, popupDone = false, failed = false;
   var DISMISS = "lv-rw-dismissed";
   function signedIn() { return typeof session !== "undefined" && session && typeof profile !== "undefined" && profile && profile.role !== "admin"; }
   function money(kobo) { return "₦" + (Number(kobo || 0) / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }
@@ -1992,7 +1993,8 @@ window.lvAskCancel = async function (orderId) {
     if (loading) return loading;
     loading = (async function () {
       var r = await sb.rpc("get_refund_wallet");
-      if (r.error || !r.data) return cache ? cache.data : null;
+      if (r.error || !r.data) { failed = true; return cache ? cache.data : null; }   // not set up on the server yet: the card says so instead of waiting forever
+      failed = false;
       cache = { at: Date.now(), data: r.data };
       return r.data;
     })().catch(function () { return null; }).finally(function () { loading = null; });
@@ -2002,7 +2004,8 @@ window.lvAskCancel = async function (orderId) {
     var has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
     return '<div class="lvw-card is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span></div>' +
       '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : "Refunds go here once you add a bank account") + '</div>' +
-      '<div class="lvw-bal">' + (d ? money(bal) : '<span class="lvw-skel"></span>') + '</div>' +
+      '<div class="lvw-bal">' + (d || failed ? money(bal) : '<span class="lvw-skel"></span>') + '</div>' +
+      (!d && failed ? '<div class="lvrw-note">Your refunds wallet is getting ready. Refunds will show here.</div>' : "") +
       (pend ? '<div class="lvrw-note">' + money(pend) + ' on its way to your bank</div>' : "") +
       '<div class="lvw-actions">' +
         (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid fa-plus"></i> Add bank account</button>') +
@@ -2035,8 +2038,10 @@ window.lvAskCancel = async function (orderId) {
       '<button type="button" class="btn lvw-wd-go" id="lvrwGo">Check account</button>' + (fromPopup ? '<button type="button" class="lvrw-later" onclick="lvRefundLater()">Later</button>' : ""));
     var sel = m.querySelector("#lvrwBank"), num = m.querySelector("#lvrwNum"), msg = m.querySelector("#lvrwMsg"), nameBox = m.querySelector("#lvrwName"), go = m.querySelector("#lvrwGo");
     try {
-      var b = await window.levroData.payments.banks();
-      var list = (b && b.data) || [];
+      var list = [];
+      try { var b = await window.levroData.payments.banks(); list = (b && Array.isArray(b.data) && b.data) || []; } catch (_) {}
+      if (!list.length && typeof NIGERIAN_BANKS !== "undefined") list = NIGERIAN_BANKS;   // the full list kept in the app, so the form always works
+      if (!list.length) throw new Error("no banks");
       sel.innerHTML = '<option value="">Choose your bank</option>' + list.map(function (x) { return '<option value="' + esc(x.code) + '">' + esc(x.name) + "</option>"; }).join("");
     } catch (_) { sel.innerHTML = '<option value="">Banks are not available right now</option>'; }
     var found = null;
@@ -2100,9 +2105,18 @@ window.lvAskCancel = async function (orderId) {
       setTimeout(function () { refresh(false); }, 30);
       return '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>" + str;
     };
-    w.__lvrw = true; window[name] = w;
+    w.__lvrw = true; w.__lvw = f.__lvw; window[name] = w;   // keep the other wallet's mark so it is never wrapped again on top of this one
   }
-  function wrapAll() { wrapFn("renderBuyerProfile"); wrapFn("renderCustomerOrders"); wrapFn("renderVendorOrders"); }
+  function wrapEdit() {
+    var f = window.renderEditProfile; if (typeof f !== "function" || f.__lvrw) return;
+    var w = function () {
+      var out = f.apply(this, arguments);
+      var add = function (html) { return String(html) + '<div class="lvrw-edit"><div><strong>Refund account</strong><small>Where refunds are sent when an order is cancelled or a problem is settled in your favour.</small></div><button type="button" class="btn btn-outline" onclick="lvRefundAccount()">Add or change</button></div>'; };
+      return out && typeof out.then === "function" ? out.then(add) : add(out);
+    };
+    w.__lvrw = true; window.renderEditProfile = w;
+  }
+  function wrapAll() { wrapFn("renderBuyerProfile"); wrapFn("renderCustomerOrders"); wrapFn("renderVendorOrders"); wrapEdit(); }
   wrapAll(); setTimeout(wrapAll, 1200); setTimeout(wrapAll, 4000);
 
   // every customer is asked once (and again every few days until they add an account)
