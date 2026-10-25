@@ -5,6 +5,7 @@
   var desc=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML"); if(!desc||!desc.set) return;
   var reduce=false; try{ reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(_){}
   var TABS={home:1,vendors:1,search:1,notifications:1,vendorOrders:1,buyerOrders:1,buyerProfile:1,vendorDashboard:1,requestEquipment:1,vendorRequests:1,cart:1,wishlist:1,messages:1};
+  var NAVPOS={home:0,vendors:1,vendorsMap:1,requestEquipment:2,vendorRequests:2,notifications:3,buyerOrders:4,vendorOrders:4};
   var last={html:null,gen:-1,view:null}, goingBack=false, animTimer=null;
   window.addEventListener("popstate",function(){ goingBack=true; });
   function gen(){ try{ return navigationGeneration; }catch(_){ return -1; } }
@@ -103,9 +104,13 @@
       var chat=document.body&&document.body.classList.contains("chat-full-page");
       var tabSwitch=!!(TABS[prevView]&&TABS[vw]);
       if(chat) animate(this,[{opacity:0},{opacity:1}],180);
-      else if(tabSwitch&&!goingBack) animate(this,[{opacity:0,transform:"translateY(8px)"},{opacity:1,transform:"none"}],170);
-      else if(goingBack) animate(this,[{opacity:0,transform:"translateX(-22px)"},{opacity:1,transform:"none"}],190);
-      else animate(this,[{opacity:0,transform:"translateX(26px)"},{opacity:1,transform:"none"}],190);
+      else if(goingBack) animate(this,[{opacity:.2,transform:"translateX(-30%)"},{opacity:1,transform:"none"}],230);
+      else if(tabSwitch&&NAVPOS[prevView]!=null&&NAVPOS[vw]!=null&&NAVPOS[prevView]!==NAVPOS[vw]){
+        // the bottom bar: the page comes in from the side the tapped tab is on
+        var dir=NAVPOS[vw]>NAVPOS[prevView]?1:-1;
+        animate(this,[{opacity:.2,transform:"translateX("+(dir*30)+"%)"},{opacity:1,transform:"none"}],230);
+      }
+      else animate(this,[{opacity:.2,transform:"translateX(32%)"},{opacity:1,transform:"none"}],230);
       goingBack=false;
     }
   });
@@ -1452,4 +1457,34 @@
     w.__lvLazy=true; window.renderVendorMapRail=w;
   }
   wrapRail(); setTimeout(wrapRail,1500);
+})();
+
+/* ---- a thin line on top of the bottom bar slides to the tab you tap (and the page slides in the same direction) ---- */
+(function(){
+  var lastG=null;
+  function geo(nav,it){ var n=nav.getBoundingClientRect(), r=it.getBoundingClientRect(), w=Math.min(34,r.width*.5); return {x:r.left-n.left+(r.width-w)/2,w:w}; }
+  function put(nav,animate){
+    if(!nav) return;
+    var it=nav.querySelector(".bottom-nav-item.active"), ind=nav.querySelector(".bn-ind");
+    if(!ind){ ind=document.createElement("i"); ind.className="bn-ind"; ind.setAttribute("aria-hidden","true"); nav.appendChild(ind); }
+    if(!it){ ind.style.opacity="0"; return; }
+    var g=geo(nav,it); if(!g.w) return;
+    ind.style.opacity="1";
+    if(lastG&&animate!==false){ ind.style.transition="none"; ind.style.width=lastG.w+"px"; ind.style.transform="translateX("+lastG.x+"px)"; void ind.offsetWidth; }
+    ind.style.transition="transform .24s cubic-bezier(.22,.9,.3,1),width .24s cubic-bezier(.22,.9,.3,1)";
+    ind.style.width=g.w+"px"; ind.style.transform="translateX("+g.x+"px)";
+    lastG=g;
+  }
+  function wrap(){
+    var r=window.renderBottomNav; if(typeof r!=="function"||r.__lvInd) return;
+    var w=function(){ var out=r.apply(this,arguments); try{ put(document.getElementById("bottomNav"),true); }catch(_){} return out; };
+    w.__lvInd=true; window.renderBottomNav=w;
+  }
+  wrap(); setTimeout(wrap,800);
+  document.addEventListener("click",function(e){
+    var b=e.target&&e.target.closest&&e.target.closest("#bottomNav .bottom-nav-item"); if(!b) return;
+    setTimeout(function(){ put(document.getElementById("bottomNav"),true); },0);
+  },true);
+  window.addEventListener("resize",function(){ lastG=null; put(document.getElementById("bottomNav"),false); });
+  setTimeout(function(){ put(document.getElementById("bottomNav"),false); },1200);
 })();
