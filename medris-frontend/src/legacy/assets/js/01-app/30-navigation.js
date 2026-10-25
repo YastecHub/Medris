@@ -197,7 +197,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // visible during this visit. This covers Back, bottom-nav taps, links, and
   // any other route transition that does not pass through closeAllPanels().
   if (currentView === "notifications" && view !== "notifications") {
-    try { await commitPendingNotificationReads(); } catch (_) {}
+    try { Promise.resolve(commitPendingNotificationReads()).catch(() => {}); } catch (_) {}   // saved in the background: never hold the tap
   }
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   // REACT-REGISTRY HOOK (1/4): release the React screen that is on display, if any, before

@@ -5,11 +5,11 @@ import { WithdrawalsRepository } from "../../database/repositories/withdrawals.r
 import { koboToNaira } from "../../integrations/paystack/index.js";
 import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
 
-/** The smallest amount a shop can withdraw at once (a bank transfer costs Levromart a few naira). */
+/** Below this, money is never sent at once: the shop can still ask, and an admin decides (a bank transfer costs Levromart a few naira). */
 export const MIN_WITHDRAWAL_KOBO = 100_000;
 /** Money paid for at least this long ago is sent the moment the shop asks; newer money waits for an admin. */
 export const INSTANT_AFTER_MS = 48 * 60 * 60 * 1000;
-/** After the bank account is changed, withdrawals wait this long (a stolen login cannot empty the wallet at once). */
+/** After the bank account is changed, nothing is sent at once for this long: the request goes to an admin, who sees the change (a stolen login cannot empty the wallet at once). */
 export const BANK_CHANGE_WAIT_HOURS = 24;
 
 const naira = (kobo: number | string) => "₦" + koboToNaira(Number(kobo)).toLocaleString("en-NG", { maximumFractionDigits: 2 });
@@ -39,6 +39,7 @@ export class WithdrawalsService {
         has_dispute: plan.disputedOrders.length > 0,
         disputed_order_ids: plan.disputedOrders,
         blocked: this.blocked(vendor),
+        recent_bank_change: this.recentChange(vendor),
         open_request: await repo.openRequest(vendor.id),
         recent: await repo.recent(vendor.id),
       };
@@ -57,10 +58,12 @@ export class WithdrawalsService {
       const plan = await this.plan(repo, vendor.id);
       const open = await repo.openRequest(vendor.id);
       const canInstant = plan.instant.total >= MIN_WITHDRAWAL_KOBO;
-      const canAsk = !open && plan.approval.total >= MIN_WITHDRAWAL_KOBO;
+      // anything that cannot be sent at once (new money, a small amount, a recently changed bank account) is asked of an admin
+      const asking = canInstant ? plan.approval : { total: plan.approval.total + plan.instant.total, orderIds: [...plan.approval.orderIds, ...plan.instant.orderIds], payoutIds: [...plan.approval.payoutIds, ...plan.instant.payoutIds] };
+      const canAsk = !open && asking.total > 0;
       if (!canInstant && !canAsk) {
         if (open) throw conflict("You already have a withdrawal waiting for approval.");
-        throw badRequest(`The smallest withdrawal is ${naira(MIN_WITHDRAWAL_KOBO)}. You have ${naira(plan.instant.total + plan.approval.total)} ready.`);
+        throw badRequest("There is no money ready to withdraw yet.");
       }
       const notify = new NotificationWriter(tx);
       const hasDispute = plan.disputedOrders.length > 0;
@@ -74,12 +77,12 @@ export class WithdrawalsService {
         sent = plan.instant.total;
       }
       if (canAsk) {
-        const id = await repo.insertRequest(vendor.id, "approval", plan.approval.orderIds, plan.approval.total, hasDispute);
-        await repo.attach(id, plan.approval.payoutIds);
-        asked = plan.approval.total;
+        const id = await repo.insertRequest(vendor.id, "approval", asking.orderIds, asking.total, hasDispute);
+        await repo.attach(id, asking.payoutIds);
+        asked = asking.total;
         await notify.notifyAdmins(
           "Withdrawal request",
-          `${vendor.business_name ?? "A shop"} asked to withdraw ${naira(asked)}${hasDispute ? " (has a disputed order)" : ""}.`,
+          `${vendor.business_name ?? "A shop"} asked to withdraw ${naira(asked)}${hasDispute ? " (has a disputed order)" : ""}${this.recentChange(vendor) != null ? " (bank account changed recently)" : ""}.`,
           "adminPayments",
           { tab: "withdrawals" },
           me.userId,
@@ -162,15 +165,20 @@ export class WithdrawalsService {
   }
 
   /** Why this shop cannot withdraw right now (null when it can). */
-  private blocked(v: { recipient_code: string | null; payout_verified_at: string | null; verified_age_hours: number | null }): string | null {
+  private blocked(v: { recipient_code: string | null; payout_verified_at: string | null }): string | null {
     if (!v.recipient_code || !v.payout_verified_at) return "Add and verify your bank account before you withdraw.";
-    const wait = BANK_CHANGE_WAIT_HOURS - (v.verified_age_hours ?? BANK_CHANGE_WAIT_HOURS);
-    if (wait > 0) return `You changed your bank account recently. For your safety, withdrawals open again in ${Math.ceil(wait)} hour${Math.ceil(wait) === 1 ? "" : "s"}.`;
     return null;
+  }
+
+  /** Hours since the bank account was last changed, while that is recent (otherwise null). */
+  private recentChange(v: { verified_age_hours: number | null }): number | null {
+    return v.verified_age_hours != null && v.verified_age_hours < BANK_CHANGE_WAIT_HOURS ? Math.max(0, Math.floor(v.verified_age_hours)) : null;
   }
 
   private async plan(repo: WithdrawalsRepository, vendorId: string) {
     const buckets = await repo.buckets(vendorId);
+    const v = await repo.vendorById(vendorId);
+    const recent = this.recentChange(v ?? { verified_age_hours: null }) != null;
     const cutoff = Date.now() - INSTANT_AFTER_MS;
     const group = () => ({ total: 0, orderIds: [] as string[], payoutIds: [] as string[] });
     const instant = group();
@@ -179,7 +187,7 @@ export class WithdrawalsService {
     for (const b of buckets) {
       const amount = Number(b.net_kobo);
       if (amount <= 0) continue;
-      const g = b.disputed ? held : b.paid_at && new Date(b.paid_at).getTime() <= cutoff ? instant : approval;
+      const g = b.disputed ? held : !recent && b.paid_at && new Date(b.paid_at).getTime() <= cutoff ? instant : approval;
       g.total += amount;
       g.orderIds.push(b.order_id);
       g.payoutIds.push(b.payout_id);

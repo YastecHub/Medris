@@ -3868,3 +3868,6 @@ html:root body .lv-dlg .flex .btn:last-child{box-shadow:none!important}
 /* the pay sheet: flat, no glow */
 html:root body #lvPayModal.lvp .lv-pm-card{box-shadow:none!important}
 html:root body .lvp-pay{box-shadow:none!important}
+html:root body .lv-ap-acct{background:#f59e0b!important;color:#1f1300!important}
+html:root body #app .lb-hero-prods .lb-float.swap{animation:lbSwapIn .7s cubic-bezier(.2,.9,.25,1.1) var(--d,0s) both,lbFloat 3.4s ease-in-out .7s infinite}
+@keyframes lbSwapIn{from{opacity:0;scale:.6;translate:0 14px}to{opacity:1;scale:1;translate:0 0}}

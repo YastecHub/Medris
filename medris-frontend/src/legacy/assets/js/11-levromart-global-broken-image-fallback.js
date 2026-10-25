@@ -910,15 +910,27 @@ function hideLeviFromPanel() {
     el.onclick = () => navigate("storefront", { vendorId: w.vendor_id });
     paintHeroProducts(w.vendor_id);
   }
-  // The winner's own products float in the corner of the header (instead of stock photos of people)
+  // The winner's own products float in the corner of the header and keep reshuffling; tapping one opens it
   async function paintHeroProducts(vid) {
     const box = $("lbHeroProds"); if (!box || box.dataset.v === String(vid)) return;
     box.dataset.v = String(vid);
     try {
-      const r = await sb.from("products").select("id,name,photos").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(12);
-      const rows = ((r && r.data) || []).filter((p) => p.photos && p.photos[0]).slice(0, 3);
-      const again = $("lbHeroProds"); if (!again || again.dataset.v !== String(vid)) return;
-      again.innerHTML = rows.map((p, i) => `<img class="lb-float f${i}" src="${esc(p.photos[0])}" alt="" width="52" height="52" decoding="async" onclick="event.stopPropagation();navigate('productDetail',{productId:'${esc(p.id)}'})">`).join("");
+      const r = await sb.from("products").select("id,name,photos").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(30);
+      const pool = ((r && r.data) || []).filter((p) => p.photos && p.photos[0]);
+      const again = $("lbHeroProds"); if (!again || again.dataset.v !== String(vid) || !pool.length) return;
+      let at = 0;
+      const show = (first) => {
+        const b = $("lbHeroProds"); if (!b) return false;
+        const rows = [0, 1, 2].map((k) => pool[(at + k) % pool.length]).filter((p, k, a) => a.indexOf(p) === k);
+        at = (at + 3) % pool.length;
+        b.innerHTML = rows.map((p, i) => `<img class="lb-float f${i}${first ? "" : " swap"}" style="--d:${i * 0.18}s" src="${esc(p.photos[0])}" alt="" width="52" height="52" decoding="async" onclick="event.stopPropagation();navigate('productDetail',{productId:'${esc(p.id)}'})">`).join("");
+        return true;
+      };
+      show(true);
+      if (pool.length > 3) {
+        clearInterval(window.__lbProdTimer);
+        window.__lbProdTimer = setInterval(() => { if (document.hidden) return; if (!show(false)) clearInterval(window.__lbProdTimer); }, 3800);
+      }
     } catch (_) {}
   }
   function ensureHeroWinner() {

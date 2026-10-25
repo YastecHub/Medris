@@ -117,13 +117,14 @@ export class WithdrawalsRepository {
   }
 
   /** Requests for the admin screen, with what the admin must see before approving: open disputes and how long the shop has been around. */
-  adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string })[]> {
+  adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string; account_changed_at: string | null })[]> {
     return jsonRows(
       this.db,
       sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at,
                  (select count(*)::int from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open') as disputes,
                  coalesce((select array_agg(distinct d.order_id) from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open'), '{}') as dispute_orders,
-                 v.account_name, v.bank_name, v.created_at as shop_since
+                 v.account_name, v.bank_name, v.created_at as shop_since,
+                 case when v.payout_verified_at is not null and v.payout_verified_at > w.created_at - interval '24 hours' then v.payout_verified_at end as account_changed_at
           from public.withdrawal_requests w join public.vendors v on v.id = w.vendor_id
           where (${status}::text is null or w.status = ${status})
           order by (w.status = 'requested') desc, w.created_at desc limit ${limit}`,
@@ -138,6 +139,10 @@ export class WithdrawalsRepository {
                  (extract(epoch from (now() - payout_verified_at)) / 3600)::float as verified_age_hours
           from public.vendors where user_id = ${userId} and deleted_at is null limit 1`,
     );
+  }
+
+  vendorById(id: string): Promise<{ verified_age_hours: number | null } | null> {
+    return jsonRow(this.db, sql`select (extract(epoch from (now() - payout_verified_at)) / 3600)::float as verified_age_hours from public.vendors where id = ${id}`);
   }
 
   /** Reopening a dispute: what is there, and is the money already gone? */
