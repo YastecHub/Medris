@@ -236,14 +236,14 @@
   function paystackOn() {
     if (onCache !== null && Date.now() - onAt < 60000) return Promise.resolve(onCache);
     if (!window.levroData || !window.levroData.payments) return Promise.resolve(false);
-    return window.levroData.payments.config().then(function (r) { onCache = !!(r && r.data && r.data.paystackCheckout); onAt = Date.now(); return onCache; }, function () { return false; });
+    return window.levroData.payments.config().then(function (r) { onCache = !!(r && r.data && r.data.paystackCheckout); onAt = Date.now(); window.__lvPaystackKnownOn = onCache; return onCache; }, function () { return false; });
   }
   window.lvPaystackOn = paystackOn;
   function closeModal() { var m = document.getElementById("lvPayModal"); if (m) m.remove(); }
-  function openModal(html) {
+  function openModal(html, extra) {
     closeModal();
     var m = document.createElement("div");
-    m.id = "lvPayModal"; m.className = "modal lv-pm open";
+    m.id = "lvPayModal"; m.className = "modal lv-pm open" + (extra ? " " + extra : "");
     m.innerHTML = '<div class="modal-content lv-pm-card" role="dialog" aria-modal="true" aria-labelledby="lvPmTitle">' + html + "</div>";
     m.addEventListener("click", function (e) { if (e.target === m) closeModal(); });
     document.body.appendChild(m);
@@ -270,14 +270,17 @@
     }
     var d = r.data;
     openModal(
-      '<div class="lv-pm-head"><h3 id="lvPmTitle"><span class="lv-pm-ico" aria-hidden="true"><i class="fa-solid fa-credit-card"></i></span>Pay ' + esc(naira(d.amountNaira)) + '</h3><button type="button" class="icon-btn" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
-      '<ul class="lv-pm-sum"><li><span>Order amount</span><b>' + esc(naira(d.orderAmountNaira)) + '</b></li><li><span>Paystack fee</span><b>' + esc(naira(d.feeNaira)) + '</b></li><li class="tot"><span>You pay</span><b>' + esc(naira(d.amountNaira)) + '</b></li></ul>' +
-      '<p class="lv-pm-secure"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Secured by Paystack. The vendor is paid after you confirm you have your order.</span></p>' +
-      '<div class="lv-pm-actions"><button type="button" class="btn btn-outline" onclick="document.getElementById(\'lvPayModal\')?.remove()">Cancel</button><button type="button" class="btn" id="lvPmGo">Continue to Paystack</button></div>'
+      '<div class="lvp-grab" aria-hidden="true"></div>' +
+      '<div class="lvp-top"><span class="lvp-badge"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Secure payment</span><button type="button" class="lvp-x" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<div class="lvp-amt-label" id="lvPmTitle">You pay</div><div class="lvp-amt">' + esc(naira(d.amountNaira)) + '</div>' +
+      '<ul class="lvp-rows"><li><span>Order amount</span><b>' + esc(naira(d.orderAmountNaira)) + '</b></li><li><span>Payment fee</span><b>' + esc(naira(d.feeNaira)) + '</b></li></ul>' +
+      '<p class="lvp-note"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Your money is held safely by Levromart. The vendor is paid only after you confirm you have your order.</span></p>' +
+      '<button type="button" class="lvp-pay" id="lvPmGo">Pay ' + esc(naira(d.amountNaira)) + '</button>' +
+      '<button type="button" class="lvp-cancel" onclick="document.getElementById(\'lvPayModal\')?.remove()">Cancel</button>', "lvp"
     );
     var go = document.getElementById("lvPmGo");
     go.addEventListener("click", function () {
-      if (go.disabled) return; go.disabled = true; go.textContent = "Opening Paystack…";   // a second tap must not open a second payment
+      if (go.disabled) return; go.disabled = true; go.textContent = "Opening secure checkout…";   // a second tap must not open a second payment
       openCheckout(orderId, d);
     });
   }
@@ -1789,4 +1792,31 @@
   wrap(); setTimeout(wrap, 1500);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
   setTimeout(refresh, 4000);
+})();
+
+
+/* ===== Home is ready before you tap it: a quiet copy is prepared while the app is idle, so the tab opens at once ===== */
+(function () {
+  "use strict";
+  var busy = false;
+  function warm() {
+    if (busy || document.hidden) return;
+    try {
+      if (typeof renderHome !== "function" || typeof routeHtmlCache === "undefined") return;
+      var key = routeCacheKey("home", {});
+      if (routeHtmlCache.has(key) && Date.now() - (window.__lvHomeWarmAt || 0) < 300000) return;
+      if (typeof currentView !== "undefined" && currentView === "home") return;   // the page on screen already fills it
+      if (typeof currentHomeCategoryId !== "undefined" && (currentHomeCategoryId || (typeof currentSectorId !== "undefined" && currentSectorId))) return;
+      busy = true;
+      Promise.resolve(renderHome()).then(function (html) {
+        var str = String(html || "");
+        if (str && isUsableRouteSnapshot(str)) { routeHtmlCache.set(key, str); persistRouteHtml("home", {}, str); window.__lvHomeWarmAt = Date.now(); }
+      }).catch(function () {}).finally(function () { busy = false; });
+    } catch (_) { busy = false; }
+  }
+  function schedule() { var run = function () { warm(); }; if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 4000 }); else setTimeout(run, 2500); }
+  setTimeout(schedule, 5000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) setTimeout(schedule, 800); });
+  setInterval(function () { if (!document.hidden) schedule(); }, 240000);
+  setTimeout(function () { try { window.lvPaystackOn && window.lvPaystackOn(); } catch (_) {} }, 2500);
 })();

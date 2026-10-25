@@ -93,7 +93,7 @@ function vendorOrderTopHtml(order, ctx) {
     if (m === "card") return "Card";
     if (paid.length) return "Paid";
     if (reported) return "Bank transfer (reported)";
-    return ["pending", "cancelled"].includes(st) ? "Not paid yet" : "Customer pays you directly";
+    return ["pending", "cancelled"].includes(st) ? "Not paid yet" : "Customer pays in the app";
   })();
   const itemsSubtotal = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
   h += `<section class="od-card"><h3>Order Summary</h3><div class="od-pay-grid">
@@ -205,7 +205,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   // by its own dedicated confirm/dispute card further down instead, which calls
   // the matching vendor_confirm_reported_payment/vendor_dispute_reported_payment
   // RPCs -- those are the ones that actually flip the order to completed.
-  const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
+  const canRecordPayment = isVendor && window.__lvPaystackKnownOn !== true && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
   const canPayOnline = isCustomer && !deliveryPaymentsComplete && order.status === "confirmed";
 
   let html = `<div class="card">
@@ -219,7 +219,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>Vendor hasn’t responded after 5–10 minutes? Tap “Remind vendor” and we’ll nudge them.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
     ${isVendor&&order.status==='pending'?`<div class="banner banner-warning vendor-order-waiting-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-hourglass-half"></i> Customer waiting for confirmation.</strong><span>The customer is waiting for you to confirm this order.</span></div>`:''}
-    ${isCustomer&&['confirmed','handed_over'].includes(order.status)&&!feePaid?`<div class="banner banner-warning payment-not-paid-yet-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-exclamation"></i> Not paid yet.</strong><span>Complete the transfer to the vendor, then tap <strong>“I’ve paid the vendor”</strong> so the payment can be verified.</span></div>`:''}
+    ${isCustomer&&['confirmed','handed_over'].includes(order.status)&&!feePaid?`<div class="banner banner-warning payment-not-paid-yet-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-exclamation"></i> Not paid yet.</strong><span>Pay securely in the app with Paystack so the vendor can send your order.</span></div>`:''}
     ${(order.status === "completed" || order.status === "cancelled") && orderActivityIso(order) ? `<p class="muted" style="font-size:0.8rem;margin-top:0.25rem;"><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(order))}</p>` : ""}
     ${(!(isVendor&&order.status==='pending') && ORDER_STATUS_HELP[order.status])
       ? order.status === "pending"
@@ -749,7 +749,7 @@ function notReceivedButtonHtml(order) {
 
 const ORDER_STATUS_HELP = {
   pending: "Your order has been placed. You haven't been charged yet. Payment becomes available when the vendor accepts.",
-  confirmed: "The vendor has accepted the order. Payment has not been verified yet; complete the required payment and report it using “I’ve paid the vendor”.",
+  confirmed: "The vendor has accepted the order. Waiting for the buyer to pay in the app.",
   handed_over: "The equipment has physically been handed to the customer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the customer confirms receipt to complete the order and release payment.",
   returned: "The rented equipment is back with the vendor. The buyer confirms to complete the order and release payment.",
   completed: "This order is finished.",
