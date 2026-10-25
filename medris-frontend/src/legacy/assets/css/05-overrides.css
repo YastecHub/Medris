@@ -3614,3 +3614,7 @@ html:root body #app>#productGrid{content-visibility:auto;contain-intrinsic-size:
 :root:root:root body #bottomNav .bn-ind{border-radius:0!important;height:2px!important}
 :root:root:root body #bottomNav.has-add{--lv-nav-blue:#0f9d6a;--lv-nav-line:#0f9d6a}
 :root[data-theme="dark"]:root:root body #bottomNav.has-add,:root[data-theme="black"]:root:root body #bottomNav.has-add{--lv-nav-blue:#34d399;--lv-nav-line:#34d399}
+
+/* order page: no "Customer Information" heading above the customer's picture and name */
+html:root body #app .od-page .order-buyer-card>h3{display:none!important}
+html:root body #app .od-page .order-buyer-card{padding-top:.9rem!important}

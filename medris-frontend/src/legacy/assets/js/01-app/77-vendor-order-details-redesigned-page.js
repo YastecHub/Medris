@@ -53,7 +53,7 @@ function vendorOrderTopHtml(order, ctx) {
   // ---- customer information (anonymous until accepted)
   const mapReady = isDelivery && ctx.canSeeLocation && order.buyer_lat != null && order.buyer_lng != null;
   const distTxt = mapReady && v.lat != null && v.lng != null ? formatDistanceKm(haversineKm(Number(order.buyer_lat), Number(order.buyer_lng), Number(v.lat), Number(v.lng))) : "";
-  h += `<section class="od-card order-buyer-card"><h3><i class="fa-solid fa-user"></i> Customer Information</h3>`;
+  h += `<section class="od-card order-buyer-card">`;
   if (ctx.accepted) {
     const nm = ctx.contact?.name || "Customer";
     h += `<div class="od-vendor">${avatarFallbackHtml(nm, "3.4rem", "od-vendor-logo", nm, order.buyer_id || nm)}
