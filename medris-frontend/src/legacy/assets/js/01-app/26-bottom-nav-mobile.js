@@ -322,6 +322,9 @@ async function submitAuth() {
 
   const btn = byId("authSubmitBtn");
   btn.disabled = true;
+  // show at once that something is happening (the steps behind can take a few seconds on a slow network)
+  const __btnHtml = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (authMode === "register" ? "Creating your account…" : "Signing you in…");
 
   try {
     if (authMode === "register") {
@@ -370,7 +373,9 @@ async function submitAuth() {
         password
       });
       if (loginError) throw loginError;
-      try { const __cp = window.__lvSignupCampus; if (__cp) await window.lvSaveCampus(__cp); } catch (_) {}
+      window.__lvFreshSignIn = Date.now();
+      // the campus is saved in the background: the person does not wait for it
+      try { const __cp = window.__lvSignupCampus; if (__cp) Promise.resolve(window.lvSaveCampus(__cp)).catch(() => {}); } catch (_) {}
       if (registerBody?.referral?.ok) {
         try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
         setTimeout(() => showToast(`Referral applied. You joined with ${registerBody.referral.business_name}'s code.`, "success"), 1200);
@@ -384,6 +389,7 @@ async function submitAuth() {
       }
       const { error } = await sb.auth.signInWithPassword({ email: loginEmail, password });
       if (error) throw error;
+      window.__lvFreshSignIn = Date.now();
       // The OTP check (and role-select / set-password, if either is still
       // pending on this account) all now run from inside finishLoginSuccess
       // -> refreshAuthStateOnce -> runPostAuthChecks, one shared sequence
@@ -402,6 +408,7 @@ async function submitAuth() {
     showToast(friendlyAuthErrorMessage(err), "error");
   } finally {
     btn.disabled = false;
+    btn.innerHTML = __btnHtml;
   }
 }
 
