@@ -3519,3 +3519,28 @@ html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!importa
 :root:root:root:root:root body #app .vmpage .vmp-rail{padding-top:.6rem!important;padding-bottom:.45rem!important;align-items:stretch}
 :root:root:root:root:root body #app .vmpage .vmp-card.on{transform:none!important;box-shadow:0 0 0 2.5px #1a73e8,0 4px 14px rgba(26,115,232,.35)!important}
 :root:root:root:root:root body #app .vmpage .vmp-card{overflow:hidden}
+
+
+/* ---- Shop location picker (application form) ---- */
+.va-loc{display:flex;align-items:center;gap:.8rem;margin:.7rem 0;padding:.8rem .9rem;border-radius:16px;border:1.5px dashed color-mix(in srgb,#1a73e8 55%,var(--border));background:color-mix(in srgb,#1a73e8 7%,transparent)}
+.va-loc.ok{border-style:solid;background:color-mix(in srgb,#1a73e8 12%,transparent)}
+.va-loc-ic{width:2.6rem;height:2.6rem;flex:none;border-radius:50%;display:grid;place-items:center;background:#1a73e8;color:#fff}
+.va-loc-t{flex:1;display:flex;flex-direction:column;gap:.1rem;font-size:.78rem;color:var(--text-muted)}
+.va-loc-t strong{color:var(--text);font-size:.92rem}
+.va-loc-btn{flex:none;border:0;border-radius:99px;background:#1a73e8;color:#fff;font-weight:800;font-size:.8rem;padding:.55rem .95rem}
+.lvlp{position:fixed;inset:0;z-index:100000;background:#e8eaed}
+.lvlp-map{position:absolute;inset:0}
+.lvlp-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:600;font-size:2.6rem;color:#ea4335;filter:drop-shadow(0 4px 4px rgba(0,0,0,.35));pointer-events:none}
+.lvlp-top{position:absolute;z-index:700;top:.7rem;left:.7rem;right:.7rem;display:flex;gap:.5rem;align-items:center}
+.lvlp-x{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:#fff;color:#5f6368;box-shadow:0 2px 8px rgba(60,64,67,.35)}
+.lvlp-search{flex:1;display:flex;align-items:center;gap:.5rem;background:#fff;border-radius:99px;padding:0 1rem;height:44px;box-shadow:0 2px 8px rgba(60,64,67,.35);color:#5f6368}
+.lvlp-search input{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;color:#1f2937;font-size:.92rem}
+.lvlp-card{position:absolute;z-index:700;left:.7rem;right:.7rem;bottom:.8rem;background:#fff;color:#202124;border-radius:20px;padding:1rem;box-shadow:0 4px 18px rgba(60,64,67,.4);padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}
+.lvlp-card p{margin:.25rem 0 .7rem;font-size:.8rem;color:#5f6368}
+.lvlp-row{display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap}
+.lvlp-alt{border:0;border-radius:99px;background:#e8f0fe;color:#1a73e8;font-weight:700;font-size:.8rem;padding:.55rem .9rem}
+.lvlp-save{width:100%;border:0;border-radius:99px;background:#1a73e8;color:#fff;font-weight:800;font-size:.95rem;padding:.8rem}
+/* map route card: travel times are only information, so no mode is highlighted */
+:root:root:root:root:root body #app .vmpage .vmp-modes button.on{background:color-mix(in srgb,var(--text,#202124) 6%,transparent)!important;color:var(--text,#202124)!important}
+:root:root:root:root:root body #app .vmpage .vmp-modes button.on i{color:#5f6368!important}
+:root:root:root:root:root body #app .vmpage .vmp-modes button{pointer-events:none}

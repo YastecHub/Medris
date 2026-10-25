@@ -164,6 +164,8 @@
   let vendorAutoLocationLastRun=0;
 
   async function refreshOwnVendorLocationSilently(force){
+    // A shop's location is set once by its owner (on the application or in Business profile) and never moved by the phone.
+    return null;
     if(vendorAutoLocationInFlight) return null;
     if(!session || profile?.role !== "vendor") return null;
     if(!navigator.geolocation) return null;

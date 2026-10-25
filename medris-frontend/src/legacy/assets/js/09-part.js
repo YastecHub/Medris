@@ -380,8 +380,8 @@
         verificationDocs=[path];
       }
 
-      button.innerHTML='<i class="fa-solid fa-location-dot"></i> Getting location…';
-      const loc = await getLocation();
+      // the shop location is the point the applicant picked on the map (never read from the phone behind their back)
+      const loc = window.__vaLoc && window.__vaLoc.lat != null ? window.__vaLoc : null;
 
       button.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submitting…';
 

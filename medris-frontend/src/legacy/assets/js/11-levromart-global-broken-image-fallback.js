@@ -1563,7 +1563,9 @@ function hideLeviFromPanel() {
         ban.style.background = `linear-gradient(135deg,rgb(${mix(r, .72)},${mix(g, .72)},${mix(b, .72)}),rgb(${mix(r, .86)},${mix(g, .86)},${mix(b, .86)}))`;
       } catch (_) {}
     };
-    probe.src = img.currentSrc || img.src;
+    // colour sampling is decoration: do it when the phone is idle so it never delays a page
+    const go = () => { probe.src = img.currentSrc || img.src; };
+    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 2500 }); else setTimeout(go, 300);
   }
   let t = 0;
   new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { document.querySelectorAll(".vc2").forEach(tintOne); levroPulseLbCard(); }, 150); }).observe(document.documentElement, { childList: true, subtree: true });

@@ -89,7 +89,7 @@
       // the cached page and the freshly loaded page are identical: leave the screen exactly as it is
       if(sameNav&&html===last.html) return;
       var prevView=last.view, self=this;
-      KEEP.forEach(function(k){ var n=self.querySelector(k.sel); if(n) stash[k.sel]={node:n,sig:k.sig(n),scroll:k.scroll(n)}; });
+      KEEP.forEach(function(k){ if(html.indexOf(k.sel.slice(1))<0) { delete stash[k.sel]; return; } var n=self.querySelector(k.sel); if(n) stash[k.sel]={node:n,sig:k.sig(n),scroll:k.scroll(n)}; });   // only read the old page (which forces it to be laid out) when the new one will reuse that part
       var liveBar=document.getElementById("lvCampusBar"); if(liveBar) window.__lvBarStash=liveBar;
       desc.set.call(this,v);
       KEEP.forEach(function(k){
@@ -1369,4 +1369,87 @@
   }
   var q=0; new MutationObserver(function(){ if(q) return; q=setTimeout(function(){ q=0; scan(); },80); }).observe(document.documentElement,{childList:true,subtree:true});
   scan();
+})();
+
+/* ---- Shop location: pick a point on the map once; it stays until the owner changes it ---- */
+(function () {
+  var esc2 = function (t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  function campusName() {
+    try { var id = window.lvMyCampusId && window.lvMyCampusId(); if (!id || id === "none") return ""; var r = window.lvCampusById && window.lvCampusById(id); return r ? r.name + (r.city ? ", " + r.city : "") : ""; } catch (_) { return ""; }
+  }
+  function geocode(q) {
+    if (!q) return Promise.resolve(null);
+    return fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ng&q=" + encodeURIComponent(q), { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); }).then(function (a) { return a && a[0] ? { lat: Number(a[0].lat), lng: Number(a[0].lon), name: a[0].display_name } : null; }).catch(function () { return null; });
+  }
+  window.lvPickShopLocation = function (opts) {
+    opts = opts || {};
+    var old = document.getElementById("lvLocPick"); if (old) old.remove();
+    var w = document.createElement("div"); w.id = "lvLocPick"; w.className = "lvlp";
+    var school = opts.school || campusName();
+    w.innerHTML = '<div class="lvlp-map" id="lvlpMap"></div><div class="lvlp-pin" aria-hidden="true"><i class="fa-solid fa-location-dot"></i></div>' +
+      '<div class="lvlp-top"><button type="button" class="lvlp-x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><div class="lvlp-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="lvlpQ" placeholder="Search your school or area" value="' + esc2(school) + '" autocomplete="off"></div></div>' +
+      '<div class="lvlp-card"><strong>Set your shop location</strong><p>Drag the map so the pin sits exactly where your shop is. This stays your location until you change it yourself.</p>' +
+      '<div class="lvlp-row"><button type="button" class="lvlp-alt" id="lvlpMe"><i class="fa-solid fa-location-crosshairs"></i> Use my location now</button>' + (school ? '<button type="button" class="lvlp-alt" id="lvlpSchool"><i class="fa-solid fa-graduation-cap"></i> My school</button>' : "") + '</div>' +
+      '<button type="button" class="lvlp-save" id="lvlpSave"><i class="fa-solid fa-check"></i> Save this location</button></div>';
+    document.body.appendChild(w); document.documentElement.style.overflow = "hidden";
+    var map = null, close = function () { try { map && map.remove(); } catch (_) {} w.remove(); document.documentElement.style.overflow = ""; };
+    w.querySelector(".lvlp-x").onclick = close;
+    var go = function (lat, lng, z) { if (map) map.setView([lat, lng], z || 16, { animate: true }); };
+    (typeof loadLeaflet === "function" ? loadLeaflet() : Promise.resolve()).then(function () {
+      var start = opts.lat != null && opts.lng != null ? [Number(opts.lat), Number(opts.lng)] : [6.5244, 3.3792];
+      map = window.L.map("lvlpMap", { zoomControl: false, attributionControl: true, tap: false }).setView(start, opts.lat != null ? 17 : 12);
+      map.attributionControl.setPrefix(false);
+      window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map);
+      if (opts.lat == null && school) geocode(school).then(function (g) { if (g) go(g.lat, g.lng, 16); });
+    });
+    var q = w.querySelector("#lvlpQ"), t = null;
+    var run = function () { geocode(q.value.trim()).then(function (g) { if (g) go(g.lat, g.lng, 16); else try { showToast("Couldn't find that place. Try a nearby landmark.", "info"); } catch (_) {} }); };
+    q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); run(); q.blur(); } });
+    var sb2 = w.querySelector("#lvlpSchool"); if (sb2) sb2.onclick = function () { q.value = school; run(); };
+    w.querySelector("#lvlpMe").onclick = function () {
+      var b = this; b.disabled = true;
+      (typeof getCurrentPositionOnce === "function" ? getCurrentPositionOnce() : Promise.reject(new Error("Location is not available on this device.")))
+        .then(function (l) { go(l.lat, l.lng, 17); }).catch(function (e) { try { showToast((e && e.message) || "Couldn't get your location.", "error"); } catch (_) {} }).then(function () { b.disabled = false; });
+    };
+    w.querySelector("#lvlpSave").onclick = function () {
+      if (!map) return; var c = map.getCenter(); var out = { lat: Number(c.lat.toFixed(6)), lng: Number(c.lng.toFixed(6)) };
+      Promise.resolve(opts.onSave && opts.onSave(out)).then(function () { close(); }).catch(function (e) { try { showToast((e && e.message) || "Couldn't save.", "error"); } catch (_) {} });
+    };
+  };
+  /* the application form gets a "Shop location" block under the address */
+  var prev = window.renderVendorApply;
+  if (typeof prev === "function") window.renderVendorApply = async function () {
+    window.__vaLoc = null;
+    var html = await prev.apply(this, arguments); html = String(html || "");
+    if (html.indexOf('id="vaAddress"') < 0 || html.indexOf("vaLocBlock") >= 0) return html;
+    var block = '<div class="va-loc" id="vaLocBlock"><div class="va-loc-ic"><i class="fa-solid fa-location-dot"></i></div><div class="va-loc-t"><strong>Shop location</strong><span id="vaLocText">Pick the point on the map where you are. Students: it starts at your school.</span></div><button type="button" class="va-loc-btn" onclick="vaPickLocation()">Set on map</button></div>';
+    return html.replace(/(<input id="vaAddress"[^>]*\/?>)/i, "$1" + block);
+  };
+  window.vaPickLocation = function () {
+    lvPickShopLocation({ lat: window.__vaLoc && window.__vaLoc.lat, lng: window.__vaLoc && window.__vaLoc.lng, onSave: function (l) {
+      window.__vaLoc = l; var t = document.getElementById("vaLocText"); if (t) t.textContent = "Location saved. You can change it later in your business profile.";
+      var b = document.querySelector("#vaLocBlock .va-loc-btn"); if (b) b.textContent = "Change";
+      document.getElementById("vaLocBlock")?.classList.add("ok");
+    } });
+  };
+})();
+
+/* ---- Tabs react at once: the bottom bar lights the tapped tab inside the tap, and the vendors map strip is rebuilt after the page is on screen ---- */
+(function(){
+  document.addEventListener("click",function(e){
+    var b=e.target&&e.target.closest&&e.target.closest("#bottomNav .bottom-nav-item"); if(!b) return;
+    document.querySelectorAll("#bottomNav .bottom-nav-item").forEach(function(x){ x.classList.toggle("active",x===b); });
+  },true);
+  var rt=0;
+  function wrapRail(){
+    var r=window.renderVendorMapRail; if(typeof r!=="function"||r.__lvLazy) return;
+    var w=function(){
+      var wrap=document.getElementById("vendorsMapWrap"), self=this, args=arguments;
+      if(wrap&&wrap.classList.contains("hidden")){ clearTimeout(rt); rt=setTimeout(function(){ r.apply(self,args); },900); return; }
+      return r.apply(this,args);
+    };
+    w.__lvLazy=true; window.renderVendorMapRail=w;
+  }
+  wrapRail(); setTimeout(wrapRail,1500);
 })();
