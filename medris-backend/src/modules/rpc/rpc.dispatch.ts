@@ -99,7 +99,7 @@ const L = {
   shops: per("shops-write", 20),
   suggestions: per("suggestions-write", 20),
   withdrawals: per("withdrawals-write", 20),
-  refundAccount: per("refund-account-write", 5, 3_600_000),
+  refundAccount: per("refund-account-write", 20, 3_600_000),
 };
 
 /* ------------------------------------------------------------------ table */

@@ -3956,3 +3956,7 @@ html:root body .vendor-bank-picker-modal .vendor-bank-picker-head{padding:1rem 1
 html:root body .vendor-bank-picker-modal .vendor-bank-picker-title{gap:.55rem!important}
 html:root body .vendor-bank-picker-modal .vendor-bank-search-wrap{margin:.2rem 1rem .6rem!important}
 html:root body .vendor-bank-picker-modal .vendor-bank-picker-list{padding:0 1rem 1rem!important}
+
+/* ===== Browse everything: the two columns are staggered (the right one sits a little lower), like a masonry feed ===== */
+html:root body #app #productGrid:has(> .product-card-wrap){align-items:start;row-gap:.9rem;padding-bottom:2.4rem}
+html:root body #app #productGrid > .product-card-wrap:nth-child(even){margin-top:2.4rem;margin-bottom:-2.4rem}
