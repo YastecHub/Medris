@@ -24,6 +24,12 @@ type State = { kind: "loading" } | { kind: "error" } | { kind: "ready"; vendors:
 
 const goTo = (view: string, params?: Record<string, unknown>, push?: boolean) => window.navigate?.(view, params, push);
 
+function avatarHue(text: string): number {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  return Math.abs(hash) % 360;
+}
+
 export default function CustomerFollowingPage() {
   const { session, profile } = useLegacySession();
   const userId = session?.user?.id ?? null;
@@ -98,7 +104,7 @@ export default function CustomerFollowingPage() {
           <div className="customer-following-grid">
             {vendors.map((v) => (
               <button key={v.id} type="button" className="customer-following-card" onClick={() => goTo("storefront", { vendorId: v.id })}>
-                <div className="customer-following-avatar">
+                <div className="customer-following-avatar" style={{ ["--av-h" as string]: avatarHue(v.business_name || v.id) }}>
                   {v.logo_url ? (
                     <img src={v.logo_url} alt={v.business_name || "Vendor"} loading="lazy" />
                   ) : (
