@@ -850,7 +850,15 @@
   document.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest("a, button, [onclick], .card, .product-card-wrap")) remember(); }, true);
   addEventListener("pagehide", remember);
   if (typeof orig === "function") {
+    var flying = {};
     window.navigate = async function (view, params, pushHistory) {
+      // a second tap on the same tab while it is still opening would draw the page all over again (and slow it): ignore it
+      var fkey = view + "|" + (params ? JSON.stringify(params) : "");
+      if ((view === "home" || view === "vendors") && flying[fkey] && Date.now() - flying[fkey] < 4000) return;
+      if (view === "home" || view === "vendors") flying[fkey] = Date.now();
+      try { return await navInner.apply(this, arguments); } finally { delete flying[fkey]; }
+    };
+    var navInner = async function (view, params, pushHistory) {
       var prev = depth(), pushes = pushHistory !== false && !(pushHistory && typeof pushHistory === "object" && pushHistory.replace === true);
       if (pushes) remember();
       // Going Back: keep the page as tall as it was, so the saved spot exists straight away (the list fills in afterwards)
@@ -1724,7 +1732,6 @@
   function commissionPane(d) {
     var rows = d.charges.slice(0, 60);
     return '<div class="lvw-comm"><div class="lvw-comm-top lvw-comm-two"><div><span>Commission rate</span><b>' + esc(String(d.rate)) + '%</b></div><div><span>Taken from</span><b>Each payout</b></div></div>' +
-      '<p class="lvw-comm-note">Levromart\'s commission is taken automatically from every payment, so there is nothing for you to pay. What you see in Transactions is already after commission.</p>' +
       '<h4 class="lvw-h4">Commission per order</h4>' +
       (rows.length ? '<ul class="lvw-list">' + rows.map(function (c) {
         return '<li' + (c.order_id ? ' onclick="navigate(\'orderDetail\',{orderId:\'' + esc(c.order_id) + '\'})"' : "") + '><span class="lvw-ico paid"><i class="fa-solid fa-percent"></i></span><div class="lvw-li"><strong>' + (c.order_id ? "Order #" + esc(String(c.order_id).slice(0, 8).toUpperCase()) : "Commission") + '</strong><small>' + esc(when(c.paid_at || c.created_at)) + '</small></div><b class="lvw-amt pending">' + money(c.amount) + '</b></li>';
@@ -1815,7 +1822,7 @@
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 48 hours ago or more goes straight away; newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
       '<li><b>On its way.</b> Your money is being sent to your bank. Bank transfers normally arrive the next business day; weekends and public holidays can add a day or two.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
-      '<li>Amounts are after Levromart\'s commission. Orders you were paid for directly (bank transfer to you) do not appear here.</li></ul>');
+      '</ul>');
   };
 
   function wrapRenderers() {
@@ -1892,4 +1899,46 @@
   document.addEventListener("visibilitychange", function () { if (!document.hidden) setTimeout(schedule, 800); });
   setInterval(function () { if (!document.hidden) schedule(); }, 240000);
   setTimeout(function () { try { window.lvPaystackOn && window.lvPaystackOn(); } catch (_) {} }, 2500);
+})();
+
+
+/* ===== Pop-ups (confirm and "write a message"): clean card, an icon, quick answers, a clear "go back" ===== */
+(function () {
+  "use strict";
+  function dress(modalId, opts, prompt) {
+    var m = document.getElementById(modalId), c = m && m.querySelector(".modal-content"); if (!c) return;
+    c.classList.add("lv-dlg");
+    var old = c.querySelector(".lv-dlg-ico"); if (old) old.remove();
+    var ico = document.createElement("div");
+    ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "");
+    ico.innerHTML = '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
+    c.insertBefore(ico, c.firstChild);
+    var cancel = document.getElementById(prompt ? "textPromptModalCancel" : "confirmModalCancel");
+    if (cancel) cancel.textContent = opts.cancelLabel || (opts.danger ? "Go back" : "Cancel");
+    if (prompt) {
+      var chips = c.querySelector(".lv-dlg-chips"); if (chips) chips.remove();
+      if (opts.chips && opts.chips.length) {
+        chips = document.createElement("div"); chips.className = "lv-dlg-chips";
+        var input = document.getElementById("textPromptModalInput");
+        opts.chips.forEach(function (t) {
+          var b = document.createElement("button"); b.type = "button"; b.textContent = t;
+          b.onclick = function () { input.value = t; input.focus(); };
+          chips.appendChild(b);
+        });
+        c.insertBefore(chips, input);
+      }
+    }
+  }
+  function wrap(name, modalId, prompt) {
+    var f = window[name]; if (typeof f !== "function" || f.__lvDlg) return;
+    var w = function () {
+      var opts = (prompt ? arguments[2] : arguments[1]) || {};
+      var p = f.apply(this, arguments);
+      try { dress(modalId, opts, prompt); } catch (_) {}
+      return p;
+    };
+    w.__lvDlg = true; window[name] = w;
+  }
+  wrap("showConfirmDialog", "confirmModal", false);
+  wrap("showTextPromptDialog", "textPromptModal", true);
 })();

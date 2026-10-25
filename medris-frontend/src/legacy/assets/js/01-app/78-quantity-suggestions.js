@@ -74,15 +74,15 @@ async function vendorDeclineOrder(orderId, fromStatus) {
   const isConfirmed = fromStatus === "confirmed";
   const proceed = await showConfirmDialog(
     isConfirmed
-      ? "Cancel this confirmed order? Use this only to undo a mistake -- the customer will be notified, and any payment they've already made will be refunded automatically."
-      : "Decline this order? The customer will be notified and the order cannot be restored through this action.",
-    { title: isConfirmed ? "Cancel order" : "Decline order", okLabel: isConfirmed ? "Yes, cancel" : "Yes, decline", danger: true }
+      ? "Use this only to undo a mistake. The customer will be told, and any payment they already made is refunded automatically."
+      : "The customer will be told, and this order cannot be brought back.",
+    { title: isConfirmed ? "Cancel this order?" : "Decline this order?", okLabel: isConfirmed ? "Yes, cancel it" : "Yes, decline", cancelLabel: "Go back", danger: true }
   );
   if (!proceed) return;
   const reason = await showTextPromptDialog(
     isConfirmed ? "Why are you cancelling?" : "Why are you declining?",
     "This message is sent to the customer, so let them know what happened. You can leave it blank.",
-    { placeholder: "e.g. Out of stock, unavailable on this date...", okLabel: "Send" }
+    { placeholder: "Write a short message…", okLabel: "Send", chips: ["Out of stock", "Not available on that date", "Cannot deliver to your area", "Price has changed"], icon: "fa-comment-dots", danger: true }
   );
   if (reason === null) return;
   try {

@@ -78,6 +78,7 @@ function renderPrivacy() {
     <ul>
       <li><strong>Account data:</strong> name, email, phone, city, the school or campus you choose, and (for vendors) business details and verification documents such as a student ID card, biodata page, CAC document or, for sellers who are not students, another valid ID card.</li>
       <li><strong>Payout details (vendors):</strong> the bank name, account number and account name you add so we can pay you.</li>
+      <li><strong>Withdrawal records (vendors):</strong> when you withdraw money from your wallet we keep the amount, the time, the orders it covers and the decision, including the reason if Levromart declined a request.</li>
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
       <li><strong>Comments, likes and follows:</strong> comments and replies you post, what you like or follow, and your notification preferences for the vendors you follow. Comments and likes are visible to other users.</li>
@@ -124,7 +125,7 @@ function renderPrivacy() {
 function renderRefundPolicy() {
   return `<div class="legal-page">
     <h2>Refund &amp; Cancellation Policy</h2>
-    <p class="muted">Last updated: 24 October 2026</p>
+    <p class="muted">Last updated: 25 October 2026</p>
 
     <h3>1. Before a vendor confirms your order</h3>
     <p>You can cancel freely from your Orders page. Any payment already made online is refunded in full to your original payment method via Paystack (refunds typically reflect within 5 - 10 business days, per Paystack's processing time).</p>
@@ -136,7 +137,7 @@ function renderRefundPolicy() {
     <p>Rental deposits are meant to cover damage or non-return. If equipment is returned in its original condition, there's nothing further for you to do. If there's a disagreement about the equipment's condition or the deposit isn't returned, either side can raise a dispute for a Levromart admin to review, including a refund from Levromart where warranted.</p>
 
     <h3>4. Damaged, wrong, or misrepresented equipment</h3>
-    <p>If what arrives doesn't match the listing, or is faulty on arrival, raise a dispute from the order page within 48 hours of handover. Admins will review evidence from both sides and can direct a full or partial refund from the vendor's proceeds.</p>
+    <p>If what arrives doesn't match the listing, or is faulty on arrival, raise a dispute from the order page within 48 hours of handover. Admins will review evidence from both sides and can direct a full or partial refund from the vendor's proceeds. While a dispute is open, the vendor cannot withdraw the money from that order; it stays held until the dispute is settled.</p>
 
     <h3>5. Vendor no-shows or non-delivery</h3>
     <p>If a vendor fails to deliver/hand over confirmed equipment, the customer is entitled to a full refund of any amount paid online through Levromart.</p>
