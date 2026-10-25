@@ -3351,28 +3351,19 @@ html:root:root body.product-detail-view #app input[type=radio],html:root:root bo
 html:root:root body #app#app .lv-wv .lv-wv-tiles{justify-content:center}
 html:root:root body #app#app .lv-wv .lv-wv-tile{flex:0 0 28cqw;max-width:28cqw}
 
-/* ---- place-order panel: green only on the main button; violet, amber and ink for the rest ---- */
-:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:#6a3df0!important;background:rgba(106,61,240,.12)!important;border-color:transparent!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary .sv-name strong{color:var(--text,#1b0d3d)!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary .sv-price{color:#6a3df0!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#6a3df0!important;background:rgba(106,61,240,.10)!important;color:var(--text,#1b0d3d)!important}
+/* ---- place-order panel: neutral ink and grey; the only colour is the green Place order button ---- */
+:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:var(--text,#111)!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;border-color:transparent!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:color-mix(in srgb,var(--text,#111) 5%,var(--card,#fff))!important;border-color:color-mix(in srgb,var(--text,#111) 12%,transparent)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantName,:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:currentColor!important;color:var(--text,#111)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i{color:var(--text-muted,#667)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:var(--text,#111)!important;background:color-mix(in srgb,var(--text,#111) 7%,transparent)!important;color:var(--text,#111)!important}
 :root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked) *{color:inherit!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row input[type=radio]{accent-color:#6a3df0}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i{color:#6a3df0!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice.pay-before{background:rgba(255,200,61,.16)!important;border-color:rgba(255,170,0,.40)!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice.pay-before i{color:#d98a00!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice.pay-after{background:rgba(106,61,240,.10)!important;border-color:rgba(106,61,240,.35)!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice.pay-after i{color:#6a3df0!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong{color:var(--text,#1b0d3d)!important}
-:root[data-theme="dark"] body #app .card:has(#buyQty) > h3 > i,:root[data-theme="black"] body #app .card:has(#buyQty) > h3 > i{color:#a78bfa!important;background:rgba(167,139,250,.16)!important}
-:root[data-theme="dark"] body #app .card:has(#buyQty) .selected-variant-summary .sv-price{color:#a78bfa!important}
-:root[data-theme="dark"] body #app .card:has(#buyQty) .fee-calc summary,:root[data-theme="dark"] body #app .card:has(#buyQty) .fee-calc summary i{color:#a78bfa!important}
-:root[data-theme="dark"] body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#a78bfa!important;background:rgba(167,139,250,.16)!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantName,:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:currentColor!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantName{color:var(--text,#1b0d3d)!important}
-:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice{color:#6a3df0!important}
-:root[data-theme="dark"] body #app .card:has(#buyQty) #selectedVariantName,:root[data-theme="black"] body #app .card:has(#buyQty) #selectedVariantName{color:#f5f5f5!important}
-:root[data-theme="dark"] body #app .card:has(#buyQty) #selectedVariantPrice,:root[data-theme="black"] body #app .card:has(#buyQty) #selectedVariantPrice{color:#a78bfa!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row input[type=radio]{accent-color:var(--text,#111)}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i{color:var(--text-muted,#667)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice{background:color-mix(in srgb,var(--text,#111) 5%,transparent)!important;border-color:color-mix(in srgb,var(--text,#111) 14%,transparent)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i{color:var(--text-muted,#667)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong{color:var(--text,#111)!important}
+:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box i,:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box svg{color:var(--text-muted,#667)!important;stroke:currentColor}
 
 /* ---- order tabs (Orders from customers / My purchases): switch at once, no fade ---- */
 :root:root:root body #app .vendor-orders-perspective-tabs button,:root:root:root body #app .vendor-orders-perspective-tabs button::after{transition:none!important}
@@ -3406,3 +3397,6 @@ html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(n+5){ani
 .lv-sv .sv-stu.hidden{display:none}
 .lv-nsv{color:#2f7bff;font-size:.8em;margin-left:.15rem}
 .lv-nsv-pill{display:inline-flex;align-items:center;gap:.35rem;margin-left:.5rem;padding:.2rem .65rem;border-radius:99px;background:color-mix(in srgb,#2f7bff 14%,transparent);color:#2f7bff;font-size:.78rem;font-weight:700;white-space:nowrap}
+:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong i,:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i.fa-wallet{color:var(--text-muted,#667)!important;-webkit-text-fill-color:currentColor!important}
+:root:root:root:root:root:root:root body #app .card:has(#buyQty) .lv-pen-ico,:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box label svg{color:var(--text-muted,#667)!important;stroke:var(--text-muted,#667)!important}
+:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:var(--text,#111)!important;text-decoration:underline}
