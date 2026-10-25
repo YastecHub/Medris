@@ -3640,8 +3640,10 @@ html:root body #app .od-page .order-buyer-card{padding-top:.9rem!important}
 .lvw-btn-ghost{background:rgba(255,255,255,.16);color:#fff}
 .lvw-warn{position:relative;z-index:1;margin-top:.7rem;width:100%;display:flex;align-items:center;gap:.5rem;padding:.6rem .8rem;border-radius:14px;border:0;background:rgba(255,200,61,.2);color:#fff;font:inherit;font-size:.8rem;font-weight:700;text-align:left;cursor:pointer}
 .lvw-warn i:last-child{margin-left:auto}
-.lvw-sheet-wrap{align-items:flex-end!important}
-.lvw-sheet{width:100%!important;max-width:30rem!important;max-height:86vh;overflow:auto;border-radius:24px 24px 0 0!important;padding:1rem 1rem 1.4rem!important;margin:0 auto!important}
+.lvw-sheet-wrap{position:fixed;inset:0;z-index:3000;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,15,12,.5);padding:0;margin:0}
+.lvw-sheet{width:100%;max-width:none;max-height:88vh;overflow:auto;margin:0;border-radius:22px 22px 0 0;background:var(--card,#fff);color:var(--text);padding:.6rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom,0px));box-sizing:border-box;box-shadow:0 -12px 40px -16px rgba(0,0,0,.4);animation:lvwUp .22s cubic-bezier(.2,.8,.2,1)}
+.lvw-sheet-grab{width:2.6rem;height:.3rem;border-radius:99px;background:color-mix(in srgb,var(--text,#111) 18%,transparent);margin:.1rem auto .7rem}
+@keyframes lvwUp{from{transform:translateY(30%);opacity:.6}to{transform:none;opacity:1}}
 .lvw-sheet-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem}
 .lvw-sheet-head h3{margin:0;flex:1;font-size:1.1rem}
 .lvw-sheet-head .lvw-eye{background:color-mix(in srgb,var(--text,#111) 8%,transparent);color:var(--text)}
@@ -3730,3 +3732,55 @@ html:root body #app .od-page .order-buyer-card{padding-top:.9rem!important}
 .sg-empty i{font-size:2rem;color:#7c5ce6}
 .sg-empty strong{color:var(--text)}
 html:root body #app .sg-compose textarea:focus{border-color:#7c5ce6!important;box-shadow:0 0 0 4px rgba(124,92,230,.16)!important}
+
+.lvw-eye-dark{background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;color:var(--text)!important}
+/* wallet page */
+.lvw-page{max-width:34rem;margin:0 auto}
+.lvw-page-head{display:flex;align-items:center;gap:.6rem;margin:.1rem 0 .9rem}
+.lvw-page-head h2{margin:0;flex:1;font-size:1.3rem}
+.lvw-back{width:2.3rem;height:2.3rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--text,#111) 8%,transparent);color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.lvw-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;padding:.25rem;border-radius:14px;background:color-mix(in srgb,var(--text,#111) 7%,transparent);margin:.2rem 0 .9rem}
+.lvw-tabs button{min-height:2.5rem;border:0;border-radius:11px;background:transparent;color:var(--muted,#6b7280);font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.4rem}
+.lvw-tabs button.on{background:var(--card,#fff);color:var(--text);box-shadow:0 2px 8px -3px rgba(0,0,0,.25)}
+.lvw-dotred{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:#e5484d}
+.lvw-comm-top{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.7rem}
+.lvw-comm-top>div{padding:.65rem;border-radius:14px;background:color-mix(in srgb,var(--text,#111) 4%,var(--card,#fff));display:flex;flex-direction:column;gap:.1rem}
+.lvw-comm-top span{font-size:.7rem;color:var(--muted,#6b7280)}.lvw-comm-top b{font-size:.98rem;white-space:nowrap}
+.lvw-comm-due{font-size:.86rem;color:var(--muted,#6b7280);margin:.2rem 0 .7rem;line-height:1.4}
+.lvw-comm-due.ok{color:#15803d;font-weight:700;display:flex;align-items:center;gap:.4rem}
+.lvw-btn-wide{width:100%;flex:none;display:flex;margin-bottom:.4rem}
+.lvw-h4{margin:1.1rem 0 .2rem;font-size:.95rem}
+.lvw-warn-red{background:rgba(229,72,77,.28)!important}
+.lvw-ico i.fa-percent{font-size:.8rem}
+/* ===== Edit profile page: one clean look ===== */
+.ve-card{padding:1.15rem 1.1rem 1.2rem!important;border-radius:20px!important}
+.ve-card>h2{display:flex;align-items:center;gap:.5rem;margin:0 0 .9rem;font-size:1.12rem}
+.ve-card>h2>i:first-child{width:2rem;height:2rem;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,#16a06a 14%,transparent);color:#129a68;font-size:.95rem}
+.ve-card label:not(.switch-toggle){display:block;margin:.95rem 0 .35rem;font-size:.8rem;font-weight:700;color:var(--muted,#6b7280)}
+html:root body #app .ve-card input:not([type=checkbox]):not([type=hidden]):not([type=file]),html:root body #app .ve-card select,html:root body #app .ve-card textarea{width:100%;box-sizing:border-box;min-height:2.9rem;padding:.65rem .85rem!important;border-radius:12px!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 13%,transparent)!important;background:color-mix(in srgb,var(--text,#111) 3%,var(--card,#fff))!important;color:var(--text);font:inherit;font-size:.96rem;outline:none;box-shadow:none}
+.ve-card textarea{padding-top:.7rem}
+html:root body #app .ve-card input:focus,html:root body #app .ve-card select:focus,html:root body #app .ve-card textarea:focus{border-color:#16a06a!important;box-shadow:0 0 0 4px rgba(22,160,106,.14)!important}
+.ve-card .flex{display:flex;gap:.6rem;flex-wrap:wrap}
+.ve-btn{min-height:2.9rem;padding:0 1.15rem;border-radius:999px;border:1.5px solid transparent;font:inherit;font-weight:800;font-size:.92rem;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;cursor:pointer;line-height:1;transition:transform .12s,opacity .12s}
+.ve-btn:active{transform:scale(.98)}.ve-btn:disabled{opacity:.6}
+.ve-btn-primary{background:#16a06a!important;color:#fff!important;-webkit-text-fill-color:#fff!important;box-shadow:0 8px 18px -10px rgba(22,160,106,.8)}
+.ve-btn-ghost{background:transparent!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;border-color:color-mix(in srgb,var(--text,#111) 20%,transparent)!important}
+.ve-btn-wide{width:100%;margin-top:.7rem}
+.ve-card .flex>.ve-btn{flex:1 1 9rem}
+.ve-bank{display:flex;align-items:center;gap:.75rem;padding:.8rem .85rem;border-radius:16px;background:color-mix(in srgb,#16a06a 9%,var(--card,#fff));border:1px solid color-mix(in srgb,#16a06a 22%,transparent)}
+.ve-bank-ico{flex:0 0 auto;width:2.6rem;height:2.6rem;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#16a06a;color:#fff}
+.ve-bank-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:.1rem}
+.ve-bank-copy strong{font-size:.92rem;overflow:hidden;text-overflow:ellipsis}.ve-bank-copy small{font-size:.78rem;color:var(--muted,#6b7280);line-height:1.3}
+.ve-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .6rem;border-radius:999px;font-size:.72rem;font-weight:800}
+.ve-chip.ok{background:rgba(22,160,106,.16);color:#0f7a52}
+.ve-bank-empty{background:color-mix(in srgb,#d99a1c 12%,var(--card,#fff));border-color:color-mix(in srgb,#d99a1c 30%,transparent)}
+.ve-bank-empty .ve-bank-ico{background:#d99a1c}
+.ve-bankform{margin-top:.5rem}
+#payoutLegacy.hidden{display:none}
+
+.lvw-live{display:inline-flex;align-items:center;gap:.3rem;margin-left:.45rem;padding:.12rem .5rem;border-radius:999px;background:rgba(255,255,255,.16);font-size:.64rem;font-weight:800;font-style:normal;letter-spacing:.03em}
+.lvw-live i{width:.42rem;height:.42rem;border-radius:50%;background:#5ef2b0;animation:lvwPulse 1.8s ease-in-out infinite}
+@keyframes lvwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.lvw-bal.lvw-flash{animation:lvwFlash .9s ease}
+@keyframes lvwFlash{0%{opacity:.35;transform:translateY(3px)}100%{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.lvw-live i,.lvw-bal.lvw-flash{animation:none}}

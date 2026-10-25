@@ -92,7 +92,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","leaderboard","adminPoints","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorWallet","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","leaderboard","adminPoints","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -142,9 +142,9 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","leaderboard","vendorApply","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorWallet","vendorRequests","settings","supportRequest","vendors","leaderboard","vendorApply","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
-      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
+      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorWallet","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
       if (!session && authViews.includes(deepView)) { showLogin(); return; }
       await navigate(deepView, {}, false);
       if (deepView === "vendors" && urlParams.get("map") === "1") {
