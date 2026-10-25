@@ -3514,3 +3514,8 @@ html body #app .vmpage .vmp-cl-b{background:#fff!important;color:#1a73e8!importa
 :root:root:root:root:root:root body #app .vmpage .vmp-bar{border:0!important;outline:0!important}
 :root:root:root:root:root:root body #app .vmpage .vmp-fab{background:#fff!important;border:0!important;color:#5f6368!important}
 :root:root:root:root:root:root body #app .vmpage .vmp-fab i{color:#5f6368!important}
+
+/* Map vendor cards: the picked card is no longer lifted or clipped at the top (the row scrolls sideways, which cuts anything above it) */
+:root:root:root:root:root body #app .vmpage .vmp-rail{padding-top:.6rem!important;padding-bottom:.45rem!important;align-items:stretch}
+:root:root:root:root:root body #app .vmpage .vmp-card.on{transform:none!important;box-shadow:0 0 0 2.5px #1a73e8,0 4px 14px rgba(26,115,232,.35)!important}
+:root:root:root:root:root body #app .vmpage .vmp-card{overflow:hidden}
