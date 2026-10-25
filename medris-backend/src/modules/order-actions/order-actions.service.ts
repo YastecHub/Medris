@@ -18,7 +18,7 @@ export class OrderActionsService {
 
   /**
    * Replaces: public.transition_order_status(uuid, order_status) - the vendor moves an order on
-   * (confirm, complete, cancel, rental returned); the buyer may only cancel before hand-over or return
+   * (confirm, hand over / out for delivery once paid, complete, cancel, rental returned); the buyer may only cancel before hand-over or return
    * a rental. Completing needs the payments verified.
    */
   async transition(me: Identity | null, orderId: string, status: string): Promise<{ done: true }> {
@@ -44,12 +44,18 @@ export class OrderActionsService {
         isVendor &&
         !(
           (o.status === "pending" && ["confirmed", "cancelled"].includes(status)) ||
-          (o.status === "confirmed" && ["completed", "cancelled"].includes(status)) ||
+          (o.status === "confirmed" && ["completed", "cancelled", "handed_over"].includes(status)) ||
           (o.status === "handed_over" && status === "returned" && o.order_type === "rental") ||
           (o.status === "handed_over" && status === "completed" && o.delivery_method === "delivery")
         )
       ) {
         throw badRequest(`invalid status transition from ${o.status} to ${status}`);
+      }
+      if (status === "handed_over") {
+        // out for delivery / handed over: only once the money is in
+        const feePaid = await orders.hasPaid(orderId, ["sale_price", "rental_fee"]);
+        const depositOk = o.delivery_method === "delivery" && o.payment_timing === "pay_after" ? await orders.hasPaid(orderId, ["delivery_deposit_20"]) : true;
+        if (!feePaid || !depositOk) throw badRequest("The payment must be confirmed before the order can be marked out for delivery.");
       }
       if (status === "completed") {
         const feePaid = await orders.hasPaid(orderId, ["sale_price", "rental_fee"]);

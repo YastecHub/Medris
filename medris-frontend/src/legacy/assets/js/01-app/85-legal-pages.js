@@ -2,7 +2,7 @@
 function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
-    <p class="muted">Last updated: 24 October 2026</p>
+    <p class="muted">Last updated: 25 October 2026</p>
     <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
@@ -16,7 +16,7 @@ function renderTerms() {
     <h3>3. Orders, rentals &amp; payments</h3>
     <ul>
       <li>Online payments are processed through Paystack. Levromart never stores your card details. Many orders are instead paid directly to the vendor by bank transfer: you report the payment in the app and the vendor confirms it. An order is only treated as paid once the payment has been confirmed (by Paystack or by the vendor).</li>
-      <li>Some orders are pay-after-delivery: a deposit (a percentage set by the vendor, 20% unless stated otherwise) is paid first and the rest after delivery. After the final payment is confirmed you have 24 hours to confirm receipt or raise a dispute; if you do neither, the order completes automatically.</li>
+      <li>Some orders are pay-after-delivery: a deposit (a percentage set by the vendor, 20% unless stated otherwise) is paid first and the rest after delivery. After the final payment is confirmed and the vendor marks the order out for delivery or handed over, you have 48 hours to confirm receipt or raise a dispute; if you do neither, the order completes automatically and the vendor is paid.</li>
       <li>Vendors add their payout bank account in the app so they can be paid. Keep those details accurate; Levromart is not responsible for a payout sent to an account number the vendor entered wrongly.</li>
       <li>Vendors are paid automatically once a sale is confirmed. Funds typically reach their bank account the next business day.</li>
       <li>Rentals may require a refundable deposit. If there's a dispute over damage or non-return, Levromart's dispute resolution process decides how it's handled, including a refund from Levromart where warranted.</li>

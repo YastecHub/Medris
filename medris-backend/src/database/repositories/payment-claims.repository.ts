@@ -220,6 +220,11 @@ export class PaymentClaimsRepository {
     return row?.payment_type ?? null;
   }
 
+  /** Stops the buyer's confirmation timer (a card payment starts it later, when the vendor hands the order over). */
+  async clearAwaitingConfirmation(orderId: string): Promise<void> {
+    await this.db.execute(sql`update public.orders set awaiting_confirmation_since = null where id = ${orderId} and status in ('confirmed', 'payment_unresolved')`);
+  }
+
   async insertCardPayment(orderId: string, type: string, amount: Numeric, reference: string): Promise<void> {
     await this.db.execute(sql`
       insert into public.payments (order_id, payment_type, amount, method, status, provider_reference)

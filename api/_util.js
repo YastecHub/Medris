@@ -92,7 +92,7 @@ async function settleReference(reference, txData) {
     });
   } else {
     // An order payment (references "medris_..." and "lvm_ord_..."). The payment is marked paid AND the order moves on (a delivery
-    // deposit confirms it; a final payment completes it or starts the buyer's 24-hour confirmation), checking the amount Paystack
+    // deposit confirms it; a final payment completes it or readies it for the vendor to send), checking the amount Paystack
     // reports and doing nothing the second time (the webhook and the buyer's return both land here).
     // Preferred: one database function (migration 0014, atomic). Until it is applied, the same steps run here, one by one.
     const kobo = Number.isFinite(Number(txData?.amount)) ? Number(txData.amount) : null;
@@ -170,7 +170,8 @@ async function applyOrderPaymentRest(reference, paidKobo, SUPABASE_URL, SERVICE_
     complete = (await get(`payments?order_id=eq.${encodeURIComponent(orderId)}&payment_type=eq.delivery_deposit_20&status=eq.paid&select=id&limit=1`)).length > 0;
   }
   if (complete && order.order_type !== "rental" && !order.service_offer_id && (order.payout_status || "not_applicable") === "not_applicable") {
-    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null, awaiting_confirmation_since: new Date().toISOString() });
+    // paid: the vendor can send it now. The buyer's confirmation window starts when the vendor marks it out for delivery.
+    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
   } else if (complete) {
     await patchOrder({ status: "completed", completed_at: new Date().toISOString(), payment_unresolved_at: null, payment_escalated_at: null, awaiting_confirmation_since: null });
   } else {

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { settleReference } = require("../../../api/_util.js");
 
-type Row = Record<string, unknown> & { status?: string; awaiting_confirmation_since?: string };
+type Row = Record<string, unknown> & { status?: string; awaiting_confirmation_since?: string; payment_unresolved_at?: string | null };
 let payments: Row[];
 let order: Row;
 let ledger: Row[];
@@ -46,20 +46,19 @@ beforeEach(() => {
 afterEach(() => { globalThis.fetch = realFetch; });
 
 describe("settleReference for an order payment (no database function installed)", () => {
-  it("marks the payment paid, starts the buyer's confirmation and marks the ledger", async () => {
+  it("marks the payment paid, readies the order and marks the ledger", async () => {
     await settleReference("lvm_ord_abc", { amount: 10250, id: 7, channel: "bank_transfer" });
     expect(payments[0]!.status).toBe("paid");
-    expect(order.awaiting_confirmation_since).toBeTruthy();
+    expect(order.payment_unresolved_at).toBeNull(); // the order was patched
+    expect(order.awaiting_confirmation_since).toBeUndefined(); // the buyer's window starts at hand-over
     expect(order.status).toBe("confirmed");
     expect(ledger[0]!.status).toBe("success");
   });
   it("does nothing the second time", async () => {
     await settleReference("lvm_ord_abc", { amount: 10250 });
-    const first = order.awaiting_confirmation_since;
-    order.awaiting_confirmation_since = "keep";
+    order.payment_unresolved_at = "keep";
     await settleReference("lvm_ord_abc", { amount: 10250 });
-    expect(order.awaiting_confirmation_since).toBe("keep");
-    expect(first).toBeTruthy();
+    expect(order.payment_unresolved_at).toBe("keep");
   });
   it("refuses when Paystack reports less than the order needs", async () => {
     await settleReference("lvm_ord_abc", { amount: 5000 });

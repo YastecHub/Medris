@@ -37,13 +37,13 @@ export class ScheduledJobsRepository {
 
   // ----- auto_complete_eligible_orders -----
 
-  /** Orders whose 24-hour confirmation window has passed with everything paid and no open dispute, locked. */
+  /** Orders whose 48-hour confirmation window has passed with everything paid and no open dispute, locked. */
   completableOrders(): Promise<{ id: string; buyer_id: string | null; vendor_id: string }[]> {
     return jsonRows(
       this.db,
       sql`select o.id, o.buyer_id, o.vendor_id from public.orders o
           where o.status in ('confirmed','handed_over') and o.awaiting_confirmation_since is not null
-            and o.awaiting_confirmation_since < now() - interval '24 hours'
+            and o.awaiting_confirmation_since < now() - interval '48 hours'
             and o.order_type <> 'rental' and o.service_offer_id is null
             and coalesce(o.payout_status, 'not_applicable') = 'not_applicable'
             and exists (select 1 from public.payments p where p.order_id = o.id and p.payment_type in ('sale_price','rental_fee') and p.status = 'paid')

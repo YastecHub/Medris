@@ -9,7 +9,7 @@ import { badRequest, forbidden, notFound } from "../../shared/errors/app-error.j
 type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 type Result = Record<string, unknown>;
 
-const AWAIT_TEXT = " Please confirm once you have received your order. It completes automatically in 24 hours if no issue is reported.";
+const AWAIT_TEXT = " Please confirm once you have received your order. It completes automatically in 48 hours if no issue is reported.";
 
 /**
  * Direct (bank transfer) payments and disputes. The buyer reports paying the vendor; the vendor (or
@@ -67,7 +67,7 @@ export class PaymentClaimsService {
 
   /**
    * After a reported fee is confirmed: completes the order, or - for a plain product order without
-   * escrow - waits for the buyer's confirmation (24-hour auto-complete). A delivery deposit confirms the order.
+   * escrow - waits for the buyer's confirmation (48-hour auto-complete). A delivery deposit confirms the order.
    */
   private async afterConfirmedClaim(claims: PaymentClaimsRepository, o: ClaimOrder, type: string): Promise<{ complete: boolean; await: boolean }> {
     let complete = false;
@@ -89,7 +89,7 @@ export class PaymentClaimsService {
 
   /**
    * A card payment Paystack has confirmed (issue #95): moves the order on with the same rules as a vendor-confirmed
-   * transfer (a delivery deposit confirms the order; a final payment completes it or starts the buyer's 24-hour
+   * transfer (a delivery deposit confirms the order; a final payment completes it or starts the buyer's 48-hour
    * confirmation) and tells both sides. Runs inside the caller's transaction; the payment row must already be paid.
    */
   async applyConfirmedCardPayment(tx: Tx, orderId: string, reference: string): Promise<void> {
@@ -98,13 +98,16 @@ export class PaymentClaimsService {
     const type = await claims.paymentTypeByReference(reference);
     if (!o || !type) return;
     const after = await this.afterConfirmedClaim(claims, o, type);
+    // A card payment only means "the vendor can send it now": the buyer's confirmation window starts when the vendor marks the
+    // order out for delivery / handed over, not at payment.
+    if (after.await) await claims.clearAwaitingConfirmation(orderId);
     const notify = new NotificationWriter(tx);
     const label = { delivery_deposit_20: "delivery deposit", rental_fee: "rental fee", deposit: "refundable deposit" }[type] ?? "payment";
     await notify.create({
       userId: o.buyer_id,
       type: "payment_confirmed",
       title: "Payment received",
-      body: `Your ${label} was paid with Paystack.${after.complete ? " The order is now complete and ready for review." : after.await ? AWAIT_TEXT : ""}`,
+      body: `Your ${label} was paid with Paystack.${after.complete ? " The order is now complete and ready for review." : after.await ? " The vendor will now get your order ready and mark it out for delivery." : ""}`,
       targetView: "orderDetail",
       targetParams: { orderId, reviewEligible: after.complete },
       actorId: null,
@@ -217,7 +220,7 @@ export class PaymentClaimsService {
         type: "payment_confirmed",
         title: "Payment confirmed",
         body: `${o.vendor_name ?? "The vendor"} confirmed that your payment was received. ${
-          completed ? "Your order is now complete." : "Payment recorded. Please confirm once you have received your order; it completes automatically in 24 hours if no issue is reported."
+          completed ? "Your order is now complete." : "Payment recorded. Please confirm once you have received your order; it completes automatically in 48 hours if no issue is reported."
         }`,
         targetView: "orderDetail",
         targetParams: { orderId, reviewEligible: completed },
