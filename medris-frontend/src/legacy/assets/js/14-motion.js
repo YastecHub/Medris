@@ -89,6 +89,7 @@
       var sameNav=(g===last.gen&&vw===last.view);
       // the cached page and the freshly loaded page are identical: leave the screen exactly as it is
       if(sameNav&&html===last.html) return;
+      if(last.forced&&html===last.html&&vw==="search"){ last.forced=false; return; }
       var prevView=last.view, self=this;
       KEEP.forEach(function(k){ if(html.indexOf(k.sel.slice(1))<0) { delete stash[k.sel]; return; } var n=self.querySelector(k.sel); if(n) stash[k.sel]={node:n,sig:k.sig(n),scroll:k.scroll(n)}; });   // only read the old page (which forces it to be laid out) when the new one will reuse that part
       var liveBar=document.getElementById("lvCampusBar"); if(liveBar) window.__lvBarStash=liveBar;
@@ -100,6 +101,7 @@
       last={html:html,gen:g,view:vw};
       installSmart(this);
       if(reduce||!this.animate||window.__lvSwipeNav) return;
+      if(window.__lvForceSlide){ window.__lvForceSlide=false; last.forced=true; animate(this,[{opacity:.2,transform:"translateX(32%)"},{opacity:1,transform:"none"}],230); goingBack=false; return; }
       if(sameNav){ animate(this,[{opacity:.6},{opacity:1}],150); return; }
       var chat=document.body&&document.body.classList.contains("chat-full-page");
       var tabSwitch=!!(TABS[prevView]&&TABS[vw]);
@@ -1462,7 +1464,7 @@
 /* ---- a thin line on top of the bottom bar slides to the tab you tap (and the page slides in the same direction) ---- */
 (function(){
   var lastG=null;
-  function geo(nav,it){ var n=nav.getBoundingClientRect(), r=it.getBoundingClientRect(), w=Math.min(34,r.width*.5); return {x:r.left-n.left+(r.width-w)/2,w:w}; }
+  function geo(nav,it){ var n=nav.getBoundingClientRect(), r=it.getBoundingClientRect(), w=Math.max(0,r.width-8); return {x:r.left-n.left+4,w:w}; }
   function put(nav,animate){
     if(!nav) return;
     var it=nav.querySelector(".bottom-nav-item.active"), ind=nav.querySelector(".bn-ind");
@@ -1477,13 +1479,13 @@
   }
   function wrap(){
     var r=window.renderBottomNav; if(typeof r!=="function"||r.__lvInd) return;
-    var w=function(){ var out=r.apply(this,arguments); try{ put(document.getElementById("bottomNav"),true); }catch(_){} return out; };
+    var w=function(){ var out=r.apply(this,arguments); try{ requestAnimationFrame(function(){ try{ put(document.getElementById("bottomNav"),true); }catch(_){} }); }catch(_){} return out; };
     w.__lvInd=true; window.renderBottomNav=w;
   }
   wrap(); setTimeout(wrap,800);
   document.addEventListener("click",function(e){
     var b=e.target&&e.target.closest&&e.target.closest("#bottomNav .bottom-nav-item"); if(!b) return;
-    setTimeout(function(){ put(document.getElementById("bottomNav"),true); },0);
+    requestAnimationFrame(function(){ put(document.getElementById("bottomNav"),true); });
   },true);
   window.addEventListener("resize",function(){ lastG=null; put(document.getElementById("bottomNav"),false); });
   setTimeout(function(){ put(document.getElementById("bottomNav"),false); },1200);

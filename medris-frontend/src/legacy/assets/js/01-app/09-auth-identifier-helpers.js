@@ -32,6 +32,7 @@ function openSearchFromHeader() {
     const host = byId("app");
     if (host && typeof renderSearchPage === "function" && currentView !== "search") {
       document.body.classList.add("search-full-page");
+      window.__lvForceSlide = true;   // the search page glides in from the right
       host.innerHTML = renderSearchPage();
       const real = byId("searchPageInput");
       if (real) real.focus({ preventScroll: true });
