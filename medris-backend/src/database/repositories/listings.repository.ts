@@ -11,7 +11,7 @@ const SHOP = sql`(select json_build_object('id', v.id, 'business_name', v.busine
     'created_at', v.created_at, 'is_active', v.is_active, 'logo_url', v.logo_url, 'delivery_fee', v.delivery_fee,
     'delivery_fee_mode', v.delivery_fee_mode, 'delivery_fee_per_km', v.delivery_fee_per_km, 'lat', v.lat, 'lng', v.lng,
     'business_hours', v.business_hours, 'allow_after_hours_messages', v.allow_after_hours_messages, 'sector_id', v.sector_id,
-    'campus_id', v.campus_id, 'operating_scope', v.operating_scope, 'operating_campuses', v.operating_campuses, 'student_verified', v.student_verified)
+    'campus_id', v.campus_id, 'operating_scope', v.operating_scope, 'operating_campuses', v.operating_campuses, 'student_verified', v.student_verified, 'non_student_verified', v.non_student_verified)
   from public.vendors v where v.id = p.vendor_id)`;
 const CATEGORY = sql`(select json_build_object('id', c.id, 'name', c.name, 'sector_id', c.sector_id) from public.categories c where c.id = p.category_id)`;
 /** Product columns only the shop's owner and admins need. */

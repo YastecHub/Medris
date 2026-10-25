@@ -246,7 +246,7 @@ export const studentVerificationStatuses = defineRoute({
   summary: "Student verification statuses",
   description: 'Replaces `from("vendor_student_verification").select("vendor_id,status,matric_pending")` (admins: all; a shop: its own).',
   security: signedIn,
-  responses: { 200: dataResponse(z.array(z.object({ vendor_id: z.string(), status: z.string(), matric_pending: z.boolean() })), "The statuses."), ...errorResponses(401), ...commonErrors },
+  responses: { 200: dataResponse(z.array(z.object({ vendor_id: z.string(), status: z.string(), matric_pending: z.boolean(), not_student: z.boolean() })), "The statuses."), ...errorResponses(401), ...commonErrors },
 });
 
 export const submitStudentVerification = defineRoute({
@@ -260,6 +260,7 @@ export const submitStudentVerification = defineRoute({
       z.object({
         matric_number: text(50).default(null),
         matric_pending: z.boolean().default(false),
+        not_student: z.boolean().default(false),
         faculty: text(200).default(null),
         department: text(200).default(null),
         level: text(50).default(null),

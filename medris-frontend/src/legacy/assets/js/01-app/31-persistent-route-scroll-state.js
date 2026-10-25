@@ -23,11 +23,17 @@
 
   window.__levromartPersistedRoute=function(view,params){
     lastRoute={view:String(view||"home"),params:params&&typeof params==="object"?params:{}};
-    safeWrite(ROUTE_KEY,lastRoute);
-    // Keep the older key in sync so an already-open tab can still resume if it
-    // was created by the previous precision-fix build.
-    safeWrite(LEGACY_ROUTE_KEY,lastRoute);
-    safeWrite(SCROLL_KEY,{x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view});
+    // Saved a moment later: reading the scroll position forces the browser to lay the whole page out, which
+    // made every tap (search bar, tabs) wait before the next screen could appear.
+    clearTimeout(window.__lvRouteSaveT);
+    const snap=lastRoute;
+    window.__lvRouteSaveT=setTimeout(()=>{
+      safeWrite(ROUTE_KEY,snap);
+      // Keep the older key in sync so an already-open tab can still resume if it
+      // was created by the previous precision-fix build.
+      safeWrite(LEGACY_ROUTE_KEY,snap);
+      safeWrite(SCROLL_KEY,{x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:snap.view});
+    },350);
   };
 
   function saveScroll(){

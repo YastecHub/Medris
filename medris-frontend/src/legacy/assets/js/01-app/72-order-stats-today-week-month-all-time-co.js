@@ -139,13 +139,17 @@ function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, per
   return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="window.__ordersRailPending=true;window.__ordersRailAt=Date.now();navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}${badge(t)}</button>`).join("")}</div>`;
 }
 
+// The tab switches the instant it is tapped (before the orders arrive), and the rows loaded a moment ago are reused.
+window.lvOrdersTabFlip = function (b) {
+  try { window.__ordersRailPending = true; window.__ordersRailAt = Date.now(); b.parentElement.querySelectorAll("button").forEach((x) => { x.classList.toggle("active", x === b); x.setAttribute("aria-selected", x === b ? "true" : "false"); }); } catch (_) {}
+};
 function vendorOrdersTabsHtml(active) {
   const salesBadge = Number(vendorPendingOrderCount || 0);
   const purchasesBadge = Number(buyerPendingOrderCount || 0);
   const badge = (n) => n > 0 ? `<span class="orders-perspective-badge">${n > 9 ? '9+' : n}</span>` : '';
   return `<div class="segmented-tabs vendor-orders-perspective-tabs" role="tablist" aria-label="Order perspective" style="max-width:520px;margin:.8rem auto 1rem;">
-    <button type="button" class="${active === "sales" ? "active" : ""}" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'sales'})" role="tab" aria-selected="${active === "sales" ? "true" : "false"}"><i class="fa-solid fa-store"></i> Orders from customers ${badge(salesBadge)}</button>
-    <button type="button" class="${active === "purchases" ? "active" : ""}" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'purchases'})" role="tab" aria-selected="${active === "purchases" ? "true" : "false"}"><i class="fa-solid fa-bag-shopping"></i> My purchases ${badge(purchasesBadge)}</button>
+    <button type="button" class="${active === "sales" ? "active" : ""}" onclick="lvOrdersTabFlip(this);navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'sales'})" role="tab" aria-selected="${active === "sales" ? "true" : "false"}"><i class="fa-solid fa-store"></i> Orders from customers ${badge(salesBadge)}</button>
+    <button type="button" class="${active === "purchases" ? "active" : ""}" onclick="lvOrdersTabFlip(this);navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'purchases'})" role="tab" aria-selected="${active === "purchases" ? "true" : "false"}"><i class="fa-solid fa-bag-shopping"></i> My purchases ${badge(purchasesBadge)}</button>
   </div>`;
 }
 
@@ -201,14 +205,11 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   perspective = perspective === "purchases" ? "purchases" : "sales";
   if (perspective === "purchases") {
     if (session) {
-      try {
-        const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
-          vendor ? vendorAttentionCount() : Promise.resolve({ count: 0 }),
-          sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
-        ]);
-        vendorPendingOrderCount = salesCount || 0;
-        buyerPendingOrderCount = purchaseCount || 0;
-      } catch (_) {}
+      // the badge numbers load in the background: the list must not wait for them
+      Promise.all([
+        vendor ? vendorAttentionCount() : Promise.resolve({ count: 0 }),
+        sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+      ]).then(([{ count: salesCount }, { count: purchaseCount }]) => { vendorPendingOrderCount = salesCount || 0; buyerPendingOrderCount = purchaseCount || 0; }).catch(() => {});
     }
     return renderCustomerOrders(status, type, payment, dateFrom, dateTo, true);
   }

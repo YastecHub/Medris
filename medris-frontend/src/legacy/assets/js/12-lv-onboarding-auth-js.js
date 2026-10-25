@@ -1681,9 +1681,9 @@ async function setVendorRequestPref(v){
     var host=anchor.parentNode; if(host.querySelector("[data-lvv]")) return;
     var wrap=document.createElement("div"); wrap.className="lvv"; wrap.setAttribute("data-lvv","1");
     anchor.insertAdjacentElement("afterend",wrap);
-    function syncSV(){ var sv=host.querySelector("[data-lvsv]"); if(sv) sv.style.display=isNotStudent()?"none":""; }
+    function syncSV(){ var sv=host.querySelector("[data-lvsv]"); if(sv) sv.style.display=""; try{ var c=sv&&sv.querySelector("#svNotStudent"); if(c&&c.checked!==isNotStudent()) c.click(); }catch(_){} }
     function paint(){ wrap.innerHTML=blockHtml(); syncSV(); }
-    window.lvCampuses().then(function(){ paint(); mountSV(wrap); syncSV(); });
+    window.lvCampuses().then(function(){ paint(); window.lvSvNotStudent=isNotStudent(); mountSV(wrap); syncSV(); });
     wrap.addEventListener("change",function(e){
       if(!e.target||e.target.id!=="lvNotStudent") return;
       if(e.target.checked){
@@ -1734,7 +1734,7 @@ async function setVendorRequestPref(v){
     if(after.parentNode.querySelector("[data-lvsv]")) return;
     var box=document.createElement("div"); box.className="lv-sv"; box.setAttribute("data-lvsv","1");
     after.insertAdjacentElement("afterend",box);
-    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={}, pend={}, noDocs=false;
+    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={}, pend={}, noDocs=false, notStu=!!window.lvSvNotStudent;
     function isPdfUrl(u){ return /\.pdf(\?|$)/i.test(String(u||"")); }
     function notPdf(d){ return d&&!(d.type==="application/pdf"||isPdfUrl(typeof d==="string"?d:d.name)); }
     function fthumb(f,url,label,icon){
@@ -1742,8 +1742,8 @@ async function setVendorRequestPref(v){
       if((f&&f.pdf)||(!f&&isPdfUrl(url))) return '<i class="fa-regular fa-file-pdf"></i><span>'+(f&&f.name?e2(f.name.slice(0,20)):label+' (PDF)')+'</span>';
       return '<img src="'+(f?f.url:e2(window.lvSignedUrl(url)))+'" alt=""><span>'+label+'</span>';
     }
-    function stBadge(){ if(!row) return ""; var t={pending:["pending","fa-hourglass-half","Under review"],approved:["approved","fa-circle-check","Verified student"],rejected:["rejected","fa-circle-xmark","Needs attention"]}[row.status]||["pending","fa-hourglass-half","Under review"];
-      if(row.matric_pending&&row.status!=="approved") t=["pending","fa-hourglass-half","Awaiting matric number"];
+    function stBadge(){ if(!row) return ""; var t={pending:["pending","fa-hourglass-half","Under review"],approved:["approved","fa-circle-check",row.not_student?"Verified seller":"Verified student"],rejected:["rejected","fa-circle-xmark","Needs attention"]}[row.status]||["pending","fa-hourglass-half","Under review"];
+      if(row.matric_pending&&!row.not_student&&row.status!=="approved") t=["pending","fa-hourglass-half","Awaiting matric number"];
       return '<span class="st '+t[0]+'"><i class="fa-solid '+t[1]+'"></i> '+t[2]+'</span>'+(window.lvFaceStatusHtml?' '+window.lvFaceStatusHtml(row):'')+(row.status==="rejected"&&row.review_note?'<div class="note">'+e2(row.review_note)+'</div>':""); }
     function faceBtn(r){
       var haveDocs=!!((files.id||r.id_card_url)&&(files.bio||r.biodata_url)), done=!!(face||r.selfie_url);
@@ -1751,18 +1751,21 @@ async function setVendorRequestPref(v){
       return '<button type="button" class="face-btn '+(done?'done':'')+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Selfie taken':'Take your selfie')+'</b><small>'+(done?'Tap to retake':'Step 4 · a clear selfie, in good light')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
     }
     function paint(){
-      if(row&&row.status==="approved"){ box.innerHTML='<h4>Student verification</h4>'+stBadge()+'<p class="sub">Your student details have been verified. A "Verified student" badge shows on your store.</p>'; if(cb) cb(); return; }
+      if(row&&row.status==="approved"){ box.innerHTML='<h4>Student verification</h4>'+stBadge()+'<p class="sub">'+(row.not_student?'Your account has been verified. A "Verified seller" badge shows on your store.':'Your student details have been verified. A "Verified student" badge shows on your store.')+'</p>'; if(cb) cb(); return; }
       var r=row||{};
-      box.innerHTML='<h4>Student verification</h4><p class="sub">Show customers you\'re a real student. Your documents are only seen by LevroMart admins.</p>'+stBadge()
+      var ns=notStu||!!r.not_student; notStu=ns;
+      box.innerHTML='<h4>'+(ns?'Seller verification':'Student verification')+'</h4><p class="sub">'+(ns?'Tell us you are not a student and our team will review your account. Your documents are only seen by LevroMart admins.':'Show customers you\'re a real student. Your documents are only seen by LevroMart admins.')+'</p>'+stBadge()
+       +'<label class="sv-nostudent"><input type="checkbox" id="svNotStudent"'+(ns?' checked':'')+'> <span><b>I\'m not a student</b><small>You can still sell. You get a Verified seller badge instead of the student one once we check you.</small></span></label>'
+       +'<div class="sv-stu'+(ns?' hidden':'')+'">'
        +'<label>Matric / registration number</label><input id="svMatric" value="'+e2(r.matric_number||"")+'" placeholder="e.g. 190401001" autocomplete="off"'+(r.matric_pending?' disabled':'')+'>'
        +'<label class="sv-nomatric"><input type="checkbox" id="svNoMatric"'+(r.matric_pending?' checked':'')+'> <span>I don\'t have a matric number yet</span></label>'
        +(r.matric_pending&&row?'<p class="sv-nm-note">Your application is with the admin, but you will only be verified once you add your matric number. Untick the box, type it in and resubmit.</p>':'')
        +'<label>Faculty</label><input id="svFaculty" value="'+e2(r.faculty||"")+'" placeholder="e.g. Engineering" autocomplete="off">'
        +'<label>Department</label><input id="svDept" value="'+e2(r.department||"")+'" placeholder="e.g. Computer Science" autocomplete="off">'
-       +'<label>Level of study</label><select id="svLevel">'+levelOptions(r.level)+'</select>'
-       +'<label class="sv-nodocs"><input type="checkbox" id="svNoDocs"'+(noDocs?' checked':'')+'> <span><b>I don\'t have my ID card or biodata yet</b><small>No problem: you can submit without them and add them later.</small></span></label>'
-       +'<div class="up'+(noDocs?' hidden':'')+'"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,"School ID card","fa-regular fa-id-card")+'</button>'
-       +'<button type="button" data-f="bio" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+fthumb(files.bio,r.biodata_url,"Biodata page","fa-regular fa-file-lines")+'</button></div>'
+       +'<label>Level of study</label><select id="svLevel">'+levelOptions(r.level)+'</select></div>'
+       +'<label class="sv-nodocs"><input type="checkbox" id="svNoDocs"'+(noDocs?' checked':'')+'> <span><b>'+(ns?'I don\'t have an ID yet':'I don\'t have my ID card or biodata yet')+'</b><small>No problem: you can submit without '+(ns?'it':'them')+' and add '+(ns?'it':'them')+' later.</small></span></label>'
+       +'<div class="up'+(noDocs?' hidden':'')+'"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,ns?"Any valid ID":"School ID card","fa-regular fa-id-card")+'</button>'
+       +'<button type="button" data-f="bio" style="'+(ns?'display:none':'')+'" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+fthumb(files.bio,r.biodata_url,"Biodata page","fa-regular fa-file-lines")+'</button></div>'
        +'<p class="sv-hint'+(noDocs?' hidden':'')+'">Photos or PDF files both work.</p>'
        +'<input type="file" accept="image/*,application/pdf,.pdf" class="hidden" id="svFile">'
        +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
@@ -1813,7 +1816,7 @@ async function setVendorRequestPref(v){
     }
     function load(){
       setTimeout(restoreFiles,0);
-      if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
+      if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,not_student:!!p.ns,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
       sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; return window.lvSignDocs(row,true); }).then(function(){ paint(); });
     }
     var cur=null;
@@ -1824,6 +1827,7 @@ async function setVendorRequestPref(v){
     });
     box.addEventListener("change",async function(e){
       if(e.target.id==="svNoMatric"){ setNo(e.target.checked); return; }
+      if(e.target.id==="svNotStudent"){ var kn=keepInputs(); notStu=e.target.checked; paint(); restoreInputs(kn); try{ var hh=document.querySelector("#lvSetup .st-top h2"); if(hh) hh.textContent=notStu?"Verify your account":"Verify you're a student"; var ss=document.querySelector("#lvSetup .st-top .st-sub"); if(ss) ss.textContent=notStu?"Tell us you are not a student. Our team reviews your account and adds a Verified seller badge.":"Add your student details and upload your ID card and biodata page. Only LevroMart admins see them."; }catch(_){} return; }
       if(e.target.id==="svNoDocs"){ var kd=keepInputs(); noDocs=e.target.checked; paint(); restoreInputs(kd); return; }
       if(e.target.id!=="svFile"||!cur) return; var slot=cur, file=e.target.files[0]; e.target.value=""; if(!file) return;
       var keep={m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked};
@@ -1865,11 +1869,11 @@ async function setVendorRequestPref(v){
     }
     async function submit(btn){
       var m=box.querySelector("#svMatric").value.trim(),f=box.querySelector("#svFaculty").value.trim(),d=box.querySelector("#svDept").value.trim(),l=box.querySelector("#svLevel").value;
-      var nm=box.querySelector("#svNoMatric").checked; if(nm) m="";
-      var miss=[],bad=[]; if(!nm&&!m){ miss.push("matric number (or tick the box)"); bad.push("#svMatric"); } if(!f){ miss.push("faculty"); bad.push("#svFaculty"); } if(!d){ miss.push("department"); bad.push("#svDept"); } if(!l){ miss.push("level"); bad.push("#svLevel"); }
+      var ns=box.querySelector("#svNotStudent").checked; var nm=!ns&&box.querySelector("#svNoMatric").checked; if(nm||ns) m=""; if(ns){ f=""; d=""; l=""; }
+      var miss=[],bad=[]; if(!ns&&!nm&&!m){ miss.push("matric number (or tick the box)"); bad.push("#svMatric"); } if(!ns&&!f){ miss.push("faculty"); bad.push("#svFaculty"); } if(!ns&&!d){ miss.push("department"); bad.push("#svDept"); } if(!ns&&!l){ miss.push("level"); bad.push("#svLevel"); }
       if(miss.length){ ferr("Please add your "+miss.join(", ")+".",bad); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
-      if(!noDocs&&(!hasId||!hasBio)){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
+      if(!ns&&!noDocs&&(!hasId||!hasBio)){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
@@ -1883,7 +1887,7 @@ async function setVendorRequestPref(v){
         var fd=face?{face_distance:face.distance,face_match:face.match,face_liveness:face.liveness}:{face_distance:row&&row.face_distance!=null?row.face_distance:null,face_match:(row&&row.face_match)||"unchecked",face_liveness:row&&row.face_liveness!=null?row.face_liveness:null};
         var idFile=files.id&&!files.id.pdf?files.id.file:null, bioFile=files.bio&&!files.bio.pdf?files.bio.file:null;
         if(v){
-          var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:(face||selfieUrl)?new Date().toISOString():null,face_v:(face||selfieUrl)?2:0,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
+          var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:ns?null:f,department:ns?null:d,level:ns?null:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:(face||selfieUrl)?new Date().toISOString():null,face_v:(face||selfieUrl)?2:0,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd,ns?{not_student:true}:{});
           var up=await sb.from("vendor_student_verification").upsert(rec,{onConflict:"vendor_id"});
           if(up.error) throw up.error;
           row=Object.assign({},rec); files={id:null,bio:null}; face=null; up_done={}; pend={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
@@ -1896,8 +1900,8 @@ async function setVendorRequestPref(v){
             }).catch(function(){});
           }
         } else {
-          localStorage.setItem("lv-sv-pending",JSON.stringify({nm:nm,matric:m,faculty:f,department:d,level:l,idUrl:idUrl,bioUrl:bioUrl,selfieUrl:selfieUrl,faceDistance:fd.face_distance,faceMatch:fd.face_match,faceLiveness:fd.face_liveness}));
-          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; pend={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
+          localStorage.setItem("lv-sv-pending",JSON.stringify({ns:ns,nm:nm,matric:m,faculty:f,department:d,level:l,idUrl:idUrl,bioUrl:bioUrl,selfieUrl:selfieUrl,faceDistance:fd.face_distance,faceMatch:fd.face_match,faceLiveness:fd.face_liveness}));
+          row={matric_number:nm?null:m,matric_pending:nm,not_student:ns,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; pend={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Saved. It will be submitted with your application.","success");
         }
         try{ await window.lvSignDocs(row,true); }catch(_){}
@@ -1913,7 +1917,7 @@ async function setVendorRequestPref(v){
     try{
       if(localStorage.getItem("lv-vendor-ops-pending")==="1"){ localStorage.removeItem("lv-vendor-ops-pending"); var st=JSON.parse(localStorage.getItem("lv-vendor-ops")||"null"); if(st) await saveOps(st); }
       var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null");
-      if(p){ localStorage.removeItem("lv-sv-pending"); var r=await sb.from("vendor_student_verification").upsert({vendor_id:v.id,matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl||null,face_distance:p.faceDistance==null?null:p.faceDistance,face_match:p.faceMatch||null,face_liveness:p.faceLiveness==null?null:p.faceLiveness,face_checked_at:p.selfieUrl?new Date().toISOString():null,status:"pending"},{onConflict:"vendor_id"}); if(r.error) localStorage.setItem("lv-sv-pending",JSON.stringify(p)); }
+      if(p){ localStorage.removeItem("lv-sv-pending"); var r=await sb.from("vendor_student_verification").upsert(Object.assign({vendor_id:v.id,matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl||null,face_distance:p.faceDistance==null?null:p.faceDistance,face_match:p.faceMatch||null,face_liveness:p.faceLiveness==null?null:p.faceLiveness,face_checked_at:p.selfieUrl?new Date().toISOString():null,status:"pending"},p.ns?{not_student:true}:{}),{onConflict:"vendor_id"}); if(r.error) localStorage.setItem("lv-sv-pending",JSON.stringify(p)); }
     }catch(_){}
   },4000);
 
@@ -1930,7 +1934,7 @@ async function setVendorRequestPref(v){
   function vmap(){
     if(VMAP&&Date.now()-VAT<180000) return Promise.resolve(VMAP);
     if(VLOAD) return VLOAD;
-    VLOAD=Promise.all([window.lvCampuses(),sb.from("vendors").select("id,campus_id,student_verified,operating_scope,operating_campuses").is("deleted_at",null).limit(5000)]).then(function(a){
+    VLOAD=Promise.all([window.lvCampuses(),sb.from("vendors").select("id,campus_id,student_verified,non_student_verified,operating_scope,operating_campuses").is("deleted_at",null).limit(5000).then(function(r){ if(r&&r.error) return sb.from("vendors").select("id,campus_id,student_verified,operating_scope,operating_campuses").is("deleted_at",null).limit(5000); return r; })]).then(function(a){
       var m=new Map(); ((a[1]&&a[1].data)||[]).forEach(function(x){m.set(String(x.id),x);}); VMAP=m; VAT=Date.now(); VLOAD=null; return m; }).catch(function(){VLOAD=null;return VMAP||new Map();});
     return VLOAD;
   }
@@ -2004,13 +2008,14 @@ async function setVendorRequestPref(v){
         var swapped=swapLocation(card,x);
         var nm=card.querySelector(".vd-name,.vc2-name,.vendor-home-copy>strong,strong");
         if(x.student_verified&&nm&&!nm.querySelector(".lv-svi")){ var ic=document.createElement("i"); ic.className="fa-solid fa-user-graduate lv-svi"; ic.title="Verified student"; ic.setAttribute("aria-label","Verified student"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic); }
+        else if(x.non_student_verified&&nm&&!nm.querySelector(".lv-nsv")){ var ic2=document.createElement("i"); ic2.className="fa-solid fa-store lv-nsv"; ic2.title="Verified seller (not a student)"; ic2.setAttribute("aria-label","Verified seller"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic2); }
         if(!swapped){ var c=chipFor({campus_id:x.campus_id,student_verified:false},false); if(c) card.appendChild(c); }
       });
       applyScope(map);
       var sfl=document.querySelector(".storefront-meta .sf-loc");
       if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); sfl.dataset.lvc="1"; if(xs){ var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML=(rr.logo?'<span class="sf-camp-ico"><img src="/campus-logos/'+e2(rr.id)+'.webp" alt=""></span>':'<i class="fa-solid fa-graduation-cap"></i>')+' '+e2(shortName(rr)); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
-      if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=x2.student_verified?chipFor({campus_id:null,student_verified:true},false):null; if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
+      if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=x2.student_verified?chipFor({campus_id:null,student_verified:true},false):null; if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } else if(x2.non_student_verified){ var c3=document.createElement("span"); c3.className="lv-nsv-pill"; c3.innerHTML='<i class="fa-solid fa-store"></i> Verified seller'; row.appendChild(c3); } } }
   }
   var failTimer=null;
   function armFailsafe(){ clearTimeout(failTimer); failTimer=setTimeout(revealAll,1500); }
@@ -2060,14 +2065,15 @@ async function setVendorRequestPref(v){
   window.lvVendorSetup=async function(){
     var v=V(); if(!v||document.getElementById("lvSetup")) return;
     await window.lvCampuses();
-    var svRow=null; try{ var r=await sb.from("vendor_student_verification").select("status").eq("vendor_id",v.id).maybeSingle(); svRow=r&&r.data; }catch(_){}
+    var svRow=null; try{ var r=await sb.from("vendor_student_verification").select("status,not_student").eq("vendor_id",v.id).maybeSingle(); if(r&&r.error) r=await sb.from("vendor_student_verification").select("status").eq("vendor_id",v.id).maybeSingle(); svRow=r&&r.data; }catch(_){}
+    var nsKey="lv-setup-nonstudent-"+v.id, nonStu=!!(svRow&&svRow.not_student); try{ if(localStorage.getItem(nsKey)==="1") nonStu=true; }catch(_){}
     // existing campus chosen earlier by the owner: carry it onto the store
     if(!v.campus_id&&profile&&profile.campus_id&&profile.campus_id!=="none"){ try{ await sb.from("vendors").update({campus_id:profile.campus_id}).eq("id",v.id); v.campus_id=profile.campus_id; }catch(_){} }
     // remember that "Where do you sell?" was answered, so a reload while taking the ID photo (common on phones) resumes at step 3
     var scopeKey="lv-setup-scope-"+v.id, scopeDone=false; try{ scopeDone=localStorage.getItem(scopeKey)==="1"; }catch(_){}
-    var needCampus=!v.campus_id||v.campus_id==="none", needScope=!v.campus_setup_done&&!scopeDone&&!svRow, needSv=!svRow||svRow.status==="rejected";
+    var needCampus=(!v.campus_id||v.campus_id==="none")&&!nonStu, needScope=!v.campus_setup_done&&!scopeDone&&!svRow, needSv=!svRow||svRow.status==="rejected";
     if(!needCampus&&!needScope&&!needSv){ if(!v.campus_setup_done){ try{ await sb.from("vendors").update({campus_setup_done:true}).eq("id",v.id); v.campus_setup_done=true; }catch(_){} } return; }
-    var step=needCampus?1:(needScope?2:3);
+    var step=needCampus?1:((needScope&&!nonStu)?2:3);
     var w=document.createElement("div"); w.id="lvSetup"; document.body.appendChild(w); document.documentElement.style.overflow="hidden";
     var ops={scope:v.operating_scope||"one",list:(v.operating_campuses||[]).slice()};
     function cleanup(){ w.remove(); document.documentElement.style.overflow=""; }
@@ -2080,8 +2086,9 @@ async function setVendorRequestPref(v){
       var head='<div class="st-top">'+dots()+'<div class="st-step">Step '+step+' of 3</div>';
       var body="",foot="";
       if(step===1){
+        nonStu=false;
         head+='<h2>Which campus is your business on?</h2><p class="st-sub">This is your major campus. It shows on your store, vendor cards and featured listings.</p></div>';
-        body=hero("Hi! Pick your school and students nearby will find you first.")+'<div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-a="major">'+window.lvCampusBtnHtml(v.campus_id&&v.campus_id!=="none"?v.campus_id:"","Choose your campus")+'</button></div>'
+        body=hero("Hi! Pick your school and students nearby will find you first.")+'<label class="lvv-notstudent"><input type="checkbox" id="stNotStudent"><span><b>I\'m not a student</b><small>You can still sell. You will skip the campus step and send your details for a quick review.</small></span></label><div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-a="major">'+window.lvCampusBtnHtml(v.campus_id&&v.campus_id!=="none"?v.campus_id:"","Choose your campus")+'</button></div>'
           +perks([["fa-location-dot","Be seen first on your campus","Students browsing your campus see your store before anyone else."],["fa-graduation-cap","Campus badge on your store","Your school shows on your store, vendor cards and featured listings."],["fa-users","Reach the right buyers","Customers trust sellers from their own school."]]);
         foot='<button type="button" class="btn" data-a="next1">Continue</button>';
       } else if(step===2){
@@ -2090,11 +2097,11 @@ async function setVendorRequestPref(v){
           +(ops.scope==="multiple"?'<button type="button" class="lv-campus-btn" data-a="many" style="margin-top:.4rem"><span class="ico"><i class="fa-solid fa-list-check"></i></span><span class="t">'+(ops.list.length?ops.list.length+" selected":"Choose campuses")+'<small>Tap to search and tick</small></span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i></button>'+chipsOf():'');
         foot='<button type="button" class="btn btn-outline" data-a="back2" style="flex:0 0 5rem">Back</button><button type="button" class="btn" data-a="next2">Continue</button>';
       } else {
-        head+='<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only LevroMart admins see them.</p></div>';
+        head+=nonStu?'<h2>Verify your account</h2><p class="st-sub">Tell us you are not a student. Our team reviews your account and adds a Verified seller badge. Only LevroMart admins see your documents.</p></div>':'<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only LevroMart admins see them.</p></div>';
         body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=('<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
       }
       w.innerHTML=head+'<div class="st-body">'+body+'</div><div class="st-foot">'+foot+'</div>';
-      if(step===3){ var host=w.querySelector("#stSv"); var anchor=document.createElement("div"); host.appendChild(anchor); window.lvMountSV(anchor,function(){ finish(); }); }
+      if(step===3){ window.lvSvNotStudent=nonStu; var host=w.querySelector("#stSv"); var anchor=document.createElement("div"); host.appendChild(anchor); window.lvMountSV(anchor,function(){ finish(); }); }
     }
     async function finish(){
       try{ await sb.from("vendors").update({campus_setup_done:true}).eq("id",v.id); v.campus_setup_done=true; }catch(_){}
@@ -2104,7 +2111,8 @@ async function setVendorRequestPref(v){
       var b=e.target.closest("[data-a],[data-s]"); if(!b) return; var a=b.dataset.a;
       if(b.dataset.s){ ops.scope=b.dataset.s; render(); if(ops.scope==="multiple"&&!ops.list.length) b=null,pickMany(); return; }
       if(a==="major"){ window.lvOpenCampusPicker({title:"Your major campus",current:v.campus_id,onPick:async function(r){ if(r.none||r.all) return; try{ await window.lvSaveCampus(r.id); v.campus_id=r.id; render(); }catch(_){ toast("Couldn't save your campus.","error"); } }}); }
-      else if(a==="next1"){ if(!v.campus_id||v.campus_id==="none"){ toast("Choose your campus to continue.","error"); return; } step=2; render(); }
+      else if(a==="next1"){ var nsBox=w.querySelector("#stNotStudent"); if(nsBox&&nsBox.checked){ try{ await window.lvSaveCampus("none"); await sb.from("vendors").update({operating_scope:"all",operating_campuses:[]}).eq("id",v.id); v.operating_scope="all"; v.operating_campuses=[]; nonStu=true; try{ localStorage.setItem(nsKey,"1"); localStorage.setItem(scopeKey,"1"); }catch(_){} step=3; render(); }catch(_){ toast("Couldn't save that. Check your connection and try again.","error"); } return; }
+        if(!v.campus_id||v.campus_id==="none"){ toast("Choose your campus to continue.","error"); return; } step=2; render(); }
       else if(a==="many"){ pickMany(); }
       else if(a==="back2"){ step=1; render(); }
       else if(a==="next2"){
@@ -2115,7 +2123,7 @@ async function setVendorRequestPref(v){
         try{ localStorage.setItem(scopeKey,"1"); }catch(_){}
         if(needSv){ step=3; render(); } else finish();
       }
-      else if(a==="back3"){ step=2; render(); }
+      else if(a==="back3"){ if(nonStu){ nonStu=false; try{ localStorage.removeItem(nsKey); }catch(_){} step=1; } else step=2; render(); }
       else if(a==="logout"){ try{ await sb.auth.signOut(); }catch(_){} cleanup(); location.reload(); }
     });
     function pickMany(){ window.lvOpenCampusPicker({title:"Campuses you sell on",multi:true,selected:ops.list,onDone:function(ids){ ops.list=ids; render(); }}); }

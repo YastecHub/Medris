@@ -294,8 +294,8 @@ export class ShopsRepository {
 
   /* --------------------------------------------------------- student verification */
 
-  studentVerification(vendorId: string): Promise<{ matric_pending: boolean; matric_number: string | null } | null> {
-    return jsonRow(this.db, sql`select matric_pending, matric_number from public.vendor_student_verification where vendor_id = ${vendorId}`);
+  studentVerification(vendorId: string): Promise<{ matric_pending: boolean; matric_number: string | null; not_student: boolean } | null> {
+    return jsonRow(this.db, sql`select matric_pending, matric_number, not_student from public.vendor_student_verification where vendor_id = ${vendorId}`);
   }
 
   /** The admin's decision; the shop's "Verified student" badge follows it. Returns the shop owner. */
@@ -304,7 +304,9 @@ export class ShopsRepository {
       update public.vendor_student_verification set status = ${status}, review_note = ${note}, reviewed_by = ${adminId}, reviewed_at = now(), updated_at = now()
       where vendor_id = ${vendorId}`);
     const [row] = rowsOf<{ user_id: string }>(
-      await this.db.execute(sql`update public.vendors set student_verified = (${status}::text = 'approved') where id = ${vendorId} returning user_id`),
+      await this.db.execute(sql`update public.vendors set student_verified = (${status}::text = 'approved' and not coalesce((select v.not_student from public.vendor_student_verification v where v.vendor_id = ${vendorId}), false)),
+                                  non_student_verified = (${status}::text = 'approved' and coalesce((select v.not_student from public.vendor_student_verification v where v.vendor_id = ${vendorId}), false))
+         where id = ${vendorId} returning user_id`),
     );
     return row?.user_id ?? null;
   }
