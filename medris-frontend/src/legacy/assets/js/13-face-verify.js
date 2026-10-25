@@ -276,18 +276,22 @@
     card.innerHTML=head
      +'<div class="lvsr-h"><strong>Student verification</strong><span class="lvsr-st '+esc(sv.status)+'">'+esc(st)+'</span></div>'
      +(sv.not_student?'<div class="lvsr-warn" style="background:rgba(47,123,255,.12);color:inherit"><i class="fa-solid fa-store"></i> This seller says they are NOT a student. Approving gives them a Verified seller badge (not the student badge).</div>':'')
-     +(sv.matric_pending&&!sv.not_student?'<div class="lvsr-warn"><i class="fa-solid fa-triangle-exclamation"></i> Matric number not yet available. This vendor cannot be verified until they add it.</div>':'')
+     +(sv.matric_pending&&!sv.not_student?'<div class="lvsr-warn"><i class="fa-solid fa-triangle-exclamation"></i> Matric number not yet available. You can still verify this student if you have checked their other documents; you will be asked to confirm.</div>':'')
      +'<div class="lvsr-grid"><div><small>Matric</small><b>'+(sv.matric_pending?'Not yet available':esc(sv.matric_number))+'</b></div><div><small>Level</small><b>'+esc(sv.level)+'</b></div><div><small>Faculty</small><b>'+esc(sv.faculty)+'</b></div><div><small>Department</small><b>'+esc(sv.department)+'</b></div></div>'
      +'<div class="lvsr-ai">'+(window.lvFaceStatusHtml(sv)||'<span class="lvf-chip bad"><i class="fa-solid fa-camera"></i> No selfie yet</span>')+'</div>'
      +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x){ if(/\.pdf(\?|$)/i.test(x[1])) return '<a class="req-ph-thumb lvsr-pdf" href="'+esc(x[1])+'" target="_blank" rel="noopener"><i class="fa-regular fa-file-pdf"></i><span>'+esc(x[0])+' (PDF)</span></a>'; var n=imgIdx++; return '<button type="button" class="req-ph-thumb" data-i="'+n+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
      +(sv.status==="approved"?'':'<textarea id="lvsrNote" placeholder="Note to the vendor (shown if rejected)"></textarea>')
-     +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+(sv.matric_pending&&!sv.not_student?' disabled title="Waiting for the matric number"':'')+'>'+(sv.not_student?'Verify seller':'Verify student')+'</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>'
+     +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+""+'>'+(sv.not_student?'Verify seller':'Verify student')+'</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>'
      +appActs;
     card.addEventListener("click",async function(e){
       var th=e.target.closest(".req-ph-thumb[data-i]"); if(th){ try{ reqPhotoOpen(k,+th.dataset.i); }catch(_){} return; }
       var b=e.target.closest("[data-a]"); if(!b) return; var a=b.dataset.a;
       if(a==="store"){ close(); try{navigate("storefront",{vendorId:vendorId});}catch(_){} return; }
       if(a==="app-ok"||a==="app-no"){ appAction(a,b); return; }
+      if(a==="approved"&&sv.matric_pending&&!sv.not_student){
+        var sure=await showConfirmDialog("This student has no matric number yet. Do you want to verify them anyway? Only continue if you have checked their ID card and other documents.",{title:"Verify without a matric number?",okLabel:"Yes, verify them",cancelLabel:"Go back",icon:"fa-user-check"});
+        if(!sure) return;
+      }
       b.disabled=true;
       var note=(card.querySelector("#lvsrNote")||{}).value||null;
       if(a==="rejected"&&!note){ b.disabled=false; showToast("Add a short note so the vendor knows what to fix.","error"); return; }

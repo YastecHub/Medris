@@ -358,7 +358,11 @@ export class CampusRepository {
       sql`select s.name_norm, s.name, s.requests,
                  (select count(*) from public.users u where u.campus_id like 'custom:%' and lower(regexp_replace(coalesce(substr(u.campus_id,8),''),'[^a-zA-Z0-9]','','g')) = s.name_norm) as users_count,
                  (select count(*) from public.vendors v where v.campus_id like 'custom:%' and lower(regexp_replace(coalesce(substr(v.campus_id,8),''),'[^a-zA-Z0-9]','','g')) = s.name_norm) as vendors_count,
-                 s.created_at
+                 s.created_at,
+                 (select coalesce(nullif(u.name,''), u.email) from public.users u where u.id = s.submitted_by) as submitter_name,
+                 (select u.email from public.users u where u.id = s.submitted_by) as submitter_email,
+                 (select u.phone from public.users u where u.id = s.submitted_by) as submitter_phone,
+                 (select string_agg(v.business_name, ', ' order by v.business_name) from (select vv.business_name from public.vendors vv where vv.campus_id like 'custom:%' and lower(regexp_replace(coalesce(substr(vv.campus_id,8),''),'[^a-zA-Z0-9]','','g')) = s.name_norm and vv.deleted_at is null limit 5) v) as shop_names
           from public.campus_submissions s where s.status = 'pending' order by s.created_at`,
     );
   }
