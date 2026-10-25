@@ -313,6 +313,7 @@
     try {
       var res = await fetch("/api/verify-payment?reference=" + encodeURIComponent(reference));
       var json = await res.json();
+      window.__lvPayInfo = { status: json && json.status, settled: json && json.settled };
       return json && json.status;
     } catch (_) { return undefined; }
   };
@@ -336,9 +337,11 @@
     openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">Confirming your payment…</h3></div><p class="muted" role="status" aria-live="polite">This usually takes a few seconds. Please do not close the app.</p><div class="lv-pm-spin" aria-hidden="true"></div>');
     var outcome = await window.lvWaitForPayment(reference);
     closeModal();
-    if (outcome === "paid") showToast("Paid. Thank you!", "success");
+    var info = window.__lvPayInfo || {};
+    if (outcome === "paid" && info.settled && !/^(applied|already_paid|ok)$/.test(String(info.settled))) showToast("Paystack confirmed your payment, but we could not update your order yet. Please screenshot this and send it to support. Code: " + String(info.settled).slice(0, 140), "error");
+    else if (outcome === "paid") showToast("Paid. Thank you!", "success");
     else if (outcome === "failed") showToast("Payment not completed. You were not charged. Please try again.", "error");
-    else showToast("We could not confirm that payment yet. It may still be processing; check your order in a minute.", "info");
+    else showToast("We could not confirm that payment yet" + (info.status ? " (Paystack says: " + String(info.status) + ")" : "") + ". It may still be processing; check your order in a minute.", "info");
     if (orderId) { try { await navigate("orderDetail", { orderId: orderId }); } catch (_) {} }
   };
 
@@ -377,6 +380,10 @@
               }, function () {});
             }
           } catch (_) {}
+          if (ref) {
+            var isBuyerNow = q[1] && q[1].data && String(q[1].data.buyer_id) === String(session.user.id);
+            if (isBuyerNow) return '<div class="lv-pm-note" role="status"><i class="fa-solid fa-rotate"></i><span>Already paid with Paystack? </span><button type="button" class="btn btn-sm" onclick="lvConfirmPaystack(\'' + esc(ref) + '\', \'' + esc(orderId) + '\')">Check my payment</button></div>' + html;
+          }
           return html;
         }
         var buyer = q[1] && q[1].data && String(q[1].data.buyer_id) === String(session.user.id);

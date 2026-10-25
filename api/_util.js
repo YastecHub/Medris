@@ -96,7 +96,7 @@ async function settleReference(reference, txData) {
     // reports and doing nothing the second time (the webhook and the buyer's return both land here).
     // Preferred: one database function (migration 0014, atomic). Until it is applied, the same steps run here, one by one.
     const kobo = Number.isFinite(Number(txData?.amount)) ? Number(txData.amount) : null;
-    let done = false;
+    let done = false, reason = "";
     try {
       const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/apply_card_payment_to_order`, {
         method: "POST", headers: { ...headers, Prefer: "return=representation" },
@@ -104,13 +104,15 @@ async function settleReference(reference, txData) {
       });
       if (rpcRes.ok) {
         const out = await rpcRes.json().catch(() => null);
-        if (out && out.applied === false && out.reason === "amount_too_low") { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return; }
-        done = true;
+        if (out && out.applied === false && out.reason === "amount_too_low") { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return "amount_too_low"; }
+        done = true; reason = out && out.reason ? String(out.reason) : "applied";
       }
     } catch (_) {}
-    if (!done) await applyOrderPaymentRest(reference, kobo, SUPABASE_URL, SERVICE_KEY);
+    if (!done) reason = await applyOrderPaymentRest(reference, kobo, SUPABASE_URL, SERVICE_KEY);
     await markLedgerPaid(reference, txData, SUPABASE_URL, SERVICE_KEY);
+    return reason;
   }
+  return "ok";
 }
 
 // The new checkout keeps a ledger row per attempt; mark it paid so the backend's own webhook sees "already settled".
@@ -133,28 +135,35 @@ async function markLedgerPaid(reference, txData, SUPABASE_URL, SERVICE_KEY) {
 // a payment from "pending" to "paid" moves the order, so a webhook and a return at the same moment cannot do it twice.
 async function applyOrderPaymentRest(reference, paidKobo, SUPABASE_URL, SERVICE_KEY) {
   const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
-  const get = async (path) => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h }); return r.ok ? r.json() : []; };
+  let getErr = "";
+  const get = async (path) => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h }); if (r.ok) return r.json(); const m = await r.text().catch(() => ""); getErr = `read_failed_${r.status}: ${m.slice(0, 120)}`; console.error("[settleReference]", getErr); return []; };
   const ref = encodeURIComponent(reference);
   const rows = await get(`payments?provider_reference=eq.${ref}&select=id,order_id,payment_type,amount,status,created_at&order=created_at.asc`);
-  if (!rows.length) return;
+  if (!rows.length) return getErr || "no_payment_row";
   const total = rows.reduce((a, p) => a + Number(p.amount || 0), 0);
-  if (paidKobo != null && paidKobo < Math.round(total * 100)) { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return; }
+  if (paidKobo != null && paidKobo < Math.round(total * 100)) { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return "amount_too_low"; }
   const flipped = await fetch(`${SUPABASE_URL}/rest/v1/payments?provider_reference=eq.${ref}&status=eq.pending`, {
     method: "PATCH", headers: { ...h, Prefer: "return=representation" },
     body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
   });
-  const flippedRows = flipped.ok ? await flipped.json().catch(() => []) : [];
-  if (!flippedRows.length) return;                       // already settled by the other path
+  if (!flipped.ok) { const msg = await flipped.text().catch(() => ""); console.error("[settleReference] could not mark the payment paid:", flipped.status, msg.slice(0, 300)); return `payment_update_failed_${flipped.status}: ${msg.slice(0, 120)}`; }
+  const flippedRows = await flipped.json().catch(() => []);
+  if (!flippedRows.length) return "already_paid";       // already settled by the other path
   const orderId = rows[0].order_id;
   const [order] = await get(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,status,order_type,delivery_method,payment_timing,payout_status,service_offer_id`);
-  if (!order || ["cancelled", "completed"].includes(order.status)) return;
+  if (!order) return getErr || "order_missing";
+  if (["cancelled", "completed"].includes(order.status)) return `order_${order.status}`;
   const main = rows.find((p) => ["sale_price", "rental_fee", "delivery_deposit_20"].includes(p.payment_type));
-  if (!main) return;
-  const patchOrder = (body) => fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify(body) });
+  if (!main) return "no_fee_payment";
+  let orderErr = "";
+  const patchOrder = async (body) => {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify(body) });
+    if (!r.ok) { const msg = await r.text().catch(() => ""); console.error("[settleReference] could not update the order:", r.status, msg.slice(0, 300)); orderErr = `order_update_failed_${r.status}: ${msg.slice(0, 120)}`; }
+  };
   const open = order.status === "pending" || order.status === "payment_unresolved";
   if (main.payment_type === "delivery_deposit_20") {
     await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
-    return;
+    return orderErr || "applied";
   }
   let complete = true;
   if (order.delivery_method === "delivery" && order.payment_timing === "pay_after") {
@@ -167,6 +176,7 @@ async function applyOrderPaymentRest(reference, paidKobo, SUPABASE_URL, SERVICE_
   } else {
     await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
   }
+  return orderErr || "applied";
 }
 
 // ---------- ESCROW PAYOUTS ----------
