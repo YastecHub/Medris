@@ -177,9 +177,13 @@ describe("vendor fees through Paystack (issue #100)", () => {
   it("commission: a double tap makes one payment and one settlement", async () => {
     await owedCommission(100);
     const results = await Promise.allSettled([fees.initializeCommission(me(owner), "https://app.test"), fees.initializeCommission(me(owner), "https://app.test")]);
-    // the second tap arrives while the first is still being set up with Paystack: it waits instead of starting another payment
-    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-    const a = (results.find((r) => r.status === "fulfilled") as PromiseFulfilledResult<{ reference: string }>).value;
+    // The second tap arrives while the first is still being set up with Paystack. Depending on timing it either waits and
+    // gets the same payment back (real PostgreSQL), or is turned away (PGlite runs one query at a time) - never a second
+    // payment.
+    const fulfilled = results.flatMap((r) => (r.status === "fulfilled" ? [r] : []));
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(fulfilled.map((r) => r.value.reference)).size).toBe(1);
+    const a = fulfilled[0]!.value;
     const b = await fees.initializeCommission(me(owner), "https://app.test");
     expect(b.reference).toBe(a.reference);
     const settlements = await db.query(`select 1 from public.commission_settlements where vendor_id = $1 and status = 'pending'`, [shop]);
