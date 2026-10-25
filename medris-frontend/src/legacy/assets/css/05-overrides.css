@@ -3576,7 +3576,7 @@ html:root:root:root body #settings-page .settings-status-pill.active{background:
 :root[data-theme="dark"]:root:root:root body #bottomNav.bottom-nav,:root[data-theme="black"]:root:root:root body #bottomNav.bottom-nav{border-top-color:rgba(255,255,255,.1)!important;box-shadow:none!important}
 :root:root:root:root body #bottomNav .bottom-nav-item.active::before{display:none!important}
 }
-:root:root:root body #bottomNav .bn-ind{background:var(--lv-nav-blue)!important;height:3px!important}
+:root:root:root body #bottomNav .bn-ind{background:var(--lv-nav-line)!important;height:3px!important}
 
 /* storefront profile picture: round, a little larger, no white ring - a gap the colour of the page cuts it out of the banner */
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row{margin-top:-56px!important}
@@ -3588,8 +3588,8 @@ html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .st
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;border:0!important;border-radius:50%!important}
 
 /* bottom bar: slim, LinkedIn height (icon over a small label, about 50px plus the phone's bottom edge), one colour for line, icon and label */
-:root{--lv-nav-blue:#2f5bd8}
-:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#6c93ff}
+:root{--lv-nav-blue:#6d5bd0;--lv-nav-tint:rgba(139,107,255,.08);--lv-nav-line:#b9a8ff}
+:root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#c4b5fd;--lv-nav-tint:rgba(167,139,250,.11);--lv-nav-line:#a78bfa}
 @media (max-width:720px){
 :root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{padding:0 4px env(safe-area-inset-bottom,0px)!important;align-items:stretch!important}
 :root:root:root:root body #bottomNav .bottom-nav-item.bottom-nav-item{min-height:50px!important;height:50px!important;padding:6px 2px 4px!important;gap:2px!important;justify-content:center!important}
@@ -3601,3 +3601,7 @@ html:root:root:root body{padding-bottom:calc(3.6rem + env(safe-area-inset-bottom
 }
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar,
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar img{max-width:none!important;max-height:none!important}
+
+@media (max-width:720px){
+:root:root:root:root body #bottomNav .bottom-nav-item.bottom-nav-item.active{background:var(--lv-nav-tint)!important;border-radius:12px!important}
+}
