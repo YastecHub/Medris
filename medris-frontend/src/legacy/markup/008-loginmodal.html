@@ -73,7 +73,7 @@
           </div>
           <div id="confirmPasswordWrap" class="hidden">
             <label for="loginPasswordConfirm">Confirm password</label>
-            <input type="password" id="loginPasswordConfirm" placeholder="Retype your password" autocomplete="new-password" />
+            <div class="password-input-wrap"><input type="password" id="loginPasswordConfirm" placeholder="Retype your password" autocomplete="new-password" /><button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('loginPasswordConfirm', this)" aria-label="Show password" title="Show password"><i class="fa-regular fa-eye"></i></button></div>
           </div>
           <p id="forgotPasswordMsg" class="muted hidden">Enter your account email and we'll send you a link to reset your password.</p>
           <p id="authAgreementMsg" class="muted hidden">By creating an account you agree to Levromart's <a href="#" onclick="hideLogin();navigate('terms');return false;">Terms of Service</a> and <a href="#" onclick="hideLogin();navigate('privacy');return false;">Privacy Policy</a>.</p>
