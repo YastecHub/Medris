@@ -362,6 +362,41 @@ h2{font-size:4.8rem;margin-top:.7rem}
 .fb{height:4rem;background:#fff;border-radius:1rem;padding:.35rem .9rem;margin:0 auto;box-shadow:0 .4rem 1rem rgba(0,0,0,.15)}
 .foot{position:relative}
 .foot .fbw{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+/* v12 look: one deep-green background on every slide */
+.dark{background:radial-gradient(120% 90% at 20% 10%,#08593a 0%,#044a30 45%,#02281a 80%,#00140b 120%)}
+.dark .c1{background:none!important;border:2.6rem solid rgba(39,240,176,.10)}
+.dark .c2{border-color:rgba(39,240,176,.10)}
+.dark .c3{background:rgba(94,242,176,.10)}
+.dark h2 em,.dark h1 em{color:#5ef2b0}
+.dark .kicker,.dark .brand small,.dark .who b{color:#5ef2b0}
+.dark .cmp td.us{background:rgba(94,242,176,.22);color:#5ef2b0}
+.top{height:5.4rem}
+.topr{display:flex;align-items:center;gap:1.6rem}
+.bdg{display:grid;place-items:center;background:#fff;border-radius:99rem;padding:.55rem 1.5rem;box-shadow:0 .6rem 1.6rem rgba(0,0,0,.3)}
+.bdg img{height:3.6rem;width:auto}
+.badge-row{gap:0}
+/* light-slide colours that now sit on green */
+.quote,.mk .row b,.tr b,.ue td.hi{color:#5ef2b0}
+.mk .row span,.pr p,.tr span,.small,.opt .lab{color:rgba(255,255,255,.8)}
+.mk h4,.risk .rh{color:#5ef2b0}
+.mk .row{border-color:rgba(255,255,255,.18)}
+.ue td{border-color:rgba(255,255,255,.2)}
+.fut span{border-color:rgba(255,255,255,.5)}
+.pill4 li,.pill4 li b,.risk div.r b{color:#fff}.risk div.r span,.pill4 li{color:rgba(255,255,255,.88)}
+.pill4 li::before{background:#5ef2b0}
+.mem span{color:#5ef2b0}.mem b{color:#fff}
+.chat small{color:var(--green)}
+.cmp.l th{color:#fff}.cmp.l td.us{background:#5ef2b0;color:#053b2c}
+.cmp.l .mid{color:#8a5a00}
+.road span{background:rgba(255,255,255,.14);color:#fff;box-shadow:none}.road span.now{background:#5ef2b0;color:#053b2c}.road .icn{color:#5ef2b0}
+.gtm .it span{color:rgba(255,255,255,.82)}
+.mem .ph.empty{border-color:rgba(255,255,255,.4)}
+.tab small{}
+.chat{color:var(--ink)}
+.cmp.l td{background:rgba(255,255,255,.1);color:#fff}.cmp.l td:first-child{background:rgba(255,255,255,.07)}
+.cmp.l .no{opacity:.45}.cmp.l .mid{color:var(--gold)}
+.cmp.l td.us{background:#5ef2b0;color:#053b2c}
+#s5 .ue{padding:1.3rem 2.4rem}#s5 .ue td{padding:.6rem .8rem}
 /* ---------- navigation chrome ---------- */
 .chrome{position:fixed;z-index:50;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:1.1rem 2.4rem;pointer-events:none}
 .chrome>*{pointer-events:auto}
@@ -456,7 +491,7 @@ html.print .printonly{display:block!important}
   <div class="bg"><i class="c1" style="width:60rem;height:60rem;right:-16rem;top:-22rem"></i><i class="c2" style="width:46rem;height:46rem;left:-14rem;bottom:-20rem"></i><i class="c3" style="width:18rem;height:18rem;right:30rem;bottom:-7rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="brand rv"><img src="assets/img/logo.png" alt="LevroMart logo" data-pp="img"><span data-pp="t">LevroMart</span><small data-pp="t">BUY · SELL · CONNECT</small></div><div class="pill gold-p rv" style="--d:1"><svg class="icn" data-i="award"></svg><span data-pp="t">AMSUL Business Pitch Competition 2026</span></div></div>
+    <div class="top"><div class="brand rv"><img src="assets/img/logo.png" alt="LevroMart logo" data-pp="img"><span data-pp="t">LevroMart</span><small data-pp="t">BUY · SELL · CONNECT</small></div><div class="topr"><div class="pill gold-p rv" style="--d:1"><svg class="icn" data-i="award"></svg><span data-pp="t">AMSUL Business Pitch Competition 2026</span></div><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></div></div>
     <div class="body">
       <div>
         <h1 class="rv" style="--d:1" data-pp="t">Finding what you need locally shouldn’t require <em>remembering where you saw it.</em></h1>
@@ -475,18 +510,18 @@ html.print .printonly{display:block!important}
         <span class="tile t-violet" style="--r:10deg;right:-1rem;top:40rem"><svg class="icn" data-i="star"></svg></span>
         <span class="tile" style="--r:-6deg;left:14rem;bottom:2rem"><svg class="icn" data-i="cart"></svg></span>
       </div>
-      <div class="badge-row rv" style="--d:5"><img class="bd" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"><div class="qrb"><img src="assets/img/qr-all.png" alt="QR code for all LevroMart links" data-pp="img">SCAN FOR ALL LINKS</div></div>
+      <div class="badge-row rv" style="--d:5"><div class="qrb"><img src="assets/img/qr-all.png" alt="QR code for all LevroMart links" data-pp="img">SCAN FOR ALL LINKS</div></div>
     </div>
     <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span class="num" data-pp="t">01</span></div>
   </div>
 </section>
 
 <!-- 2 · PROBLEM & MARKET GAP -->
-<section class="slide light" id="s2" data-title="Problem &amp; market gap">
+<section class="slide dark" id="s2" data-title="Problem &amp; market gap">
   <div class="bg"><i class="c1" style="width:50rem;height:50rem;left:-14rem;top:-18rem"></i><i class="c3" style="width:22rem;height:22rem;right:-6rem;bottom:-8rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="target"></svg><span data-pp="t">The problem &amp; the gap</span></div><span class="num" data-pp="t">02</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="target"></svg><span data-pp="t">The problem &amp; the gap</span></div><span class="topr"><span class="num" data-pp="t">02</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <div class="body">
       <div>
         <h2 class="rv" style="--d:1" data-pp="t">Campus commerce is <em>fragmented.</em></h2>
@@ -513,7 +548,7 @@ html.print .printonly{display:block!important}
         <p class="small" data-pp="t">Sources: NUC (2018), UNESCO/World Bank, UNILAG and LASU. *Assumes ₦12,000 per student per month, 3% take rate.</p>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
@@ -522,7 +557,7 @@ html.print .printonly{display:block!important}
   <div class="bg"><i class="c1" style="width:56rem;height:56rem;right:-18rem;bottom:-24rem"></i><i class="c2" style="width:40rem;height:40rem;left:-12rem;top:-18rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="zap"></svg><span data-pp="t">The solution</span></div><span class="num" data-pp="t">03</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="zap"></svg><span data-pp="t">The solution</span></div><span class="topr"><span class="num" data-pp="t">03</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <div class="body">
       <div>
         <h2 class="rv" style="--d:1" data-pp="t">Meet <em>LevroMart.</em></h2>
@@ -554,16 +589,16 @@ html.print .printonly{display:block!important}
       <div class="card"><span class="ico g" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="chat"></svg></span><b data-pp="t">Levi, our assistant</b><span data-pp="t">AI that finds things</span></div>
       <div class="card"><span class="ico" style="width:3.6rem;height:3.6rem;font-size:1.8rem"><svg class="icn" data-i="gift"></svg></span><b data-pp="t">Promos coming</b><span data-pp="t">Launch offers, referrals</span></div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
 <!-- 4 · MVP -->
-<section class="slide light" id="s4" data-title="The product">
+<section class="slide dark" id="s4" data-title="The product">
   <div class="bg"><i class="c1" style="width:56rem;height:56rem;left:-18rem;bottom:-26rem"></i><i class="c3" style="width:26rem;height:26rem;right:-8rem;top:-9rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="phone"></svg><span data-pp="t">The MVP · live today</span></div><span class="num" data-pp="t">04</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="phone"></svg><span data-pp="t">The MVP · live today</span></div><span class="topr"><span class="num" data-pp="t">04</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <div class="body">
       <div class="mvp rv" style="--d:1">
         <div class="tabs" id="tabs">
@@ -606,16 +641,16 @@ html.print .printonly{display:block!important}
         <p class="small rv" style="--d:6;margin-top:1.4rem" data-pp="t">Stage: pre-revenue · billing rolling out next</p>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
 <!-- 5 · BUSINESS MODEL & UNIT ECONOMICS -->
-<section class="slide gold" id="s5" data-title="Business model">
+<section class="slide dark" id="s5" data-title="Business model">
   <div class="bg"><i class="c1" style="width:50rem;height:50rem;right:-14rem;top:-20rem"></i><i class="c2" style="width:36rem;height:36rem;left:-10rem;bottom:-16rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="coins"></svg><span data-pp="t">Business model &amp; unit economics</span></div><span class="num" data-pp="t">05</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="coins"></svg><span data-pp="t">Business model &amp; unit economics</span></div><span class="topr"><span class="num" data-pp="t">05</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Vendors pay when <em>LevroMart creates value.</em></h2>
     <div class="body" style="padding-top:1.6rem">
       <div class="card opt rv" style="--d:2"><span class="pill tagl" data-pp="t">Option 01</span><div class="lab" data-pp="t">COMMISSION</div><div class="big" data-pp="t">3%<small data-pp="t">per completed sale</small></div><p data-pp="t">No sale, no commission. Aligned with the vendor from day one.</p></div>
@@ -633,16 +668,16 @@ html.print .printonly{display:block!important}
         <div class="fut"><span style="border:0;padding-left:0;font-weight:800" data-pp="t">NEXT REVENUE LAYERS (Year 2+):</span><span data-pp="t">Premium visibility</span><span data-pp="t">Vendor of the Week sponsorship &amp; ads</span><span data-pp="t">Business tools</span><span data-pp="t">Payment automation</span><span data-pp="t">Partnerships</span></div>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">Assumptions: GMV per active vendor ₦40K→₦55K/month; 60% of vendors on commission; CAC = marketing spend ÷ new active vendors.</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">Assumptions: GMV per active vendor ₦40K→₦55K/month; 60% of vendors on commission; CAC = marketing spend ÷ new active vendors.</span></div>
   </div>
 </section>
 
 <!-- 6 · COMPETITION & GO-TO-MARKET -->
-<section class="slide light" id="s6" data-title="Competition &amp; go-to-market">
+<section class="slide dark" id="s6" data-title="Competition &amp; go-to-market">
   <div class="bg"><i class="c1" style="width:44rem;height:44rem;right:-12rem;bottom:-18rem"></i><i class="c3" style="width:20rem;height:20rem;left:-6rem;top:-8rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="megaphone"></svg><span data-pp="t">Market, competitors &amp; reaching customers</span></div><span class="num" data-pp="t">06</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="megaphone"></svg><span data-pp="t">Market, competitors &amp; reaching customers</span></div><span class="topr"><span class="num" data-pp="t">06</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">We win where others <em>don’t go: the campus.</em></h2>
     <div class="body">
       <div class="rv" style="--d:2">
@@ -667,7 +702,7 @@ html.print .printonly{display:block!important}
         <div class="card it rv" style="--d:7"><span class="ico b"><svg class="icn" data-i="truck"></svg></span><p><b data-pp="t">Delivery partners</b><span data-pp="t">Run It (in progress, not live)</span></p></div>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
@@ -676,7 +711,7 @@ html.print .printonly{display:block!important}
   <div class="bg"><i class="c1" style="width:54rem;height:54rem;left:-16rem;bottom:-24rem"></i><i class="c2" style="width:38rem;height:38rem;right:-10rem;top:-14rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="trend"></svg><span data-pp="t">Scalability model</span></div><span class="num" data-pp="t">07</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="trend"></svg><span data-pp="t">Scalability model</span></div><span class="topr"><span class="num" data-pp="t">07</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <div class="body">
       <div>
         <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Revenue grows <em>22×.</em> Costs grow 5×.</h2>
@@ -695,16 +730,16 @@ html.print .printonly{display:block!important}
         <p class="small" data-pp="t">Base case. Registered vendors: 1,100 (M12) → 3,600 (M24) → 8,500 (M36).</p>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
 <!-- 8 · SUSTAINABILITY -->
-<section class="slide mintbg" id="s8" data-title="Sustainability">
+<section class="slide dark" id="s8" data-title="Sustainability">
   <div class="bg"><i class="c1" style="width:50rem;height:50rem;right:-14rem;bottom:-20rem"></i><i class="c3" style="width:20rem;height:20rem;left:-6rem;top:-8rem;background:rgba(39,240,176,.3)"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="leaf"></svg><span data-pp="t">Sustainability strategy</span></div><span class="num" data-pp="t">08</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="leaf"></svg><span data-pp="t">Sustainability strategy</span></div><span class="topr"><span class="num" data-pp="t">08</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Built to last: <em>economic, operational, environmental.</em></h2>
     <div class="body">
       <div class="card pill4 rv" style="--d:2"><span class="ico g"><svg class="icn" data-i="coins"></svg></span><h3 data-pp="t">Economic</h3><ul>
@@ -727,7 +762,7 @@ html.print .printonly{display:block!important}
         <div class="r"><b data-pp="t">WhatsApp habit</b><span data-pp="t">Keep chat, add trust and records</span></div>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
@@ -736,7 +771,7 @@ html.print .printonly{display:block!important}
   <div class="bg"><i class="c1" style="width:52rem;height:52rem;left:-16rem;top:-22rem"></i><i class="c2" style="width:40rem;height:40rem;right:-12rem;bottom:-18rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="chart"></svg><span data-pp="t">Financial health &amp; P&amp;L</span></div><span class="num" data-pp="t">09</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="chart"></svg><span data-pp="t">Financial health &amp; P&amp;L</span></div><span class="topr"><span class="num" data-pp="t">09</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">From pre-revenue to <em>break-even in 19 months.</em></h2>
     <div class="body">
       <div>
@@ -765,23 +800,23 @@ html.print .printonly{display:block!important}
         <svg id="chartPL" viewBox="0 0 640 560" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">Projections are estimates built on stated assumptions, to be validated with live billing data.</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">Projections are estimates built on stated assumptions, to be validated with live billing data.</span></div>
   </div>
 </section>
 
 <!-- 10 · TEAM -->
-<section class="slide light" id="s10" data-title="Team">
+<section class="slide dark" id="s10" data-title="Team">
   <div class="bg"><i class="c1" style="width:56rem;height:56rem;right:-18rem;top:-26rem"></i><i class="c3" style="width:22rem;height:22rem;left:-8rem;bottom:-9rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="users"></svg><span data-pp="t">The team</span></div><span class="num" data-pp="t">10</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="users"></svg><span data-pp="t">The team</span></div><span class="topr"><span class="num" data-pp="t">10</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <div class="body">
       <h2 class="rv" style="--d:1" data-pp="t">Nine students, <em>one marketplace.</em></h2>
       
       <div class="team rv" id="team" style="--d:3"></div>
       <div class="skills rv" style="--d:4"><span class="pill"><svg class="icn" data-i="code"></svg><span data-pp="t">Built and shipped the live product</span></span><span class="pill"><svg class="icn" data-i="users"></svg><span data-pp="t">Vendor &amp; campus relationships</span></span><span class="pill"><svg class="icn" data-i="chart"></svg><span data-pp="t">Finance &amp; growth planning</span></span></div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · AMSUL Business Pitch Competition 2026</span></div>
   </div>
 </section>
 
@@ -790,7 +825,7 @@ html.print .printonly{display:block!important}
   <div class="bg"><i class="c1" style="width:56rem;height:56rem;right:-18rem;top:-22rem"></i><i class="c2" style="width:42rem;height:42rem;left:-14rem;bottom:-20rem"></i><i class="c3" style="width:18rem;height:18rem;left:40rem;bottom:-7rem"></i></div>
   <div class="dots"></div>
   <div class="frame">
-    <div class="top"><div class="kicker rv"><svg class="icn" data-i="rocket"></svg><span data-pp="t">The ask &amp; use of resources</span></div><span class="num" data-pp="t">11</span></div>
+    <div class="top"><div class="kicker rv"><svg class="icn" data-i="rocket"></svg><span data-pp="t">The ask &amp; use of resources</span></div><span class="topr"><span class="num" data-pp="t">11</span><span class="bdg"><img src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></span></span></div>
     <div class="body">
       <div>
         <h2 class="rv" style="--d:1;font-size:4.6rem" data-pp="t">Turn early adoption into a <em>scalable marketplace.</em></h2>
@@ -815,7 +850,7 @@ html.print .printonly{display:block!important}
         <p class="small rv" style="--d:6;margin-top:.8rem" data-pp="t">Same name everywhere: @levromart · Thank you · AMSUL Business Pitch Competition 2026</p>
       </div>
     </div>
-    <div class="foot"><div class="fbw"><img class="fb" src="assets/img/badge-ecobank-innovatex.png" alt="Ecobank InnovateX" data-pp="img"></div><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · Buy · Sell · Connect</span></div>
+    <div class="foot"><span><svg class="icn" data-i="globe"></svg><span data-pp="t">levromart.com</span></span><span data-pp="t">LevroMart · Buy · Sell · Connect</span></div>
   </div>
 </section>
 
