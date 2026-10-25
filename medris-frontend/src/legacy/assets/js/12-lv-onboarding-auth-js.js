@@ -2295,8 +2295,9 @@ async function setVendorRequestPref(v){
   // A long name is cut with "..." and would swallow the tick printed after it: keep the name's text shrinkable and the tick always visible.
   function keepTicksVisible(){
     document.querySelectorAll("#app [data-vt].lv-on, #app .lv-svi, #app .lv-cr-vtick").forEach(function(t){
-      var h=t.parentElement; if(!h||h.dataset.lvfx||t.classList.contains("vmp-tick")||h.classList.contains("vmp-pin")) return;
+      var h=t.parentElement; if(!h||h.dataset.lvfx||h.dataset.lvck||t.classList.contains("vmp-tick")||h.classList.contains("vmp-pin")) return;
       if(!h.clientWidth) return;
+      h.dataset.lvck="1";
       var cs=getComputedStyle(h);
       if(cs.textOverflow!=="ellipsis"||h.scrollWidth<=h.clientWidth+1) return;
       h.dataset.lvfx="1";
@@ -2307,7 +2308,7 @@ async function setVendorRequestPref(v){
       h.insertBefore(span,t); h.classList.add("lv-nm-flex");
     });
   }
-  function sched(){ if(!Q){ Q=requestAnimationFrame(paint); } }
+  function sched(){ if(!Q){ Q=setTimeout(function(){ requestAnimationFrame(paint); },300); } }
   function load(){
     if(typeof sb==="undefined"||!sb||!sb.from){ setTimeout(load,400); return; }
     T=Date.now();

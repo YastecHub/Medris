@@ -255,7 +255,7 @@ async function renderHome() {
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
     const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service),"trending-products");
-    if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+    if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.slice(0,24).map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   }
 
