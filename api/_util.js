@@ -91,25 +91,81 @@ async function settleReference(reference, txData) {
       body: JSON.stringify({ status: "paid" }),
     });
   } else {
-    // An order payment. One database function marks the payment paid AND moves the order on (deposit confirms it, a
-    // final payment completes it or starts the buyer's 24-hour confirmation), checking the amount Paystack reports and
-    // doing nothing the second time (the webhook and the buyer's return both land here). Migration 0014.
-    // (lvm_ references belong to the new backend's own checkout, which moves the order itself.)
-    const rpcRes = reference.startsWith("lvm_") ? { ok: false, status: 0 } : await fetch(`${SUPABASE_URL}/rest/v1/rpc/apply_card_payment_to_order`, {
-      method: "POST", headers: { ...headers, Prefer: "return=representation" },
-      body: JSON.stringify({ p_reference: reference, p_paid_kobo: Number.isFinite(Number(txData?.amount)) ? Number(txData.amount) : null }),
+    // An order payment (references "medris_..." and "lvm_ord_..."). The payment is marked paid AND the order moves on (a delivery
+    // deposit confirms it; a final payment completes it or starts the buyer's 24-hour confirmation), checking the amount Paystack
+    // reports and doing nothing the second time (the webhook and the buyer's return both land here).
+    // Preferred: one database function (migration 0014, atomic). Until it is applied, the same steps run here, one by one.
+    const kobo = Number.isFinite(Number(txData?.amount)) ? Number(txData.amount) : null;
+    let done = false;
+    try {
+      const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/apply_card_payment_to_order`, {
+        method: "POST", headers: { ...headers, Prefer: "return=representation" },
+        body: JSON.stringify({ p_reference: reference, p_paid_kobo: kobo }),
+      });
+      if (rpcRes.ok) {
+        const out = await rpcRes.json().catch(() => null);
+        if (out && out.applied === false && out.reason === "amount_too_low") { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return; }
+        done = true;
+      }
+    } catch (_) {}
+    if (!done) await applyOrderPaymentRest(reference, kobo, SUPABASE_URL, SERVICE_KEY);
+    await markLedgerPaid(reference, txData, SUPABASE_URL, SERVICE_KEY);
+  }
+}
+
+// The new checkout keeps a ledger row per attempt; mark it paid so the backend's own webhook sees "already settled".
+async function markLedgerPaid(reference, txData, SUPABASE_URL, SERVICE_KEY) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/paystack_transactions?reference=eq.${encodeURIComponent(reference)}&status=in.(initialized,failed,abandoned)`, {
+      method: "PATCH",
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({
+        status: "success",
+        paid_at: txData?.paid_at || new Date().toISOString(),
+        ...(txData?.channel ? { channel: String(txData.channel) } : {}),
+        ...(Number.isInteger(txData?.id) ? { paystack_transaction_id: txData.id } : {}),
+      }),
     });
-    if (rpcRes.ok) {
-      const out = await rpcRes.json().catch(() => null);
-      if (out && out.applied === false && out.reason === "amount_too_low") console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference);
-      return;
-    }
-    // Migration 0014 is not applied yet: keep the old behaviour (payment row only) instead of failing.
-    if (!reference.startsWith("lvm_")) console.error("[settleReference] apply_card_payment_to_order unavailable (", rpcRes.status, "); marking the payment only");
-    await fetch(`${SUPABASE_URL}/rest/v1/payments?provider_reference=eq.${encodeURIComponent(reference)}`, {
-      method: "PATCH", headers,
-      body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
-    });
+  } catch (_) { /* the ledger table may not exist on an older database: nothing to update */ }
+}
+
+// Same rules as vendor_confirm_reported_payment / apply_card_payment_to_order, over the REST API. Only the caller that actually flips
+// a payment from "pending" to "paid" moves the order, so a webhook and a return at the same moment cannot do it twice.
+async function applyOrderPaymentRest(reference, paidKobo, SUPABASE_URL, SERVICE_KEY) {
+  const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+  const get = async (path) => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h }); return r.ok ? r.json() : []; };
+  const ref = encodeURIComponent(reference);
+  const rows = await get(`payments?provider_reference=eq.${ref}&select=id,order_id,payment_type,amount,status,created_at&order=created_at.asc`);
+  if (!rows.length) return;
+  const total = rows.reduce((a, p) => a + Number(p.amount || 0), 0);
+  if (paidKobo != null && paidKobo < Math.round(total * 100)) { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return; }
+  const flipped = await fetch(`${SUPABASE_URL}/rest/v1/payments?provider_reference=eq.${ref}&status=eq.pending`, {
+    method: "PATCH", headers: { ...h, Prefer: "return=representation" },
+    body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
+  });
+  const flippedRows = flipped.ok ? await flipped.json().catch(() => []) : [];
+  if (!flippedRows.length) return;                       // already settled by the other path
+  const orderId = rows[0].order_id;
+  const [order] = await get(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,status,order_type,delivery_method,payment_timing,payout_status,service_offer_id`);
+  if (!order || ["cancelled", "completed"].includes(order.status)) return;
+  const main = rows.find((p) => ["sale_price", "rental_fee", "delivery_deposit_20"].includes(p.payment_type));
+  if (!main) return;
+  const patchOrder = (body) => fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify(body) });
+  const open = order.status === "pending" || order.status === "payment_unresolved";
+  if (main.payment_type === "delivery_deposit_20") {
+    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
+    return;
+  }
+  let complete = true;
+  if (order.delivery_method === "delivery" && order.payment_timing === "pay_after") {
+    complete = (await get(`payments?order_id=eq.${encodeURIComponent(orderId)}&payment_type=eq.delivery_deposit_20&status=eq.paid&select=id&limit=1`)).length > 0;
+  }
+  if (complete && order.order_type !== "rental" && !order.service_offer_id && (order.payout_status || "not_applicable") === "not_applicable") {
+    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null, awaiting_confirmation_since: new Date().toISOString() });
+  } else if (complete) {
+    await patchOrder({ status: "completed", completed_at: new Date().toISOString(), payment_unresolved_at: null, payment_escalated_at: null, awaiting_confirmation_since: null });
+  } else {
+    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
   }
 }
 

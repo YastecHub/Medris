@@ -308,10 +308,33 @@
     if (!popup) { location.href = d.authorizationUrl; }   // popup blocked or unavailable: go to Paystack's page
   }
 
+  // Ask the live server (the same one that settles commission payments) what Paystack says, and settle the order when it is paid.
+  window.lvVerifyPayment = async function (reference) {
+    try {
+      var res = await fetch("/api/verify-payment?reference=" + encodeURIComponent(reference));
+      var json = await res.json();
+      return json && json.status;
+    } catch (_) { return undefined; }
+  };
+  // Checks again and again (about two minutes): "paid", "failed", or "pending" when Paystack has not finished yet.
+  window.lvWaitForPayment = async function (reference) {
+    var waits = [0, 1200, 2000, 3000, 4000, 6000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000];
+    for (var i = 0; i < waits.length; i++) {
+      if (waits[i]) await new Promise(function (r) { setTimeout(r, waits[i]); });
+      var st = await window.lvVerifyPayment(reference);
+      if (st === "success") { try { window.levroData.payments.status(reference); } catch (_) {} return "paid"; }
+      if (st === "failed") return "failed";
+      try {   // second opinion from the newer backend (it may have settled it already through the webhook)
+        var r = await window.levroData.payments.status(reference);
+        if (r && r.data && window.levroData.payments.outcomeOf(r.data.status) === "paid") return "paid";
+      } catch (_) {}
+    }
+    return "pending";
+  };
   // After Paystack: "Confirming your payment…", then Paid or not completed. Used by the popup and the return link.
   window.lvConfirmPaystack = async function (reference, orderId) {
     openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">Confirming your payment…</h3></div><p class="muted" role="status" aria-live="polite">This usually takes a few seconds. Please do not close the app.</p><div class="lv-pm-spin" aria-hidden="true"></div>');
-    var outcome = await window.levroData.payments.confirm(reference);
+    var outcome = await window.lvWaitForPayment(reference);
     closeModal();
     if (outcome === "paid") showToast("Paid. Thank you!", "success");
     else if (outcome === "failed") showToast("Payment not completed. You were not charged. Please try again.", "error");
@@ -340,6 +363,12 @@
             window.__lvPayChecked = window.__lvPayChecked || {};
             if (ref && Date.now() - (window.__lvPayChecked[ref] || 0) > 20000) {
               window.__lvPayChecked[ref] = Date.now();
+              window.lvVerifyPayment(ref).then(function (st) {
+                if (st === "success" && typeof currentView !== "undefined" && currentView === "orderDetail") {
+                  showToast("Payment confirmed. Thank you!", "success");
+                  navigate("orderDetail", { orderId: orderId }, false);
+                }
+              });
               window.levroData.payments.status(ref).then(function (r) {
                 if (r && r.data && window.levroData.payments.outcomeOf(r.data.status) === "paid" && typeof currentView !== "undefined" && currentView === "orderDetail") {
                   showToast("Payment confirmed. Thank you!", "success");
