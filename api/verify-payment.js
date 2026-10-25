@@ -18,10 +18,12 @@ module.exports = async function handler(req, res) {
     const verifyJson = await verifyRes.json();
     if (!verifyRes.ok || !verifyJson.status) { res.status(400).json({ error: verifyJson.message || "Verify failed" }); return; }
 
+    let settled;
     if (verifyJson.data.status === "success") {
-      await settleReference(reference, verifyJson.data);
+      settled = await settleReference(reference, verifyJson.data);
     }
-    res.status(200).json({ status: verifyJson.data.status });
+    // `settled` is a short plain code ("applied", "already_paid", or what went wrong): it carries no secrets and lets support see why an order did not move
+    res.status(200).json({ status: verifyJson.data.status, ...(settled ? { settled } : {}) });
   } catch (err) {
     res.status(500).json({ error: err.message || "Server error" });
   }
