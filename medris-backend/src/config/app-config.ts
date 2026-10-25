@@ -112,6 +112,8 @@ const envSchema = z.object({
   CORS_ALLOWED_ORIGINS: csv,
 
   RATE_LIMIT_ENABLED: bool(true),
+  // Keep public answers (the same for every signed-out visitor) in memory for a few seconds. false turns it off.
+  RESPONSE_CACHE_ENABLED: bool(true),
 
   // Swagger UI (/api/v1/docs) and the OpenAPI document (/api/v1/openapi.json).
   // Unset: on everywhere except NODE_ENV=production.
@@ -176,6 +178,8 @@ export interface AppConfig {
   /** Where the PostgREST binary is (scripts/install-postgrest.mjs puts it in medris-backend/bin). */
   postgrestBin: string;
   rateLimit: { enabled: boolean };
+  /** In-memory cache of public answers (lib/response-cache.ts). */
+  responseCache: { enabled: boolean };
   docs: { enabled: boolean };
   cloudinary?: { cloudName: string; apiKey: string; apiSecret: string; folder: string };
   imageStorage: "r2" | "cloudinary";
@@ -258,6 +262,7 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
     cors: { allowedOrigins: [...new Set([e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN, ...PRODUCTION_APP_ORIGINS, ...e.CORS_ALLOWED_ORIGINS])] },
     postgrestBin: e.POSTGREST_BIN ?? "bin/postgrest",
     rateLimit: { enabled: e.RATE_LIMIT_ENABLED },
+    responseCache: { enabled: e.RESPONSE_CACHE_ENABLED },
     docs: { enabled: e.API_DOCS_ENABLED ?? e.NODE_ENV !== "production" },
     cloudinary: e.CLOUDINARY_CLOUD_NAME
       ? { cloudName: e.CLOUDINARY_CLOUD_NAME, apiKey: e.CLOUDINARY_API_KEY!, apiSecret: e.CLOUDINARY_API_SECRET!, folder: e.CLOUDINARY_FOLDER }

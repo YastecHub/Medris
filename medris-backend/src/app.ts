@@ -53,7 +53,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   if (cors) app.use(["/api", "/rest"], cors);
 
   // The data API (the app's sb.from() table queries): PostgREST behind this proxy, body streamed as is.
-  app.use("/rest/v1", dataApiProxy(() => services.dataApi));
+  app.use("/rest/v1", dataApiProxy(() => services.dataApi, () => services.responseCache));
 
   app.use(apiDocs(services));
   app.use("/api/v1", v1Router(services));

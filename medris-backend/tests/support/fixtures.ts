@@ -19,6 +19,8 @@ export const ISSUER = `${SUPABASE_URL}/auth/v1`;
 export function testConfig(env: Record<string, string> = {}): AppConfig {
   return loadConfig({
     NODE_ENV: "test",
+    // Tests that check caching turn it on themselves; elsewhere a cached answer would hide a change a test just made.
+    RESPONSE_CACHE_ENABLED: "false",
     LOG_LEVEL: "error",
     SUPABASE_URL,
     SUPABASE_ANON_KEY: "anon-key",

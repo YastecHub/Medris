@@ -10,6 +10,7 @@ import type { DataContext } from "./database/context.js";
 import { getDataContext } from "./database/index.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { RateLimiter } from "./lib/rate-limit.js";
+import { ResponseCache } from "./lib/response-cache.js";
 import { SupabaseAccessTokenVerifier, type AccessTokenVerifier } from "./modules/auth/access-token.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { createGoogleSignIn, type GoogleSignIn } from "./modules/auth/google-oidc.js";
@@ -71,6 +72,8 @@ export interface AppServices {
   sessions: SessionService;
   google: GoogleSignIn | null;
   rateLimiter: RateLimiter;
+  /** Public answers kept in memory for a few seconds (RESPONSE_CACHE_ENABLED); null when off. */
+  responseCache: ResponseCache | null;
 
   // Feature services (/api/v1)
   health: HealthService;
@@ -140,6 +143,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
   const sessions = overrides.sessions ?? createSessionService(config, data);
   const google = overrides.google !== undefined ? overrides.google : createGoogleSignIn(config);
   const rateLimiter = overrides.rateLimiter ?? new RateLimiter();
+  const responseCache = overrides.responseCache !== undefined ? overrides.responseCache : config.responseCache.enabled ? new ResponseCache() : null;
 
   return {
     config,
@@ -149,6 +153,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     sessions,
     google,
     rateLimiter,
+    responseCache,
     health: overrides.health ?? new HealthService(config, data),
     auth: overrides.auth ?? new AuthService({ config, data, sessions, google, rateLimiter }),
     users: overrides.users ?? new UsersService(data),
