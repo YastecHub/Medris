@@ -3904,3 +3904,9 @@ html:root body #app .lvrw-edit .btn{flex:none;min-height:2.4rem;padding:0 1rem;b
 html:root body .lvw-sheet-msg[hidden],html:root body .lvrw-name[hidden]{display:none!important}
 html:root body .lvrw-in{appearance:none;-webkit-appearance:none}
 html:root body select.lvrw-in{background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 1.2rem) 50%,calc(100% - .85rem) 50%;background-size:.35rem .35rem;background-repeat:no-repeat;padding-right:2.2rem}
+
+/* refund account: the bank button looks like the shop's bank picker */
+html:root body .lvrw-bankbtn{width:100%;display:flex;align-items:center;gap:.7rem;min-height:3.1rem;padding:.35rem .8rem;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent);background:var(--input-bg,var(--card,#fff));color:var(--text);font:inherit;font-size:.95rem;cursor:pointer;text-align:left}
+html:root body .lvrw-bankbtn .lvrw-bank-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html:root body .lvrw-bankbtn .ve-bank-ico{width:2.2rem;height:2.2rem;flex:none;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--text,#111) 7%,transparent);overflow:hidden}
+html:root body .lvrw-bankbtn .ve-bank-ico img{width:100%;height:100%;object-fit:contain}

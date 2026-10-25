@@ -2032,20 +2032,49 @@ window.lvAskCancel = async function (orderId) {
   window.lvRefundAccount = async function (fromPopup) {
     var m = sheet(fromPopup ? "Where should we send your refunds?" : "Refund bank account",
       '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">If an order is cancelled or a problem is settled in your favour, the money is put in your refunds wallet. You can withdraw it to this account any time. It must be an account in your own name. Check the details carefully: Levromart is not responsible for money sent to an account that was entered wrongly.</p>' +
-      '<label class="lvrw-l">Bank</label><select id="lvrwBank" class="lvrw-in"><option value="">Loading banks…</option></select>' +
+      '<label class="lvrw-l">Bank</label><button type="button" class="lvrw-bankbtn" id="lvrwBankBtn"><span class="ve-bank-ico" id="lvrwBankIco"><i class="fa-solid fa-building-columns"></i></span><span id="lvrwBankLabel" class="lvrw-bank-label">Choose your bank</span><i class="fa-solid fa-chevron-down"></i></button>' +
       '<label class="lvrw-l">Account number</label><input id="lvrwNum" class="lvrw-in" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="off">' +
       '<p id="lvrwMsg" class="lvw-sheet-msg" hidden></p><div id="lvrwName" class="lvrw-name" hidden></div>' +
       '<button type="button" class="btn lvw-wd-go" id="lvrwGo">Check account</button>' + (fromPopup ? '<button type="button" class="lvrw-later" onclick="lvRefundLater()">Later</button>' : ""));
-    var sel = m.querySelector("#lvrwBank"), num = m.querySelector("#lvrwNum"), msg = m.querySelector("#lvrwMsg"), nameBox = m.querySelector("#lvrwName"), go = m.querySelector("#lvrwGo");
-    try {
-      var list = [];
-      try { var b = await window.levroData.payments.banks(); list = (b && Array.isArray(b.data) && b.data) || []; } catch (_) {}
-      if (!list.length && typeof NIGERIAN_BANKS !== "undefined") list = NIGERIAN_BANKS;   // the full list kept in the app, so the form always works
-      if (!list.length) throw new Error("no banks");
-      sel.innerHTML = '<option value="">Choose your bank</option>' + list.map(function (x) { return '<option value="' + esc(x.code) + '">' + esc(x.name) + "</option>"; }).join("");
-    } catch (_) { sel.innerHTML = '<option value="">Banks are not available right now</option>'; }
+    var num = m.querySelector("#lvrwNum"), msg = m.querySelector("#lvrwMsg"), nameBox = m.querySelector("#lvrwName"), go = m.querySelector("#lvrwGo");
+    var sel = { value: "" }, list = [];
+    try { var bk = await window.levroData.payments.banks(); list = (bk && Array.isArray(bk.data) && bk.data) || []; } catch (_) {}
+    if (!list.length && typeof NIGERIAN_BANKS !== "undefined") list = NIGERIAN_BANKS;   // the full list kept in the app, so the form always works
+    list = list.slice().sort(function (x, y) { return String(x.name).localeCompare(String(y.name)); });
     var found = null;
-    [sel, num].forEach(function (e) { e.addEventListener("input", function () { found = null; nameBox.hidden = true; go.textContent = "Check account"; say(msg, ""); }); });
+    function reset() { found = null; nameBox.hidden = true; go.textContent = "Check account"; say(msg, ""); }
+    function choose(code, name) {
+      sel.value = code; reset();
+      m.querySelector("#lvrwBankLabel").textContent = name;
+      var ico = m.querySelector("#lvrwBankIco");
+      ico.className = "ve-bank-ico"; ico.removeAttribute("data-lvlogo"); ico.innerHTML = '<i class="fa-solid fa-building-columns"></i>'; ico.setAttribute("data-bank-code", code);
+    }
+    // the same bank picker as the shop's payout page: search, and each bank's own logo
+    m.querySelector("#lvrwBankBtn").onclick = function () {
+      var pk = document.createElement("div");
+      pk.className = "modal vendor-bank-picker-modal open"; pk.style.zIndex = "2147483500";
+      pk.innerHTML = '<div class="modal-content vendor-bank-picker-content"><div class="vendor-bank-picker-head"><div><div class="vendor-bank-picker-title"><i class="fa-solid fa-building-columns"></i><span>Select your bank</span></div><div class="muted" style="font-size:.76rem;margin-top:.2rem;">' + list.length + ' supported banks and financial institutions</div></div><button type="button" class="drawer-close-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="vendor-bank-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input class="vendor-bank-search" type="search" autocomplete="off" placeholder="Search bank..." aria-label="Search banks"></div><div class="vendor-bank-picker-list"></div></div>';
+      document.body.appendChild(pk);
+      var box = pk.querySelector(".vendor-bank-picker-list"), q = pk.querySelector(".vendor-bank-search");
+      function paintList() {
+        var t = q.value.trim().toLowerCase();
+        var rows = list.filter(function (x) { return !t || String(x.name).toLowerCase().indexOf(t) >= 0; });
+        box.innerHTML = rows.length ? rows.map(function (x) { return '<button type="button" class="vendor-bank-option' + (x.code === sel.value ? " selected" : "") + '" data-bank-code="' + esc(x.code) + '" data-bank-name="' + esc(x.name) + '"><span class="vendor-bank-option-icon"><i class="fa-solid fa-building-columns"></i></span><span class="vendor-bank-option-main"><strong>' + esc(x.name) + '</strong></span>' + (x.code === sel.value ? '<i class="fa-solid fa-circle-check vendor-bank-option-check"></i>' : '<i class="fa-solid fa-chevron-right vendor-bank-option-arrow"></i>') + '</button>'; }).join("") : '<div class="empty-state" style="padding:2rem 1rem;">No bank matches your search.</div>';
+      }
+      q.addEventListener("input", paintList);
+      pk.addEventListener("click", function (e) {
+        var o = e.target.closest && e.target.closest(".vendor-bank-option");
+        if (o) { choose(o.getAttribute("data-bank-code"), o.getAttribute("data-bank-name")); pk.remove(); return; }
+        if (e.target === pk || (e.target.closest && e.target.closest(".drawer-close-btn"))) pk.remove();
+      });
+      paintList(); setTimeout(function () { try { q.focus(); } catch (_) {} }, 60);
+    };
+    num.addEventListener("input", reset);
+    function friendly(e) {
+      var t = String((e && e.message) || "");
+      if (/not found|does not exist|unknown|404|failed to fetch|network/i.test(t) || !t) return "Refund accounts are being switched on. Please try again in a little while.";
+      return t;
+    }
     go.onclick = async function () {
       say(msg, "");
       if (!sel.value) return say(msg, "Choose your bank.", true);
@@ -2061,11 +2090,11 @@ window.lvAskCancel = async function (orderId) {
           return;
         }
         var s = await sb.rpc("save_refund_account", { p_bank_code: sel.value, p_account_number: num.value.trim(), p_confirmed_name: found.accountName });
-        if (s.error) { found = null; return say(msg, s.error.message || "Could not save your account.", true); }
+        if (s.error) { found = null; return say(msg, friendly(s.error), true); }
         var el = document.getElementById("lvrwSheet"); if (el) el.remove();
         showToast("Refund account saved.", "success");
         await refresh(true);
-      } catch (_) { say(msg, "Something went wrong. Please try again.", true); }
+      } catch (e) { say(msg, friendly(e), true); }
       finally { go.disabled = false; }
     };
   };
