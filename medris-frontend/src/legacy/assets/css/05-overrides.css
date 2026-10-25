@@ -3815,3 +3815,26 @@ html body #app .od-page .od-vendor-alert{border-bottom:0!important}
 .lvp-pay{width:100%;min-height:3.4rem;border:0;border-radius:16px;background:#16a06a;color:#fff;-webkit-text-fill-color:#fff;font:inherit;font-weight:800;font-size:1.05rem;cursor:pointer;box-shadow:0 12px 24px -14px rgba(22,160,106,.9)}
 .lvp-pay:disabled{opacity:.7}
 .lvp-cancel{width:100%;margin-top:.4rem;min-height:2.8rem;border:0;background:transparent;color:var(--muted,#6b7280);font:inherit;font-weight:700;font-size:.92rem;cursor:pointer}
+
+/* ===== Withdrawals: wallet card, sheet, history; admin request rows ===== */
+html:root body #app .lvw-paidline{margin-top:.55rem;font-size:.74rem;opacity:.85;position:relative;z-index:1}
+html:root body #app .lvw-paidline b{font-weight:800}
+html:root body #app .lvw-actions .lvw-btn-withdraw{flex:1.4}
+html:root body #app .lvw-ico.ready{background:rgba(22,163,74,.15);color:#15803d}
+html:root body #app .lvw-ico.asked{background:rgba(245,158,11,.15);color:#b45309}
+html:root body #app .lvw-ico.held{background:rgba(229,72,77,.14);color:#c0262b}
+html:root body #app .lvw-amt.ready{color:#15803d}
+html:root body #app .lvw-amt.asked{color:#b45309}
+html:root body #app .lvw-amt.held{color:#c0262b}
+html:root body #app .lvw-reject{color:#c0262b!important}
+html:root body .lvw-wd{display:flex;flex-direction:column;gap:.15rem}
+html:root body .lvw-wd-row{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;margin-top:.7rem;font-size:.95rem}
+html:root body .lvw-wd-row b{font-variant-numeric:tabular-nums;font-size:1.05rem}
+html:root body .lvw-wd small{color:var(--muted,#6b7280);font-size:.76rem;line-height:1.35}
+html:root body .lvw-wd-held b{color:#c0262b}
+html:root body .lvw-sheet-msg{margin:.4rem 0;font-size:.88rem;line-height:1.4;padding:.65rem .8rem;border-radius:12px;background:color-mix(in srgb,var(--text,#111) 5%,var(--card,#fff))}
+html:root body .lvw-sheet-warn{background:rgba(245,158,11,.14);color:#92400e}
+html:root body .lvw-wd-go{width:100%;margin-top:1rem;min-height:2.9rem;border-radius:999px;font-weight:800}
+html:root body .lv-ap-dispute{background:#e5484d!important;color:#fff!important}
+html:root body #app .lvw-tabs{grid-template-columns:repeat(3,1fr)}
+html:root body #app .lvw-tabs button{font-size:.82rem;padding:0 .2rem}

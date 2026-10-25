@@ -47,7 +47,7 @@ export function useWorld(): World {
     const owner = await person("vendor");
     const shop = (await seedVendor(w.db, owner.id, { name: "Dayo Stores" })).id;
     // a verified payout account (a test recipient), as the vendor would have saved in the app
-    await w.db.query(`update public.vendors set transfer_recipient_code = 'RCP_e2e', payout_verified_at = now(), bank_code = '057', account_number = '0123456789' where id = $1`, [shop]);
+    await w.db.query(`update public.vendors set transfer_recipient_code = 'RCP_e2e', payout_verified_at = now() - interval '3 days', bank_code = '057', account_number = '0123456789' where id = $1`, [shop]);
     w.vendor = { id: owner.id, shop, token: owner.token };
     w.product = await seedProduct(w.db, shop);
   }, 90_000);
@@ -127,8 +127,14 @@ export async function completeAndPayOut(w: World, orderId: string) {
   await handOver(w, orderId);
   const r = await json(await api.post(w, `/orders/${orderId}/received`, w.buyer.token));
   if (r.status !== 200) throw new Error(`confirm receipt failed: ${r.status} ${JSON.stringify(r.body)}`);
+  await withdraw(w, orderId);
   await runJob(w, "vendor-payouts");
   return (await rowOf<{ transfer_reference: string }>(w, `select transfer_reference from public.vendor_payouts where order_id = $1`, [orderId]))?.transfer_reference as string;
+}
+
+/** The shop's money for an order is waiting (migration 0017); this releases it the way an approved withdrawal does. */
+export async function withdraw(w: World, orderId: string) {
+  await w.db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1 and status = 'on_hold' and hold_reason = 'Waiting for the vendor to withdraw'`, [orderId]);
 }
 
 /** The table stamps updated_at itself; switch that off for a moment to pretend time passed (no sleeping in tests). */
