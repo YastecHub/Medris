@@ -3400,3 +3400,21 @@ html[data-levro-motion].lv-stag .lv-wv-live .lv-wv-thumbs img:nth-child(n+5){ani
 :root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong i,:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i.fa-wallet{color:var(--text-muted,#667)!important;-webkit-text-fill-color:currentColor!important}
 :root:root:root:root:root:root:root body #app .card:has(#buyQty) .lv-pen-ico,:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box label svg{color:var(--text-muted,#667)!important;stroke:var(--text-muted,#667)!important}
 :root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:var(--text,#111)!important;text-decoration:underline}
+
+/* ---- place-order panel, final palette: standard professional colours. Blue for information and selection, amber for the
+   payment notice, ink for text, and green only on the Place order button ---- */
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:#2563eb!important;background:rgba(37,99,235,.12)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:rgba(37,99,235,.07)!important;border-color:rgba(37,99,235,.20)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice{color:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i{color:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#2563eb!important;background:rgba(37,99,235,.10)!important;color:var(--text,#111)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row input[type=radio]{accent-color:#2563eb}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i{color:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice{background:rgba(245,158,11,.13)!important;border-color:rgba(245,158,11,.40)!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice strong i,:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .product-payment-plan-notice i.fa-wallet{color:#d97706!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .lv-pen-ico,:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-note-box label svg{color:#2563eb!important;stroke:#2563eb!important}
+:root:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:#2563eb!important;text-decoration:underline}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i,:root[data-theme="black"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) > h3 > i{color:#60a5fa!important;background:rgba(96,165,250,.16)!important}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) #selectedVariantPrice,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title i,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .fee-calc summary i,:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) a{color:#60a5fa!important}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .selected-variant-summary{background:rgba(96,165,250,.09)!important;border-color:rgba(96,165,250,.25)!important}
+:root[data-theme="dark"]:root:root:root:root:root:root:root body #app .card:has(#buyQty) .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#60a5fa!important;background:rgba(96,165,250,.16)!important}

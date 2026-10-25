@@ -41,8 +41,8 @@ export class ShopRecordsRepository {
   }
 
   /** `select("vendor_id,status,matric_pending")` - every verification the caller may see (admins: all). */
-  studentVerificationStatuses(): Promise<{ vendor_id: string; status: string; matric_pending: boolean; not_student: boolean }[]> {
-    return jsonRows(this.db, sql`select vendor_id, status, matric_pending, not_student from public.vendor_student_verification`);
+  studentVerificationStatuses(): Promise<{ vendor_id: string; status: string; matric_pending: boolean }[]> {
+    return jsonRows(this.db, sql`select vendor_id, status, matric_pending from public.vendor_student_verification`);
   }
 
   /**

@@ -36,7 +36,7 @@ begin
    where id=p_vendor_id returning user_id into v_user;
   begin
     perform public.create_notification(v_user,'student_verification',
-      case p_status when 'approved' then (case when v_row.not_student then 'Seller verification approved' else 'Student verification approved' end) when 'rejected' then 'Verification needs attention' else 'Verification updated' end,
+      case p_status when 'approved' then (case when v_row.not_student then 'Seller verification approved' else 'Student verification approved' end) when 'rejected' then 'Student verification needs attention' else 'Student verification updated' end,
       case p_status when 'approved' then (case when v_row.not_student then 'Your account was verified. A Verified seller badge now shows on your store.' else 'Your student details were verified. A Verified student badge now shows on your store.' end) when 'rejected' then coalesce(nullif(p_note,''),'Please re-upload clearer documents and submit again.') else 'Your verification is back under review.' end,
       'vendorEditProfile','{}'::jsonb,null);
   exception when others then null; end;

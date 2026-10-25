@@ -156,7 +156,7 @@ export class ShopsService {
     return this.db().asUser(me, (tx) => new ShopRecordsRepository(tx).studentVerification(vendorId));
   }
 
-  studentVerificationStatuses(me: Identity): Promise<{ vendor_id: string; status: string; matric_pending: boolean; not_student: boolean }[]> {
+  studentVerificationStatuses(me: Identity): Promise<{ vendor_id: string; status: string; matric_pending: boolean }[]> {
     return this.db().asUser(me, (tx) => new ShopRecordsRepository(tx).studentVerificationStatuses());
   }
 

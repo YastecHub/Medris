@@ -231,7 +231,7 @@ export class AdminVendorsService {
       await notify.createQuietly({
         userId: owner,
         type: "student_verification",
-        title: status === "approved" ? "Student verification approved" : status === "rejected" ? "Student verification needs attention" : "Student verification updated",
+        title: status === "approved" ? (row.not_student ? "Seller verification approved" : "Student verification approved") : status === "rejected" ? "Student verification needs attention" : "Student verification updated",
         body:
           status === "approved"
             ? row.not_student ? "Your account was verified. A Verified seller badge now shows on your store." : "Your student details were verified. A Verified student badge now shows on your store."
