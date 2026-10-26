@@ -32,7 +32,7 @@ export const RPC_WRITES: ReadonlySet<string> = new Set([
   "admin_permanently_delete_vendor", "admin_reject_manual_password_reset", "admin_reject_monthly_listing",
   "admin_reject_reported_payment", "admin_reject_vendor", "admin_restore_vendor", "admin_review_campus_school",
   "admin_review_student_verification", "admin_set_user_role", "admin_set_vendor_status",
-  "admin_set_vendor_storefront_active", "admin_suspend_user", "admin_unsuspend_user", "apply_referral_code",
+  "admin_set_vendor_storefront_active", "admin_suspend_user", "admin_unsuspend_user", "apply_referral_code", "set_my_referral_code",
   "buyer_confirm_received", "buyer_report_manual_payment", "buyer_respond_quantity_proposal", "clear_presence",
   "complete_manual_password_reset", "confirm_service_offer_payment", "create_cart_order", "create_chat_list",
   "create_notification", "create_package_order", "create_rental_order", "create_sale_order", "create_service_offer",

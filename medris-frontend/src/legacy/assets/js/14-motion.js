@@ -2252,3 +2252,57 @@ window.lvAskCancel = async function (orderId) {
   var raf = 0;
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; fill(); }); }).observe(document.body, { childList: true, subtree: true });
 })();
+
+/* ===== A shop can change its own referral code (4 to 16 letters or numbers; capitals do not matter) ===== */
+(function () {
+  "use strict";
+  function currentCode() {
+    var el = document.querySelector(".lb-code-val");
+    if (el && el.textContent.trim()) return el.textContent.trim();
+    return (typeof vendor !== "undefined" && vendor && vendor.referral_code) || "";
+  }
+  window.lvChangeReferralCode = function () {
+    var old = document.getElementById("lvRefSheet"); if (old) old.remove();
+    var m = document.createElement("div");
+    m.id = "lvRefSheet"; m.className = "lvw-sheet-wrap";
+    m.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-grab" aria-hidden="true"></div><div class="lvw-sheet-head"><h3>Your referral code</h3><button type="button" class="lvw-eye lvw-eye-dark" aria-label="Close" onclick="document.getElementById(\'lvRefSheet\').remove()"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body">' +
+      '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">Use your shop name or anything easy to say. 4 to 16 letters or numbers. Capital or small letters, it works the same.</p>' +
+      '<input id="lvRefInput" class="lvrw-in" maxlength="24" autocapitalize="characters" autocomplete="off" placeholder="e.g. MYSHOP" value="' + String(currentCode()).replace(/"/g, "") + '">' +
+      '<p id="lvRefMsg" class="lvw-sheet-msg" hidden></p><button type="button" class="btn lvw-wd-go" id="lvRefGo">Save code</button></div></div>';
+    m.addEventListener("click", function (e) { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    var inp = m.querySelector("#lvRefInput"), msg = m.querySelector("#lvRefMsg"), go = m.querySelector("#lvRefGo");
+    setTimeout(function () { try { inp.focus(); inp.select(); } catch (_) {} }, 80);
+    go.onclick = async function () {
+      if (go.disabled) return; go.disabled = true; go.textContent = "Saving…"; msg.hidden = true;
+      var r = await sb.rpc("set_my_referral_code", { p_code: inp.value });
+      var d = r && r.data;
+      go.disabled = false; go.textContent = "Save code";
+      if ((r && r.error) || !d || !d.ok) {
+        msg.textContent = (d && d.message) || (r && r.error && /not.*(found|exist)|setting up|unavailable/i.test(r.error.message || "") ? "This is being set up. Try again later." : "Could not save the code. Try again.");
+        msg.className = "lvw-sheet-msg lvw-sheet-warn"; msg.hidden = false; return;
+      }
+      try { if (typeof vendor !== "undefined" && vendor) vendor.referral_code = d.referral_code; } catch (_) {}
+      m.remove();
+      showToast("Your referral code is now " + d.referral_code + ".", "success");
+      try { if (currentView === "leaderboard") navigate("leaderboard", currentViewParams || {}, false); } catch (_) {}
+    };
+  };
+  function dress() {
+    var v = document.querySelector(".lb-code:not([data-lv-chg])");
+    if (v) {
+      v.dataset.lvChg = "1";
+      var acts = v.querySelector(".lb-code-actions");
+      if (acts) { var b = document.createElement("button"); b.type = "button"; b.innerHTML = '<i class="fa-solid fa-pen"></i> Change code'; b.onclick = window.lvChangeReferralCode; acts.appendChild(b); }
+    }
+    var s = document.getElementById("settings-page");
+    if (s && !s.querySelector("[data-lv-refrow]") && typeof vendor !== "undefined" && vendor && vendor.id) {
+      var sec = document.createElement("section"); sec.className = "settings-page-section"; sec.dataset.lvRefrow = "1";
+      sec.innerHTML = '<h3><i class="fa-solid fa-gift"></i> Referrals</h3><button class="settings-action-row" onclick="lvChangeReferralCode()"><i class="fa-solid fa-pen"></i><span><strong>Change my referral code</strong><small>Make it your shop name or anything easy to say</small></span></button>';
+      var acct = [].find.call(s.querySelectorAll(".settings-page-section"), function (x) { return /Account/.test(x.querySelector("h3") ? x.querySelector("h3").textContent : ""); });
+      if (acct) acct.parentNode.insertBefore(sec, acct); else s.appendChild(sec);
+    }
+  }
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true });
+})();

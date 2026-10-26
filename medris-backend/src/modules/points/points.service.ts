@@ -121,6 +121,12 @@ export class PointsService {
     return this.db().asService((tx) => new PointsReadsRepository(tx).activity(me.userId, limit, before));
   }
 
+  /** public.set_my_referral_code(text) (migration 0023) - a shop picks its own referral code (4 to 16 letters or digits, capitals ignored). */
+  async setMyCode(me: Identity | null, code: string | null): Promise<Record<string, unknown>> {
+    if (!me) return { ok: false, error: "not_signed_in" };
+    return this.db().onBehalfOf(me, (tx) => new ReferralsRepository(tx).changeCode(me.userId, code));
+  }
+
   /** Replaces: public.validate_referral_code(text) - whether a code belongs to a live shop (and which). */
   validateCode(code: string | null): Promise<Record<string, unknown>> {
     return this.db().asService(async (tx) => {
