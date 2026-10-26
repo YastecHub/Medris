@@ -23,6 +23,9 @@ const TOOL_CACHE_TTL = 20_000;
 const MAX_TOOL_ROUNDS = 8;
 
 let catalogCache = { expires: 0, value: null };
+// the model that answered last time is tried first, so a retired or unavailable model costs one wasted call, not one per message
+let goodModel = null;
+function modelChain(primary) { return [...new Set([goodModel, primary, FALLBACK_MODEL, "gemini-2.5-flash"].filter(Boolean))]; }
 
 function jsonSafe(value) {
   try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
@@ -95,6 +98,8 @@ const SYNONYMS = {
   laptop: ["computer", "notebook", "macbook", "pc"],
   phone: ["smartphone", "mobile", "iphone", "android", "telephone"],
   medical: ["healthcare", "health", "hospital", "clinical", "medical equipment", "diagnostic"],
+  bottle: ["water bottle", "flask", "thermos", "tumbler", "stanley"],
+  bottles: ["water bottle", "flask", "thermos", "tumbler", "stanley"],
   jewellery: ["jewelry", "ring", "necklace", "bracelet", "earrings", "chain"],
 };
 
@@ -230,11 +235,11 @@ async function searchProducts(args, ctx) {
   let scored = products.map((p) => ({ p, score: productSearchScore(p, q, catalog, args) })).filter((x) => x.score > 0);
   // what the person asked for must be what the product IS: keep only products whose name/category contains the search words
   // (the best-covered ones). Only when nothing matches that way do the looser description matches stay.
-  let exact = false;
+  let exact = false, coreAny = false;
   if (q) {
     const cov = scored.map((x) => ({ x, ...coreHits(x.p, q, catalog) }));
     const top = cov.reduce((m, c) => Math.max(m, c.hits), 0);
-    if (top > 0) { scored = cov.filter((c) => c.hits === top).map((c) => c.x); exact = top === cov[0]?.total || cov.some((c) => c.hits === c.total); }
+    if (top > 0) { coreAny = true; scored = cov.filter((c) => c.hits === top).map((c) => c.x); exact = top === cov[0]?.total || cov.some((c) => c.hits === c.total); }
   }
   // only what is really relevant: drop the ones that match far worse than the best match
   const best = scored.reduce((m, x) => Math.max(m, x.score), 0);
@@ -257,7 +262,7 @@ async function searchProducts(args, ctx) {
   const shown = new Set(scored.slice(0, 20).map((x) => String(x.p.category_id)));
   const sectorIds = new Set([...shown].map((id) => catalog.categories.find((c) => String(c.id) === id)?.sector_id).filter(Boolean).map(String));
   const related = catalog.categories.filter((c) => sectorIds.has(String(c.sector_id)) && !shown.has(String(c.id))).map((c) => c.name).slice(0, 6);
-  return { query: q, count: scored.length, exact_match: exact, results: rows, related_categories: related };
+  return { query: q, count: scored.length, exact_match: exact, core_match: coreAny, results: rows, related_categories: related };
 }
 
 async function searchVendors(args, ctx) {
@@ -797,7 +802,7 @@ async function transcribeAudio(body, res) {
   const me = await meRes.json().catch(() => ({}));
   if (!meRes.ok || !me?.id) { res.status(401).json({ error: "Session expired." }); return; }
   const prompt = "Transcribe this short voice clip exactly as spoken (English, possibly with a Nigerian accent). Output ONLY the spoken words with normal punctuation. No quotes, no commentary. If there is no clear speech, output nothing.";
-  for (const model of [MODEL, FALLBACK_MODEL]) {
+  for (const model of modelChain(MODEL)) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
@@ -805,6 +810,7 @@ async function transcribeAudio(body, res) {
         body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: "audio/wav", data: audio } }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } }),
       });
       if (!r.ok) continue;
+      goodModel = model;
       const j = await r.json();
       const text = String(j?.candidates?.[0]?.content?.parts?.map((x) => x.text || "").join(" ") || "").replace(/\s+/g, " ").trim();
       res.status(200).json({ text });
@@ -812,6 +818,71 @@ async function transcribeAudio(body, res) {
     } catch (_) { /* try the fallback model */ }
   }
   res.status(502).json({ error: "Couldn't transcribe that." });
+}
+
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Quick "find it" answers. Questions about WHO sells a product, how much it costs and how far the shops are are answered
+// straight from the live catalogue (no waiting for the language model), so the answer is complete, accurate and fast.
+// The language model still handles everything else (cart, orders, advice, chat).
+// ---------------------------------------------------------------------------------------------------------------------
+const DETAIL_WORDS = new Set("how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
+const NOT_PRODUCT_INTENT = /\b(cart|checkout|order|orders|wishlist|message|messages|chat with|settings|profile|password|account|payment|pay|refund|withdraw|complain|report|help me|how do i|how does|what is levromart|who are you|levi)\b/;
+const FIND_INTENT = /\b(vendors?|sells?|selling|seller|sellers|shops?|stores?|price|prices|how much|cost|close|closest|nearest|near|nearby|far|distance|where (can|do) i|do you (have|sell)|any|need|want|looking for|find|get me|buy|rent|available|which)\b/;
+function productTerm(text) {
+  const words = normalize(text).replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean)
+    .filter((w) => !QUERY_FILLER.has(w) && !DETAIL_WORDS.has(w));
+  return words.join(" ").trim();
+}
+function termFromConversation(messages) {
+  const users = messages.filter((m) => m?.role === "user").map((m) => String(m.content || ""));
+  for (let i = users.length - 1, n = 0; i >= 0 && n < 6; i--, n++) {
+    const t = productTerm(users[i]);
+    if (t) return t;
+  }
+  return "";
+}
+function money(n) { return n == null || n === "" ? "price not listed" : "₦" + Number(n).toLocaleString("en-NG"); }
+function distLabel(km) {
+  if (!Number.isFinite(km)) return "";
+  if (km > 60) return `${Math.round(km)} km away`;
+  const t = travelEstimate(km);
+  const d = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+  return `${d} away (about ${t.walking_minutes} min on foot, ${t.by_car_or_bike_minutes} min by car or bike)`;
+}
+async function quickFind(messages, ctx) {
+  const latest = String([...messages].reverse().find((m) => m?.role === "user")?.content || "");
+  const low = normalize(latest);
+  if (!low || NOT_PRODUCT_INTENT.test(low)) return null;
+  const direct = productTerm(latest);
+  const short = low.split(/\s+/).length <= 3 && !/^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|help)\b/.test(low);
+  if (!FIND_INTENT.test(low) && !(direct && short)) return null;
+  const term = direct || termFromConversation(messages.slice(0, -1));
+  if (!term) return null;
+  const found = await searchProducts({ query: term, limit: 20, nearest: ctx.lat != null }, ctx);
+  if (!found.results?.length || !found.core_match) return null;
+  const hasLoc = ctx.lat != null && ctx.lng != null;
+  const byVendor = new Map();
+  for (const p of found.results) {
+    const v = p.vendor; if (!v) continue;
+    if (!byVendor.has(v.id)) byVendor.set(v.id, { v, products: [] });
+    byVendor.get(v.id).products.push(p);
+  }
+  const rows = [...byVendor.values()];
+  rows.sort((a, b) => hasLoc ? (a.v.distance_km ?? Infinity) - (b.v.distance_km ?? Infinity) : Number(b.v.avg_rating || 0) - Number(a.v.avg_rating || 0));
+  const kinds = [...new Set(found.results.map((p) => normalize(p.name)))];
+  const lines = rows.slice(0, 8).map((r, i) => {
+    const d = hasLoc ? distLabel(r.v.distance_km) : "";
+    const items = r.products.slice(0, 4).map((p) => `${p.name} ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)}`).join("; ");
+    return `${i + 1}. ${r.v.business_name}${r.v.city ? ` (${r.v.city})` : ""}${d ? `, ${d}` : ""}: ${items}`;
+  });
+  const near = found.exact_match ? "" : `I could not find an exact "${term}", but these are the closest matches. `;
+  const head = near + (rows.length === 1 ? `Only one vendor on Levromart sells ${term}:` : `${rows.length} vendors on Levromart sell ${term}${hasLoc ? ", closest first" : ""}:`);
+  let tail = "";
+  if (!hasLoc && /\b(close|closest|nearest|near|far|distance|away)\b/.test(low)) tail = "\nTurn on your location and I will show how far each one is.";
+  else if (kinds.length >= 3) tail = `\nI found ${kinds.length} different kinds. Tell me which one you want and I will narrow it down.`;
+  const ids = found.results.slice(0, 5).map((p) => p.id);
+  return `${head}\n${lines.join("\n")}${tail} [[PRODUCTS:${ids.join(",")}]]`;
 }
 
 module.exports = async function handler(req, res) {
@@ -870,6 +941,11 @@ module.exports = async function handler(req, res) {
       res.status(200).json({ suggestions });
       return;
     }
+
+    try {
+      const quick = await quickFind(messages, ctx);
+      if (quick) { res.status(200).json({ reply: quick }); return; }
+    } catch (err) { console.warn("[Levromart] quickFind skipped:", err?.message); }
 
     const vendor = await getMyVendor(ctx).catch(() => null);
 
@@ -955,28 +1031,41 @@ module.exports = async function handler(req, res) {
   }
 };
 
+async function geminiOnce(apiKey, model, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 22000);
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || `Gemini ${response.status}`);
+    return data;
+  } finally { clearTimeout(timer); }
+}
 async function callGemini(apiKey, model, contents, systemInstruction, withTools) {
   const body = {
     system_instruction: { parts: [{ text: systemInstruction }] },
     contents,
-    generationConfig: { maxOutputTokens: 1200, thinkingConfig: { thinkingLevel: "medium" } },
+    generationConfig: { maxOutputTokens: 1200 },
   };
   if (withTools) body.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
-
-  let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  let data = await response.json();
-  if (!response.ok && model === MODEL && FALLBACK_MODEL !== MODEL) {
-    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FALLBACK_MODEL}:generateContent`, {
-      method: "POST",
-      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, tools: withTools ? body.tools : undefined }),
-    });
-    data = await response.json();
+  // the primary model, then the newest Flash, then a long-standing stable one: Levi must not go silent because one model is busy or retired
+  const chain = modelChain(model);
+  let lastErr = null;
+  for (const m of chain) {
+    try {
+      const thinking = /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
+      const out = await geminiOnce(apiKey, m, { ...body, generationConfig: { ...body.generationConfig, thinkingConfig: thinking } });
+      goodModel = m; return out;
+    } catch (err) {
+      lastErr = err;
+      // a model that rejects the thinking setting is retried once without it
+      try { const out = await geminiOnce(apiKey, m, body); goodModel = m; return out; } catch (err2) { lastErr = err2; }
+    }
   }
-  if (!response.ok) throw new Error(data?.error?.message || "Gemini request failed.");
-  return data;
+  throw lastErr || new Error("Gemini request failed.");
 }

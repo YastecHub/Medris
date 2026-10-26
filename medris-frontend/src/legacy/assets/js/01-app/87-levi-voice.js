@@ -579,7 +579,7 @@ async function leviOfflineFallback(text) {
 
 async function fetchLeviReply(payload) {
   const urls = ['/api/chat', '/api/chat.js'];
-  const deadline = Date.now() + 12000;
+  const deadline = Date.now() + 45000;
   let lastError = null;
   for (const url of urls) {
     const remaining = deadline - Date.now();
@@ -1244,7 +1244,7 @@ async function resolveLeviLocalAction(text) {
   // is still an actionable request. Resolve it directly instead of forcing
   // the user to phrase it as "I need ...".
   // (only for a short phrase, never a full question such as "closest vendor that sells shirts")
-  if (q.length >= 2 && q.length <= 60 && q.split(" ").length <= 4 && !/^(hi|hello|hey|thanks|thank you|okay|ok|yes|no|help|settings|cart|orders?|vendors?)$/.test(q)) {
+  if (false && q.length >= 2 && q.length <= 60 && q.split(" ").length <= 4 && !/^(hi|hello|hey|thanks|thank you|okay|ok|yes|no|help|settings|cart|orders?|vendors?)$/.test(q)) {
     const result = await resolveLeviProduct(q);
     if (result.product && (result.exact || (result.matches || []).length === 1)) {
       return { handled:true, reply:`I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""}. I’m taking you there now. [[NAV:productDetail|productId=${result.product.id}]]` };
@@ -1264,7 +1264,7 @@ async function resolveLeviLocalAction(text) {
     q.match(/\bdo you (?:have|sell)\s+(?:a\s+|an\s+|any\s+)?(.+?)\??$/) ||
     q.match(/\bwhere (?:can|do) i (?:get|find|buy|rent)\s+(?:a\s+|an\s+)?(.+?)\??$/) ||
     q.match(/^(?:find|get)\s+me\s+(?:a\s+|an\s+|some\s+)?(.+)$/);
-  if (needMatch) {
+  if (false && needMatch) {   // product look-ups go to Levi's server instead
     const target = (needMatch[1] || "").trim().replace(/[?!.]+$/, "");
     // Guard against phrasing that shares this shape but isn't a product
     // ask ("I need to open my cart", "I need help") -- those either match
