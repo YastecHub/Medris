@@ -565,7 +565,7 @@ async function leviOfflineFallback(text) {
   // turn every product question into the same unhelpful stock sentence.
   try {
     const result = await resolveLeviProduct(q);
-    if (result?.product) {
+    if (result?.product && result.exact) {   // never open a loose match (a gown must not open skin care)
       navigate("productDetail", { productId: result.product.id });
       return `I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""}, opening it for you now.`;
     }
