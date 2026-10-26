@@ -1,13 +1,13 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "b491a653e60b67e317fd38355b1bf28ce19e56f534ed1d6a4ae33e2547203d77",
+    "index.html": "b3e5d474d4091859943cf18ac577a5be5b9a2cfe6f1852dd012a5016cc39acc2",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
     "assets/css/04-shell.css": "eb0c817881d1a3ea47f128d9770af080fb107c34f9ad57f4ca4fe346958ae3fa",
     "assets/css/05-overrides.css": "6f2799b0cc6c0965ae7d658712fff962a229b15808a571c6fe46197b7aaa57fa",
-    "assets/js/01-app.js": "a5cf527cfc4a7d1a72e581d61905fbbb57d824f3b78a35c09d072253ef3af87b",
+    "assets/js/01-app.js": "ea89c0f1f540bec66e9f9abcb4f0524ed0a15e569a0795b532a999cb58786b96",
     "assets/js/02-levromart-legal-consent-final-js.js": "6600a61a633c0de722392a67fcdc2c3d9c37746598db1c6f587e10a0e23b8907",
     "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "5b133370327b3d9dbf6f43120f7401059d954877418d9ba9bb550be577482a20",
     "assets/js/04-levromart-vendor-location-auto-script.js": "8049d6b6328a529ca2d6e4f05f7fc5b80076df51cd4ade43bd8b036ab6665caa",
@@ -22,6 +22,6 @@
     "assets/js/13-face-verify.js": "f0bfbe30accc5ae75c21118d03ab8219d9b01bc1a9074cac4ca56a5be8ae2008",
     "assets/js/14-motion.js": "3ffb40e4894343c12b76a1c2eefa019b57e83bc572126de0917114a5fa0abde6",
     "assets/js/15-autosave.js": "d006bb511a42c50dc6f15999ebba27c228c6cbf9821e3a8b229aba2d8b82bf74",
-    "sw.js": "b78ea80066751bc9fb0f0cecd693f79830478e7296d30912909506d7d1271b98"
+    "sw.js": "37b037c4efb68f3fe902176b56a89c7cc2bfc2827ae558ab5e072b5efe348461"
   }
 }
