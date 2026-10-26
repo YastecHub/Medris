@@ -3,7 +3,7 @@
 // by the old name don't wonder where they went.
 const VENDOR_RENAME_GRACE_DAYS = 14;
 function vendorNameWithFormerly(v) {
-  if (!v.previous_business_name || !v.name_changed_at) return esc(v.business_name);
+  if (!v.previous_business_name || !v.name_changed_at || /^deleted\b/i.test(String(v.previous_business_name).trim())) return esc(v.business_name);
   const daysSince = (Date.now() - new Date(v.name_changed_at).getTime()) / 86400000;
   if (daysSince > VENDOR_RENAME_GRACE_DAYS) return esc(v.business_name);
   return `${esc(v.business_name)} <span class="muted" style="font-weight:400;font-size:0.8em;">(formerly ${esc(v.previous_business_name)})</span>`;
