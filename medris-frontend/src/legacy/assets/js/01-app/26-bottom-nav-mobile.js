@@ -40,6 +40,8 @@ window.lvLineIcon = function (n) {
     orders: "<path d='M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'/>",
     shield: "<path d='M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'/>",
     coins: "<circle cx='12' cy='12' r='9'/><path d='M9 16V8l6 8V8'/>",
+    wallet: "<path d='M4 7a2 2 0 0 1 2-2h11v4M4 7v11a2 2 0 0 0 2 2h14V9H6a2 2 0 0 1-2-2zM16 14.5h.01'/>",
+    plus: "<path d='M12 5v14M5 12h14'/>",
     user: "<circle cx='12' cy='8' r='4'/><path d='M4 21c0-4 3.500-6 8-6s8 2 8 6'/>",
   };
   return `<svg class="lv-line-ic" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.home}</svg>`;
@@ -49,22 +51,22 @@ function renderBottomNav() {
   if (!nav) return;
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
-  const notificationsTab = { icon: "<i class='fa-solid fa-bell'></i>", label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
+  const vendorsTab = { icon: lvLineIcon("store"), label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
+  const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const requestsTab = isVendorUser
-    ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
-    : { icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+    ? { icon: lvLineIcon("request"), label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
+    : { icon: lvLineIcon("request"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
   const ordersTab = isVendorUser
-    ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
-    : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
-  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "lvHomeTap()", view: "home" };
+    ? { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
+    : { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
+  const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
 
   let items;
   if (session && profile?.role === "admin") {
     // Admin navigation remains unchanged; the centered + button is not used here.
     items = [homeTab, vendorsTab,
-      { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
-      { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
+      { icon: lvLineIcon("shield"), label: "Admin", action: "navigate('adminPanel')", view: "adminPanel", badge: Number(window.__lvPayPending||0) },
+      { icon: lvLineIcon("wallet"), label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
     // Vendor navigation: Home, Vendors | + | Notifications, Orders.
     // Messages moved to the header; My Shop moved into the vendor's
@@ -76,7 +78,7 @@ function renderBottomNav() {
     items = [homeTab, vendorsTab, requestsTab, notificationsTab, ordersTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
-      { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
+      { icon: lvLineIcon("user"), label: "Login", action: "showLogin()", view: null }];
   }
 
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"${it.view && it.view === currentView ? ' aria-current="page"' : ""}><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
@@ -85,7 +87,7 @@ function renderBottomNav() {
     nav.classList.remove("buyer-no-add");
     nav.classList.add("has-add");
     nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
-      <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><span class="bn-icon"><i class="fa-solid fa-plus"></i></span><span>Add listing</span></button>
+      <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><span class="bn-icon">${lvLineIcon("plus")}</span><span>Add listing</span></button>
       <div class="bn-group bn-group-right">${items.slice(2, 4).map(itemHtml).join("")}</div>`;
   } else if (session && profile?.role === "admin") {
     nav.classList.remove("has-add", "buyer-no-add");

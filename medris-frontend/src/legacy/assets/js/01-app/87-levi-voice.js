@@ -574,7 +574,7 @@ async function leviOfflineFallback(text) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
     return `Hi${name ? `, ${name}` : ''}. I'm Levi. Tell me what you need and I'll help you get there.`;
   }
-  return `I’m on it. Tell me what you want to open, find, or do, and I’ll take care of the next step.`;
+  return `I couldn’t get an answer just now, so I won’t guess. Please send that again in a moment.`;
 }
 
 async function fetchLeviReply(payload) {
@@ -968,7 +968,7 @@ function leviCatalogueTerms(text){
 async function resolveLeviCatalogueRequest(text){
   const q=leviNormaliseText(text);
   const named=q.match(/(?:catalogue|catalog|products|services|packages|listings)\s+(?:from|of|for|at)\s+(.+?)[?.!]*$/)||q.match(/what\s+(?:does|do)\s+(.+?)\s+(?:sell|offer|have)[?.!]*$/);
-  const food=/\b(eat|food|snack|drink|beverage|spicy|chicken)\b/.test(q);
+  const food=false;   // open food/drink wishes go to Levi's server brain, which asks what kind and shows real vendors and prices
   const currentVendor=(currentView==='storefront'&&/\b(this|their|the)\b.*\b(vendor|shop|store|catalogue|products)\b/.test(q))?currentViewParams.vendorId:null;
   if(!named&&!food&&!currentVendor)return null;
   try{
@@ -1024,6 +1024,7 @@ async function resolveLeviQuickDiscovery(text) {
     const wantsRent = /\b(rent|rents|rental|renting|hire|hiring)\b/.test(q);
     const wantsBuy = /\b(buy|buying|purchase|sell|selling)\b/.test(q);
     const productPhrase=q.replace(/\b(levi|please|what|are|is|the|a|an|my|closest|nearest|vendor|vendors|store|stores|shop|shops|seller|sellers|near|me|to|that|can|i|buy|buying|purchase|rent|rents|rental|renting|hire|hiring|from|for|around|here|there|are)\b/g," ").replace(/[?.!,]/g," ").replace(/\s+/g," ").trim();
+    if(productPhrase.replace(/\b(sell|sells|selling|need|want|looking|look|have|has|get|find|carry|carries|it|them|this|that|any|some|who|which)\b/g,' ').trim()) return null;   // a product is named: the server finds only the vendors that really sell it
     let vendors=[];
     let matchedProduct=false;
     try{
@@ -1149,6 +1150,11 @@ async function resolveLeviLocalAction(text) {
   if(catalogueAnswer?.handled)return catalogueAnswer;
   const vendorInsight = await resolveLeviVendorInsights(text);
   if (vendorInsight?.handled) return vendorInsight;
+  // Questions and follow-ups ("which one sells it?", "how far is that vendor?") are answered by Levi's server brain, which sees the whole
+  // conversation and the live catalogue. The quick rules below are only for plain commands such as "open my cart".
+  if (/^(which|who|whom|whose|where|what|how|do you|does|is there|are there|can you|could you|any|tell me|is it|are they|did|will|would)\b/.test(q) || /\?\s*$/.test(String(text).trim())) {
+    if (!/^(open|show me my|take me|go to)\b/.test(q)) return null;
+  }
 
   // Deterministic navigation. Levi describes the destination and exposes a
   // single "Take me there" action. The action performs the actual SPA route

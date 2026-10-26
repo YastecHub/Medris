@@ -1,7 +1,6 @@
-import { sql } from "drizzle-orm";
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
-import { jsonRow } from "../../database/json.js";
+import { ProductSuspensionRepository } from "../../database/repositories/product-suspension.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
 import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
 
@@ -15,18 +14,16 @@ export class ProductSuspensionService {
     if (suspended && reason.length < 3) throw badRequest("Please write the reason. The shop will see it.");
     return this.db().onBehalfOf(me, async (tx) => {
       if (!(await new AccessRepository(tx).isAdmin(me.userId))) throw forbidden("Admin access required.");
-      const p = await jsonRow<{ id: string; name: string | null; status: string; vendor_user_id: string | null }>(
-        tx,
-        sql`select p.id, p.name, p.status::text as status, v.user_id as vendor_user_id from public.products p left join public.vendors v on v.id = p.vendor_id where p.id = ${productId} for update of p`,
-      );
+      const repo = new ProductSuspensionRepository(tx);
+      const p = await repo.lock(productId);
       if (!p) throw notFound("Product not found.");
       if (p.status === "removed") throw conflict("This product was removed.");
       if (suspended) {
         if (p.status === "suspended") throw conflict("This product is already suspended.");
-        await tx.execute(sql`update public.products set status = 'suspended'::public.product_status, suspended_reason = ${reason}, suspended_at = now(), suspended_by = ${me.userId}::uuid where id = ${productId}`);
+        await repo.suspend(productId, reason, me.userId);
       } else {
         if (p.status !== "suspended") throw conflict("This product is not suspended.");
-        await tx.execute(sql`update public.products set status = 'active'::public.product_status, suspended_reason = null, suspended_at = null, suspended_by = null where id = ${productId}`);
+        await repo.restore(productId);
       }
       await new NotificationWriter(tx).create({
         userId: p.vendor_user_id,
@@ -36,7 +33,7 @@ export class ProductSuspensionService {
         targetView: "vendorProducts",
         actorId: me.userId,
       });
-      await tx.execute(sql`insert into public.admin_actions (admin_id, admin_name, action, target_type, target_id, target_label) select ${me.userId}, u.name, ${suspended ? "Suspended a product" : "Restored a suspended product"}, 'product', ${productId}, ${p.name ?? ""} from public.users u where u.id = ${me.userId}`);
+      await repo.log(me.userId, productId, p.name ?? "", suspended);
       return { id: productId, status: suspended ? "suspended" : "active" };
     });
   }
