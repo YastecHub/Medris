@@ -365,6 +365,7 @@ export const RPC: Record<string, RpcEntry> = {
   get_my_points_summary: { run: (s, me) => s.points.summary(me) },
   get_my_points_activity: { run: (s, me, a) => s.points.activity(me, or(num(a.p_limit), 40), str(a.p_before)) },
   validate_referral_code: { run: (s, _me, a) => s.points.validateCode(str(a.p_code)), limit: L.points },
+  set_my_referral_code: { run: (s, me, a) => s.points.setMyCode(me, str(a.p_code)), limit: L.points },
   apply_referral_code: { run: (s, me, a) => s.points.applyCode(me, str(a.p_code)), limit: L.points },
   admin_adjust_points: { run: (s, me, a) => s.points.adjust(me, id(a.p_user), num(a.p_points), str(a.p_note)), limit: L.points },
   admin_award_social_points: { run: (s, me, a) => s.points.awardSocial(me, str(a.p_phone), str(a.p_platform)), limit: L.points },

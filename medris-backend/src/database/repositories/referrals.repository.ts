@@ -59,4 +59,24 @@ export class ReferralsRepository {
       if (!(await jsonRow(this.db, sql`select 1 as x from public.vendors where referral_code = ${code}`))) return code;
     }
   }
+
+  /** set_my_referral_code(): the shop of this user takes a new code. Codes are kept in capitals; the old one is remembered. */
+  async changeCode(userId: string, input: string | null): Promise<Record<string, unknown>> {
+    const code = String(input ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    const shop = await jsonRow<{ id: string; referral_code: string | null }>(this.db, sql`select id, referral_code from public.vendors where user_id = ${userId} and deleted_at is null limit 1`);
+    if (!shop) return { ok: false, error: "not_a_shop", message: "Only shops have a referral code." };
+    if (code.length < 4 || code.length > 16) return { ok: false, error: "bad_length", message: "Use 4 to 16 letters or numbers, no spaces." };
+    if (["VOID", "LEVROMART", "LEVROMARTADMIN", "ADMIN"].includes(code)) return { ok: false, error: "reserved", message: "That code is not available. Try another." };
+    if (code === shop.referral_code) return { ok: true, referral_code: code, unchanged: true };
+    if (await jsonRow(this.db, sql`select 1 as x from public.vendors where referral_code = ${code} and id <> ${shop.id}`)) {
+      return { ok: false, error: "taken", message: "Someone already uses that code. Try another." };
+    }
+    const recent = await jsonRow<{ n: number }>(this.db, sql`select count(*)::int as n from public.vendor_referral_code_history where vendor_id = ${shop.id} and changed_at > now() - interval '1 day'`);
+    if ((recent?.n ?? 0) >= 5) return { ok: false, error: "too_many", message: "You changed it a lot today. Try again tomorrow." };
+    await this.db.execute(sql`select set_config('levro.referral_change', 'on', true)`);
+    await this.db.execute(sql`update public.vendors set referral_code = ${code} where id = ${shop.id}`);
+    await this.db.execute(sql`select set_config('levro.referral_change', 'off', true)`);
+    await this.db.execute(sql`insert into public.vendor_referral_code_history (vendor_id, old_code, new_code) values (${shop.id}, ${shop.referral_code}, ${code})`);
+    return { ok: true, referral_code: code };
+  }
 }

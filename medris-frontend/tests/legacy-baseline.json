@@ -1,7 +1,7 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "b3e5d474d4091859943cf18ac577a5be5b9a2cfe6f1852dd012a5016cc39acc2",
+    "index.html": "93207a9a6a210f3703c516244f17bb0f77c78e0b888a4451f3d2a6b727c0bd32",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
@@ -20,8 +20,8 @@
     "assets/js/11-levromart-global-broken-image-fallback.js": "ed5aa967b0fc790f616469e9d0d552991a576d7a4871c076816cbfc08ac00256",
     "assets/js/12-lv-onboarding-auth-js.js": "ba8db17081e6e0e7ed0e362978dbc5effa5360fe97ad8270d4b306dc8887042c",
     "assets/js/13-face-verify.js": "f0bfbe30accc5ae75c21118d03ab8219d9b01bc1a9074cac4ca56a5be8ae2008",
-    "assets/js/14-motion.js": "3ffb40e4894343c12b76a1c2eefa019b57e83bc572126de0917114a5fa0abde6",
+    "assets/js/14-motion.js": "69c45e51615e49dab52ff7f1053395c9573dc8026a0f4438d24a6209939ed718",
     "assets/js/15-autosave.js": "d006bb511a42c50dc6f15999ebba27c228c6cbf9821e3a8b229aba2d8b82bf74",
-    "sw.js": "37b037c4efb68f3fe902176b56a89c7cc2bfc2827ae558ab5e072b5efe348461"
+    "sw.js": "0acced07de984c7b225f260c7b913b1c4e4e62e35b602e0366c796a55030a22a"
   }
 }
