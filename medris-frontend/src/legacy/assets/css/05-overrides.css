@@ -4119,3 +4119,9 @@ html:root:root body #aiChatPanel.lv-full .ai-chat-history-panel{display:flex!imp
 html:root:root body #aiChatPanel.lv-full .ai-chat-history-item{padding:.7rem .5rem}
 html:root:root body #aiChatPanel .ai-chat-history-delete{background:transparent!important;border:0!important;box-shadow:none!important;color:color-mix(in srgb,var(--lvl-ink) 50%,transparent)!important;width:2rem;height:2rem;border-radius:50%}
 html:root:root body #aiChatPanel .ai-chat-history-delete i{color:inherit!important}
+
+/* home campus switch (Mine / All): purple highlight like the bottom bar */
+html:root:root body #lvCampusBar .seg button.on{color:#7c5ce6!important;border-bottom-color:#7c5ce6!important}
+html[data-theme="dark"]:root:root body #lvCampusBar .seg button.on,html[data-theme="black"]:root:root body #lvCampusBar .seg button.on{color:#a58bfa!important;border-bottom-color:#a58bfa!important}
+html:root:root body .lb-scope-seg button.on{color:#7c5ce6!important;border-bottom-color:#7c5ce6!important}
+html[data-theme="dark"]:root:root body .lb-scope-seg button.on,html[data-theme="black"]:root:root body .lb-scope-seg button.on{color:#a58bfa!important;border-bottom-color:#a58bfa!important}
