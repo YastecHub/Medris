@@ -78,7 +78,7 @@ function renderPrivacy() {
     <ul>
       <li><strong>Account data:</strong> name, email, phone, city, the school or campus you choose, and (for vendors) business details and verification documents such as a student ID card, biodata page, CAC document or, for sellers who are not students, another valid ID card.</li>
       <li><strong>Payout details (vendors):</strong> the bank name, account number and account name you add so we can pay you.</li>
-      <li><strong>Refund account (customers):</strong> the bank name, the account name and the last four digits of the account you add so we can pay refunds to you. We do not keep the full account number; the payment provider holds it as a transfer recipient.</li>
+      <li><strong>Refund account (customers):</strong> the bank name, the account name and the last four digits of the account you add so we can pay refunds to you. We do not keep the full account number; the payment provider holds it as a transfer recipient. If the account cannot be saved straight away, the number is kept with your own login only until it can be saved, and is then removed.</li>
       <li><strong>Withdrawal records (vendors):</strong> when you withdraw money from your wallet we keep the amount, the time, the orders it covers and the decision, including the reason if Levromart declined a request.</li>
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>

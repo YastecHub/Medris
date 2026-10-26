@@ -1,4 +1,4 @@
-# Database changes waiting to be applied (0014 to 0021)
+# Database changes waiting to be applied (0014 to 0022)
 
 These are written, tested and merged, but a migration only changes the live database when an engineer applies it
 (`docs/DATABASE.md`, section 3). Until then the matching feature shows "being set up" or does nothing.
@@ -14,6 +14,7 @@ The Admin → Payments page shows an orange box listing exactly which of these a
 | 0019 | **Customers' refund bank account and refunds wallet** (new tables) |
 | 0020 | Verifying a student without a matric number; who asked for a new school |
 | 0021 | Admins suspending products |
+| 0022 | Open orders that were "pay after delivery" become "pay in full first" |
 
 ## How (engineer)
 

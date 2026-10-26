@@ -97,6 +97,8 @@ const envSchema = z.object({
   AUTH_BACKEND_SESSIONS: bool(false),
   // Paystack checkout for orders (issue #89): off until it has been proven in test mode
   PAYSTACK_CHECKOUT_ENABLED: bool(false),
+  /** Pay-after-delivery (a deposit now, the rest later) is switched off for good: every new order is paid in full first. Only the older-orders tests turn it on. */
+  PAY_AFTER_DELIVERY_ENABLED: bool(false),
   AUTH_SESSION_TTL_DAYS: intInRange(30, 1, 365),
   AUTH_SESSION_IDLE_DAYS: intInRange(14, 1, 365),
   AUTH_COOKIE_NAME: z
@@ -143,6 +145,7 @@ export interface AppConfig {
   logLevel: "debug" | "info" | "warn" | "error";
   appOrigin: string;
   paystack: { checkoutEnabled: boolean };
+  payAfterDelivery: boolean;
   database: {
     url?: string;
     /** For live updates' LISTEN connection (session mode; unset = no row changes pushed). */
@@ -227,6 +230,7 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
     logLevel: e.LOG_LEVEL,
     appOrigin: e.APP_ORIGIN ?? DEFAULT_APP_ORIGIN,
     paystack: { checkoutEnabled: e.PAYSTACK_CHECKOUT_ENABLED },
+    payAfterDelivery: e.PAY_AFTER_DELIVERY_ENABLED,
     database: {
       url: e.DATABASE_URL,
       liveUrl: e.LIVE_DATABASE_URL,

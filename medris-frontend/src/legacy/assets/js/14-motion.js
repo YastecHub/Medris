@@ -1985,9 +1985,27 @@ window.lvAskCancel = async function (orderId) {
 /* ===== Refunds wallet for buyers: refunds land here (not on the card) and are withdrawn to a bank account ===== */
 (function () {
   "use strict";
-  var cache = null, loading = null, popupDone = false, failed = false;
+  var cache = null, loading = null, popupDone = false, failed = false, activating = false;
   var DISMISS = "lv-rw-dismissed";
   function signedIn() { return typeof session !== "undefined" && session && typeof profile !== "undefined" && profile && profile.role !== "admin"; }
+  // An account that was checked but could not be saved on the server yet (the refunds wallet is still being switched on) is kept
+  // safely on the person's own login and sent again automatically as soon as the server can take it.
+  function pendingAcct() { try { return (session && session.user && session.user.user_metadata && session.user.user_metadata.lv_refund_pending) || null; } catch (_) { return null; } }
+  async function setPending(v) {
+    try {
+      var r = await sb.auth.updateUser({ data: { lv_refund_pending: v } });
+      if (r && r.error) return false;
+      try { session.user.user_metadata = Object.assign({}, session.user.user_metadata || {}, { lv_refund_pending: v }); } catch (_) {}
+      return true;
+    } catch (_) { return false; }
+  }
+  async function activatePending() {
+    var pa = pendingAcct(); if (!pa || activating) return; activating = true;
+    try {
+      var r = await sb.rpc("save_refund_account", { p_bank_code: pa.c, p_account_number: pa.n, p_confirmed_name: pa.name });
+      if (!r.error) { await setPending(null); cache = null; refresh(true); }
+    } catch (_) {} finally { activating = false; }
+  }
   function money(kobo) { return "₦" + (Number(kobo || 0) / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }
   function when(d) { try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + new Date(d).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" }); } catch (_) { return ""; } }
   async function load(force) {
@@ -1999,19 +2017,21 @@ window.lvAskCancel = async function (orderId) {
       if (r.error || !r.data) { failed = true; return cache ? cache.data : null; }   // not set up on the server yet: the card says so instead of waiting forever
       failed = false;
       cache = { at: Date.now(), data: r.data };
+      if (!r.data.has_account && pendingAcct()) activatePending();
       return r.data;
     })().catch(function () { return null; }).finally(function () { loading = null; });
     return loading;
   }
   function card(d) {
-    var has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
+    var pa = pendingAcct(), has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
     return '<div class="lvw-card is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span></div>' +
-      '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : "Refunds go here once you add a bank account") + '</div>' +
+      '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Your refund account is saved" : "Refunds go here once you add a bank account") + '</div>' +
       '<div class="lvw-bal">' + (d || failed ? money(bal) : '<span class="lvw-skel"></span>') + '</div>' +
       (!d && failed ? '<div class="lvrw-note">Your refunds wallet is getting ready. Refunds will show here.</div>' : "") +
+      (!has && pa ? '<div class="lvrw-note"><i class="fa-solid fa-building-columns"></i> ' + esc(pa.b || "Bank") + " · ···" + esc(pa.l || "") + ' is saved. It starts working as soon as the refunds wallet is switched on.</div>' : "") +
       (pend ? '<div class="lvrw-note">' + money(pend) + ' on its way to your bank</div>' : "") +
       '<div class="lvw-actions">' +
-        (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid fa-plus"></i> Add bank account</button>') +
+        (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change bank account" : "Add bank account") + '</button>') +
         '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvRefundHistory()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
       '</div>' +
       (has ? '<div class="lvrw-acct"><i class="fa-solid fa-building-columns"></i> ' + esc(d.account.bank_name) + " · ···" + esc(d.account.last4) + ' <button type="button" onclick="lvRefundAccount()">Change</button></div>' : "") +
@@ -2093,7 +2113,16 @@ window.lvAskCancel = async function (orderId) {
           return;
         }
         var s = await sb.rpc("save_refund_account", { p_bank_code: sel.value, p_account_number: num.value.trim(), p_confirmed_name: found.accountName });
-        if (s.error) { found = null; return say(msg, friendly(s.error), true); }
+        if (s.error) {
+          // the name was confirmed with the bank, so keep the account safe on the person's login and finish saving it later
+          var bname = (list.find(function (x) { return x.code === sel.value; }) || {}).name || found.bankName || "";
+          var kept = await setPending({ c: sel.value, n: num.value.trim(), name: found.accountName, b: bname, l: num.value.trim().slice(-4), at: Date.now() });
+          if (!kept) { found = null; return say(msg, friendly(s.error), true); }
+          var el0 = document.getElementById("lvrwSheet"); if (el0) el0.remove();
+          showToast("Account saved. Refunds will use it as soon as the refunds wallet is switched on.", "success");
+          paint(); return;
+        }
+        await setPending(null);
         var el = document.getElementById("lvrwSheet"); if (el) el.remove();
         showToast("Refund account saved.", "success");
         await refresh(true);
@@ -2155,6 +2184,7 @@ window.lvAskCancel = async function (orderId) {
   async function ask() {
     if (popupDone || document.hidden || !signedIn()) return;
     try { if (Date.now() - Number(localStorage.getItem(DISMISS) || 0) < 3 * 864e5) return; } catch (_) {}
+    if (pendingAcct()) return;
     if (document.querySelector(".modal.open, #lvrwSheet, #lvCampus, #levromartSplash:not(.is-hidden), .onboarding-overlay, .lvw-sheet-wrap")) return;
     var d = await load(false);
     if (!d) return;
