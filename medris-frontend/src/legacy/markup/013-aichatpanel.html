@@ -1,5 +1,7 @@
 <div id="aiChatPanel" class="ai-chat-panel hidden">
   <div class="drawer-header">
+    <button class="icon-btn levi-full-only" id="leviBackBtn" onclick="leviExitFull()" title="Back" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+    <button class="icon-btn levi-full-only" id="leviMenuBtn" onclick="toggleLeviSidebar()" title="Chats" aria-label="Chats and history"><i class="fa-solid fa-bars"></i></button>
     <h4><img id="aiChatHeaderLogo" class="ai-chat-header-logo" alt="" /> Levi</h4>
     <div class="flex levi-header-actions" style="gap:0.3rem;">
       <div class="levi-tools" id="leviTools">
@@ -7,14 +9,18 @@
         <button class="icon-btn" onclick="startNewAiChat()" title="New chat"><i class="fa-solid fa-plus"></i></button>
         <button class="icon-btn" id="aiChatHistoryToggleBtn" onclick="toggleAiChatHistory()" title="Recent chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
         <button class="icon-btn" id="aiChatExpandBtn" onclick="toggleAiChatExpanded()" title="Expand"><i class="fa-solid fa-expand"></i></button>
-        <button class="icon-btn" onclick="hideLeviFromPanel()" title="Hide Levi"><i class="fa-solid fa-eye-slash"></i></button>
       </div>
       <button class="icon-btn levi-tools-toggle" id="leviToolsToggle" onclick="toggleLeviTools()" title="More" aria-expanded="false" aria-controls="leviTools"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="icon-btn levi-full-only" onclick="startNewAiChat()" title="New chat" aria-label="New chat"><i class="fa-regular fa-pen-to-square"></i></button>
       <button class="drawer-close-btn" onclick="toggleAiChat()"><i class="fa-solid fa-xmark"></i></button>
     </div>
   </div>
-  <input type="text" id="aiChatHistorySearch" placeholder="Search chats…" oninput="searchAiChatHistory()" />
-  <div id="aiChatHistoryList" class="ai-chat-history-panel"></div>
+  <div id="leviSideBack" class="levi-side-back" onclick="toggleLeviSidebar(false)"></div>
+  <div id="leviSide" class="levi-side">
+    <div class="levi-side-head"><button type="button" onclick="startNewAiChat()"><i class="fa-regular fa-pen-to-square"></i> New chat</button><button type="button" onclick="shareCurrentAiChat()"><i class="fa-solid fa-share-nodes"></i> Share this chat</button></div>
+    <input type="text" id="aiChatHistorySearch" placeholder="Search chats…" oninput="searchAiChatHistory()" />
+    <div id="aiChatHistoryList" class="ai-chat-history-panel"></div>
+  </div>
   <div id="aiChatMessages" class="ai-chat-messages"></div>
   <button type="button" id="aiChatBottomBtn" class="ai-chat-bottom-btn hidden" onclick="scrollAiChatToBottom()" aria-label="Jump to latest message" title="Jump to latest message"><i class="fa-solid fa-arrow-down"></i></button>
   <div id="aiVoiceStatus" class="voice-recording-status hidden" aria-live="polite">

@@ -4021,9 +4021,9 @@ html:root body .ap-pick-badge{margin-left:auto;margin-right:.4rem}
 html:root body .lv-pay-badge.hidden{display:none!important}
 html:root body #app .lv-ap-row{border-radius:16px;box-shadow:none}
 html:root body .admin-nav-pick .dash-tab-dot{background:#e0463f!important;color:#fff!important;border-radius:999px!important;min-width:1.3rem;height:1.3rem;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;padding:0 .3rem}
-html:root:root:root:root:root body #bottomNav.bottom-nav,html:root:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#0b0b0c;--lv-nav-line:#0b0b0c}
-html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav.has-add,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#fff;--lv-nav-line:#fff}
-html:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#0b0b0c!important;-webkit-text-fill-color:#0b0b0c!important}
+html:root:root:root:root:root body #bottomNav.bottom-nav,html:root:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#7c5ce6;--lv-nav-line:#7c5ce6}
+html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav.has-add,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#a58bfa;--lv-nav-line:#a58bfa}
+html:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#7c5ce6!important;-webkit-text-fill-color:#7c5ce6!important}
 html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#fff!important;-webkit-text-fill-color:#fff!important}
 
 /* ===== Levi: clean, neutral chat (like ChatGPT / Claude): grey user bubble, plain answers, black-and-white icons ===== */
@@ -4077,3 +4077,45 @@ html:root:root body #aiChatPanel .lvc-price{font-size:.9rem;font-weight:800}
 html:root:root body #aiChatPanel .lvc-shop{display:flex;align-items:center;gap:.4rem;font-size:.76rem;color:color-mix(in srgb,var(--lvl-ink) 60%,transparent);min-width:0}
 html:root:root body #aiChatPanel .lvc-shop>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html:root:root body #aiChatPanel .lvc-logo{width:1.2rem;height:1.2rem;flex:none;border-radius:50%;object-fit:cover;font-size:.62rem;background:var(--lvl-soft)}
+
+/* bottom bar, final: active tab is purple (light purple in dark mode), the rest black / white; vendor + ring is purple; the bell rings when something is waiting */
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#7c5ce6!important;-webkit-text-fill-color:#7c5ce6!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#a58bfa!important;-webkit-text-fill-color:#a58bfa!important}
+html:root:root:root:root:root:root body #bottomNav .bn-ind{background:#7c5ce6!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bn-ind,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bn-ind{background:#a58bfa!important}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#7c5ce6!important;color:#7c5ce6!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#a58bfa!important;color:#a58bfa!important}
+html:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon svg{stroke:currentColor!important}
+html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:lvJiggle 2.8s ease-in-out infinite;transform-origin:50% 12%}
+@media (prefers-reduced-motion:reduce){html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:none}}
+/* home: the campus row sits closer to the search bar */
+html:root body[data-view="home"] #app{margin-top:-6px!important}
+html:root body #app #lvCampusBar{margin-top:-.35rem!important}
+
+/* ===== Levi full page (the expand button): like ChatGPT. Back arrow + menu on the left, chat history slides out of the menu ===== */
+html:root:root body #aiChatPanel .levi-full-only{display:none!important}
+html:root:root body #aiChatPanel #leviSide{display:contents}
+html:root:root body #aiChatPanel .levi-side-head,html:root:root body #aiChatPanel .levi-side-back{display:none}
+html:root:root body #aiChatPanel.lv-full{position:fixed!important;left:0!important;right:0!important;top:0!important;bottom:0!important;width:100%!important;max-width:none!important;height:100dvh!important;max-height:none!important;margin:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;animation:none!important;padding:0!important;display:flex;flex-direction:column;overflow:hidden}
+html:root:root body #aiChatPanel.lv-full::before{display:none!important}
+html:root:root body #aiChatPanel.lv-full .levi-full-only{display:inline-flex!important}
+html:root:root body #aiChatPanel.lv-full .levi-tools,html:root:root body #aiChatPanel.lv-full .levi-tools-toggle,html:root:root body #aiChatPanel.lv-full .drawer-close-btn{display:none!important}
+html:root:root body #aiChatPanel.lv-full .drawer-header{flex:none;padding:calc(.55rem + env(safe-area-inset-top,0px)) .7rem .55rem!important;gap:.15rem;justify-content:flex-start}
+html:root:root body #aiChatPanel.lv-full .drawer-header h4{margin-right:auto;margin-left:.3rem;font-size:1.1rem}
+html:root:root body #aiChatPanel.lv-full .levi-header-actions{margin-left:0}
+html:root:root body #aiChatPanel.lv-full .ai-chat-messages{flex:1;min-height:0;overflow-y:auto;width:100%;max-width:760px;margin:0 auto;padding:1rem 1rem .6rem}
+html:root:root body #aiChatPanel.lv-full .ai-chat-input-row{flex:none;width:100%;max-width:760px;margin:0 auto;padding:.5rem 1rem calc(.8rem + env(safe-area-inset-bottom,0px))!important}
+/* the sliding history */
+html:root:root body #aiChatPanel.lv-full .levi-side-back{display:block;position:absolute;inset:0;z-index:25;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:opacity .25s ease}
+html:root:root body #aiChatPanel.lv-full.lv-side-open .levi-side-back{opacity:1;pointer-events:auto}
+html:root:root body #aiChatPanel.lv-full #leviSide{display:flex;flex-direction:column;position:absolute;left:0;top:0;bottom:0;z-index:30;width:min(86%,340px);padding:calc(.9rem + env(safe-area-inset-top,0px)) .8rem .8rem;background:#fff;box-shadow:8px 0 30px rgba(0,0,0,.14);transform:translateX(-104%);transition:transform .3s cubic-bezier(.3,.8,.3,1);overflow:hidden}
+html[data-theme="dark"]:root body #aiChatPanel.lv-full #leviSide,html[data-theme="black"]:root body #aiChatPanel.lv-full #leviSide{background:#1a1b1e}
+html:root:root body #aiChatPanel.lv-full.lv-side-open #leviSide{transform:none}
+html:root:root body #aiChatPanel.lv-full .levi-side-head{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.6rem}
+html:root:root body #aiChatPanel.lv-full .levi-side-head button{display:flex;align-items:center;gap:.7rem;width:100%;padding:.65rem .6rem;border:0;border-radius:12px;background:transparent;color:var(--lvl-ink);font:inherit;font-size:.95rem;font-weight:600;text-align:left;cursor:pointer}
+html:root:root body #aiChatPanel.lv-full .levi-side-head button:active{background:var(--lvl-soft)}
+html:root:root body #aiChatPanel.lv-full #aiChatHistorySearch{display:block!important;margin:0 0 .5rem!important;padding:.6rem .9rem;border:0;border-radius:12px;background:var(--lvl-soft);color:var(--lvl-ink);font:inherit;font-size:.92rem}
+html:root:root body #aiChatPanel.lv-full .ai-chat-history-panel{display:flex!important;flex-direction:column;flex:1;min-height:0;overflow-y:auto}
+html:root:root body #aiChatPanel.lv-full .ai-chat-history-item{padding:.7rem .5rem}
+html:root:root body #aiChatPanel .ai-chat-history-delete{background:transparent!important;border:0!important;box-shadow:none!important;color:color-mix(in srgb,var(--lvl-ink) 50%,transparent)!important;width:2rem;height:2rem;border-radius:50%}
+html:root:root body #aiChatPanel .ai-chat-history-delete i{color:inherit!important}

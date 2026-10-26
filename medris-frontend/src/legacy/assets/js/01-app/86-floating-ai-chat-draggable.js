@@ -11,17 +11,14 @@ function toggleAiChat() {
   panel.style.removeProperty("pointer-events");
   panel.classList.toggle("hidden");
   const isOpen = !panel.classList.contains("hidden");
+  if (!isOpen) { panel.classList.remove("lv-full", "lv-side-open"); document.documentElement.classList.remove("lv-levi-full"); }
   // The FAB follows the panel state, while still respecting the user's Levi visibility preference.
   syncLeviFabVisibility();
   updateCartFab();
   if (isOpen) {
     setupAiChatBottomButton();
     playSound("open");
-    let wasExpanded = false;
-    try { wasExpanded = localStorage.getItem("levromart-ai-chat-expanded") === "1"; } catch (e) {}
-    panel.classList.toggle("expanded", wasExpanded);
-    const expandBtn = byId("aiChatExpandBtn");
-    if (expandBtn) { expandBtn.title = wasExpanded ? "Shrink" : "Expand"; expandBtn.querySelector("i").className = wasExpanded ? "fa-solid fa-compress" : "fa-solid fa-expand"; }
+    panel.classList.remove("expanded");
     if (aiChatMessages.length === 0) {
       if (!aiChatResumeAttempted) { aiChatResumeAttempted = true; resumeLastAiConversation(); }
       else showAiChatGreeting();
@@ -74,6 +71,7 @@ function startNewAiChat() {
   aiChatLastDateKey = null;
   byId("aiChatMessages").innerHTML = "";
   exitAiChatHistoryMode();
+  byId("aiChatPanel")?.classList.remove("lv-side-open");
   showAiChatGreeting();
 }
 // Guarded against firing twice for the same conversation -- two messages
@@ -100,13 +98,27 @@ async function persistAiMessage(role, content) {
   const { data } = await sb.from("ai_messages").insert({ conversation_id: convId, role, content }).select("id").single();
   return data?.id || null;
 }
+// "Expand" opens Levi as a full page of his own (like ChatGPT): a top bar with Back and a menu button; the menu slides out the chat history.
 function toggleAiChatExpanded() {
   const panel = byId("aiChatPanel");
-  const expanded = panel.classList.toggle("expanded");
-  const btn = byId("aiChatExpandBtn");
-  btn.title = expanded ? "Shrink" : "Expand";
-  btn.querySelector("i").className = expanded ? "fa-solid fa-compress" : "fa-solid fa-expand";
-  try { localStorage.setItem("levromart-ai-chat-expanded", expanded ? "1" : "0"); } catch (e) {}
+  if (panel.classList.contains("lv-full")) return leviExitFull();
+  panel.classList.remove("history-mode", "expanded");
+  byId("aiChatHistoryToggleBtn")?.classList.remove("active");
+  panel.classList.add("lv-full");
+  document.documentElement.classList.add("lv-levi-full");
+  try { toggleLeviTools(false); } catch (_) {}
+}
+function leviExitFull() {
+  const panel = byId("aiChatPanel");
+  panel?.classList.remove("lv-full", "lv-side-open", "history-mode");
+  document.documentElement.classList.remove("lv-levi-full");
+  try { window.__lvPanelUnfull && window.__lvPanelUnfull(); } catch (_) {}
+}
+function toggleLeviSidebar(force) {
+  const panel = byId("aiChatPanel");
+  const open = typeof force === "boolean" ? force : !panel.classList.contains("lv-side-open");
+  panel.classList.toggle("lv-side-open", open);
+  if (open) { const s = byId("aiChatHistorySearch"); if (s) s.value = ""; loadAiChatHistoryList(); }
 }
 function toggleAiChatHistory() {
   const panel = byId("aiChatPanel");
@@ -171,6 +183,7 @@ async function openAiConversation(id) {
   byId("aiChatMessages").innerHTML = "";
   msgs.forEach((m) => appendAiChatMessage(m.role, m.content, false, true, m.id, m.reaction, m.created_at));
   exitAiChatHistoryMode();
+  byId("aiChatPanel")?.classList.remove("lv-side-open");
 }
 async function deleteAiConversation(id,evt){evt?.stopPropagation?.();if(!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("ai_conversations").delete().eq("id",id);if(error){showToast(error.message||"Couldn't delete this chat.","error");return;}const panel=byId("aiChatPanel"),wasHistory=!!panel&&panel.classList.contains("history-mode");if(currentAiConversationId===id){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem("medris-ai-last-conversation");aiChatMessages=[];aiChatLastDateKey=null;byId("aiChatMessages")?.replaceChildren();if(!wasHistory)showAiChatGreeting();}
   // Same reasoning as the batch delete above: remove locally and re-render
@@ -402,7 +415,7 @@ async function goToAiChatNav(nav) {
       const panel = byId("aiChatPanel");
       if (panel) {
         panel.classList.add("hidden");
-        panel.classList.remove("expanded", "history-mode");
+        panel.classList.remove("expanded", "history-mode", "lv-full", "lv-side-open"); document.documentElement.classList.remove("lv-levi-full");
         panel.setAttribute("aria-hidden", "true");
         panel.style.setProperty("visibility", "hidden", "important");
         panel.style.setProperty("pointer-events", "none", "important");

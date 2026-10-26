@@ -130,6 +130,7 @@
       allow: function (t, sheet) {
         if (t.closest("button,a,input,textarea,select,label,.ai-chat-history-item,.ai-history-select-toolbar,.ai-chat-input-row,.levi-tools")) return false;
         if (sheet.classList.contains("history-mode") && !t.closest(".drawer-header")) return false;
+        if (sheet.classList.contains("lv-full")) return false;
         if (document.querySelector(".lv-dlg,#confirmModal.open,.modal.open")) return false;
         return true;
       } },
@@ -1383,7 +1384,7 @@
   function closeLevi() {
     var p = document.getElementById("aiChatPanel");
     if (!p || p.classList.contains("hidden")) return;
-    p.classList.add("hidden"); p.style.removeProperty("transform"); p.style.removeProperty("transition");
+    p.classList.add("hidden"); p.classList.remove("lv-full", "lv-side-open"); document.documentElement.classList.remove("lv-levi-full"); p.style.removeProperty("transform"); p.style.removeProperty("transition");
     try { syncLeviFabVisibility(); } catch (_) {}
     try { updateCartFab(); } catch (_) {}
   }
