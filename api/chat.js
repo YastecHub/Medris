@@ -826,7 +826,7 @@ async function transcribeAudio(body, res) {
 // straight from the live catalogue (no waiting for the language model), so the answer is complete, accurate and fast.
 // The language model still handles everything else (cart, orders, advice, chat).
 // ---------------------------------------------------------------------------------------------------------------------
-const DETAIL_WORDS = new Set("how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
+const DETAIL_WORDS = new Set("none cheapest cheaper lowest least most affordable budget priciest how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
 const NOT_PRODUCT_INTENT = /\b(cart|checkout|order|orders|wishlist|message|messages|chat with|settings|profile|password|account|payment|pay|refund|withdraw|complain|report|help me|how do i|how does|what is levromart|who are you|levi)\b/;
 const FIND_INTENT = /\b(vendors?|sells?|selling|seller|sellers|shops?|stores?|price|prices|how much|cost|close|closest|nearest|near|nearby|far|distance|where (can|do) i|do you (have|sell)|any|need|want|looking for|find|get me|buy|rent|available|which)\b/;
 function productTerm(text) {
@@ -848,7 +848,7 @@ function distLabel(km) {
   if (km > 60) return `${Math.round(km)} km away`;
   const t = travelEstimate(km);
   const d = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
-  return `${d} away (about ${t.walking_minutes} min on foot, ${t.by_car_or_bike_minutes} min by car or bike)`;
+  return km > 5 ? `${d} away (about ${t.by_car_or_bike_minutes} min by car or bike)` : `${d} away (about ${t.walking_minutes} min on foot, ${t.by_car_or_bike_minutes} min by car or bike)`;
 }
 async function quickFind(messages, ctx) {
   const latest = String([...messages].reverse().find((m) => m?.role === "user")?.content || "");
@@ -869,6 +869,14 @@ async function quickFind(messages, ctx) {
     byVendor.get(v.id).products.push(p);
   }
   const rows = [...byVendor.values()];
+  const priceOf = (p) => Number(p.discount_price ?? p.sale_price ?? p.rental_rate ?? Infinity);
+  const wantCheap = /\b(cheap|cheaper|cheapest|lowest|least|affordable|budget)\b/.test(low);
+  const wantPricey = /\b(expensive|priciest|highest price|most)\b/.test(low) && /\b(expensive|priciest)\b/.test(low);
+  if (wantCheap || wantPricey) {
+    const flat = found.results.filter((p) => p.vendor).sort((a, b) => wantCheap ? priceOf(a) - priceOf(b) : priceOf(b) - priceOf(a)).slice(0, 6);
+    const ls = flat.map((p, i) => `${i + 1}. ${p.name} ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)} from ${p.vendor.business_name}${hasLoc && Number.isFinite(p.vendor.distance_km) ? `, ${distLabel(p.vendor.distance_km)}` : ""}`);
+    return `${wantCheap ? "Cheapest" : "Most expensive"} ${term}, ${wantCheap ? "lowest" : "highest"} price first:\n${ls.join("\n")} [[PRODUCTS:${flat.slice(0, 5).map((p) => p.id).join(",")}]]`;
+  }
   rows.sort((a, b) => hasLoc ? (a.v.distance_km ?? Infinity) - (b.v.distance_km ?? Infinity) : Number(b.v.avg_rating || 0) - Number(a.v.avg_rating || 0));
   const kinds = [...new Set(found.results.map((p) => normalize(p.name)))];
   const lines = rows.slice(0, 8).map((r, i) => {
@@ -898,7 +906,7 @@ module.exports = async function handler(req, res) {
     const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
     const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
     const GEMINI_API_KEY = env("GEMINI_API_KEY");
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_KEY || !GEMINI_API_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_KEY) {
       res.status(500).json({ error: "Levi is not configured correctly yet." }); return;
     }
 
@@ -912,9 +920,9 @@ module.exports = async function handler(req, res) {
         headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ p_user_id: me.id, p_limit: DAILY_MESSAGE_LIMIT }),
       });
-      const withinLimit = await usageRes.json();
-      if (!usageRes.ok) { res.status(500).json({ error: "Levi could not check chat usage." }); return; }
-      if (withinLimit !== true) { res.status(429).json({ error: `You've hit today's Levi message limit (${DAILY_MESSAGE_LIMIT}).` }); return; }
+      const withinLimit = await usageRes.json().catch(() => null);
+      if (!usageRes.ok) console.warn("[Levromart] chat usage check failed:", usageRes.status);   // a broken counter must not silence Levi
+      else if (withinLimit !== true) { res.status(429).json({ error: `You've hit today's Levi message limit (${DAILY_MESSAGE_LIMIT}).` }); return; }
     }
 
     const serviceHeaders = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
@@ -946,6 +954,8 @@ module.exports = async function handler(req, res) {
       const quick = await quickFind(messages, ctx);
       if (quick) { res.status(200).json({ reply: quick }); return; }
     } catch (err) { console.warn("[Levromart] quickFind skipped:", err?.message); }
+
+    if (!GEMINI_API_KEY) { res.status(500).json({ error: "Levi is not configured correctly yet." }); return; }
 
     const vendor = await getMyVendor(ctx).catch(() => null);
 

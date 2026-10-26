@@ -4,7 +4,7 @@ import { go } from "@/views/legacy-navigate";
  * Terms of Service, drawn by React.
  *
  * Converted one-to-one from renderTerms() (src/legacy/assets/js/01-app/85-legal-pages.js:2): same
- * markup, same classes, same text ("Last updated: 25 October 2026"). The text is a static string of
+ * markup, same classes, same text ("Last updated: 26 October 2026"). The text is a static string of
  * our own, so it is written as plain JSX (escaped by React); nothing comes from the database.
  * Until the legacy screen is deleted (a later pull request) any wording change must be made in
  * BOTH places; the parity test (tests/e2e/pilot-terms.spec.ts) fails if they drift apart.
@@ -15,7 +15,7 @@ export default function Terms() {
   return (
     <div className="legal-page">
       <h2>Terms of Service</h2>
-      <p className="muted">Last updated: 25 October 2026</p>
+      <p className="muted">Last updated: 26 October 2026</p>
       <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
       <h3>1. What Levromart is (and isn't)</h3>
@@ -30,7 +30,7 @@ export default function Terms() {
       <ul>
       <li>Online payments are processed through Paystack. Levromart never stores your card details. Many orders are instead paid directly to the vendor by bank transfer: you report the payment in the app and the vendor confirms it. An order is only treated as paid once the payment has been confirmed (by Paystack or by the vendor).</li>
       <li>Orders are paid in full through Levromart before delivery, and the money is held until the order is done. Once the payment is confirmed and the vendor marks the order out for delivery or handed over, you have 48 hours to confirm receipt or raise a dispute; if you do neither, the order completes automatically and the vendor is paid.</li>
-      <li>Vendors add their payout bank account in the app so they can be paid. Customers may add a bank account for refunds. Whoever adds an account (vendor or customer) is responsible for making sure the details are correct and that the account is their own. Levromart is not responsible for any payout, withdrawal or refund sent to an account that was entered wrongly or does not belong to the person it was meant for, and such money may not be recoverable.</li>
+      <li>Vendors add their payout bank account in the app so they can be paid. Every customer must add a bank account in their own name for refunds; the app asks until one is saved. Whoever adds an account (vendor or customer) is responsible for making sure the details are correct and that the account is their own. Levromart is not responsible for any payout, withdrawal or refund sent to an account that was entered wrongly or does not belong to the person it was meant for, and such money may not be recoverable.</li>
       <li>Money from orders paid through Levromart is held in the vendor's wallet once the order is complete. A vendor withdraws it by tapping Withdraw: money paid for 48 hours or more with no open dispute is sent to the vendor's bank account straight away, and newer money is sent after Levromart approves the request. Levromart may decline a withdrawal request and will give the reason. Money from an order with an open dispute is held until the dispute is settled. Amounts under ₦1,000, and withdrawals within 24 hours of a bank account change, are always checked by Levromart first and may be declined or delayed for safety. Levromart's commission is deducted from each payout.</li>
       <li>Vendors are paid automatically once a sale is confirmed. Funds typically reach their bank account the next business day.</li>
       <li>Rentals may require a refundable deposit. If there's a dispute over damage or non-return, Levromart's dispute resolution process decides how it's handled, including a refund from Levromart where warranted.</li>
