@@ -638,6 +638,8 @@
     var q = { limit: 40 };
     var rows, wd = await sb.rpc("admin_list_withdrawals", { p_status: null });
     var wdRows = (wd && wd.data) || [], wdOpen = wdRows.filter(function (x) { return x.status === "requested"; }).length;
+    var su = await sb.rpc("get_setup_status");
+    var missing = (su && su.data && su.data.missing) || [];
     var cr = await sb.rpc("admin_list_cancellations", { p_status: null });
     var crRows = (cr && cr.data) || [], crOpen = crRows.filter(function (x) { return x.status === "requested"; }).length;
     if (!picked && wdOpen) tab = "withdrawals"; else if (!picked && crOpen) tab = "cancellations";
@@ -652,6 +654,7 @@
     var list = ((rows && rows.data) || []).map(tab === "cancellations" ? cancelRow : tab === "withdrawals" ? withdrawalRow : tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
     var tabs = [["withdrawals", "Withdrawals" + (wdOpen ? " (" + wdOpen + ")" : "")], ["cancellations", "Cancel requests" + (crOpen ? " (" + crOpen + ")" : "")], ["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
     return nav + '<h2 style="text-align:center;"><i class="fa-solid fa-credit-card"></i> Payments</h2>' +
+      (missing.length ? '<div class="banner banner-warning lv-setup-warn" role="alert"><strong><i class="fa-solid fa-screwdriver-wrench"></i> Not switched on yet</strong><span>Ask your engineer to apply these database changes, then these features start working:</span><ul>' + missing.map(function (m) { return "<li><b>" + esc(m.version) + "</b> " + esc(m.what) + "</li>"; }).join("") + "</ul></div>" : "") +
       (h.needsAttention ? '<div class="banner banner-warning" role="status"><strong><i class="fa-solid fa-triangle-exclamation"></i> ' + h.needsAttention + ' thing(s) need attention.</strong> Stuck or failed payouts and refunds, or mismatches in the last daily check.</div>' : '<div class="banner banner-success" role="status"><i class="fa-solid fa-circle-check"></i> Everything is matching.</div>') +
       '<div class="segmented-tabs">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
       '<div class="lv-ap-totals">' + [["Collected", t.collected], ["Refunded", t.refunded], ["Paid to vendors", t.paidToVendors], ["Levromart commission", t.commission]].map(function (x) { return '<div class="stat"><div class="n">' + naira(x[1]) + '</div><div class="muted">' + x[0] + "</div></div>"; }).join("") + "</div>" +

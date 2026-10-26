@@ -4,6 +4,8 @@ import { RefundsService } from "./modules/refunds/refunds.service.js";
 import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.service.js";
 import { CancellationsService } from "./modules/cancellations/cancellations.service.js";
 import { BuyerWalletService } from "./modules/buyer-wallet/buyer-wallet.service.js";
+import { ProductSuspensionService } from "./modules/setup-status/product-suspension.service.js";
+import { SetupStatusService } from "./modules/setup-status/setup-status.service.js";
 import { WithdrawalsService } from "./modules/withdrawals/withdrawals.service.js";
 import { loadConfig, type AppConfig } from "./config/app-config.js";
 import type { DataContext } from "./database/context.js";
@@ -97,6 +99,8 @@ export interface AppServices {
   payoutAccounts: PayoutAccountsService;
   vendorPayouts: VendorPayoutsService;
   withdrawals: WithdrawalsService;
+  setupStatus: SetupStatusService;
+  productSuspension: ProductSuspensionService;
   buyerWallet: BuyerWalletService;
   cancellations: CancellationsService;
   refunds: RefundsService;
@@ -175,6 +179,8 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     payoutAccounts: overrides.payoutAccounts ?? new PayoutAccountsService(data),
     vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
     withdrawals: overrides.withdrawals ?? new WithdrawalsService(data),
+    setupStatus: overrides.setupStatus ?? new SetupStatusService(data),
+    productSuspension: overrides.productSuspension ?? new ProductSuspensionService(data),
     buyerWallet: overrides.buyerWallet ?? new BuyerWalletService(data),
     refunds: overrides.refunds ?? new RefundsService(data),
     cancellations: overrides.cancellations ?? new CancellationsService(data),
