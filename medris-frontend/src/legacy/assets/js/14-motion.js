@@ -2039,8 +2039,6 @@ window.lvAskCancel = async function (orderId) {
     return '<div class="lvw-card is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span></div>' +
       '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Your refund account is saved" : "Refunds go here once you add a bank account") + '</div>' +
       '<div class="lvw-bal">' + (d || failed ? money(bal) : '<span class="lvw-skel"></span>') + '</div>' +
-      (!d && failed ? '<div class="lvrw-note">Your refunds wallet is getting ready. Refunds will show here.</div>' : "") +
-      (!has && pa ? '<div class="lvrw-note"><i class="fa-solid fa-building-columns"></i> ' + esc(pa.b || "Bank") + " · ···" + esc(pa.l || "") + ' is saved. It starts working as soon as the refunds wallet is switched on.</div>' : "") +
       (pend ? '<div class="lvrw-note">' + money(pend) + ' on its way to your bank</div>' : "") +
       '<div class="lvw-actions">' +
         (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change bank account" : "Add bank account") + '</button>') +
@@ -2174,7 +2172,7 @@ window.lvAskCancel = async function (orderId) {
     var w = async function () {
       var html = await f.apply(this, arguments);
       var str = String(html == null ? "" : html);
-      if (!signedIn() || str.length < 200 || (name === "renderVendorOrders" && arguments[5] !== "purchases")) return html;
+      if (!signedIn() || str.length < 200 || str.indexOf("data-lv-rwallet") >= 0 || (name === "renderVendorOrders" && arguments[5] !== "purchases")) return html;   // one wallet only: the page may already carry it
       setTimeout(function () { refresh(false); }, 30);
       return '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>" + str;
     };
