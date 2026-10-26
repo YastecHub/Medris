@@ -1002,7 +1002,7 @@
       </section>
 
       <section class="va-sec va-s2">
-      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-phone"></i></span><div><strong>How buyers reach you</strong><small>Orders and questions come to these numbers</small></div><span class="va-step">2</span></div>
+      <div class="va-sec-h"><span class="va-ico"><i class="fa-solid fa-phone"></i></span><div><strong>Your phone number</strong></div><span class="va-step">2</span></div>
       <label>Phone *</label>
       <input id="vaPhone" type="tel" autocomplete="tel" />
 

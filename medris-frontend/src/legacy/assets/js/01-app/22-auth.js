@@ -272,7 +272,7 @@ async function runPostAuthChecks() {
   // collects it; this gate covers Google sign-in and older accounts that predate
   // the requirement. Do this before the password/OTP checks so the account cannot
   // proceed as a fully configured buyer until the contact number is supplied.
-  if (profile.role === "buyer" && !String(profile.phone || "").trim()) {
+  if (profile.role !== "admin" && !String(profile.phone || "").trim()) {
     openRequiredBuyerPhoneModal();
     return;
   }

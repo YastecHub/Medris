@@ -2239,3 +2239,16 @@ window.lvAskCancel = async function (orderId) {
     window.renderBottomNav.__lvPay = true; Object.keys(inner).forEach(function (k) { window.renderBottomNav[k] = inner[k]; });
   }
 })();
+
+/* ===== Vendor application: the phone number already on the account is filled in ===== */
+(function () {
+  "use strict";
+  function fill() {
+    var el = document.getElementById("vaPhone");
+    if (!el || el.value || el.dataset.lvFilled) return;
+    var ph = (typeof profile !== "undefined" && profile && profile.phone) || (typeof vendor !== "undefined" && vendor && vendor.phone) || "";
+    if (ph) { el.value = ph; el.dataset.lvFilled = "1"; }
+  }
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; fill(); }); }).observe(document.body, { childList: true, subtree: true });
+})();
