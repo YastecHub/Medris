@@ -18,7 +18,11 @@ export interface Delivery {
  * on the buyer's behalf, so the order triggers (payment terms, notifications, phone check) see them.
  */
 export class CheckoutService {
-  constructor(private readonly db: () => DataContext) {}
+  constructor(
+    private readonly db: () => DataContext,
+    /** false in production: a product's old pay-after-delivery setting is ignored and every order is paid in full first. */
+    private readonly payAfterAllowed = true,
+  ) {}
 
   /** The checks every checkout starts with; returns the shop's owner. */
   private async start(tx: Tx, me: Identity, vendorId: string | null, quantity: number | null, deliveryMethod: string, own: string): Promise<CheckoutRepository> {
@@ -62,7 +66,7 @@ export class CheckoutService {
         sale = prices.sale_price;
         discount = prices.discount_price;
       }
-      const timing = product.payment_timing === "pay_before" || product.payment_timing === "pay_after" ? product.payment_timing : "pay_before";
+      const timing = this.timingOf(product.payment_timing);
       const percent = timing === "pay_after" ? await checkout.clampDepositPercent(product.payment_deposit_percent) : "100";
       const unit = await checkout.unitPrice(sale, discount);
       if (product.track_quantity ?? true) {
@@ -103,7 +107,7 @@ export class CheckoutService {
       const checkout = await this.start(tx, me, input.vendorId, input.quantity, input.delivery.method, "You can't rent from your own shop.");
       const product = await checkout.product(input.productId, input.vendorId, false);
       if (product?.rental_rate == null) throw badRequest("product is not available to rent");
-      const timing = product.payment_timing === "pay_before" || product.payment_timing === "pay_after" ? product.payment_timing : "pay_before";
+      const timing = this.timingOf(product.payment_timing);
       const percent = timing === "pay_after" ? await checkout.clampDepositPercent(product.payment_deposit_percent) : null;
       const days = await checkout.rentalDays(input.startDate, input.endDate);
       if (days < 1) throw badRequest("invalid date range");
@@ -172,7 +176,7 @@ export class CheckoutService {
         if (line.product_id == null || line.quantity == null || line.quantity <= 0) throw badRequest("invalid item in your cart");
         const product = await checkout.product(line.product_id, input.vendorId);
         if (product?.sale_price == null) throw badRequest("One of the items in your cart is no longer available.");
-        const itemTiming = product.payment_timing === "pay_before" || product.payment_timing === "pay_after" ? product.payment_timing : "pay_before";
+        const itemTiming = this.timingOf(product.payment_timing);
         const itemPercent = itemTiming === "pay_after" ? await checkout.clampDepositPercent(product.payment_deposit_percent) : null;
         if (delivery) {
           if (timing === "") timing = itemTiming;
@@ -234,5 +238,10 @@ export class CheckoutService {
       }
       return { id };
     });
+  }
+
+  /** The payment plan of a product: pay-after-delivery only where it is still switched on, otherwise always pay first. */
+  private timingOf(value: string | null | undefined): "pay_before" | "pay_after" {
+    return this.payAfterAllowed && value === "pay_after" ? "pay_after" : "pay_before";
   }
 }

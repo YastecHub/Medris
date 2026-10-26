@@ -21,6 +21,8 @@ export function testConfig(env: Record<string, string> = {}): AppConfig {
     NODE_ENV: "test",
     // Tests that check caching turn it on themselves; elsewhere a cached answer would hide a change a test just made.
     RESPONSE_CACHE_ENABLED: "false",
+    // the older pay-after-delivery behaviour is still tested; production has it off (a test turns it off to check that)
+    PAY_AFTER_DELIVERY_ENABLED: "true",
     LOG_LEVEL: "error",
     SUPABASE_URL,
     SUPABASE_ANON_KEY: "anon-key",

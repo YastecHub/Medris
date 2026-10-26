@@ -189,7 +189,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     paystackCheckout: overrides.paystackCheckout ?? new PaystackCheckoutService(data, config.paystack.checkoutEnabled),
     commission: overrides.commission ?? new CommissionService(data),
     paymentClaims: overrides.paymentClaims ?? new PaymentClaimsService(data),
-    checkout: overrides.checkout ?? new CheckoutService(data),
+    checkout: overrides.checkout ?? new CheckoutService(data, config.payAfterDelivery),
     orderActions: overrides.orderActions ?? new OrderActionsService(data),
     campus: overrides.campus ?? new CampusService(data),
     adminVendors: overrides.adminVendors ?? new AdminVendorsService(data),
