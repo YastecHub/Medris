@@ -3960,3 +3960,14 @@ html:root body .vendor-bank-picker-modal .vendor-bank-picker-list{padding:0 1rem
 /* ===== Browse everything: the two columns are staggered (the right one sits a little lower), like a masonry feed ===== */
 html:root body #app #productGrid:has(> .product-card-wrap){align-items:start;row-gap:.9rem;padding-bottom:2.4rem}
 html:root body #app #productGrid > .product-card-wrap:nth-child(even){margin-top:2.4rem;margin-bottom:-2.4rem}
+
+html:root body #app .lv-setup-warn{display:flex;flex-direction:column;gap:.35rem;margin:.6rem 0;font-size:.84rem;line-height:1.4}
+html:root body #app .lv-setup-warn ul{margin:.2rem 0 0 1.1rem;padding:0}
+
+html:root body .admin-inv-acts{display:flex;gap:.4rem;flex-wrap:nowrap}
+html:root body .admin-inv-acts .btn{white-space:nowrap}
+html:root body .admin-inventory-status:is([class*="suspended"]){color:#c77700}
+
+/* "You may also like": the same staggered columns as Browse everything */
+html:root body #app .lm-related-grid:has(> .product-card-wrap){align-items:start;row-gap:.9rem;padding-bottom:2.4rem}
+html:root body #app .lm-related-grid > .product-card-wrap:nth-child(even){margin-top:2.4rem;margin-bottom:-2.4rem}

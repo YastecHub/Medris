@@ -20,14 +20,14 @@ export const RPC_READS: ReadonlySet<string> = new Set([
   "get_vendor_commission_deadline", "get_vendor_commission_owed", "get_vendor_follow_state",
   "get_vendor_follow_states", "get_vendor_follower_counts", "get_vendor_follower_customers", "get_vendor_follower_network", "get_vendor_followers",
   "get_vendor_followers_v2", "get_vendor_product_regions", "get_vendor_spotlight", "get_vendor_stats",
-  "get_vendor_suggestions", "get_withdrawal_summary", "admin_list_withdrawals", "get_refund_wallet", "admin_list_cancellations", "list_my_chat_lists", "list_my_conversations", "search_ai_conversations",
+  "get_vendor_suggestions", "get_withdrawal_summary", "admin_list_withdrawals", "get_setup_status", "get_refund_wallet", "admin_list_cancellations", "list_my_chat_lists", "list_my_conversations", "search_ai_conversations",
   "search_product_ids", "search_products_full_v2", "validate_referral_code",
 ]);
 
 export const RPC_WRITES: ReadonlySet<string> = new Set([
   "accept_legal_terms", "add_order_note", "add_to_cart", "admin_adjust_points",
   "admin_approve_manual_password_reset", "admin_approve_monthly_listing", "admin_award_social_points",
-  "admin_cancel_confirmed_overdue_order", "admin_decide_withdrawal", "admin_decide_cancellation", "buyer_cancel_order", "request_order_cancellation", "admin_reopen_dispute", "admin_confirm_reported_payment", "admin_deactivate_monthly_listing",
+  "admin_cancel_confirmed_overdue_order", "admin_decide_withdrawal", "admin_set_product_suspended", "admin_decide_cancellation", "buyer_cancel_order", "request_order_cancellation", "admin_reopen_dispute", "admin_confirm_reported_payment", "admin_deactivate_monthly_listing",
   "admin_delete_inventory_product", "admin_delete_vendor", "admin_deny_appeal", "admin_force_unlock_vendor",
   "admin_permanently_delete_vendor", "admin_reject_manual_password_reset", "admin_reject_monthly_listing",
   "admin_reject_reported_payment", "admin_reject_vendor", "admin_restore_vendor", "admin_review_campus_school",

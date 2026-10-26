@@ -551,9 +551,27 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
     return rows.map((p,i)=>{
       const price=(p.price===null||p.price===undefined||p.price==="")?"-":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
       const st=String(p.status||"");
-      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"-"}</td><td><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></td></tr>`;
+      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"-"}</td><td><div class="admin-inv-acts"><button type="button" class="btn btn-sm btn-outline admin-inventory-suspend-btn" onclick="adminSuspendProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}','${esc(st)}',event)"><i class="fa-solid ${st==="suspended"?"fa-play":"fa-ban"}"></i> ${st==="suspended"?"Restore":"Suspend"}</button><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></div></td></tr>`;
     }).join("")||`<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
   }
+
+  window.adminSuspendProduct=async function(productId,productName,status,event){
+    event?.preventDefault?.(); event?.stopPropagation?.();
+    const suspending=status!=="suspended";
+    let reason=null;
+    if(suspending){
+      const ok=await showConfirmDialog(`Hide "${productName}" from everyone? The shop is told why and cannot switch it back on. You can restore it later.`,{title:"Suspend this product?",okLabel:"Write the reason",cancelLabel:"Go back",danger:true});
+      if(!ok) return;
+      reason=await showTextPromptDialog("Why is it being suspended?","The shop will see this.",{placeholder:"Write a short reason…",okLabel:"Suspend",chips:["Prohibited item","Misleading listing","Wrong category","Copied photos"],icon:"fa-ban",danger:true});
+      if(reason===null) return;
+    } else if(!(await showConfirmDialog(`Make "${productName}" visible again?`,{title:"Restore this product?",okLabel:"Yes, restore",cancelLabel:"Go back"}))) return;
+    const {error}=await sb.rpc("admin_set_product_suspended",{p_product_id:productId,p_suspended:suspending,p_reason:reason});
+    if(error){showToast(error.message||"Could not change this product.","error");return;}
+    const upd=(list)=>(list||[]).forEach(p=>{if(String(p.id)===String(productId))p.status=suspending?"suspended":"active";});
+    upd(window.__adminInventoryAll); upd(window.__adminInventoryCache?.products);
+    filterAdminInventory();
+    showToast(suspending?"Product suspended.":"Product restored.","success");
+  };
 
   window.adminDeleteInventoryProduct=async function(productId,productName,event){
     event?.preventDefault?.(); event?.stopPropagation?.();

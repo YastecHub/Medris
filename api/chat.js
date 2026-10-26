@@ -57,7 +57,7 @@ function editDistance(a, b) {
 }
 // True when a word is within one (short words) or two (long words) typing slips of any word in the list.
 function fuzzyWordMatch(token, words) {
-  if (token.length < 4) return false;
+  if (token.length < 5) return false;   // short words ("food" / "fold") are too easily mistaken for each other
   const max = token.length <= 7 ? 1 : 2;
   for (const w of words) {
     if (w.length < 3 || w[0] !== token[0] || Math.abs(w.length - token.length) > max) continue;
@@ -201,7 +201,10 @@ async function searchProducts(args, ctx) {
   const catalog = await getCatalog(ctx.url, ctx.serviceHeaders);
   const products = await getProductSnapshot(ctx.url, ctx.serviceHeaders);
   const q = cleanText(args.query, 120);
-  const scored = products.map((p) => ({ p, score: productSearchScore(p, q, catalog, args) })).filter((x) => x.score > 0);
+  let scored = products.map((p) => ({ p, score: productSearchScore(p, q, catalog, args) })).filter((x) => x.score > 0);
+  // only what is really relevant: drop the ones that match far worse than the best match
+  const best = scored.reduce((m, x) => Math.max(m, x.score), 0);
+  if (best >= 10) scored = scored.filter((x) => x.score >= best * 0.4);
   const buyerLat = ctx.lat;
   const buyerLng = ctx.lng;
   scored.sort((a, b) => {
@@ -216,7 +219,11 @@ async function searchProducts(args, ctx) {
     return b.score - a.score;
   });
   const rows = scored.slice(0, Math.max(1, Math.min(20, Number(args.limit) || 8))).map((x) => publicProduct(x.p, catalog, buyerLat, buyerLng));
-  return { query: q, count: scored.length, results: rows };
+  // categories the person may like next: the categories of the matches, and the other categories in the same sector
+  const shown = new Set(scored.slice(0, 20).map((x) => String(x.p.category_id)));
+  const sectorIds = new Set([...shown].map((id) => catalog.categories.find((c) => String(c.id) === id)?.sector_id).filter(Boolean).map(String));
+  const related = catalog.categories.filter((c) => sectorIds.has(String(c.sector_id)) && !shown.has(String(c.id))).map((c) => c.name).slice(0, 6);
+  return { query: q, count: scored.length, results: rows, related_categories: related };
 }
 
 async function searchVendors(args, ctx) {
@@ -609,6 +616,7 @@ CORE BEHAVIOUR:
 - Never say "the smart assistant is unreachable", "the AI is unreachable", "the server is unreachable", or similar technical excuses to the customer.
 - Never invent a product, vendor, rating, distance, order, message, category or statistic. If the tools return nothing, say that plainly and offer the next useful action.
 - Understand concepts, not only exact names. Search across product names, descriptions, categories and sectors. "watch" can match wristwatch/smartwatch; "jewelry" can match rings/necklaces/bracelets; "shoe" can match sneakers/footwear; "food" can match groceries/pasta/snacks; "ice cream" can match frozen desserts or related sweets if no exact listing exists. Use search_everything when the request is broad or ambiguous.
+- Only show listings that really are what was asked for. If a result does not fit the request (a handbag when someone asked for food), leave it out. After a shortlist, suggest two or three related categories from the tool's related_categories (for example "Want to see snacks or drinks too?") so the person can keep exploring.
 - For broad category requests, do NOT arbitrarily open the first product. Return a useful shortlist grouped by product/vendor/category/sector and ask a concise narrowing question when needed. If there is one clearly dominant exact match, open it.
 - For "what can I get", "what do you recommend", "what's new", "what is popular", or similar discovery requests, use get_marketplace_trends plus search tools and make concrete recommendations from real listings.
 - For sector/category counts, always use get_catalog_overview or search_everything; never guess.

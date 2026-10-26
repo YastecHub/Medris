@@ -984,12 +984,18 @@ async function resolveLeviCatalogueRequest(text){
     const ranked=rows.map(p=>{
       const category=p.category||{},sector=(sectors||[]).find(x=>String(x.id)===String(category.sector_id));
       const hay=leviNormaliseText([p.name,p.description,category.name,sector?.name,p.vendor?.business_name,String(p.tags||''),(p.variants||[]).map(v=>[v.name,v.description,v.size,v.color].join(' ')).join(' '),(p.items||[]).map(x=>x.product?.name).join(' ')].join(' '));
-      return {p,score:terms.reduce((n,t)=>n+(hay.includes(t)?1:0),0),distance:vendorDistanceKm(p.vendor)};
+      // whole words only ("tea" must not match "instead"), and what the product IS (its name, category, sector) counts far more than a passing word in its description
+      const words=new Set(hay.split(/[^a-z0-9]+/).filter(Boolean));
+      const core=new Set(leviNormaliseText([p.name,category.name,sector?.name,String(p.tags||'')].join(' ')).split(/[^a-z0-9]+/).filter(Boolean));
+      const has=(set,t)=>set.has(t)||set.has(t+'s')||(t.endsWith('s')&&set.has(t.slice(0,-1)));
+      const score=terms.reduce((n,t)=>n+(has(core,t)?3:has(words,t)?1:0),0);
+      return {p,score,core:terms.some(t=>has(core,t)),distance:vendorDistanceKm(p.vendor)};
     }).filter(x=>vendorId||x.score>0).sort((a,b)=>{
       if(/\b(cheap|affordable|budget)\b/.test(q))return (a.p._price==null?Infinity:Number(a.p._price))-(b.p._price==null?Infinity:Number(b.p._price))||b.score-a.score;
       if(/\b(near|nearby|closest)\b/.test(q))return (a.distance??Infinity)-(b.distance??Infinity)||b.score-a.score;
       return b.score-a.score;
     });
+    if(!vendorId&&ranked.some(x=>x.core)){for(let k=ranked.length-1;k>=0;k--)if(!ranked[k].core)ranked.splice(k,1);}   // a real match exists: never pad the list with products that only mention the word in passing
     if(!ranked.length)return {handled:true,reply:vendorId?'This vendor has no active matching listings available right now.':'I couldn’t find a matching listing in the current catalogue results. What specific food or drink would you like?'};
     const chosen=ranked.slice(0,vendorId?20:5);
     const lines=chosen.map(({p,distance})=>{
@@ -999,7 +1005,7 @@ async function resolveLeviCatalogueRequest(text){
       const variants=(p.variants||[]).map(v=>`${v.name}: ${v.sale_price==null?'price not provided':naira(Number(v.discount_price??v.sale_price))}${variantStock(v)==null?'':` (${variantStock(v)} available)`}`).join('; ');
       return `${p.name}, ${price} (${p._kind}) from ${p.vendor.business_name}${rating}${distance==null?'':` · ${distance.toFixed(1)} km away`}${stock}.${p.description?' '+String(p.description).slice(0,160):''}${variants?' Varieties: '+variants+'.':''} [[NAV:${p._kind==='Package'?'packageDetail|packageId':'productDetail|productId'}=${p.id}]]`;
     });
-    return {handled:true,reply:`${vendorId?'Here are this vendor’s current listings':'These current listings match your request'}:\n${lines.join('\n')}\n${ranked.length>chosen.length?'Showing '+chosen.length+' of '+ranked.length+' matches in these results. ':''}${/\bnear\b/.test(q)&&!buyerLocation?'Distance is unavailable until you enable location.':''}`};
+    return {handled:true,reply:`${vendorId?'Here are this vendor’s current listings':'These current listings match your request'}:\n${lines.join('\n')}\n${ranked.length>chosen.length?'Showing '+chosen.length+' of '+ranked.length+' matches in these results. ':''}${/\bnear\b/.test(q)&&!buyerLocation?'Distance is unavailable until you enable location.':''}${(()=>{if(vendorId)return '';const seen=new Set(chosen.map(x=>x.p.category?.name).filter(Boolean));const sec=new Set(chosen.map(x=>x.p.category?.sector_id).filter(Boolean));const more=[];rows.forEach(r=>{const n=r.category?.name;if(!sec.has(r.category?.sector_id))return;if(n&&!seen.has(n)&&!more.includes(n))more.push(n);});return more.length?'\nYou may also like: '+more.slice(0,3).join(', ')+'. Tell me which one and I will show you.':'';})()}`};
   }catch(err){console.warn('Levi catalogue lookup failed',err);return {handled:true,reply:'I couldn’t refresh the catalogue just now. Please try again; I won’t guess prices or availability.'};}
 }
 async function resolveLeviQuickDiscovery(text) {

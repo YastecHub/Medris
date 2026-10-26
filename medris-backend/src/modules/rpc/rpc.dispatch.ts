@@ -462,6 +462,8 @@ export const RPC: Record<string, RpcEntry> = {
   get_refund_wallet: { run: (s, me) => s.buyerWallet.summary(me) },
   save_refund_account: { run: (s, me, a) => s.buyerWallet.saveAccount(me, { bankCode: id(a.p_bank_code), accountNumber: id(a.p_account_number), confirmedAccountName: id(a.p_confirmed_name) }), limit: L.refundAccount },
   withdraw_refunds: { run: (s, me) => s.buyerWallet.withdraw(me), limit: L.withdrawals },
+  admin_set_product_suspended: { run: (s, me, a) => setup("Suspending products", s.productSuspension.set(me, id(a.p_product_id), bool(a.p_suspended), str(a.p_reason))), limit: L.products },
+  get_setup_status: { run: (s, me) => s.setupStatus.status(me) },
   // Withdrawals
   get_withdrawal_summary: { run: (s, me) => setup("Withdrawals", s.withdrawals.summary(me)) },
   request_withdrawal: { run: (s, me) => setup("Withdrawals", s.withdrawals.request(me)), limit: L.withdrawals },
