@@ -483,11 +483,32 @@ function animateAiFabPointing() {
 }
 const AI_PRODUCTS_TAG_RE=/\[\[PRODUCTS:([a-zA-Z0-9,-]+)\]\]/;
 function parseAiProductTags(content){const str=String(content||"");const m=AI_PRODUCTS_TAG_RE.exec(str);if(!m)return{text:str,ids:[]};return{text:(str.slice(0,m.index)+str.slice(m.index+m[0].length)).replace(/\s{2,}/g," ").trim(),ids:m[1].split(",").filter(Boolean).slice(0,6)};}
+const AI_VENDORS_TAG_RE=/\[\[VENDORS:([a-zA-Z0-9,-]+)\]\]/;
+function parseAiVendorTags(content){const str=String(content||"");const m=AI_VENDORS_TAG_RE.exec(str);if(!m)return{text:str,ids:[]};return{text:(str.slice(0,m.index)+str.slice(m.index+m[0].length)).replace(/\s{2,}/g," ").trim(),ids:m[1].split(",").filter(Boolean).slice(0,6)};}
+function leviCardDistance(v){try{const d=typeof vendorDistanceKm==="function"?vendorDistanceKm(v):null;return d==null||!Number.isFinite(d)?"":(typeof formatDistanceKm==="function"?formatDistanceKm(d):d.toFixed(1)+" km")+" away";}catch(_){return "";}}
+function leviCardLogo(v,cls){const n=(v?.business_name||"?").trim().charAt(0).toUpperCase();return v?.logo_url?`<img class="${cls}" src="${esc(v.logo_url)}" alt="" loading="lazy">`:`<span class="${cls} lvc-letter">${esc(n)}</span>`;}
+// Cards under a Levi answer: product photo, price and the shop's logo and distance; or the shop itself.
 async function renderLeviSuggestedProducts(el, ids){
-  if(!el||!ids?.length)return; const {data}=await sb.from("products").select("id,name,sale_price,discount_price,quantity_available,photos,vendor:vendors(business_name)").in("id",ids).eq("status","active").eq("is_service",false); const rows=(data||[]).filter(p=>Number(p.quantity_available??0)>0); if(!rows.length)return;
-  const box=document.createElement("div");box.className="ai-product-suggestions";box.innerHTML=`<div class="ai-product-suggestions-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Maybe you meant:</div><div class="ai-product-suggestions-grid">${rows.map(p=>`<button type="button" class="ai-product-suggestion" onclick="goToAiChatNav({view:'productDetail',params:{productId:'${p.id}'}})">${p.photos?.[0]?`<img src="${esc(p.photos[0])}" alt="" loading="lazy">`:`<span class="ai-product-suggestion-img"><i class="fa-solid fa-box"></i></span>`}<span class="ai-product-suggestion-copy"><strong>${esc(p.name)}</strong><small>${p.discount_price&&Number(p.discount_price)<Number(p.sale_price||Infinity)?naira(p.discount_price):p.sale_price!=null?naira(p.sale_price):"View product"}</small><em>${Number(p.quantity_available)} available</em></span></button>`).join("")}</div>`;el.appendChild(box);
+  if(!el||!ids?.length)return;
+  const {data}=await sb.from("products").select("id,name,sale_price,discount_price,rental_rate,quantity_available,is_service,photos,vendor:vendors(id,business_name,logo_url,lat,lng)").in("id",ids).eq("status","active");
+  const order=new Map(ids.map((id,i)=>[String(id),i]));
+  const rows=(data||[]).filter(p=>p.is_service||Number(p.quantity_available??1)>0).sort((a,b)=>order.get(String(a.id))-order.get(String(b.id)));
+  if(!rows.length)return;
+  const price=p=>{const sale=p.discount_price&&Number(p.discount_price)<Number(p.sale_price||Infinity)?p.discount_price:p.sale_price;return sale!=null?naira(sale):p.rental_rate!=null?naira(p.rental_rate)+" / rent":"View";};
+  const box=document.createElement("div");box.className="lvc-list";
+  box.innerHTML=rows.map(p=>`<button type="button" class="lvc-card" onclick="goToAiChatNav({view:'productDetail',params:{productId:'${esc(p.id)}'}})">${p.photos?.[0]?`<img class="lvc-img" src="${esc(p.photos[0])}" alt="" loading="lazy">`:`<span class="lvc-img lvc-letter"><i class="fa-regular fa-image"></i></span>`}<span class="lvc-body"><strong>${esc(p.name)}</strong><b class="lvc-price">${price(p)}</b><span class="lvc-shop">${leviCardLogo(p.vendor,"lvc-logo")}<span>${esc(p.vendor?.business_name||"Vendor")}${leviCardDistance(p.vendor)?" · "+esc(leviCardDistance(p.vendor)):""}</span></span></span></button>`).join("");
+  el.appendChild(box);
 }
-
+async function renderLeviSuggestedVendors(el, ids){
+  if(!el||!ids?.length)return;
+  const {data}=await sb.from("vendors").select("id,business_name,logo_url,city,avg_rating,review_count,lat,lng").in("id",ids).eq("is_active",true);
+  const order=new Map(ids.map((id,i)=>[String(id),i]));
+  const rows=(data||[]).sort((a,b)=>order.get(String(a.id))-order.get(String(b.id)));
+  if(!rows.length)return;
+  const box=document.createElement("div");box.className="lvc-list";
+  box.innerHTML=rows.map(v=>`<button type="button" class="lvc-card" onclick="goToAiChatNav({view:'storefront',params:{vendorId:'${esc(v.id)}'}})">${leviCardLogo(v,"lvc-img lvc-round")}<span class="lvc-body"><strong>${esc(v.business_name)}</strong><span class="lvc-shop"><span>${v.review_count>0?Number(v.avg_rating||0).toFixed(1)+"★ · ":""}${esc(v.city||"")}${leviCardDistance(v)?(v.city?" · ":"")+esc(leviCardDistance(v)):""}</span></span></span></button>`).join("");
+  el.appendChild(box);
+}
 function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existingReaction, createdAt) {
   let displayText = content;
   let nav = null;
@@ -497,6 +518,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
   let clearCart = false;
   let clearCartConfirm = false;
   let suggestedProducts = null;
+  let suggestedVendors = null;
   if (role === "assistant") {
     const parsedNav = parseAiNavTag(content);
     const parsedDraft = parseAiDraftMsgTag(parsedNav.text);
@@ -506,11 +528,13 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
     const parsedClearCart = parseAiClearCartTag(parsedSync.text);
     const parsedClearConfirm = parseAiClearCartConfirmTag(parsedClearCart.text);
     const parsedProducts = parseAiProductTags(parsedClearConfirm.text);
-    displayText = parsedProducts.text;
+    const parsedVendors = parseAiVendorTags(parsedProducts.text);
+    displayText = parsedVendors.text;
+    suggestedVendors = parsedVendors.ids;
     if (!isReplay && parsedSync.sync) { try { updateCartFab(); refreshNotifications(); } catch (_) {} }
     clearCart = isReplay ? false : parsedClearCart.clear;
     clearCartConfirm = isReplay ? false : parsedClearConfirm.confirm;
-    suggestedProducts = isReplay ? [] : parsedProducts.ids;
+    suggestedProducts = parsedProducts.ids;
     // Re-showing a past conversation shouldn't replay its side effects --
     // an old "take you there" tag (or an old cart add/remove) firing again
     // would yank someone away, or re-apply a cart change, on a conversation
@@ -583,6 +607,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       });
     }
     if (suggestedProducts && suggestedProducts.length) renderLeviSuggestedProducts(el, suggestedProducts);
+    if (suggestedVendors && suggestedVendors.length) renderLeviSuggestedVendors(el, suggestedVendors);
     if (clearCartConfirm) {
       const clearBtn = document.createElement("button");
       clearBtn.type = "button";

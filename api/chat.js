@@ -97,6 +97,32 @@ const SYNONYMS = {
   medical: ["healthcare", "health", "hospital", "clinical", "medical equipment", "diagnostic"],
   jewellery: ["jewelry", "ring", "necklace", "bracelet", "earrings", "chain"],
 };
+
+// Words that describe the question, not the thing being looked for ("closest vendor that sells water bottles" -> "water bottles").
+const QUERY_FILLER = new Set("closest nearest nearby near vendor vendors shop shops store stores seller sellers that who which what whose sells sell selling sold sale need needs want wants i me my to the a an of for from can could you get buy find any have has there is are please levi looking look show give tell some something anything one ones carrying carries carry stocks stock offers offer and or with in at around here how far".split(" "));
+function cleanQuery(value) {
+  const words = normalize(value).replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
+  const kept = words.filter((w) => !QUERY_FILLER.has(w));
+  return (kept.length ? kept : words).join(" ");
+}
+function hasWord(set, t) {
+  return set.has(t) || set.has(t + "s") || (t.endsWith("s") && set.has(t.slice(0, -1))) || (t.endsWith("es") && set.has(t.slice(0, -2)));
+}
+// How many of the search words appear as whole words in what the product IS (its name, category, sector).
+function coreHits(product, query, catalog) {
+  const category = catalog.categories.find((c) => String(c.id) === String(product.category_id));
+  const sector = catalog.sectors.find((s) => String(s.id) === String(category?.sector_id || product.vendor?.sector_id));
+  const core = new Set(normalize([product.name, category?.name, sector?.name].filter(Boolean).join(" ")).split(/[^a-z0-9]+/).filter(Boolean));
+  const tokens = normalize(query).split(/[^a-z0-9]+/).filter((t) => t.length >= 2);
+  return { hits: tokens.filter((t) => hasWord(core, t)).length, total: tokens.length };
+}
+// Rough travel time for a straight-line distance: walking about 5 km/h, by bike or car about 25 km/h in town.
+function travelEstimate(km) {
+  if (!Number.isFinite(km)) return null;
+  const mins = (speed) => Math.max(1, Math.round((km * 1.3 / speed) * 60));
+  return { walking_minutes: mins(5), by_car_or_bike_minutes: mins(25) };
+}
+
 function relatedTerms(query) {
   const q = normalize(query);
   const terms = new Set([q]);
@@ -200,8 +226,16 @@ function publicProduct(product, catalog, buyerLat, buyerLng) {
 async function searchProducts(args, ctx) {
   const catalog = await getCatalog(ctx.url, ctx.serviceHeaders);
   const products = await getProductSnapshot(ctx.url, ctx.serviceHeaders);
-  const q = cleanText(args.query, 120);
+  const q = cleanQuery(cleanText(args.query, 120));
   let scored = products.map((p) => ({ p, score: productSearchScore(p, q, catalog, args) })).filter((x) => x.score > 0);
+  // what the person asked for must be what the product IS: keep only products whose name/category contains the search words
+  // (the best-covered ones). Only when nothing matches that way do the looser description matches stay.
+  let exact = false;
+  if (q) {
+    const cov = scored.map((x) => ({ x, ...coreHits(x.p, q, catalog) }));
+    const top = cov.reduce((m, c) => Math.max(m, c.hits), 0);
+    if (top > 0) { scored = cov.filter((c) => c.hits === top).map((c) => c.x); exact = top === cov[0]?.total || cov.some((c) => c.hits === c.total); }
+  }
   // only what is really relevant: drop the ones that match far worse than the best match
   const best = scored.reduce((m, x) => Math.max(m, x.score), 0);
   if (best >= 10) scored = scored.filter((x) => x.score >= best * 0.4);
@@ -223,13 +257,15 @@ async function searchProducts(args, ctx) {
   const shown = new Set(scored.slice(0, 20).map((x) => String(x.p.category_id)));
   const sectorIds = new Set([...shown].map((id) => catalog.categories.find((c) => String(c.id) === id)?.sector_id).filter(Boolean).map(String));
   const related = catalog.categories.filter((c) => sectorIds.has(String(c.sector_id)) && !shown.has(String(c.id))).map((c) => c.name).slice(0, 6);
-  return { query: q, count: scored.length, results: rows, related_categories: related };
+  return { query: q, count: scored.length, exact_match: exact, results: rows, related_categories: related };
 }
 
 async function searchVendors(args, ctx) {
   const catalog = await getCatalog(ctx.url, ctx.serviceHeaders);
   let vendors = [...catalog.vendors];
-  const q = cleanText(args.query, 120);
+  const q = cleanQuery(cleanText(args.query, 120));
+  const carried = {};
+  let productMatch = null;
   const sector = cleanText(args.sector, 80);
   const city = cleanText(args.city, 80);
   if (sector) {
@@ -246,14 +282,20 @@ async function searchVendors(args, ctx) {
     const productResult = await searchProducts({ query: args.productQuery, listingType: args.listingType, rentOnly: !!args.rentOnly, buyOnly: !!args.buyOnly, limit: 20, nearest: !!args.nearest }, ctx);
     const ids = new Set((productResult.results || []).map((p) => p.vendor?.id).filter(Boolean));
     vendors = vendors.filter((v) => ids.has(v.id));
+    for (const pr of productResult.results || []) {
+      const k = pr.vendor?.id; if (!k) continue;
+      (carried[k] = carried[k] || []).push({ id: pr.id, name: pr.name, price: pr.discount_price ?? pr.sale_price ?? pr.rental_rate ?? null });
+    }
+    productMatch = { query: productResult.query, exact: !!productResult.exact_match };
   } else if (q) {
     const scored = vendors.map((v) => ({ v, score: scoreText(q, [v.business_name, v.city, catalog.sectors.find((s) => String(s.id) === String(v.sector_id))?.name]) })).filter((x) => x.score > 0);
     vendors = scored.sort((a, b) => b.score - a.score).map((x) => x.v);
   }
 
   const nearest = !!args.nearest && ctx.lat != null && ctx.lng != null;
+  const hasLoc = ctx.lat != null && ctx.lng != null;
   const out = vendors.map((v) => {
-    const distance = nearest ? haversineKm(ctx.lat, ctx.lng, Number(v.lat), Number(v.lng)) : null;
+    const distance = hasLoc ? haversineKm(ctx.lat, ctx.lng, Number(v.lat), Number(v.lng)) : null;
     return { ...v, sector: catalog.sectors.find((s) => String(s.id) === String(v.sector_id))?.name || null, distance_km: Number.isFinite(distance) ? Number(distance.toFixed(2)) : null };
   });
   out.sort((a, b) => {
@@ -262,7 +304,7 @@ async function searchVendors(args, ctx) {
     if (args.sort === "reviews") return Number(b.review_count || 0) - Number(a.review_count || 0);
     return normalize(a.business_name).localeCompare(normalize(b.business_name));
   });
-  return { count: out.length, location_available: ctx.lat != null && ctx.lng != null, results: out.slice(0, Math.max(1, Math.min(30, Number(args.limit) || 10))).map((v) => ({ id: v.id, business_name: v.business_name, city: v.city, sector: v.sector, avg_rating: v.avg_rating, review_count: v.review_count, distance_km: v.distance_km })) };
+  return { count: out.length, location_available: ctx.lat != null && ctx.lng != null, results: out.slice(0, Math.max(1, Math.min(30, Number(args.limit) || 10))).map((v) => ({ id: v.id, business_name: v.business_name, city: v.city, sector: v.sector, avg_rating: v.avg_rating, review_count: v.review_count, distance_km: v.distance_km, travel: travelEstimate(v.distance_km), sells: carried[v.id] ? carried[v.id].slice(0, 4) : undefined })), product_search: productMatch, note: productMatch && !out.length ? "No vendor on Levromart sells this. Say so plainly; do not list vendors that do not sell it." : undefined };
 }
 
 async function getCatalogOverview(args, ctx) {
@@ -639,6 +681,11 @@ CORE BEHAVIOUR:
 - Pronouns like "all of them", "everything you listed", "both", "the first two" or "add them" refer to the products YOU listed in your previous reply (their ids come from your earlier tool results in this conversation). Call add_to_cart once per product, then confirm what was added. "Remove all", "empty my cart" or "clear my cart" means clear_cart (confirmation-gated); "remove all of them" right after listing items means remove those items.
 - Do not place or cancel an order from chat. For those requests, take the user to the appropriate product/order screen.
 - When the user asks what they can do, explain concrete capabilities, but do not turn a normal task into a capability list.
+- ACCURACY FIRST. Only name a vendor as selling something if search_vendors (with productQuery) or search_products returned it for that item. "Which vendor sells X" means: call search_vendors with productQuery=X (just the item, for example "water bottle", never "closest vendor that sells water bottle"). If count is 0 or note says nobody sells it, say plainly that no vendor on Levromart sells X yet and offer request_item. Never pad the answer with vendors that do not sell it.
+- Distances and times: each vendor result has distance_km and travel (walking_minutes, by_car_or_bike_minutes) when the buyer's location is known. Quote them as straight-line estimates ("about 2.4 km, roughly 30 min on foot or 8 min by car"). "How far is <vendor>?" means call search_vendors with query=<vendor name> and report its distance. If location is not available, ask the person to turn on location; never guess a number.
+- Follow-up questions ("which one?", "which vendor sells it?", "how far is it?", "the first one") refer to what you listed in the previous turns. Use the conversation to find the item or vendor and call a tool again if you need facts. Never answer a follow-up with a generic "tell me what you want".
+- Ask before listing when the request is a broad product type with several distinct kinds in the results (for example "chips": plantain chips, potato chips, banana chips). Say what kinds you found and ask which they want, then show vendors and prices for that kind. If only one kind exists, skip the question and show it.
+- When you list products or vendors, write their exact names, prices (in naira) and distance. The app draws the logo, photo and price cards under your reply by itself from the names you mention, so do not add picture markup or links.
 - Treat the current turn as authoritative. Use the recent messages only to resolve references such as "this", "that", "the one you showed me", or "same vendor". Never carry an old product, vendor, search result, route, or navigation destination into a new request unless the user explicitly refers back to it. A new noun such as "scarf", "shoes", "book", or "hook" starts a new search.
 
 HOW LEVROMART WORKS (use this when people ask how things work; do not invent other rules):
@@ -700,6 +747,32 @@ function stripUnsafeTechnicalFallback(text) {
   ];
   for (const re of banned) out = out.replace(re, "");
   return out.replace(/\s{2,}/g, " ").trim();
+}
+
+// Cards under Levi's answer: the products and shops that the answer actually names (by name), with their logo/photo, price and
+// distance drawn by the app. Only items from this turn's real search results can appear, so a card is never invented.
+function appendCards(reply, toolResults) {
+  const text = normalize(reply);
+  const products = new Map();
+  const vendors = new Map();
+  const walk = (r) => {
+    if (!r || typeof r !== "object") return;
+    for (const p of r.results || []) {
+      if (p && p.vendor && p.name && p.id) products.set(String(p.id), p);
+      else if (p && p.business_name && p.id) vendors.set(String(p.id), p);
+    }
+    for (const p of r.products || []) if (p && p.id && p.name) products.set(String(p.id), p);
+    for (const v of r.vendors || []) if (v && v.id && v.business_name) vendors.set(String(v.id), v);
+  };
+  toolResults.forEach(walk);
+  const named = (n) => { const k = normalize(n); return k.length >= 3 && text.includes(k); };
+  const pIds = [...products.values()].filter((p) => named(p.name)).map((p) => p.id).slice(0, 5);
+  let vIds = [...vendors.values()].filter((v) => named(v.business_name)).map((v) => v.id).slice(0, 5);
+  if (!vIds.length && !pIds.length) return reply;
+  const tags = [];
+  if (pIds.length) tags.push(`[[PRODUCTS:${pIds.join(",")}]]`);
+  if (vIds.length && !pIds.length) tags.push(`[[VENDORS:${vIds.join(",")}]]`);
+  return `${reply.replace(/\s+$/g, "")} ${tags.join(" ")}`.trim();
 }
 function appendClientDirectives(reply, toolResults) {
   const directives = [];
@@ -816,6 +889,7 @@ module.exports = async function handler(req, res) {
     const stripOldUiDirectives = (value) => String(value || "")
       .replace(/\[\[NAV:[\s\S]*?\]\]/g, "")
       .replace(/\[\[PRODUCTS:[\s\S]*?\]\]/g, "")
+      .replace(/\[\[VENDORS:[\s\S]*?\]\]/g, "")
       .replace(/\[\[DRAFTMSG[\s\S]*?\]\][\s\S]*?\[\[\/DRAFTMSG\]\]/g, "")
       .replace(/\[\[ADD_CART:[\s\S]*?\]\]/g, "")
       .replace(/\[\[REMOVE_CART:[\s\S]*?\]\]/g, "")
@@ -871,6 +945,7 @@ module.exports = async function handler(req, res) {
     if (!finalText) finalText = "I checked the live Levromart data. Tell me the product, vendor, sector, order or action you want and I’ll take the next step.";
     finalText = stripUnsafeTechnicalFallback(finalText);
     finalText = appendClientDirectives(finalText, toolResults);
+    finalText = appendCards(finalText, toolResults);
     if (!finalText) finalText = "Tell me what you want to find or do on Levromart and I’ll handle it.";
 
     res.status(200).json({ reply: finalText });

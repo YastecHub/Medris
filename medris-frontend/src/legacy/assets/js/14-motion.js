@@ -125,7 +125,14 @@
    it was pulled. It only follows the finger when its own content is scrolled to the top, so normal scrolling is untouched. */
 (function () {
   var SHEETS = [
-    { sel: "#aiChatPanel:not(.hidden)", close: function () { try { toggleAiChat(); } catch (_) {} }, back: null },
+    { sel: "#aiChatPanel:not(.hidden)", close: function () { try { toggleAiChat(); } catch (_) {} }, back: null,
+      // Levi only follows a drag that starts on his top bar or on empty chat space: never on buttons, the chat list, the select toolbar or the box
+      allow: function (t, sheet) {
+        if (t.closest("button,a,input,textarea,select,label,.ai-chat-history-item,.ai-history-select-toolbar,.ai-chat-input-row,.levi-tools")) return false;
+        if (sheet.classList.contains("history-mode") && !t.closest(".drawer-header")) return false;
+        if (document.querySelector(".lv-dlg,#confirmModal.open,.modal.open")) return false;
+        return true;
+      } },
     { sel: ".lv-cs-card", close: function (el) { var x = el.querySelector(".lv-cs-x"); if (x) x.click(); }, back: ".lv-cs-back", own: ".lv-cs-head" },
     { sel: ".lv-cm-card", close: function (el) { var b = el.parentNode && el.parentNode.querySelector(".lv-cm-back"); if (b) b.click(); }, back: ".lv-cm-back", own: ".lv-cm-card" },
     { sel: ".vendors-filters-panel:not(.hidden)", close: function () { try { toggleVendorsFilters(false); } catch (_) {} }, back: ".lv-sheet-back" },
@@ -182,6 +189,7 @@
     for (var i = 0; i < SHEETS.length; i++) {
       var sheet = t.closest(SHEETS[i].sel);
       if (!sheet) continue;
+      if (SHEETS[i].allow && !SHEETS[i].allow(t, sheet)) return;
       var c = { s: SHEETS[i], el: sheet, y: e.touches[0].clientY, x: e.touches[0].clientX, on: false, offset: 0, height: sheet.getBoundingClientRect().height, trail: [], back: null };
       stopTheirs(e, c);
       if (t.closest("textarea,input,select,[contenteditable],.leaflet-container") || scrolledDown(t, sheet)) return;
