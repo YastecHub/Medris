@@ -642,6 +642,7 @@
     var missing = (su && su.data && su.data.missing) || [];
     var cr = await sb.rpc("admin_list_cancellations", { p_status: null });
     var crRows = (cr && cr.data) || [], crOpen = crRows.filter(function (x) { return x.status === "requested"; }).length;
+    if (window.lvPayPaint) window.lvPayPaint(wdOpen + crOpen);
     if (!picked && wdOpen) tab = "withdrawals"; else if (!picked && crOpen) tab = "cancellations";
     if (tab === "cancellations") rows = { data: crRows };
     else if (tab === "withdrawals") rows = { data: wdRows };
@@ -653,12 +654,14 @@
     else rows = await a.reports();
     var list = ((rows && rows.data) || []).map(tab === "cancellations" ? cancelRow : tab === "withdrawals" ? withdrawalRow : tab === "payments" ? txRow : tab === "refunds" ? refundRow : tab === "checks" ? reportRow : payoutRow).join("") || '<p class="muted" style="text-align:center;">Nothing here.</p>';
     var tabs = [["withdrawals", "Withdrawals" + (wdOpen ? " (" + wdOpen + ")" : "")], ["cancellations", "Cancel requests" + (crOpen ? " (" + crOpen + ")" : "")], ["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
-    return nav + '<h2 style="text-align:center;"><i class="fa-solid fa-credit-card"></i> Payments</h2>' +
-      (missing.length ? '<div class="banner banner-warning lv-setup-warn" role="alert"><strong><i class="fa-solid fa-screwdriver-wrench"></i> Not switched on yet</strong><span>Ask your engineer to apply these database changes, then these features start working:</span><ul>' + missing.map(function (m) { return "<li><b>" + esc(m.version) + "</b> " + esc(m.what) + "</li>"; }).join("") + "</ul></div>" : "") +
-      (h.needsAttention ? '<div class="banner banner-warning" role="status"><strong><i class="fa-solid fa-triangle-exclamation"></i> ' + h.needsAttention + ' thing(s) need attention.</strong> Stuck or failed payouts and refunds, or mismatches in the last daily check.</div>' : '<div class="banner banner-success" role="status"><i class="fa-solid fa-circle-check"></i> Everything is matching.</div>') +
-      '<div class="segmented-tabs">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
-      '<div class="lv-ap-totals">' + [["Collected", t.collected], ["Refunded", t.refunded], ["Paid to vendors", t.paidToVendors], ["Levromart commission", t.commission]].map(function (x) { return '<div class="stat"><div class="n">' + naira(x[1]) + '</div><div class="muted">' + x[0] + "</div></div>"; }).join("") + "</div>" +
-      '<div class="segmented-tabs" style="margin-top:1rem;">' + tabs.map(function (x) { return '<button class="' + (x[0] === tab ? "active" : "") + '" onclick="lvPayTab(\'' + x[0] + '\')">' + esc(x[1]) + "</button>"; }).join("") + "</div>" +
+    var pending = wdOpen + crOpen;
+    var tiles = [["Collected", t.collected, "fa-arrow-down"], ["Refunded", t.refunded, "fa-rotate-left"], ["Paid to vendors", t.paidToVendors, "fa-arrow-up-right-from-square"], ["Commission", t.commission, "fa-percent"]];
+    return nav + '<div class="ap-head"><h2>Payments</h2>' + (pending ? '<span class="ap-need"><b>' + pending + "</b> waiting for you</span>" : '<span class="ap-ok"><i class="fa-solid fa-circle-check"></i> All clear</span>') + "</div>" +
+      (missing.length ? '<details class="ap-setup"><summary><i class="fa-solid fa-screwdriver-wrench"></i> ' + missing.length + ' feature' + (missing.length === 1 ? "" : "s") + ' not switched on yet</summary><p>Ask your engineer to apply these database changes:</p><ul>' + missing.map(function (m) { return "<li><b>" + esc(m.version) + "</b> " + esc(m.what) + "</li>"; }).join("") + "</ul></details>" : "") +
+      (h.needsAttention ? '<div class="ap-note ap-warn" role="status"><i class="fa-solid fa-triangle-exclamation"></i> <span><b>' + h.needsAttention + ' thing(s) need attention.</b> Stuck or failed payouts and refunds, or a mismatch in the last daily check.</span></div>' : "") +
+      '<div class="ap-card"><div class="ap-range">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="ap-tiles">' + tiles.map(function (x) { return '<div class="ap-tile"><small>' + x[0] + "</small><b>" + naira(x[1]) + "</b></div>"; }).join("") + "</div></div>" +
+      '<div class="ap-tabs" role="tablist">' + tabs.map(function (x) { var on = x[0] === tab; var m = /^(.*?)(?: \((\d+)\))?$/.exec(x[1]); return '<button role="tab" class="' + (on ? "active" : "") + '" onclick="lvPayTab(\'' + x[0] + '\')">' + esc(m[1]) + (m[2] ? '<i class="ap-n' + (x[0] === "withdrawals" || x[0] === "cancellations" ? " red" : "") + '">' + m[2] + "</i>" : "") + "</button>"; }).join("") + "</div>" +
       '<div class="lv-ap-list-wrap">' + list + "</div>";
   };
 })();
@@ -2192,4 +2195,37 @@ window.lvAskCancel = async function (orderId) {
     if (!d.has_account) window.lvRefundAccount(true);
   }
   setInterval(ask, 20000); setTimeout(ask, 8000);
+})();
+
+/* ===== Admin: a red number on "Payments" while withdrawals or cancel requests wait for a decision ===== */
+(function () {
+  "use strict";
+  var busy = false;
+  function paint(n) {
+    window.__lvPayPending = n;
+    document.querySelectorAll(".lv-pay-badge").forEach(function (b) {
+      b.textContent = n > 9 ? "9+" : String(n);
+      b.classList.toggle("hidden", !n);
+    });
+    try { if (typeof renderBottomNav === "function") renderBottomNav(); } catch (_) {}
+  }
+  window.lvPayPaint = function (n) { if (n !== (window.__lvPayPending || 0)) paint(n); };
+  window.lvPayPendingRefresh = async function () {
+    if (busy || typeof sb === "undefined" || typeof session === "undefined" || !session || !profile || profile.role !== "admin") return;
+    busy = true;
+    try {
+      var r = await Promise.all([sb.rpc("admin_list_withdrawals", { p_status: "requested" }), sb.rpc("admin_list_cancellations", { p_status: "requested" })]);
+      var n = 0;
+      r.forEach(function (x) { n += ((x && x.data) || []).filter(function (y) { return y.status === "requested"; }).length; });
+      if (n !== (window.__lvPayPending || 0)) paint(n);
+    } catch (_) {} finally { busy = false; }
+  };
+  setInterval(function () { if (!document.hidden) window.lvPayPendingRefresh(); }, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) window.lvPayPendingRefresh(); });
+  var w = window.renderBottomNav;
+  if (typeof w === "function" && !w.__lvPay) {
+    var inner = w;
+    window.renderBottomNav = function () { var out = inner.apply(this, arguments); if (typeof profile !== "undefined" && profile && profile.role === "admin" && window.__lvPayPending == null) window.lvPayPendingRefresh(); return out; };
+    window.renderBottomNav.__lvPay = true; Object.keys(inner).forEach(function (k) { window.renderBottomNav[k] = inner[k]; });
+  }
 })();
