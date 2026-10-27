@@ -10,7 +10,7 @@ restructure. `medris-backend` is not built or deployed there.
 | Install | `npm ci` |
 | Build | `npm run build -w medris-frontend` (the frontend only) |
 | Output | `medris-frontend/dist` |
-| Functions | `api/*.js`: auth-otp, chat, daily-cron, delete-account (+ register, account-exists, turn, notif-icon, link previews), initiate-payment, notify, order-notify, order-payout-action, order-reminders, paystack-webhook, vendor-payments (+ listing-payments), verify-payment |
+| Functions | `api/*.js`: auth-otp, chat, daily-cron, delete-account (+ register, account-exists, turn, notif-icon, link previews), notify, order-notify, order-payout-action, order-reminders, paystack-webhook, vendor-payments (+ listing-payments), verify-payment |
 | Cron | `/api/daily-cron` at 03:00 UTC |
 | Environment | the variables the original functions always used: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PRIVATE_KEY`, `GEMINI_API_KEY`, `R2_*`, `CRON_SECRET`, `EMAIL_WEBHOOK_SECRET`, and the TURN providers for calls (`CF_TURN_KEY_ID`/`CF_TURN_API_TOKEN` or `METERED_API_KEY`/`METERED_DOMAIN`). **No `DATABASE_URL`.** |
 

@@ -3,17 +3,17 @@ import { PaymentClaimsService } from "../payment-claims/payment-claims.service.j
 import { findPgError } from "../../database/errors.js";
 import { getDataContext } from "../../database/index.js";
 import { OrdersRepository } from "../../database/repositories/orders.repository.js";
-import { initializeTransaction, isValidWebhookSignature, verifyTransaction, type PaystackTransaction } from "../../integrations/paystack.js";
+import { initializeTransaction } from "../../integrations/paystack.js";
+import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome } from "../../integrations/paystack/index.js";
+import { PaystackWebhookService } from "../paystack-webhook/paystack-webhook.service.js";
 import type { ServiceResult } from "../../shared/types/service.js";
 import { identityFromAccessToken } from "../auth/caller.js";
-import { MONTHLY_LISTING_KOBO, settleListingPaymentFromWebhook } from "../vendor-payments/listing-payment.service.js";
-import { settleReference } from "./settlement.service.js";
 
 /**
  * Card payments for orders through Paystack:
  *  - start a checkout for an order (amount from the database, never the client);
- *  - confirm right after checkout (the webhook stays the source of truth);
- *  - the signed Paystack webhook that settles payments.
+ *  - confirm right after checkout, and the old webhook address: both go through PaystackWebhookService, the one place that
+ *    settles Paystack payments (signature, Paystack's own answer, the recorded amount, once).
  */
 
 export async function initiatePayment(body: { orderId?: string; accessToken?: string }, origin: string): Promise<ServiceResult> {
@@ -54,34 +54,24 @@ export async function initiatePayment(body: { orderId?: string; accessToken?: st
   return { status: 200, body: { authorization_url: initJson.data?.authorization_url, reference } };
 }
 
+/**
+ * The buyer (or vendor) coming back from Paystack: asks Paystack and, when the payment succeeded, settles it through the same
+ * steps and the same event key as the webhook (PaystackWebhookService.confirmByReference): the amount is checked against what
+ * was recorded, and whichever of the two comes first settles it, once.
+ */
 export async function verifyPayment(reference: string | undefined): Promise<ServiceResult> {
   if (!reference) return { status: 400, body: { error: "reference is required" } };
-  const { res, json: verifyJson } = await verifyTransaction(reference);
-  if (!res.ok || !verifyJson.status) return { status: 400, body: { error: verifyJson.message || "Verify failed" } };
-  if (verifyJson.data?.status === "success") await settleReference(reference, verifyJson.data);
-  return { status: 200, body: { status: verifyJson.data?.status } };
+  try {
+    const r = await new PaystackWebhookService(() => getDataContext()).confirmByReference(reference);
+    return { status: 200, body: { status: r.paystackStatus, ...(r.result ? { settled: r.result } : {}) } };
+  } catch (err) {
+    if (err instanceof PaystackRejected) return { status: 400, body: { error: err.message || "Verify failed" } };
+    if (err instanceof PaystackUnknownOutcome || err instanceof PaystackUnavailable) return { status: 502, body: { error: "Paystack could not be reached. Please try again in a moment." } };
+    throw err;
+  }
 }
 
-export async function handlePaystackWebhook(rawBody: string, signature: string | undefined): Promise<ServiceResult> {
-  if (!isValidWebhookSignature(rawBody, signature)) return { status: 401, body: { error: "Invalid signature" } };
-  const event = JSON.parse(rawBody) as { event?: string; data?: PaystackTransaction };
-  if (event.event === "charge.success") {
-    const tx = event.data || {};
-    const metadata = (tx.metadata || {}) as Record<string, unknown>;
-    // A successful ₦999 listing payment activates that exact listing even if
-    // the vendor's browser closed before the callback.
-    if (
-      metadata?.purpose === "levromart_listing_monthly" &&
-      metadata?.listing_id &&
-      metadata?.vendor_id &&
-      (metadata?.kind === "product" || metadata?.kind === "package") &&
-      tx.status === "success" &&
-      Number(tx.amount) === MONTHLY_LISTING_KOBO
-    ) {
-      await settleListingPaymentFromWebhook(tx.reference as string, metadata);
-    } else {
-      await settleReference(tx.reference as string, tx);
-    }
-  }
-  return { status: 200, body: { received: true } };
+/** The old webhook address: handled exactly like /api/v1/payments/paystack/webhook (one place settles Paystack payments). */
+export function handlePaystackWebhook(rawBody: string, signature: string | undefined): Promise<ServiceResult> {
+  return new PaystackWebhookService(() => getDataContext()).handle(rawBody, signature);
 }
