@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import type { Executor } from "../client.js";
 import { jsonReturning, jsonRow, jsonRows } from "../json.js";
 
@@ -29,6 +29,17 @@ export interface PayoutRow {
   created_at: string;
   updated_at: string;
 }
+
+/**
+ * The commission a payout takes for one order, in kobo (migration 0024): charges still owed, plus charges collected from the
+ * order's Paystack card payment (payment_id points at it). A charge the shop paid itself, or a waived one, is not taken again.
+ */
+export const payoutCommissionKobo = (orderId: SQL) => sql`coalesce((
+  select round(sum(c.amount) * 100) from public.commission_charges c
+   where c.order_id = ${orderId}
+     and (c.status = 'owed'
+          or (c.status = 'paid' and exists (select 1 from public.payments cp where cp.id = c.payment_id and cp.order_id = c.order_id
+                                                   and cp.method = 'card' and cp.provider_reference like 'lvm\_ord\_%')))), 0)`;
 
 const WORK = sql`
   select p.id, p.order_id, p.vendor_id, p.transfer_reference, p.status, p.attempts,
@@ -75,9 +86,9 @@ export class VendorPayoutsRepository {
     return Number(r?.k ?? 0);
   }
 
-  /** The platform's commission on the order (a waived one is not taken), in kobo. */
+  /** The platform's commission the payout takes (see payoutCommissionKobo), in kobo. */
   async commissionKobo(orderId: string): Promise<number> {
-    const r = await jsonRow<{ k: string }>(this.db, sql`select coalesce(round(sum(amount) * 100), 0)::text as k from public.commission_charges where order_id = ${orderId} and status <> 'waived'`);
+    const r = await jsonRow<{ k: string }>(this.db, sql`select ${payoutCommissionKobo(sql`${orderId}::uuid`)}::text as k`);
     return Number(r?.k ?? 0);
   }
 
@@ -89,7 +100,13 @@ export class VendorPayoutsRepository {
 
   /** The commission is taken out of the payout, so the vendor no longer owes it separately. */
   async settleCommission(orderId: string): Promise<void> {
-    await this.db.execute(sql`update public.commission_charges set status = 'paid', paid_at = now() where order_id = ${orderId} and status = 'owed'`);
+    // collected from the order's card payment: linked to it, so a retried payout still takes it (and only it)
+    await this.db.execute(sql`
+      update public.commission_charges
+         set status = 'paid', paid_at = now(),
+             payment_id = (select p.id from public.payments p where p.order_id = ${orderId} and p.status = 'paid' and p.method = 'card'
+                             and p.provider_reference like 'lvm\_ord\_%' order by p.created_at desc limit 1)
+       where order_id = ${orderId} and status = 'owed'`);
   }
 
   async markProcessing(id: string, amountKobo: number, commissionKobo: number, recipientCode: string): Promise<void> {

@@ -1,4 +1,4 @@
-# Database changes waiting to be applied (0014 to 0023)
+# Database changes waiting to be applied
 
 These are written, tested and merged, but a migration only changes the live database when an engineer applies it
 (`docs/DATABASE.md`, section 3). Until then the matching feature shows "being set up" or does nothing.
@@ -16,14 +16,20 @@ The Admin → Payments page shows an orange box listing exactly which of these a
 | 0021 | Admins suspending products |
 | 0022 | Open orders that were "pay after delivery" become "pay in full first" |
 | 0023 | Shops can change their own referral code |
+| 0024 | Commission on card orders is taken from the payout only: never asked of the shop, never charged twice, no shop paused for it |
+
+0014 to 0023 were applied to the live database on 27 October 2026 (the founder ran them). 0024 is the one waiting.
 
 ## How (engineer)
 
 ```bash
 npm run db:status  -w medris-backend                      # shows which are pending
 npm run db:migrate -w medris-backend                      # dry run
-npm run db:migrate -w medris-backend -- --apply --confirm <database host>
+npm run db:migrate -w medris-backend -- --apply --confirm <database host> --only 0024
 ```
+
+Always name the numbers with `--only`. Without it the command applies **every** pending file, including 0001 to 0003,
+which are not approved and must not be applied.
 
 Apply them in order, then deploy the backend (Heroku). Nothing else is needed: no new settings or keys.
 

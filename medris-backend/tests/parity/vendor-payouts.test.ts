@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { VendorPayoutsService } from "../../src/modules/vendor-payouts/vendor-payouts.service.js";
 import { seedOrder, seedProduct, seedUser, seedVendor, setRole } from "../support/fixtures.js";
@@ -99,6 +100,66 @@ describe("vendor payouts (issue #98)", () => {
     expect(p.commission_kobo).toBe("7503");
     const charge = await db.query<{ status: string }>(`select status from public.commission_charges where order_id = $1`, [orderId]);
     expect(charge[0]!.status).toBe("paid");
+  });
+
+  it("FIX review #2: a completed Paystack order's commission is collected from the payout, never asked of the shop", async () => {
+    const orderId = await seedOrder(db, buyer, shop, { status: "confirmed", productIds: [product], total: 5000 });
+    const [pay] = await db.query<{ id: string }>(`insert into public.payments (order_id, payment_type, amount, method, status, provider_reference) values ($1, 'sale_price', 5000, 'card', 'paid', $2) returning id`, [orderId, "lvm_ord_" + crypto.randomBytes(6).toString("hex")]);
+    await db.query(`update public.orders set total_amount = 5000, status = 'completed' where id = $1`, [orderId]);
+    const charges = await db.query<{ status: string; amount: string; payment_id: string | null; due_at: string | null }>(`select status, amount::text, payment_id, due_at from public.commission_charges where order_id = $1`, [orderId]);
+    expect(charges).toEqual([{ status: "paid", amount: "150.00", payment_id: pay!.id, due_at: null }]);
+    const owed = await db.query<{ n: string }>(`select coalesce(sum(amount), 0)::text as n from public.commission_charges where order_id = $1 and status = 'owed'`, [orderId]);
+    expect(owed[0]!.n).toBe("0");
+    // completed again (after a dispute): still one charge
+    await db.query(`update public.orders set status = 'disputed' where id = $1`, [orderId]);
+    await db.query(`update public.orders set status = 'completed' where id = $1`, [orderId]);
+    expect(await db.query(`select 1 from public.commission_charges where order_id = $1`, [orderId])).toHaveLength(1);
+    // the shop withdraws: the payout takes the 3% once
+    await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1`, [orderId]);
+    await service.run();
+    expect(transfers.at(-1)).toMatchObject({ amount: 500000 - 15000 });
+  });
+
+  it("FIX review #2: commission the shop already paid itself is not taken again from the payout", async () => {
+    const orderId = await completedOrder(2000, 100);
+    await db.query(`update public.commission_charges set status = 'paid', paid_at = now() where order_id = $1`, [orderId]); // paid through the commission checkout
+    await service.run();
+    expect(transfers.at(-1)).toMatchObject({ amount: 200000 });
+  });
+
+  it("FIX review #2: a payout retried after a failed transfer still takes the commission, once", async () => {
+    const orderId = await completedOrder(2000, 100);
+    transferAnswer = () => rejected("Recipient is invalid", 422);
+    await service.run();
+    expect(transfers.at(-1)).toMatchObject({ amount: 190000 });
+    await db.query(`update public.vendor_payouts set updated_at = now() - interval '2 hours' where order_id = $1`, [orderId]);
+    transferAnswer = () => ok({ transfer_code: "TRF_2", reference: "x", status: "pending" });
+    await service.run(); // queued again
+    await service.run(); // sent again
+    expect(transfers.at(-1)).toMatchObject({ amount: 190000 });
+  });
+
+  it("FIX review #2: an order paid some other way still owes its commission as before", async () => {
+    const orderId = await seedOrder(db, buyer, shop, { status: "confirmed", productIds: [product], total: 4000 });
+    await db.query(`insert into public.payments (order_id, payment_type, amount, method, status, provider_reference) values ($1, 'sale_price', 4000, 'transfer', 'paid', 'manual_x')`, [orderId]);
+    await db.query(`update public.orders set total_amount = 4000, status = 'completed' where id = $1`, [orderId]);
+    const charges = await db.query<{ status: string; amount: string; due: boolean }>(`select status, amount::text, due_at is not null as due from public.commission_charges where order_id = $1`, [orderId]);
+    expect(charges).toEqual([{ status: "owed", amount: "120.00", due: true }]);
+  });
+
+  it("FIX review #2: migration 0024 moves existing owed commission on held orders to 'collected', and nothing else", async () => {
+    const file = readFileSync(new URL("../../src/database/migrations/0024_commission_taken_from_payout.sql", import.meta.url), "utf8");
+    const dataFix = file.slice(file.indexOf("update public.commission_charges c"), file.indexOf("-- Storefronts paused"));
+    const held = await completedOrder(1000, 30); // owed, payout waiting
+    const sent = await completedOrder(1000, 30);
+    await db.query(`update public.vendor_payouts set status = 'success' where order_id = $1`, [sent]);
+    const paidBySelf = await completedOrder(1000, 30);
+    await db.query(`update public.commission_charges set status = 'paid', paid_at = now() where order_id = $1`, [paidBySelf]);
+    await db.query(dataFix);
+    const row = async (id: string) => (await db.query<{ status: string; linked: boolean; due: boolean }>(`select status, payment_id is not null as linked, due_at is not null as due from public.commission_charges where order_id = $1`, [id]))[0];
+    expect(await row(held)).toEqual({ status: "paid", linked: true, due: false });
+    expect(await row(sent)).toEqual(expect.objectContaining({ status: "owed", linked: false }));
+    expect(await row(paidBySelf)).toEqual(expect.objectContaining({ status: "paid", linked: false }));
   });
 
   it("a partial refund comes off the payout", async () => {
