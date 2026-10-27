@@ -58,31 +58,51 @@ export class RefundsService {
     });
   }
 
-  /** The scheduled job: asks Paystack to refund each queued refund, once. */
-  async run(limit = 25): Promise<{ started: number; failed: number }> {
-    const out = { started: 0, failed: 0 };
+  /**
+   * The scheduled job: asks Paystack to refund each queued refund, once.
+   *
+   * Claiming a refund and putting it in the buyer's refunds wallet happen in one transaction, and the wallet step runs in a
+   * savepoint: if the wallet cannot be used (for example its tables are missing), the refund goes back onto the card as before,
+   * instead of being left "processing" without ever reaching Paystack.
+   */
+  async run(limit = 25): Promise<{ started: number; failed: number; requeued: number }> {
+    const out = { started: 0, failed: 0, requeued: 0 };
+    out.requeued = await this.recoverUnconfirmed().catch((err) => {
+      console.error("[paystack-refunds] could not check unconfirmed refunds:", err instanceof Error ? err.message : err);
+      return 0;
+    });
     for (let i = 0; i < limit; i++) {
-      // claim: flip to `processing` and commit before the call, so a second worker cannot send the same refund
-      const work = await this.db().asService(async (tx) => {
+      const step = await this.db().asService(async (tx) => {
         const repo = new PaystackRefundsRepository(tx);
         const next = await repo.nextPending();
-        if (next) await repo.markProcessing(next.id);
-        return next;
+        if (!next) return null;
+        // a buyer with a refunds wallet gets the money there; everyone else gets it back on the card
+        const toWallet = await tx
+          .transaction((sp) => new BuyerWalletRepository(sp).creditRefund({ id: next.id, order_id: next.order_id, buyer_id: next.buyer_id, amount_kobo: next.amount_kobo }))
+          .catch((err: unknown) => {
+            console.error("[paystack-refunds] refunds wallet not usable, refunding to the card:", err instanceof Error ? err.message : err);
+            return false;
+          });
+        if (toWallet) {
+          await new NotificationWriter(tx).create({ userId: next.buyer_id, type: "refund_in_wallet", title: "Refund added to your wallet", body: `${naira(next.amount_kobo)} is in your refunds wallet. Open your wallet to withdraw it.`, targetView: "buyerProfile", actorId: null });
+          return { work: next, toWallet: true };
+        }
+        // claim: flip to `processing` and commit before the call, so a second worker cannot send the same refund
+        await repo.markProcessing(next.id);
+        return { work: next, toWallet: false };
       });
-      if (!work) break;
-      // a buyer with a refunds wallet gets the money there; everyone else gets it back on the card
-      const toWallet = await this.db().asService(async (tx) => {
-        const put = await new BuyerWalletRepository(tx).creditRefund({ id: work.id, order_id: work.order_id, buyer_id: work.buyer_id, amount_kobo: work.amount_kobo });
-        if (put) await new NotificationWriter(tx).create({ userId: work.buyer_id, type: "refund_in_wallet", title: "Refund added to your wallet", body: `${naira(work.amount_kobo)} is in your refunds wallet. Open your wallet to withdraw it.`, targetView: "buyerProfile", actorId: null });
-        return put;
-      });
-      if (toWallet) {
+      if (!step) break;
+      if (step.toWallet) {
         out.started++;
         continue;
       }
+      const work = step.work;
       try {
-        await getPaystackClient().createRefund({ transaction: work.transaction_reference, amountKobo: Number(work.amount_kobo) });
-        await this.db().asService((tx) => this.tellPeople(tx, work));
+        const sent = await getPaystackClient().createRefund({ transaction: work.transaction_reference, amountKobo: Number(work.amount_kobo) });
+        await this.db().asService(async (tx) => {
+          await new PaystackRefundsRepository(tx).markSent(work.id, sent?.id != null ? String(sent.id) : null);
+          await this.tellPeople(tx, work);
+        });
         out.started++;
       } catch (err) {
         out.failed++;
@@ -90,6 +110,41 @@ export class RefundsService {
       }
     }
     return out;
+  }
+
+  /**
+   * Refunds left "processing" for over 30 minutes with no Paystack refund id (the job stopped half-way, or Paystack's answer
+   * was lost): Paystack is asked which refunds it has for that payment. One with the same amount that is not yet matched to
+   * another row is this refund (its id is kept); if there is none, the money never left and the refund goes back in the queue.
+   * When Paystack cannot be asked, nothing changes. Returns how many went back in the queue.
+   */
+  async recoverUnconfirmed(olderThanMinutes = 30, limit = 10): Promise<number> {
+    const stuck = await this.db().asService((tx) => new PaystackRefundsRepository(tx).unconfirmedProcessing(olderThanMinutes, limit));
+    let requeued = 0;
+    for (const r of stuck) {
+      let found: { id: number | string; amount: number }[];
+      try {
+        found = await getPaystackClient().listRefunds(r.paystack_transaction_id);
+      } catch {
+        continue; // Paystack could not be asked: look again on the next run
+      }
+      const back = await this.db().asService(async (tx) => {
+        const repo = new PaystackRefundsRepository(tx);
+        const rows = await repo.lockPaymentRefunds(r.transaction_reference);
+        const me = rows.find((x) => x.id === r.id);
+        if (!me || me.status !== "processing" || me.paystack_refund_id) return false; // settled meanwhile
+        const taken = new Set(rows.map((x) => x.paystack_refund_id).filter(Boolean) as string[]);
+        const match = (found ?? []).find((f) => !taken.has(String(f.id)) && Number(f.amount) === Number(r.amount_kobo));
+        if (match) {
+          await repo.markSent(r.id, String(match.id));
+          return false;
+        }
+        await repo.requeueUnsent(r.id);
+        return true;
+      });
+      if (back) requeued++;
+    }
+    return requeued;
   }
 
   private async tellPeople(tx: Tx, w: { order_id: string; buyer_id: string; vendor_user_id: string | null; amount_kobo: string }): Promise<void> {

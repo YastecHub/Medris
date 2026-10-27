@@ -18,6 +18,7 @@ describe("paystack refunds (issue #99)", () => {
   const savedKey = process.env.PAYSTACK_SECRET_KEY;
   const calls: Array<Record<string, unknown>> = [];
   let refundAnswer: () => Response;
+  let listAnswer: () => Response;
   const ok = (data: unknown) => new Response(JSON.stringify({ status: true, data }), { status: 200 });
 
   beforeAll(async () => {
@@ -38,7 +39,8 @@ describe("paystack refunds (issue #99)", () => {
     await db.query(`delete from public.paystack_refunds`);
     await db.query(`delete from public.vendor_payouts`);
     await db.query(`update public.vendors set transfer_recipient_code = 'RCP_test', payout_verified_at = now() where id = $1`, [shop]);
-    refundAnswer = () => ok({ status: "pending", transaction: { reference: "x" } });
+    refundAnswer = () => ok({ id: 5501, status: "pending", transaction: { reference: "x" } });
+    listAnswer = () => ok([]);
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -47,6 +49,7 @@ describe("paystack refunds (issue #99)", () => {
           calls.push(JSON.parse(String(init.body)));
           return refundAnswer();
         }
+        if (/\/refund\?transaction=/.test(u)) return listAnswer();
         if (/\/transfer$/.test(u) && init?.method === "POST") return ok({ transfer_code: "TRF", reference: "x", status: "pending" });
         return new Response("{}", { status: 404 });
       }),
@@ -176,5 +179,63 @@ describe("paystack refunds (issue #99)", () => {
     const before = calls.length;
     await refunds.run();
     expect(calls.length).toBe(before);
+  });
+
+  it("FIX review #1: when the refunds wallet cannot be used, the refund goes back on the card instead of getting stuck", async () => {
+    const { orderId } = await paidOrder(1200);
+    await refunds.refundOrder(as(admin), orderId, { reason: "wallet broken" });
+    await db.query(`alter table public.buyer_payout_accounts rename to buyer_payout_accounts_gone`);
+    try {
+      await refunds.run();
+    } finally {
+      await db.query(`alter table public.buyer_payout_accounts_gone rename to buyer_payout_accounts`);
+    }
+    expect(calls).toHaveLength(1);
+    const [row] = await db.query<{ status: string; paystack_refund_id: string | null }>(`select status, paystack_refund_id from public.paystack_refunds where order_id = $1`, [orderId]);
+    expect(row).toEqual({ status: "processing", paystack_refund_id: "5501" });
+  });
+
+  it("FIX review #1: a refund left 'processing' that Paystack never received goes back in the queue and is sent once", async () => {
+    const { orderId, ref } = await paidOrder(900);
+    await db.query(`update public.paystack_transactions set paystack_transaction_id = 777001 where reference = $1`, [ref]);
+    await db.query(`insert into public.paystack_refunds (transaction_reference, order_id, attempt, amount_kobo, status, source) values ($1, $2, 1, 90000, 'processing', 'cancellation')`, [ref, orderId]);
+    const asked: string[] = [];
+    listAnswer = () => ok([]);
+    const real = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (/\/refund\?transaction=/.test(String(url))) asked.push(String(url));
+      return real(url, init);
+    }));
+    expect(await refunds.recoverUnconfirmed(0)).toBe(1);
+    expect(asked[0]).toContain("transaction=777001");
+    await refunds.run();
+    expect(calls).toEqual([expect.objectContaining({ transaction: ref, amount: 90000 })]);
+    // already matched now: a later check does not send it again
+    await refunds.recoverUnconfirmed(0);
+    await refunds.run();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("FIX review #1: a refund Paystack already has is matched by amount and never sent again", async () => {
+    const { orderId, ref } = await paidOrder(700);
+    await db.query(`update public.paystack_transactions set paystack_transaction_id = 777002 where reference = $1`, [ref]);
+    await db.query(`insert into public.paystack_refunds (transaction_reference, order_id, attempt, amount_kobo, status, source) values ($1, $2, 1, 70000, 'processing', 'admin')`, [ref, orderId]);
+    listAnswer = () => ok([{ id: 8800, amount: 70000, status: "pending" }]);
+    expect(await refunds.recoverUnconfirmed(0)).toBe(0);
+    await refunds.run();
+    expect(calls).toHaveLength(0);
+    const [row] = await db.query<{ status: string; paystack_refund_id: string }>(`select status, paystack_refund_id from public.paystack_refunds where order_id = $1`, [orderId]);
+    expect(row).toEqual({ status: "processing", paystack_refund_id: "8800" });
+  });
+
+  it("FIX review #1: when Paystack cannot be asked, a 'processing' refund is left alone", async () => {
+    const { orderId, ref } = await paidOrder(600);
+    await db.query(`update public.paystack_transactions set paystack_transaction_id = 777003 where reference = $1`, [ref]);
+    await db.query(`insert into public.paystack_refunds (transaction_reference, order_id, attempt, amount_kobo, status, source) values ($1, $2, 1, 60000, 'processing', 'admin')`, [ref, orderId]);
+    listAnswer = () => new Response("{}", { status: 503 });
+    expect(await refunds.recoverUnconfirmed(0)).toBe(0);
+    await refunds.run();
+    expect(calls).toHaveLength(0);
+    expect((await rows(orderId))[0]!.status).toBe("processing");
   });
 });
