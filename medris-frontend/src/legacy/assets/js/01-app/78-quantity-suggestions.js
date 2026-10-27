@@ -362,27 +362,6 @@ async function setupMonthlyBilling() {
   }
 }
 
-async function payOnline(orderId) {
-  const errorEl = byId("payOnlineError");
-  const btn = byId("payOnlineBtn");
-  errorEl.classList.add("hidden");
-  btn.disabled = true;
-  try {
-    const res = await fetch("/api/initiate-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, accessToken: session.access_token }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Could not start payment.");
-    window.location.href = json.authorization_url;
-  } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.classList.remove("hidden");
-    btn.disabled = false;
-  }
-}
-
 async function recordOfflinePayment(orderId, remainingPercent = null) {
   const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
   const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;

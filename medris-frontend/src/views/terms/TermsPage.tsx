@@ -4,7 +4,7 @@ import { go } from "@/views/legacy-navigate";
  * Terms of Service, drawn by React.
  *
  * Converted one-to-one from renderTerms() (src/legacy/assets/js/01-app/85-legal-pages.js:2): same
- * markup, same classes, same text ("Last updated: 26 October 2026"). The text is a static string of
+ * markup, same classes, same text ("Last updated: 27 October 2026"). The text is a static string of
  * our own, so it is written as plain JSX (escaped by React); nothing comes from the database.
  * Until the legacy screen is deleted (a later pull request) any wording change must be made in
  * BOTH places; the parity test (tests/e2e/pilot-terms.spec.ts) fails if they drift apart.
@@ -15,7 +15,7 @@ export default function Terms() {
   return (
     <div className="legal-page">
       <h2>Terms of Service</h2>
-      <p className="muted">Last updated: 26 October 2026</p>
+      <p className="muted">Last updated: 27 October 2026</p>
       <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
       <h3>1. What Levromart is (and isn't)</h3>
@@ -36,7 +36,7 @@ export default function Terms() {
       <li>Rentals may require a refundable deposit. If there's a dispute over damage or non-return, Levromart's dispute resolution process decides how it's handled, including a refund from Levromart where warranted.</li>
       <li>Vendors set their own prices. Eligible listings may use commission-based billing or a monthly listing fee; monthly listings require a ₦999 activation payment before they go live and the fee covers one month.</li>
       <li>Some vendors accept offline payment (cash/transfer) on handover. Levromart still tracks any commission owed on commission-based listings.</li>
-      <li><strong>Commission payment window:</strong> commission on a completed sale is due within a 7-day payment window. Your dashboard shows the amount owed and the time left, and we send reminders 5, 3, 2 and 1 days before the deadline. If the balance is still unpaid after the deadline, Levromart may pause the vendor's storefront until it is settled.</li>
+      <li><strong>Commission payment window:</strong> when the customer paid through Levromart's checkout (Paystack), the commission is taken from that sale's payout and you never pay it separately. Commission on any other completed sale is due within a 7-day payment window. Your dashboard shows the amount owed and the time left, and we send reminders 5, 3, 2 and 1 days before the deadline. If the balance is still unpaid after the deadline, Levromart may pause the vendor's storefront until it is settled.</li>
       </ul>
 
       <h3>4. Messaging, calls &amp; chat history</h3>

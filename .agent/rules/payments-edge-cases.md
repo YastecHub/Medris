@@ -14,8 +14,9 @@ description: Use when money is involved - orders and payment reporting/confirmat
   in `payment_deposit_percent`) and a balance.
 - **Completion:** after the final payment is confirmed the buyer confirms receipt or it auto-completes after 24 h
   (`auto_complete_eligible_orders`); completion records commission (`commission_charges`).
-- **Paystack** is used for ₦999 listing fees, commission settlement and older card orders: `api/initiate-payment.js`,
-  `api/verify-payment.js`, `api/paystack-webhook.js`, `api/vendor-payments.js`, payouts in `api/order-payout-action.js`.
+- **Paystack** is used for ₦999 listing fees, commission settlement and older card orders: `api/vendor-payments.js`,
+  payouts in `api/order-payout-action.js`. Every Paystack payment is settled by the backend's `PaystackWebhookService`;
+  `api/verify-payment.js` and `api/paystack-webhook.js` only pass requests on to it (never add settling code there).
 - Amounts are `numeric` naira in the database; Paystack works in kobo - convert only at the Paystack call.
 
 ## Rules

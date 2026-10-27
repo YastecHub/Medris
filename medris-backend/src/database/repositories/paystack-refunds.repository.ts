@@ -85,6 +85,36 @@ export class PaystackRefundsRepository {
     await this.db.execute(sql`update public.paystack_refunds set status = 'processing', last_error = null where id = ${id}`);
   }
 
+  /** Paystack accepted the refund: keep its id, so the refund is never mistaken for one that was not sent. */
+  async markSent(id: string, paystackRefundId: string | null): Promise<void> {
+    await this.db.execute(sql`update public.paystack_refunds set paystack_refund_id = coalesce(${paystackRefundId}, paystack_refund_id) where id = ${id}`);
+  }
+
+  /**
+   * Refunds left "processing" for a while without a Paystack refund id: either Paystack never got them (a job that stopped
+   * half-way) or its answer was lost. Only those whose payment has a Paystack id can be checked with Paystack.
+   */
+  unconfirmedProcessing(olderThanMinutes: number, limit: number): Promise<{ id: string; transaction_reference: string; amount_kobo: string; paystack_transaction_id: string }[]> {
+    return jsonRows(
+      this.db,
+      sql`select r.id, r.transaction_reference, r.amount_kobo::text as amount_kobo, t.paystack_transaction_id::text as paystack_transaction_id
+          from public.paystack_refunds r join public.paystack_transactions t on t.reference = r.transaction_reference
+          where r.status = 'processing' and r.paystack_refund_id is null and t.paystack_transaction_id is not null
+            and r.updated_at < now() - make_interval(mins => ${olderThanMinutes})
+          order by r.updated_at limit ${limit}`,
+    );
+  }
+
+  /** Locks every refund row of one payment and returns the Paystack refund ids already matched to one of them. */
+  async lockPaymentRefunds(transactionReference: string): Promise<{ id: string; status: string; paystack_refund_id: string | null }[]> {
+    return jsonRows(this.db, sql`select id, status, paystack_refund_id from public.paystack_refunds where transaction_reference = ${transactionReference} order by attempt for update`);
+  }
+
+  /** Paystack has no refund for it: it never left, so it goes back in the queue (sent once, by the next run). */
+  async requeueUnsent(id: string): Promise<void> {
+    await this.db.execute(sql`update public.paystack_refunds set status = 'pending', last_error = null where id = ${id} and status = 'processing' and paystack_refund_id is null`);
+  }
+
   async markFailed(id: string, error: string): Promise<void> {
     await this.db.execute(sql`update public.paystack_refunds set status = 'failed', last_error = ${error.slice(0, 300)} where id = ${id}`);
   }

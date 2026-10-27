@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Executor } from "../client.js";
 import { jsonReturning, jsonRow, jsonRows } from "../json.js";
+import { payoutCommissionKobo } from "./vendor-payouts.repository.js";
 
 /** The marker on a payout row that is waiting for the shop to withdraw it (migration 0017). */
 export const WAITING_REASON = "Waiting for the vendor to withdraw";
@@ -39,7 +40,7 @@ export class WithdrawalsRepository {
                  (select max(pay.paid_at) from public.payments pay where pay.order_id = p.order_id and pay.status = 'paid' and pay.method = 'card' and pay.provider_reference like 'lvm\_ord\_%') as paid_at,
                  greatest(0,
                    coalesce((select round(sum(pay.amount) * 100) from public.payments pay where pay.order_id = p.order_id and pay.status = 'paid' and pay.method = 'card' and pay.provider_reference like 'lvm\_ord\_%' and pay.payment_type::text <> 'deposit'), 0)
-                   - coalesce((select round(sum(c.amount) * 100) from public.commission_charges c where c.order_id = p.order_id and c.status <> 'waived'), 0)
+                   - ${payoutCommissionKobo(sql`p.order_id`)}
                    - coalesce((select sum(r.amount_kobo) from public.paystack_refunds r where r.order_id = p.order_id and r.status <> 'failed'), 0)
                  )::text as net_kobo,
                  exists (select 1 from public.disputes d where d.order_id = p.order_id and d.status = 'open') as disputed

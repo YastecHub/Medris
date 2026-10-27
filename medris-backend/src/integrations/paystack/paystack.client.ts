@@ -120,6 +120,11 @@ export class PaystackClient {
     });
   }
 
+  /** The refunds Paystack holds for one payment (`transactionId`: Paystack's numeric id of the payment, not our reference). */
+  listRefunds(transactionId: number | string) {
+    return this.request<{ id: number | string; amount: number; status?: string }[]>("GET", `/refund?transaction=${encodeURIComponent(String(transactionId))}&perPage=100`);
+  }
+
   listBanks() {
     return this.request<{ name: string; code: string; slug?: string }[]>("GET", "/bank?country=nigeria&currency=NGN&perPage=100");
   }

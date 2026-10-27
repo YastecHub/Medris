@@ -154,7 +154,7 @@ React component ───► v1.<area>.<method>()  (typed with @medris/contracts
 
 - Every previous URL is served with the same request/response shapes: `/api/auth-otp`, `/api/chat`,
   `/api/daily-cron`, `/api/delete-account` (+ `/api/register`, `/api/account-exists`, `/api/turn`,
-  `/api/notif-icon`), `/api/initiate-payment`, `/api/verify-payment`, `/api/paystack-webhook`, `/api/notify`,
+  `/api/notif-icon`), `/api/verify-payment`, `/api/paystack-webhook`, `/api/notify`,
   `/api/order-notify`, `/api/order-payout-action`, `/api/order-reminders`, `/api/vendor-payments`
   (+ `/api/listing-payments`), link previews for `/?storefront=|product=|package=` and `/s/`, `/p/`, `/k/`, and share
   cards (`?ogstore=|ogprod=|ogpkg=`). The routes answer both the rewritten URL (`/api/delete-account?turn=1`) and

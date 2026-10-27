@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { Executor } from "../client.js";
 import { jsonRow } from "../json.js";
 import { CommissionRepository } from "./commission.repository.js";
-import { commissionCharges, commissionSettlements, listingPaymentIntents, products, vendorMonthlyCharges, vendorPackages } from "../schema/index.js";
+import { commissionSettlements, listingPaymentIntents, products, vendorMonthlyCharges, vendorPackages } from "../schema/index.js";
 
 export type ListingTable = "products" | "vendor_packages";
 
@@ -46,12 +46,17 @@ export class BillingRepository {
     return row ?? null;
   }
 
+  /**
+   * The settlement and the charges it paid for, together (one transaction): the owed charges of completed orders that existed
+   * when the payment was started - a charge added while the shop was paying was not in the amount, so it stays owed.
+   */
   async markSettlementPaid(id: string, vendorId: string, at: string): Promise<void> {
     await this.db.update(commissionSettlements).set({ status: "paid", paidAt: at }).where(eq(commissionSettlements.id, id));
-    await this.db
-      .update(commissionCharges)
-      .set({ status: "paid", paidAt: at })
-      .where(and(eq(commissionCharges.vendorId, vendorId), eq(commissionCharges.status, "owed")));
+    await this.db.execute(sql`
+      update public.commission_charges c set status = 'paid', paid_at = ${at}
+        from public.orders o, public.commission_settlements s
+       where o.id = c.order_id and s.id = ${id}
+         and c.vendor_id = ${vendorId} and c.status = 'owed' and o.status = 'completed' and c.created_at <= s.created_at`);
   }
 
   async monthlyChargeByReference(reference: string): Promise<{ id: string; vendor_id: string; status: string } | null> {

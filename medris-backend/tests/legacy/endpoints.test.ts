@@ -216,8 +216,12 @@ describe("/api/vendor-payments", () => {
 
 describe("Paystack", () => {
   const sign = (body: string) => crypto.createHmac("sha512", TEST_ENV.PAYSTACK_SECRET_KEY).update(body).digest("hex");
-  const webhook = (payload: unknown) => {
-    const body = JSON.stringify(payload);
+  // The old address is handled like /api/v1/payments/paystack/webhook: Paystack is asked about the payment (verify)
+  // and its answer, not the event, is what gets settled. `data` is what Paystack answers.
+  let eventId = 9000;
+  const webhook = (payload: { event: string; data: Record<string, unknown> }) => {
+    stubFetch([{ method: "GET", match: "transaction/verify/", json: { status: true, data: { currency: "NGN", ...payload.data } } }]);
+    const body = JSON.stringify({ ...payload, data: { id: ++eventId, ...payload.data } });
     return app.fetch(new Request("https://app.test/api/paystack-webhook", { method: "POST", body, headers: { "x-paystack-signature": sign(body) } }));
   };
 
@@ -244,7 +248,7 @@ describe("Paystack", () => {
     const kobo = Math.round(Number(due!.amount) * 100);
     expect(JSON.parse(calls[0]!.body!)).toMatchObject({ amount: kobo, reference: body.reference });
 
-    expect(await (await webhook({ event: "charge.success", data: { reference: body.reference, status: "success", amount: kobo } })).json()).toEqual({ received: true });
+    expect(await (await webhook({ event: "charge.success", data: { reference: body.reference, status: "success", amount: kobo } })).json()).toEqual({ received: true, result: "settled (legacy reference)" });
     const [payment] = await db.query<{ status: string; paid_at: string | null }>(`select status, paid_at from public.payments where provider_reference = $1`, [body.reference]);
     expect(payment?.status).toBe("paid");
     expect(payment?.paid_at).not.toBeNull();
@@ -261,9 +265,13 @@ describe("Paystack", () => {
     expect(JSON.parse(calls[0]!.body!)).toMatchObject({ amount: 420000 });
   });
 
-  it("settles a commission payment and every owed charge", async () => {
-    const { vendor } = await marketplace();
-    await db.query(`insert into public.commission_charges (vendor_id, amount, status) values ($1, 300, 'owed'), ($1, 200, 'owed')`, [vendor.id]);
+  it("settles a commission payment and the owed charges it was started for", async () => {
+    const { vendor, buyer } = await marketplace();
+    for (const amount of [300, 200]) {
+      const sold = await order(buyer.id, vendor.id, { status: "completed" });
+      await db.query(`delete from public.commission_charges where order_id = $1`, [sold]);
+      await db.query(`insert into public.commission_charges (vendor_id, order_id, amount, status, created_at) values ($1, $2, $3, 'owed', now() - interval '1 minute')`, [vendor.id, sold, amount]);
+    }
     await db.query(`insert into public.commission_settlements (vendor_id, amount, status, provider_reference) values ($1, 500, 'pending', 'commission_xyz')`, [vendor.id]);
     await webhook({ event: "charge.success", data: { reference: "commission_xyz", status: "success", amount: 50000 } });
     expect(await db.query(`select status from public.commission_charges where vendor_id = $1 and status = 'owed'`, [vendor.id])).toHaveLength(0);

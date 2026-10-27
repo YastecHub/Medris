@@ -35,149 +35,31 @@ function env(name) {
   return v;
 }
 
-// A successful Paystack charge can be a buyer's order payment (reference
-// starts "medris_"), a vendor settling owed commission on their offline
-// sales ("commission_"), or a vendor setting up monthly billing
-// ("billing_"). Both the webhook and the browser-return verify endpoint
-// need this same routing, so it lives here once. `txData` is the Paystack
-// transaction object (event.data on the webhook, verifyJson.data on the
-// browser-return path) -- only the billing_ path actually needs it, to
-// pull the card's authorization_code for future recurring charges.
-async function settleReference(reference, txData) {
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const headers = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" };
-
-  if (reference.startsWith("commission_")) {
-    const getRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/commission_settlements?provider_reference=eq.${encodeURIComponent(reference)}&select=id,vendor_id,status`,
-      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-    );
-    const [settlement] = await getRes.json();
-    if (!settlement || settlement.status === "paid") return;
-
-    await fetch(`${SUPABASE_URL}/rest/v1/commission_settlements?id=eq.${settlement.id}`, {
-      method: "PATCH", headers,
-      body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/commission_charges?vendor_id=eq.${settlement.vendor_id}&status=eq.owed`, {
-      method: "PATCH", headers,
-      body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
-    });
-  } else if (reference.startsWith("billing_")) {
-    const getRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/vendor_monthly_charges?provider_reference=eq.${encodeURIComponent(reference)}&select=id,vendor_id,status`,
-      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-    );
-    const [charge] = await getRes.json();
-    if (!charge || charge.status === "paid") return;
-
-    const authCode = txData?.authorization?.authorization_code;
-    const customerCode = txData?.customer?.customer_code;
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-    await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${charge.vendor_id}`, {
-      method: "PATCH", headers,
-      body: JSON.stringify({
-        paystack_authorization_code: authCode,
-        paystack_customer_code: customerCode,
-        monthly_billing_status: "active",
-        next_monthly_charge_at: nextMonth.toISOString(),
-      }),
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/vendor_monthly_charges?id=eq.${charge.id}`, {
-      method: "PATCH", headers,
-      body: JSON.stringify({ status: "paid" }),
-    });
-  } else {
-    // An order payment (references "medris_..." and "lvm_ord_..."). The payment is marked paid AND the order moves on (a delivery
-    // deposit confirms it; a final payment completes it or readies it for the vendor to send), checking the amount Paystack
-    // reports and doing nothing the second time (the webhook and the buyer's return both land here).
-    // Preferred: one database function (migration 0014, atomic). Until it is applied, the same steps run here, one by one.
-    const kobo = Number.isFinite(Number(txData?.amount)) ? Number(txData.amount) : null;
-    let done = false, reason = "";
-    try {
-      const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/apply_card_payment_to_order`, {
-        method: "POST", headers: { ...headers, Prefer: "return=representation" },
-        body: JSON.stringify({ p_reference: reference, p_paid_kobo: kobo }),
-      });
-      if (rpcRes.ok) {
-        const out = await rpcRes.json().catch(() => null);
-        if (out && out.applied === false && out.reason === "amount_too_low") { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return "amount_too_low"; }
-        done = true; reason = out && out.reason ? String(out.reason) : "applied";
-      }
-    } catch (_) {}
-    if (!done) reason = await applyOrderPaymentRest(reference, kobo, SUPABASE_URL, SERVICE_KEY);
-    await markLedgerPaid(reference, txData, SUPABASE_URL, SERVICE_KEY);
-    return reason;
-  }
-  return "ok";
+// ---------- the backend ----------
+// Paystack payments are settled in one place, the backend on Heroku (PaystackWebhookService): the webhook and
+// "verify" functions here only pass requests on to it. BACKEND_URL can point them elsewhere (a test backend).
+const DEFAULT_BACKEND_URL = "https://levromart-5212f03a7e44.herokuapp.com";
+function backendUrl() {
+  return String(process.env.BACKEND_URL || DEFAULT_BACKEND_URL).replace(/\/$/, "");
 }
 
-// The new checkout keeps a ledger row per attempt; mark it paid so the backend's own webhook sees "already settled".
-async function markLedgerPaid(reference, txData, SUPABASE_URL, SERVICE_KEY) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/paystack_transactions?reference=eq.${encodeURIComponent(reference)}&status=in.(initialized,failed,abandoned)`, {
-      method: "PATCH",
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({
-        status: "success",
-        paid_at: txData?.paid_at || new Date().toISOString(),
-        ...(txData?.channel ? { channel: String(txData.channel) } : {}),
-        ...(Number.isInteger(txData?.id) ? { paystack_transaction_id: txData.id } : {}),
-      }),
-    });
-  } catch (_) { /* the ledger table may not exist on an older database: nothing to update */ }
-}
-
-// Same rules as vendor_confirm_reported_payment / apply_card_payment_to_order, over the REST API. Only the caller that actually flips
-// a payment from "pending" to "paid" moves the order, so a webhook and a return at the same moment cannot do it twice.
-async function applyOrderPaymentRest(reference, paidKobo, SUPABASE_URL, SERVICE_KEY) {
-  const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
-  let getErr = "";
-  const get = async (path) => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h }); if (r.ok) return r.json(); const m = await r.text().catch(() => ""); getErr = `read_failed_${r.status}: ${m.slice(0, 120)}`; console.error("[settleReference]", getErr); return []; };
-  const ref = encodeURIComponent(reference);
-  const rows = await get(`payments?provider_reference=eq.${ref}&select=id,order_id,payment_type,amount,status,created_at&order=created_at.asc`);
-  if (!rows.length) return getErr || "no_payment_row";
-  const total = rows.reduce((a, p) => a + Number(p.amount || 0), 0);
-  if (paidKobo != null && paidKobo < Math.round(total * 100)) { console.error("[settleReference] Paystack amount is lower than the order needs; not settled:", reference); return "amount_too_low"; }
-  const flipped = await fetch(`${SUPABASE_URL}/rest/v1/payments?provider_reference=eq.${ref}&status=eq.pending`, {
-    method: "PATCH", headers: { ...h, Prefer: "return=representation" },
-    body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() }),
+// The request body exactly as sent (bytes), for a signature that must be checked on the raw body.
+function readRawBytes(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
   });
-  if (!flipped.ok) { const msg = await flipped.text().catch(() => ""); console.error("[settleReference] could not mark the payment paid:", flipped.status, msg.slice(0, 300)); return `payment_update_failed_${flipped.status}: ${msg.slice(0, 120)}`; }
-  const flippedRows = await flipped.json().catch(() => []);
-  if (!flippedRows.length) return "already_paid";       // already settled by the other path
-  const orderId = rows[0].order_id;
-  const [order] = await get(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,status,order_type,delivery_method,payment_timing,payout_status,service_offer_id`);
-  if (!order) return getErr || "order_missing";
-  if (["cancelled", "completed"].includes(order.status)) return `order_${order.status}`;
-  const main = rows.find((p) => ["sale_price", "rental_fee", "delivery_deposit_20"].includes(p.payment_type));
-  if (!main) return "no_fee_payment";
-  let orderErr = "";
-  const patchOrder = async (body) => {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify(body) });
-    if (!r.ok) { const msg = await r.text().catch(() => ""); console.error("[settleReference] could not update the order:", r.status, msg.slice(0, 300)); orderErr = `order_update_failed_${r.status}: ${msg.slice(0, 120)}`; }
-  };
-  const open = order.status === "pending" || order.status === "payment_unresolved";
-  if (main.payment_type === "delivery_deposit_20") {
-    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
-    return orderErr || "applied";
-  }
-  let complete = true;
-  if (order.delivery_method === "delivery" && order.payment_timing === "pay_after") {
-    complete = (await get(`payments?order_id=eq.${encodeURIComponent(orderId)}&payment_type=eq.delivery_deposit_20&status=eq.paid&select=id&limit=1`)).length > 0;
-  }
-  if (complete && order.order_type !== "rental" && !order.service_offer_id && (order.payout_status || "not_applicable") === "not_applicable") {
-    // paid: the vendor can send it now. The buyer's confirmation window starts when the vendor marks it out for delivery.
-    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
-  } else if (complete) {
-    await patchOrder({ status: "completed", completed_at: new Date().toISOString(), payment_unresolved_at: null, payment_escalated_at: null, awaiting_confirmation_since: null });
-  } else {
-    await patchOrder({ ...(open ? { status: "confirmed" } : {}), payment_unresolved_at: null, payment_escalated_at: null });
-  }
-  return orderErr || "applied";
+}
+
+// Answers with the backend's answer: same status, same JSON (or an empty body).
+async function passOn(answer, res) {
+  const text = await answer.text();
+  res.status(answer.status);
+  if (!text) { res.end(); return; }
+  res.setHeader("Content-Type", answer.headers.get("content-type") || "application/json");
+  res.end(text);
 }
 
 // ---------- ESCROW PAYOUTS ----------
@@ -298,7 +180,7 @@ async function refundOrderPayout(orderId) {
   const svcAuth = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
   const svcHeaders = { ...svcAuth, "Content-Type": "application/json", Prefer: "return=minimal" };
 
-  const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=id,payout_status`, { headers: svcAuth });
+  const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=id,status,payout_status`, { headers: svcAuth });
   const [order] = await orderRes.json();
   if (!order) throw new Error("order not found");
   // payout_status is only set once the order reaches "handed_over" (held or
@@ -311,6 +193,16 @@ async function refundOrderPayout(orderId) {
   const paymentsRes = await fetch(`${SUPABASE_URL}/rest/v1/payments?order_id=eq.${orderId}&status=eq.paid&select=provider_reference&limit=1`, { headers: svcAuth });
   const [payment] = await paymentsRes.json();
   if (!payment) throw new Error("No paid payment found for this order.");
+
+  // Paid through the app's checkout (references "lvm_ord_..."): the backend's refund queue gives that money back, once,
+  // and checks the vendor's payout first. Never refund it from here too, or the customer could be refunded twice.
+  const newCheckoutRes = await fetch(`${SUPABASE_URL}/rest/v1/payments?order_id=eq.${orderId}&status=eq.paid&provider_reference=like.lvm_ord_*&select=id&limit=1`, { headers: svcAuth });
+  const [newCheckout] = await newCheckoutRes.json();
+  if (newCheckout) {
+    // a cancelled order's refund is queued by the database by itself (migration 0008)
+    if (order.status === "cancelled") return { refunded: true, queued: true };
+    throw new Error("This order was paid through the app's checkout. Refund it from Admin → Payments → Refunds, which checks the vendor's payout and refunds only once.");
+  }
 
   const refundRes = await fetch("https://api.paystack.co/refund", {
     method: "POST",
@@ -409,4 +301,4 @@ function esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-module.exports = { readBody, env, settleReference, sendNotificationEmail, releaseOrderPayout, refundOrderPayout, esc, getR2Client, r2PublicUrl };
+module.exports = { readBody, env, backendUrl, readRawBytes, passOn, sendNotificationEmail, releaseOrderPayout, refundOrderPayout, esc, getR2Client, r2PublicUrl };

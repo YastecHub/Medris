@@ -4,7 +4,6 @@ import type {
   LeviChatResponse,
   LeviMessage,
   LeviSuggestionsResponse,
-  PaystackCheckoutResponse,
   PushResult,
   R2PresignResponse,
   TurnResponse,
@@ -25,7 +24,6 @@ export const api = {
     apiRequest<LeviChatResponse>("chat", { body: { messages, ...context }, authenticated: true }),
   leviSuggestions: (messages: LeviMessage[]) =>
     apiRequest<LeviSuggestionsResponse>("chat", { body: { messages, mode: "message_suggestions" }, authenticated: true }),
-  startOrderPayment: (orderId: string) => apiRequest<PaystackCheckoutResponse>("initiate-payment", { body: { orderId }, authenticated: true }),
   verifyPayment: (reference: string) => apiRequest<VerifyPaymentResponse>("verify-payment", { query: { reference } }),
   presignImageUpload: (key: string, contentType: string) =>
     apiRequest<R2PresignResponse>("vendor-payments", { body: { action: "r2-presign-upload", key, contentType }, authenticated: true }),

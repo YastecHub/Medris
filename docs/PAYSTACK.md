@@ -4,6 +4,15 @@ Audit for issue #90 (part of the Paystack project, epic #89). **Documentation on
 Written from reading the code on `main`; where something was not checked it says so. Line numbers are for `main` on the
 day of writing and will drift.
 
+> **Update, 27 October 2026: one place settles Paystack payments.** The backend's `PaystackWebhookService` (signature,
+> Paystack's own answer, the recorded amount, once per event) now handles every Paystack payment. The old addresses only
+> pass requests on to it: `api/paystack-webhook.js` (Vercel) and the backend's `/api/paystack-webhook` go to the same
+> handler as `/api/v1/payments/paystack/webhook`, and `GET /api/verify-payment` (Vercel and backend) uses
+> `confirmByReference`. `api/initiate-payment.js` and the old "Pay online" button code are gone (nothing in the app used
+> them). The old admin refund (`api/order-payout-action.js`, action `refund`) refuses an order paid through the app's
+> checkout: those are refunded from Admin → Payments → Refunds, once. The audit below describes the code before this change.
+> The webhook URL to keep in the Paystack dashboard: `https://levromart-5212f03a7e44.herokuapp.com/api/v1/payments/paystack/webhook`.
+
 ## In plain words
 
 - Most orders are paid **outside the app** (bank transfer, then the buyer taps "I've paid" and the vendor confirms). Paystack
