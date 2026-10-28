@@ -2261,6 +2261,24 @@ window.lvAskCancel = async function (orderId) {
     if (el && el.textContent.trim()) return el.textContent.trim();
     return (typeof vendor !== "undefined" && vendor && vendor.referral_code) || "";
   }
+  window.lvShareReferral = function () {
+    var old = document.getElementById("lvShareSheet"); if (old) old.remove();
+    var code = currentCode(); if (!code) return;
+    var link = (typeof referLink === "function") ? referLink(code) : (location.origin + "/?ref=" + encodeURIComponent(code));
+    var m = document.createElement("div");
+    m.id = "lvShareSheet"; m.className = "lvw-sheet-wrap";
+    m.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-grab" aria-hidden="true"></div><div class="lvw-sheet-head"><h3>Share your code</h3><button type="button" class="lvw-eye lvw-eye-dark" aria-label="Close" onclick="document.getElementById(\'lvShareSheet\').remove()"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body lv-share-list">' +
+      '<button type="button" data-a="copy"><i class="fa-regular fa-copy"></i> Copy link</button>' +
+      '<button type="button" data-a="wa"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>' +
+      '<button type="button" data-a="more"><i class="fa-solid fa-share-nodes"></i> More apps</button></div></div>';
+    m.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-a]");
+      if (!b) { if (e.target === m) m.remove(); return; }
+      m.remove();
+      try { if (b.dataset.a === "copy") lbCopy(link, "Referral link copied"); else if (b.dataset.a === "wa") lbShareCode(); else lbShareMore(); } catch (_) {}
+    });
+    document.body.appendChild(m);
+  };
   window.lvChangeReferralCode = function () {
     var old = document.getElementById("lvRefSheet"); if (old) old.remove();
     var m = document.createElement("div");
@@ -2292,8 +2310,14 @@ window.lvAskCancel = async function (orderId) {
     var v = document.querySelector(".lb-code:not([data-lv-chg])");
     if (v) {
       v.dataset.lvChg = "1";
+      var val = v.querySelector(".lb-code-val");
+      if (val && !v.querySelector(".lb-code-edit")) {
+        var ed = document.createElement("button"); ed.type = "button"; ed.className = "lb-code-edit"; ed.setAttribute("aria-label", "Change my referral code"); ed.title = "Change code";
+        ed.innerHTML = '<i class="fa-solid fa-pen"></i>'; ed.onclick = window.lvChangeReferralCode;
+        val.parentNode.insertBefore(ed, val.nextSibling);
+      }
       var acts = v.querySelector(".lb-code-actions");
-      if (acts) { var b = document.createElement("button"); b.type = "button"; b.innerHTML = '<i class="fa-solid fa-pen"></i> Change code'; b.onclick = window.lvChangeReferralCode; acts.appendChild(b); }
+      if (acts) { acts.innerHTML = '<button type="button" class="lb-share-one"><i class="fa-solid fa-share-nodes"></i> Share</button>'; acts.firstChild.onclick = window.lvShareReferral; }
     }
     var s = document.getElementById("settings-page");
     if (s && !s.querySelector("[data-lv-refrow]") && typeof vendor !== "undefined" && vendor && vendor.id) {
@@ -2328,8 +2352,8 @@ window.lvAskCancel = async function (orderId) {
   }
   window.lv3d = function (c, cls) { return '<img class="lv3d ' + (cls || "") + '" src="/icons3d/' + c + '.webp" alt="" aria-hidden="true" decoding="async">'; };
   window.levroSectorArt = function (sector) { return "/icons3d/" + code(sector && (sector.name || sector.id)) + ".webp"; };
-  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f451", "fa-trophy": "1f3c6",
-    "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "270b", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
+  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f3c6", "fa-trophy": "1f3c6",
+    "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "1f4dd", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
   var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #app .levro-quick-icon > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
   function dress() {
     document.querySelectorAll(SEL).forEach(function (i) {

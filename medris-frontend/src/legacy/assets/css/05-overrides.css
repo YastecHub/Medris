@@ -4171,3 +4171,33 @@ html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip.vd-chip.a
 html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip .vd-chip-art,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip .vd-chip-art img{width:1.7rem!important;height:1.7rem!important}
 html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-seg .vd-tab{white-space:nowrap;padding-inline:.7rem}
 html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views button{width:2.3rem;height:2.3rem;min-width:0;padding:0}
+
+/* ===== round 2 tidy-ups ===== */
+/* referral card: one Share button, a small pencil beside the code */
+html:root body .lb-code{position:relative}
+html:root body .lb-code-edit{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;margin-left:.4rem;border-radius:50%;border:1px solid color-mix(in srgb,var(--text,#111) 15%,transparent);background:transparent;color:inherit;font-size:.8rem;vertical-align:middle;cursor:pointer}
+html:root body .lb-code-actions{display:flex;justify-content:center}
+html:root body .lb-share-one{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.3rem;border-radius:999px;border:1.5px solid color-mix(in srgb,var(--text,#111) 25%,transparent);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
+.lv-share-list{display:flex;flex-direction:column;gap:.2rem}
+.lv-share-list button{display:flex;align-items:center;gap:.8rem;padding:.85rem .4rem;border:0;background:none;color:inherit;font:inherit;font-size:1rem;font-weight:600;text-align:left;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent);cursor:pointer}
+.lv-share-list button i{width:1.4rem;text-align:center}
+/* smaller pills and icons (Home, Browse, Vendors) */
+html:root body #app .lv-pill,html:root body #app .vd-page .vd-chip.vd-chip{height:2.05rem!important;gap:.3rem!important;padding:0 .75rem 0 .35rem!important;font-size:.78rem!important}
+html:root body #app .lv-pill img.lv3d,html:root body #app .vd-page .vd-chip .vd-chip-art,html:root body #app .vd-page .vd-chip .vd-chip-art img,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip .vd-chip-art,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip .vd-chip-art img{width:1.25rem!important;height:1.25rem!important}
+html:root body #app .levro-home-cat-chip .levro-home-cat-thumb,html:root body #app .levro-home-cat-chip .levro-home-cat-thumb img{width:2rem!important;height:2rem!important}
+/* Vendors: tabs on their own line, the grid / list / map switch under them (no overlap with the tab line) */
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow{display:block!important;margin:.2rem 0 .3rem}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow #vendorsListingTabs{margin:0!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views{display:flex!important;justify-content:flex-end;gap:.25rem;margin:.55rem 0 0!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views button{width:2rem;height:2rem}
+/* quick cards: the picture alone, no light box behind it */
+html:root body #app .levro-home-quick-actions .levro-quick-icon,html:root:root:root body #app .levro-quick-action .levro-quick-icon{background:transparent!important;box-shadow:none!important;border:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html:root body #app .levro-quick-icon::before,html:root body #app .levro-quick-icon::after{display:none!important}
+/* side panel: slim outline icons */
+#profilePanel .lv-pp-row .lv-pp-ico{flex:0 0 auto;margin-right:.7rem;opacity:.9}
+/* suggestions header: the red count and the text never overlap */
+.sg-head{flex-wrap:wrap}.sg-head>div{flex:1 1 14rem;min-width:0}.sg-head p{max-width:none}
+.sg-card .sg-top{position:relative;z-index:1}.sg-compose{position:relative;z-index:1;margin-top:.6rem}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views{background:none!important;box-shadow:none!important;border:0!important;padding:0!important;width:auto!important;margin-left:auto!important;align-self:flex-end}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow{display:flex!important;flex-direction:column;align-items:stretch}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views{display:inline-flex!important;align-self:flex-end}
