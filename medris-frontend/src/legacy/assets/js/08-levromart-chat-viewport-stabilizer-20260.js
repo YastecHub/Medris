@@ -153,7 +153,7 @@
     if(!list) return;
     if(!list.classList.contains('reviews-collapsed')) list.classList.remove('hidden');
     if(chevron){
-      chevron.style.transform=list.classList.contains('reviews-collapsed')?'rotate(0deg)':'rotate(0deg)';
+      chevron.style.transform=list.classList.contains('reviews-collapsed')?'rotate(0deg)':'rotate(180deg)';
       chevron.setAttribute('aria-expanded',list.classList.contains('reviews-collapsed')?'false':'true');
     }
   }

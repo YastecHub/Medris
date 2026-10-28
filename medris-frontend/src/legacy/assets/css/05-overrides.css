@@ -4127,8 +4127,8 @@ html:root:root body .lb-scope-seg button.on{color:#7c5ce6!important;border-botto
 html[data-theme="dark"]:root:root body .lb-scope-seg button.on,html[data-theme="black"]:root:root body .lb-scope-seg button.on{color:#a58bfa!important;border-bottom-color:#a58bfa!important}
 
 /* ===== Follow buttons: a light outline (like LinkedIn's Connect), not a glowing green block ===== */
-:root{--lv-fo:#6d4fd8;--lv-fo-bg:rgba(124,92,230,.08)}
-:root[data-theme="dark"],:root[data-theme="black"]{--lv-fo:#b7a2ff;--lv-fo-bg:rgba(165,139,250,.14)}
+:root{--lv-fo:#15a46b;--lv-fo-bg:rgba(21,164,107,.08)}
+:root[data-theme="dark"],:root[data-theme="black"]{--lv-fo:#3fb97f;--lv-fo-bg:rgba(63,185,127,.14)}
 html:root:root:root body #app :is(.vendor-card-follow-btn,.vd-follow,.fn-follow,.sr-follow,.vc2-follow):not(.following),
 html:root:root:root body #app .storefront-profile .follow-btn[aria-pressed="false"]{background:transparent!important;background-image:none!important;color:var(--lv-fo)!important;-webkit-text-fill-color:var(--lv-fo)!important;border:1.5px solid var(--lv-fo)!important;box-shadow:none!important;text-shadow:none!important;font-weight:700!important;min-height:2.2rem!important;padding:0 1rem!important}
 html:root:root:root body #app :is(.vendor-card-follow-btn,.vd-follow,.fn-follow,.sr-follow,.vc2-follow).following,
@@ -4310,3 +4310,15 @@ html:root:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-
 /* suggestion cards must not float above the fixed top bar while scrolling */
 html:root body #app .sg-card{isolation:isolate}
 .sr-mine-h{margin:1.2rem 0 .5rem;font-size:1.02rem}
+
+/* storefront without a banner: a soft, plain colour picked from the shop's name (different from its logo colour) */
+html:root body #app .storefront-cover.lv-cover-soft{background:hsl(var(--cov-h,160) 42% 84%)!important;background-image:none!important}
+html:root[data-theme="dark"] body #app .storefront-cover.lv-cover-soft,html:root[data-theme="black"] body #app .storefront-cover.lv-cover-soft{background:hsl(var(--cov-h,160) 38% 40%)!important}
+html:root body #app .storefront-cover.lv-cover-soft .storefront-cover-empty{color:color-mix(in srgb,var(--text) 70%,transparent)}
+
+/* leaderboard / Vendor of the Week: three shields with a star (replaces the award glyph everywhere) */
+html:root body #app i.fa-award::before,html:root body #lvCampusBar i.fa-award::before{content:""!important;display:block;width:1.25em;height:1.05em;background:url(/icons/leaderboard-shields.svg) center/contain no-repeat}
+html:root body #app i.fa-award,html:root body #lvCampusBar i.fa-award{display:inline-flex;align-items:center;justify-content:center;color:transparent!important;-webkit-text-fill-color:transparent!important;filter:none!important;text-shadow:none!important}
+html:root body #lvCampusBar .lvcb-trophy i.fa-award{font-size:1.5rem!important;width:auto;height:auto}
+#lvCampusBar .lvcb-allart{width:30px;height:30px;display:block;object-fit:contain}
+html:root body #app .storefront-cover.lv-cover-soft::before,html:root body #app .storefront-cover.lv-cover-soft::after{display:none!important}
