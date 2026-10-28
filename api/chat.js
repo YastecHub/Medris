@@ -1044,7 +1044,7 @@ module.exports = async function handler(req, res) {
 
 async function geminiOnce(apiKey, model, body) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 14000);
+  const timer = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
