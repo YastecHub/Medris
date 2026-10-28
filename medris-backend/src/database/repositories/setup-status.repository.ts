@@ -15,6 +15,7 @@ const CHECKS: { version: string; what: string; sql: ReturnType<typeof sql> }[] =
   { version: "0024", what: "Commission on card orders taken from the payout (never asked of the shop twice)", sql: sql`select exists (select 1 from pg_proc where proname = 'record_order_completion_commission' and prosrc like '%v_card_payment%') as ok` },
   { version: "0025", what: "Points for a sale by size (20 / 50 / 100)", sql: sql`select exists (select 1 from pg_proc where proname = 'points_award_order' and prosrc like '%> 5000%') as ok` },
   { version: "0026", what: "Points for comments on a shop's products", sql: sql`select exists (select 1 from pg_trigger where tgname = 'trg_points_comment') as ok` },
+  { version: "0027", what: "Any comment (emojis too) counts for points", sql: sql`select exists (select 1 from pg_proc where proname = 'trg_points_comment' and prosrc not like '%v_letters%') as ok` },
 ];
 
 /** Asks the database which of the checked changes are missing (migration 0014 onward). */
