@@ -499,10 +499,10 @@ function scrollToBrowse(listingType) {
 function homeQuickActionsHtml() {
   // Four image cards (2 x 2). All Vendors and Chat Directly are still reachable elsewhere in the app.
   const actions = [
-    { key: "products", img: "shop-products", title: "Shop Products", desc: "Local vendors near you", w: 480, h: 440 },
+    { key: "products", img: "shop-products", title: "Shop Products", desc: "Local vendors", w: 480, h: 440 },
     { key: "services", img: "book-services", title: "Book Services", desc: "Trusted providers", w: 480, h: 573 },
     { key: "rent", img: "rent-items", title: "Rent Items", desc: "No need to buy", w: 480, h: 383 },
-    { key: "request", img: "request-item", title: "Request Item", desc: "Let vendors find it", w: 480, h: 385 },
+    { key: "request", img: "request-item", title: "Request Item", desc: "Vendors find it", w: 480, h: 385 },
   ];
   return `<section class="lv-act-grid" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="lv-act-card lv-act-${a.key}" onclick="openHomeQuickAction('${a.key}')"><span class="lv-act-copy"><strong class="lv-act-title">${a.title}</strong><span class="lv-act-desc">${a.desc}</span><span class="lv-act-go" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></span><img class="lv-act-img" src="/action-cards/${a.img}.webp" width="${a.w}" height="${a.h}" alt="" decoding="async"></button>`).join("")}</section>`;
 }
