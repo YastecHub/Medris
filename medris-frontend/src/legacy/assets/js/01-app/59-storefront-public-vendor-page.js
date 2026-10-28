@@ -382,8 +382,8 @@ async function renderStorefrontInner(vendorId) {
   ].filter(Boolean).join("");
 
   let html = `<section class="storefront-profile" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
-    <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : "lv-cover-soft"}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : `style="--cov-h:${(Number(stableAvatarHue(String(v.business_name || v.id))) + 55) % 360}"`}>
-      ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : (isOwnStorefront ? '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>' : "")}
+    <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
+      ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
       ${storefrontMoreItems && !isOwnStorefront ? `<button class="storefront-banner-more" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-chevron-down"></i></button>` : ""}
     </div>
     <div class="storefront-profile-body">
