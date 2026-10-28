@@ -20,8 +20,9 @@ The Admin → Payments page shows an orange box listing exactly which of these a
 | 0025 | Points for a completed sale by size: 20 under ₦1,000, 50 from ₦1,000 to ₦5,000, 100 above ₦5,000 |
 | 0026 | Points for comments: 5 points when someone else leaves a real comment on a shop's product (10 a day, same person 3 a week) |
 | 0027 | Any comment counts for points, emojis too (no minimum length); the 10 a day and 3 a week per person limits stay |
+| 0028 | Comment points: each person's first 3 comments of the week (across all shops) earn points; later ones do not |
 
-0014 to 0023 were applied to the live database on 27 October 2026 (the founder ran them). 0024 to 0027 are the ones waiting.
+0014 to 0023 were applied to the live database on 27 October 2026 (the founder ran them). 0024 to 0028 are the ones waiting.
 
 ## How (engineer)
 

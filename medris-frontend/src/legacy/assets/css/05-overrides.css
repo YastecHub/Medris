@@ -4355,17 +4355,15 @@ html:root:root:root body #app #buyDeliveryFields .price-breakdown-table{border-t
 html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-sell{background:#8438e8!important}
 html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-win{background:#16b982!important}
 html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-request{background:#3985ed!important;color:#fff}
-html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-follow{background:#ec4899!important;color:#fff}
+html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-follow{background:#d3c0fa!important;color:#1a1040}
 html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"]{background:var(--wv-a)!important}
 /* text on the recoloured banners */
-.lv-fy-request .lv-fy-h em,.lv-fy-follow .lv-fy-h em{color:#fff}
+.lv-fy-request .lv-fy-h em{color:#fff}
 .lv-fy-request .lv-fy-h strong{color:#ffe066}
-.lv-fy-follow .lv-fy-h strong{color:#fff3b0}
-.lv-fy-request .lv-fy-sub b,.lv-fy-follow .lv-fy-sub b{color:#fff}
+.lv-fy-request .lv-fy-sub b{color:#fff}
 .lv-fy-request .lv-fy-cta{background:#fff;color:#2563c9}
 .lv-fy-request .lv-fy-photo{box-shadow:0 0 0 1.4cqw #fff}
-.lv-fy-request .lv-fy-t1,.lv-fy-follow .lv-fy-t1{background:#fff;color:#2563c9}
-.lv-fy-follow .lv-fy-t1{color:#c2185b}
+.lv-fy-request .lv-fy-t1{background:#fff;color:#2563c9}
 .lv-fy-win .lv-fy-soon{background:#fff;color:#0b7a58}
 .lv-fy-win .lv-fy-h strong{color:#fff}
 /* the girl and the guy swapped between "Your campus online store" and "Follow us everywhere": swap their picture frames too */
@@ -4376,7 +4374,6 @@ html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"
 .lv-fy-win .lv-fy-sub{top:51cqw;max-width:56cqw;font-size:3.4cqw}
 /* the Open your shop / Rent from vendors / Who's winning / Join the family cards: flat, like the action cards */
 html:root:root:root body #app#app .lv-band-card{border-radius:16px;box-shadow:none!important;border:1px solid rgba(0,0,0,.06)}
-html:root:root:root body #app#app .lv-band-card::before,html:root:root:root body #app#app .lv-band-card::after{display:none!important}
 html:root:root:root body #app#app .lv-band-card img.lv-fl,html:root:root:root body #app#app .lv-band-card .lv-band-logo.on{box-shadow:none!important}
 html:root:root:root body #app#app .lv-band-a{background:#16b982!important}
 html:root:root:root body #app#app .lv-band-b{background:#8438e8!important}
@@ -4399,10 +4396,14 @@ html:root:root:root body #app#app .lv-band-e{background:#3985ed!important}
 html:root:root:root body #app#app :is(.vc2,.vd-card,.product-card,.package-card,.service-card,.sr-row,.vmp-card),html:root:root:root body #app#app .product-card-wrap>.card{background-image:none!important;box-shadow:none!important}
 
 /* comment stickers */
-.lv-cmt-chips .lv-stk-tog{border-radius:50%;width:2.3rem;height:2.3rem;padding:0;display:grid;place-items:center;font-size:1.2rem;color:var(--text-muted,#8a8f98)}
+.lv-stk-tog{flex:none;border:0;background:transparent;border-radius:50%;width:2.4rem;height:2.4rem;padding:0;display:grid;place-items:center;font-size:1.3rem;color:var(--text-muted,#8a8f98);cursor:pointer}
 .lv-stk-panel{display:grid;grid-template-columns:repeat(6,1fr);gap:.3rem;padding:.5rem;margin:0 0 .5rem;border:1px solid var(--border,rgba(128,128,128,.3));border-radius:16px;background:var(--card,#111);max-height:11.5rem;overflow:auto}
 .lv-stk-panel.hidden{display:none}
 .lv-stk-panel button{border:0;background:transparent;padding:.2rem;border-radius:10px;cursor:pointer;display:grid;place-items:center}
 .lv-stk-panel button:active{background:color-mix(in srgb,var(--text,#111) 10%,transparent)}
 .lv-stk-panel img{width:2.8rem;height:2.8rem;object-fit:contain}
 .product-comment-body img.lv-stk{width:6rem;height:6rem;object-fit:contain;display:block}
+
+/* carousel under Trending now: flat colours like the action cards, soft circles kept */
+html:root:root:root body #app#app .lv-b3-slide:not(.s5){background:var(--b3-a)!important}
+html:root:root:root body #app#app .lv-b3-slide.s5{background:#16b982!important}

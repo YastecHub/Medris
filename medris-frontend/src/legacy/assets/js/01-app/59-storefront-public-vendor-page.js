@@ -422,7 +422,7 @@ async function renderStorefrontInner(vendorId) {
       <div class="storefront-section-head"><h3>Latest from ${esc(v.business_name || "this shop")}</h3></div>
       <div class="storefront-product-strip">${featured.map((p) => {
         const img = p.photos?.[0];
-        const price = p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : p.sale_price != null ? naira(p.sale_price) : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "View details";
+        const price = p.is_service ? `${naira(effectivePrice(p))}${servicePriceSuffix(p)}` : p.sale_price != null ? naira(effectivePrice(p)) : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "View details";
         return `<div class="storefront-product-mini" onclick="navigate('productDetail',{productId:'${p.id}'})">${img ? `<img src="${esc(lvThumb(img, 240))}" alt="${esc(p.name)}" loading="lazy" />` : `<div class="mini-placeholder"><i class="fa-solid fa-box"></i></div>`}<strong>${esc(p.name)}</strong><span>${price}</span></div>`;
       }).join("")}</div>
     </section>`;
