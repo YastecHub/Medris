@@ -4349,3 +4349,60 @@ html:root:root:root body #app #buyDeliveryFields .price-breakdown-table{border-t
 .lv-cmt-chips::-webkit-scrollbar{display:none}
 .lv-cmt-chips button{flex:0 0 auto;border:1px solid var(--border,rgba(128,128,128,.3));background:var(--card,#111);border-radius:999px;padding:.35rem .8rem;font-size:1.05rem;line-height:1.2;cursor:pointer}
 .lv-cmt-chips button:active{transform:scale(.96)}
+
+/* ===== Home: flat banners (like the four action cards) ===== */
+/* promo carousel: solid colours, no dot patterns (kept only on: Join the community, Fresh from the winner, Your campus online store) */
+html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-sell{background:#8438e8!important}
+html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-win{background:#16b982!important}
+html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-request{background:#3985ed!important;color:#fff}
+html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-follow{background:#ec4899!important;color:#fff}
+html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"]{background:var(--wv-a)!important}
+/* text on the recoloured banners */
+.lv-fy-request .lv-fy-h em,.lv-fy-follow .lv-fy-h em{color:#fff}
+.lv-fy-request .lv-fy-h strong{color:#ffe066}
+.lv-fy-follow .lv-fy-h strong{color:#fff3b0}
+.lv-fy-request .lv-fy-sub b,.lv-fy-follow .lv-fy-sub b{color:#fff}
+.lv-fy-request .lv-fy-cta{background:#fff;color:#2563c9}
+.lv-fy-request .lv-fy-photo{box-shadow:0 0 0 1.4cqw #fff}
+.lv-fy-request .lv-fy-t1,.lv-fy-follow .lv-fy-t1{background:#fff;color:#2563c9}
+.lv-fy-follow .lv-fy-t1{color:#c2185b}
+.lv-fy-win .lv-fy-soon{background:#fff;color:#0b7a58}
+.lv-fy-win .lv-fy-h strong{color:#fff}
+/* the girl and the guy swapped between "Your campus online store" and "Follow us everywhere": swap their picture frames too */
+.lv-fy-store .lv-fy-photo{width:36cqw;height:36cqw;border-radius:50%;border:1.1cqw solid #fff;box-shadow:none;background:#fff;right:4cqw;top:16cqw}
+.lv-fy-follow .lv-fy-photo{width:36cqw;height:42cqw;border-radius:5cqw;border:0;box-shadow:none;background:#ffd43b;right:5cqw;top:13cqw}
+/* "Win a full week of promotion": no website line, text spread over the card */
+.lv-fy-win .lv-fy-h{top:29cqw;font-size:7cqw}
+.lv-fy-win .lv-fy-sub{top:51cqw;max-width:56cqw;font-size:3.4cqw}
+/* the Open your shop / Rent from vendors / Who's winning / Join the family cards: flat, like the action cards */
+html:root:root:root body #app#app .lv-band-card{border-radius:16px;box-shadow:none!important;border:1px solid rgba(0,0,0,.06)}
+html:root:root:root body #app#app .lv-band-card::before,html:root:root:root body #app#app .lv-band-card::after{display:none!important}
+html:root:root:root body #app#app .lv-band-card img.lv-fl,html:root:root:root body #app#app .lv-band-card .lv-band-logo.on{box-shadow:none!important}
+html:root:root:root body #app#app .lv-band-a{background:#16b982!important}
+html:root:root:root body #app#app .lv-band-b{background:#8438e8!important}
+html:root:root:root body #app#app .lv-band-c{background:#16b982!important}
+html:root:root:root body #app#app .lv-band-d{background:#f5a623!important;color:#2a1a00}
+html:root:root:root body #app#app .lv-band-d .lv-band-t b,html:root:root:root body #app#app .lv-band-d .lv-bfl{color:#2a1a00!important}
+html:root:root:root body #app#app .lv-band-e{background:#3985ed!important}
+:root[data-theme="dark"] body #app .lv-band-card,:root[data-theme="black"] body #app .lv-band-card{border-color:rgba(255,255,255,.08)}
+
+/* customer side panel: a flat "Become a vendor" card (same style as the home action cards) */
+.lv-pp-become{display:flex;align-items:center;gap:.8rem;width:100%;margin:.2rem 0 .8rem;padding:.8rem .9rem;border:0;border-radius:16px;background:#8438e8;color:#fff;font:inherit;text-align:left;cursor:pointer}
+.lv-pp-become:active{opacity:.92}
+.lv-pp-become-ic{width:2.6rem;height:2.6rem;border-radius:12px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:1.15rem;flex:none}
+.lv-pp-become-t{flex:1;display:flex;flex-direction:column;gap:.1rem}
+.lv-pp-become-t b{font-size:1rem;font-weight:800}
+.lv-pp-become-t small{font-size:.78rem;opacity:.9}
+.lv-pp-become>i.fa-arrow-right{font-size:.9rem;opacity:.9}
+
+/* cards on the home page: no decorative circles or dots, just the card colour */
+html:root:root:root body #app#app :is(.vc2,.vd-card,.product-card,.package-card,.service-card,.sr-row,.vmp-card),html:root:root:root body #app#app .product-card-wrap>.card{background-image:none!important;box-shadow:none!important}
+
+/* comment stickers */
+.lv-cmt-chips .lv-stk-tog{border-radius:50%;width:2.3rem;height:2.3rem;padding:0;display:grid;place-items:center;font-size:1.2rem;color:var(--text-muted,#8a8f98)}
+.lv-stk-panel{display:grid;grid-template-columns:repeat(6,1fr);gap:.3rem;padding:.5rem;margin:0 0 .5rem;border:1px solid var(--border,rgba(128,128,128,.3));border-radius:16px;background:var(--card,#111);max-height:11.5rem;overflow:auto}
+.lv-stk-panel.hidden{display:none}
+.lv-stk-panel button{border:0;background:transparent;padding:.2rem;border-radius:10px;cursor:pointer;display:grid;place-items:center}
+.lv-stk-panel button:active{background:color-mix(in srgb,var(--text,#111) 10%,transparent)}
+.lv-stk-panel img{width:2.8rem;height:2.8rem;object-fit:contain}
+.product-comment-body img.lv-stk{width:6rem;height:6rem;object-fit:contain;display:block}
