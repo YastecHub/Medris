@@ -754,7 +754,7 @@ function hideLeviFromPanel() {
     }
   } catch (_) {}
 
-  const ALL_TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn", "fa-bolt"], ["refer", "Refer", "fa-gift"], ["winners", "Winners", "fa-crown"]];
+  const ALL_TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn", "fa-bolt"], ["refer", "Refer", "fa-gift"], ["winners", "Winners", "fa-award"]];
   const tabsNow = () => { let isV = false; try { isV = !!(vendor && vendor.id) || profile?.role === "admin"; } catch (_) {} return isV ? ALL_TABS : ALL_TABS.filter((t) => t[0] !== "mine"); };
   const PERIODS = [["week", "This week"], ["last_week", "Last week"]];
   const WA_NUMBER = "2348063227669", WA_DISPLAY = "0806 322 7669";
@@ -763,7 +763,7 @@ function hideLeviFromPanel() {
     const text = `Hi Levromart, I followed your ${platform || "social"} page. Here is my screenshot as evidence.${who ? " My details: " + who + "." : ""}`;
     return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
   };
-  const TIERS = [[0, "Starter", "fa-seedling"], [250, "Rising", "fa-arrow-trend-up"], [1000, "Pro", "fa-bolt"], [2500, "Elite", "fa-gem"], [6000, "Legend", "fa-crown"]];
+  const TIERS = [[0, "Starter", "fa-seedling"], [250, "Rising", "fa-arrow-trend-up"], [1000, "Pro", "fa-bolt"], [2500, "Elite", "fa-gem"], [6000, "Legend", "fa-award"]];
   const CAT = { sales: ["Sales", "#16a34a"], reputation: ["Reputation", "#e9a912"], referrals: ["Referrals", "#6d5ce8"], growth: ["Growth", "#2563eb"], shop: ["Your shop", "#0891b2"] };
   const SOCIALS = [["instagram", "Instagram", "/social-instagram.jpg", "https://instagram.com/levromart"], ["tiktok", "TikTok", "/social-tiktok.jpg", "https://tiktok.com/@levromart"], ["linkedin", "LinkedIn", "/social-linkedin.png", "https://linkedin.com/company/levromart"]];
   const LB = (window.__lb = { tab: "ranking", period: "week", filter: "all", boards: {}, summary: null, rules: null, winners: null, spot: null, activity: [], activityDone: false, chartMode: "daily", bdMode: "week", channel: null, tick: null, poll: null, prev: null, token: 0 });
@@ -904,8 +904,8 @@ function hideLeviFromPanel() {
     const d0 = new Date(w.week_start + "T00:00:00"), start = new Date(d0.getTime() + 7 * 864e5), end = new Date(start.getTime() + 6 * 864e5);
     const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     el.hidden = false;
-    el.innerHTML = `<div class="lbw-logo">${av(w.logo_url, w.business_name, "2.9rem", "lb-av")}<i class="fa-solid fa-crown lbw-crown"></i></div>
-      <div class="lbw-copy"><span class="lbw-tag"><i class="fa-solid fa-crown"></i> Vendor of the Week</span><strong>${esc(w.business_name)}</strong><small>${f(start)} to ${f(end)}</small></div>
+    el.innerHTML = `<div class="lbw-logo">${av(w.logo_url, w.business_name, "2.9rem", "lb-av")}<i class="fa-solid fa-award lbw-crown"></i></div>
+      <div class="lbw-copy"><span class="lbw-tag"><i class="fa-solid fa-award"></i> Vendor of the Week</span><strong>${esc(w.business_name)}</strong><small>${f(start)} to ${f(end)}</small></div>
       <i class="fa-solid fa-chevron-right lbw-go"></i>`;
     el.onclick = () => navigate("storefront", { vendorId: w.vendor_id });
     paintHeroProducts(w.vendor_id);
@@ -956,7 +956,7 @@ function hideLeviFromPanel() {
     const col = (r, cls, n) => {
       if (!r) return `<div class="lb-pod ${cls}"></div>`;
       return `<div class="lb-pod ${cls}" onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
-        <div class="lb-pod-crown">${n === 1 ? '<i class="fa-solid fa-crown"></i>' : ""}</div>
+        <div class="lb-pod-crown">${n === 1 ? '<i class="fa-solid fa-award"></i>' : ""}</div>
         <div class="lb-pod-av">${av(r.logo_url, r.business_name, "var(--sz)", "lb-av")}<span class="lb-pod-medal">${n}</span></div>
         <div class="lb-pod-name">${esc(r.business_name)}</div>
         <div class="lb-pod-pts"><b data-count="${r.points}">0</b> pts</div>
@@ -1048,7 +1048,7 @@ function hideLeviFromPanel() {
         <div class="lb-stat"><small><i class="fa-solid fa-calendar-week"></i>This week</small><b data-count="${s.week}">0</b></div>
         <div class="lb-stat"><small><i class="fa-solid fa-calendar-days"></i>This month</small><b data-count="${s.month}">0</b></div>
         <div class="lb-stat"><small><i class="fa-solid fa-infinity"></i>All time</small><b data-count="${s.all}">0</b></div></div>
-      <div class="lb-streaks"><div class="lb-streak fire"><i class="fa-solid fa-fire"></i><div><b>${s.streak} day${s.streak === 1 ? "" : "s"}</b><span>Points streak</span></div></div>${s.is_vendor ? `<div class="lb-streak crown"><i class="fa-solid fa-crown"></i><div><b>${s.weeks_won}</b><span>Weeks won</span></div></div>` : ""}</div>
+      <div class="lb-streaks"><div class="lb-streak fire"><i class="fa-solid fa-fire"></i><div><b>${s.streak} day${s.streak === 1 ? "" : "s"}</b><span>Points streak</span></div></div>${s.is_vendor ? `<div class="lb-streak crown"><i class="fa-solid fa-award"></i><div><b>${s.weeks_won}</b><span>Weeks won</span></div></div>` : ""}</div>
       <div class="lb-card"><div class="lb-chart-head"><div><h3>Points over time</h3><div class="lb-chart-read" id="lbChartRead">${cd.range}: <b>${num(cd.total)} pts</b></div></div><div class="lb-seg"><button type="button" class="${LB.chartMode === "daily" ? "active" : ""}" onclick="lbSetChart('daily')">Daily</button><button type="button" class="${LB.chartMode === "weekly" ? "active" : ""}" onclick="lbSetChart('weekly')">Weekly</button></div></div>${chartSvg(cd.series, cd.labels)}</div>
       <div class="lb-card"><div class="lb-chart-head"><div><h3>Points breakdown</h3></div><div class="lb-seg"><button type="button" class="${LB.bdMode === "week" ? "active" : ""}" onclick="lbSetBd('week')">This week</button><button type="button" class="${LB.bdMode === "all" ? "active" : ""}" onclick="lbSetBd('all')">All time</button></div></div>
         ${bd.length ? `<div class="lb-bd" style="margin-top:.7rem">${bd.map((x) => `<div class="lb-bd-row"><span class="lb-bd-ico"><i class="fa-solid ${esc(x.icon)}"></i></span><strong>${esc(x.label)}<small>× ${x.count}</small></strong><b>+${num(x.points)}</b><div class="lb-bd-track"><i data-w="${Math.max(3, (Math.abs(x.points) / bdMax) * 100)}"></i></div></div>`).join("")}</div>` : `<p class="lb-sub" style="margin-top:.6rem">Nothing here yet. See the Earn points tab for ways to get started.</p>`}</div>
@@ -1132,15 +1132,15 @@ function hideLeviFromPanel() {
     const w = LB.spot?.winner && inView(LB.spot.winner.vendor_id) ? LB.spot.winner : null;
     let html = "";
     if (w) {
-      html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-crown"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-trophy"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
+      html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-award"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-trophy"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
     }
     html += `<div class="lb-card"><h3>Hall of fame</h3><p class="lb-sub" style="margin:0">A new Vendor of the Week is crowned every Monday, based on the previous week's points.</p></div>`;
-    if (!LB.winners.filter((x) => inView(x.vendor_id)).length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-crown"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
+    if (!LB.winners.filter((x) => inView(x.vendor_id)).length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-award"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
     html += LB.winners.filter((x) => inView(x.vendor_id)).map((x) => {
       const d = new Date(x.week_start + "T00:00:00"), e = new Date(d.getTime() + 6 * 864e5);
       const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       const others = (x.top3 || []).slice(1).map((o) => esc(o.business_name)).join(", ");
-      return `<div class="lb-win" onclick="navigate('storefront',{vendorId:'${esc(x.vendor_id)}'})"><div class="wk">${f(d)}<br>to ${f(e)}</div>${av(x.logo_url, x.business_name, "2.6rem", "lb-av")}<div class="lb-win-copy"><strong>${esc(x.business_name)} <i class="fa-solid fa-crown"></i></strong>${others ? `<small>Also on the podium: ${others}</small>` : ""}</div><b>${num(x.points)}</b></div>`;
+      return `<div class="lb-win" onclick="navigate('storefront',{vendorId:'${esc(x.vendor_id)}'})"><div class="wk">${f(d)}<br>to ${f(e)}</div>${av(x.logo_url, x.business_name, "2.6rem", "lb-av")}<div class="lb-win-copy"><strong>${esc(x.business_name)} <i class="fa-solid fa-award"></i></strong>${others ? `<small>Also on the podium: ${others}</small>` : ""}</div><b>${num(x.points)}</b></div>`;
     }).join("");
     return html;
   }
@@ -1350,7 +1350,7 @@ function hideLeviFromPanel() {
     const title = w ? `Vendor of the Week: ${esc(w.business_name)}` : "Vendor Leaderboard";
     const lead = leaders[0];
     const sub = w ? `New race ends in ${countdownText()} · tap to see the board` : lead ? `Ends in ${countdownText()} · ${esc(lead.business_name)} leads with ${num(lead.points)} pts` : `Ends in ${countdownText()} · see who is most active`;
-    return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-crown" : "fa-trophy"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
+    return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-award" : "fa-trophy"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
   }
   window.lvVendorSpot = () => homeSpot();
   async function mountHomeCard() {
