@@ -100,8 +100,8 @@ window.lvHomeBand = function () {
   setTimeout(() => lvBandWinner(), 200);
   const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
   return `<section class="lv-band" aria-label="More on Levromart">
-    <button type="button" class="lv-band-card lv-band-b" data-lbw onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><span class="lv-fl lv-band-logo" aria-hidden="true"></span><i class="lv-fl lv-bfl fa-solid fa-award"></i></button>
     <a class="lv-band-card lv-band-c" href="https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs" target="_blank" rel="noopener"><span class="lv-band-t">Join the family<b>WhatsApp community</b></span><span class="lv-fl lv-band-wa-logo" aria-hidden="true"><img src="/icon-192.png" alt="" width="56" height="56" loading="lazy" decoding="async"><i class="fa-brands fa-whatsapp"></i></span></a>
+    <button type="button" class="lv-band-card lv-band-b" data-lbw onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><span class="lv-fl lv-band-logo" aria-hidden="true"></span><i class="lv-fl lv-bfl fa-solid fa-award"></i></button>
   </section>`;
 };
 // The "Who's winning?" card shows the logo of the vendor who is winning right now (their initials when they have no logo).
