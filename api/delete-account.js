@@ -699,9 +699,37 @@ async function notifIcon(req, res) {
   }
 }
 
+
+// ---- Image proxy (GET /api/delete-account?imgproxy=<url>) ----
+// The profile-photo editor needs the bytes of a picture that lives in public storage, which does not send the headers a
+// browser needs to read it from another site. Only our own storage hosts are fetched, only images, at most 10 MB.
+async function imageProxy(req, res) {
+  try {
+    const raw = String(req.query?.imgproxy || "");
+    let u; try { u = new URL(raw); } catch (_) { return res.status(400).json({ error: "Bad address." }); }
+    const host = u.hostname.toLowerCase();
+    const extra = String(process.env.R2_PUBLIC_URL || process.env.R2_PUBLIC_BASE_URL || "");
+    let extraHost = ""; try { extraHost = extra ? new URL(extra).hostname.toLowerCase() : ""; } catch (_) {}
+    const allowed = u.protocol === "https:" && (host.endsWith(".r2.dev") || host.endsWith(".supabase.co") || (extraHost && host === extraHost));
+    if (!allowed) return res.status(400).json({ error: "That address is not allowed." });
+    const r = await fetch(u.toString(), { headers: { Accept: "image/*" } });
+    if (!r.ok) return res.status(404).json({ error: "Image not found." });
+    const type = String(r.headers.get("content-type") || "");
+    if (!/^image\//i.test(type)) return res.status(400).json({ error: "Not an image." });
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 10 * 1024 * 1024) return res.status(413).json({ error: "Image too large." });
+    res.setHeader("Content-Type", type);
+    res.setHeader("Cache-Control", "private, max-age=300");
+    return res.status(200).send(buf);
+  } catch (e) {
+    return res.status(502).json({ error: "Could not load the image." });
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === "GET" && /(?:^|[?&])turn=1(?:&|$)/.test(String(req.url || ""))) return turnServers(req, res);
   if (req.method === "GET" && /(?:^|[?&])nicon=1(?:&|$)/.test(String(req.url || ""))) return notifIcon(req, res);
+  if (req.method === "GET" && /(?:^|[?&])imgproxy=/.test(String(req.url || ""))) return imageProxy(req, res);
   if (req.method === "GET" && /(?:^|[?&])og(?:store|prod|pkg)=/.test(String(req.url || ""))) return ogCard(req, res);
   if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
