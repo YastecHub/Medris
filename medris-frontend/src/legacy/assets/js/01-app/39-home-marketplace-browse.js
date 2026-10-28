@@ -262,7 +262,7 @@ async function renderHome() {
   const trendingServices = (() => { const seen = new Set(); return [...(trending || []), ...svcRows, ...(browseProducts || [])].filter(p => p && p.is_service && !seen.has(p.id) && seen.add(p.id)).slice(0, 12); })();
   // only when the services row below exists, so this strip never ends up right next to the sell/rent strip
   if (trendingServices.length && typeof lvHomeBand3 === "function") html += lvHomeBand3();
-  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+  if (trendingServices.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="openHomeQuickAction('services')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (typeof lvHomeBand2 === "function") html += lvHomeBand2();
   const scopedTopVendors = topVendors;
   if (scopedTopVendors && scopedTopVendors.length) {

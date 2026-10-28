@@ -29,12 +29,12 @@ function setTheme(theme) {
   applyAccent(currentAccentIndex);
 }
 function initTheme() {
-  // Deep black is the default for everyone. People on any older choice are moved to it once
+  // Light is the default for everyone. People on any older choice are moved to it once
   // (flag below); after that, whatever they pick in Settings is kept.
-  let saved = "black";
+  let saved = "light";
   try {
-    if (localStorage.getItem("medris-theme-v4")) saved = localStorage.getItem("medris-theme") || "black";
-    else localStorage.setItem("medris-theme-v4", "1");
+    if (localStorage.getItem("medris-theme-v5")) saved = localStorage.getItem("medris-theme") || "light";
+    else localStorage.setItem("medris-theme-v5", "1");
   } catch (_) {}
   setTheme(saved);
 }

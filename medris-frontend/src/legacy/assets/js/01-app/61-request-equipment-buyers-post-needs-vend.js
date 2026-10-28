@@ -138,8 +138,8 @@ async function renderRequestEquipment() {
     (async () => { if (!window.__categories?.length) { const { data } = await levroData.catalogue.categories(); window.__categories = data || []; } })(),
   ]);
 
-  let html = `${lvPageHero("request")}<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
-    <div class="card request-equipment-page" style="max-width:520px;">
+  let html = `${lvPageHero("request")}<div class="rq-head"><div class="rq-title"><span class="rq-ic"><svg viewBox='0 0 24 24' width='26' height='26' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 22V12'/><path d='M20.27 18.27 22 20'/><path d='M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559'/><path d='M3.29 7 12 12l8.71-5'/><path d='m7.5 4.27 8.997 5.148'/><circle cx='18.5' cy='16.5' r='2.5'/></svg></span><div><h2>Request an item</h2><p>Tell vendors what you need. They come to you with offers.</p></div></div><button type="button" class="rq-mine" onclick="rqShowMine()" aria-label="Your requests" title="Your requests"><i class="fa-solid fa-list-check"></i>${(myRequests || []).filter((r) => r.status !== 'cancelled').length ? `<b class="rq-count">${(myRequests || []).filter((r) => r.status !== 'cancelled').length}</b>` : ""}</button></div>
+    <div class="card request-equipment-page rq-form" style="max-width:520px;">
       <div id="reqError" class="error-text hidden"></div>
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
       <label>I want to</label>
@@ -170,8 +170,9 @@ async function renderRequestEquipment() {
 
   if (myRequestsError) html += `<p class="muted" style="margin:.7rem 0;">Your request history could not be loaded right now. You can still post a new request.</p>`;
   else if (!myRequests || myRequests.length === 0) html += `<p class="muted">You haven't posted any requests yet.</p>`;
-  (myRequests || []).forEach((r) => {
-    const offers = r.offers || [];
+  (myRequests || []).filter((r) => r.status !== "cancelled").forEach((r) => {
+    // an offer a shop declined or withdrew disappears from this page
+    const offers = (r.offers || []).filter((o) => !["declined", "rejected", "withdrawn"].includes(String(o.status)));
     html += `<div class="card">
       <div class="flex" style="justify-content:space-between;"><strong>${esc(r.title)}</strong><div class="flex"><span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span><span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status)}</span></div></div>
       ${r.status === "open" ? `<button class="btn btn-sm btn-outline" style="margin-top:0.4rem;" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel request</button>` : ""}
@@ -678,3 +679,11 @@ async function buyPackage(packageId) {
     switchStorefrontCatalogTab(order[n]);
   }, { passive: true });
 })();
+
+// opens "Your requests" and brings it into view (the icon at the top right of the Request page)
+window.rqShowMine = function () {
+  const acc = document.getElementById("myRequestsAccordion"); if (!acc) return;
+  const trig = acc.querySelector(".accordion-trigger");
+  if (!acc.classList.contains("open") && trig) { try { trig.click(); } catch (_) {} }
+  acc.scrollIntoView({ behavior: "smooth", block: "start" });
+};

@@ -4407,3 +4407,34 @@ html:root:root:root body #app#app :is(.vc2,.vd-card,.product-card,.package-card,
 /* carousel under Trending now: flat colours like the action cards, soft circles kept */
 html:root:root:root body #app#app .lv-b3-slide:not(.s5){background:var(--b3-a)!important}
 html:root:root:root body #app#app .lv-b3-slide.s5{background:#16b982!important}
+
+/* "See all" arrow shows in light mode too; no stray underline */
+html:root body #app .section-title-link{text-decoration:none!important}
+html:root body #app .section-title-link i{color:inherit!important;-webkit-text-fill-color:currentColor!important;opacity:1!important}
+html:root body #app h3.section-title{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+html:root body #app h3.section-title>span{display:inline-flex;align-items:center;gap:.5rem}
+
+/* ===== Request page: colourful and clear ===== */
+.rq-head{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin:.4rem 0 1rem}
+.rq-title{display:flex;align-items:center;gap:.8rem;min-width:0}
+.rq-ic{flex:none;width:3rem;height:3rem;border-radius:14px;background:#8438e8;color:#fff;display:grid;place-items:center}
+.rq-head h2{margin:0;font-size:1.3rem;line-height:1.15}
+.rq-head p{margin:.15rem 0 0;font-size:.82rem;color:var(--text-muted,#6b7280)}
+.rq-mine{position:relative;flex:none;width:2.8rem;height:2.8rem;border-radius:50%;border:0;background:color-mix(in srgb,#8438e8 14%,var(--card,#fff));color:#8438e8;font-size:1.1rem;display:grid;place-items:center;cursor:pointer}
+.rq-count{position:absolute;right:-.2rem;top:-.2rem;min-width:1.2rem;height:1.2rem;padding:0 .3rem;border-radius:999px;background:#ff2d55;color:#fff;font-size:.7rem;display:grid;place-items:center}
+.request-equipment-page.rq-form{border:0!important;box-shadow:none!important;background:transparent!important;padding:0!important}
+.rq-form>label{display:block;margin:1rem 0 .4rem;font-size:.85rem;font-weight:800;color:var(--text,#111)}
+.rq-form input:not([type=radio]):not([type=file]),.rq-form textarea,.rq-form .req-sector-picker,.rq-form .req-category-picker{border:1.5px solid color-mix(in srgb,var(--text,#111) 12%,transparent)!important;border-radius:14px!important;background:var(--card,#fff)!important;box-shadow:none!important}
+.rq-form input:not([type=radio]):not([type=file]):focus,.rq-form textarea:focus{border-color:#8438e8!important;outline:0}
+.rq-form .flex>label.theme-option{border:1.5px solid color-mix(in srgb,var(--text,#111) 12%,transparent)!important;border-radius:14px!important;font-weight:800;justify-content:center;gap:.4rem}
+.rq-form .flex>label.theme-option:has(input[value=buy]:checked){background:#16b982;border-color:#16b982!important;color:#fff}
+.rq-form .flex>label.theme-option:has(input[value=rent]:checked){background:#3985ed;border-color:#3985ed!important;color:#fff}
+.rq-form .flex>label.theme-option input{display:none}
+.rq-form .req-drop{border:1.5px dashed #8438e8!important;background:color-mix(in srgb,#8438e8 7%,var(--card,#fff))!important;color:var(--text,#111)}
+.rq-form .req-drop .rd-ico{background:#8438e8!important;box-shadow:none!important;color:#fff!important}
+.rq-form #postEquipmentRequestBtn{width:100%;min-height:3rem;margin-top:1.2rem!important;border-radius:16px;border:0;background:#8438e8!important;color:#fff!important;font-size:1rem;font-weight:800;box-shadow:none!important}
+#myRequestsAccordion .card{border-radius:16px}
+
+html:root body #app .rq-form .flex>label.theme-option:has(input[value=buy]:checked){background:#16b982!important;border-color:#16b982!important;color:#fff!important}
+html:root body #app .rq-form .flex>label.theme-option:has(input[value=rent]:checked){background:#3985ed!important;border-color:#3985ed!important;color:#fff!important}
+html:root body #app .rq-form .flex>label.theme-option:has(input:checked) *{color:#fff!important}
