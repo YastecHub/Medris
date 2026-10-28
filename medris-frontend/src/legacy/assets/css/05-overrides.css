@@ -2212,7 +2212,7 @@ html body #aiChatFab.directing .lv-fab-badge{opacity:0}
 .lvt-btn.lvt-hide{display:none}
 
 /* ===== Premium bottom bar, docked to the bottom edge (phones and tablets; the desktop side rail is unchanged) ===== */
-@media (max-width:899px){
+@media (max-width:899px) and (not ((orientation:landscape) and (max-height:560px) and (min-width:560px))){
   html:root body #bottomNav.bottom-nav.bottom-nav{left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;margin:0!important;height:auto!important;min-height:0!important;padding:.4rem .5rem max(.4rem,env(safe-area-inset-bottom,0px))!important;border-radius:24px 24px 0 0!important;background:color-mix(in srgb,var(--card,#fff) 96%,transparent)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:0!important;border-top:1px solid color-mix(in srgb,var(--text,#0f172a) 8%,transparent)!important;box-shadow:0 -8px 26px rgba(15,23,42,.10),0 -1px 4px rgba(15,23,42,.05)!important;align-items:center!important;gap:.1rem!important}
   html:root[data-theme="dark"] body #bottomNav.bottom-nav.bottom-nav,html:root[data-theme="black"] body #bottomNav.bottom-nav.bottom-nav{border-top-color:rgba(255,255,255,.09)!important;box-shadow:0 -8px 26px rgba(0,0,0,.6)!important}
   html:root body #bottomNav.bottom-nav.nav-scroll-hide{transform:translate3d(0,calc(100% - 8px),0)!important}
@@ -4443,3 +4443,9 @@ html:root body #app .rq-form .flex>label.theme-option:has(input:checked) *{color
 html:root:root:root body #app#app .lv-band-wa-logo{right:auto!important;left:.6rem!important}
 html:root:root:root body #app#app .lv-band-card.lv-band-c .lv-band-t{margin-top:auto}
 html:root:root:root body #app#app .home-promotional-dots,html:root:root:root body #app#app .lv-b3-dots{display:none!important}
+
+/* PC / wide screens: the home banner is wider and shorter so its text is not cut off */
+@media(min-width:1024px){
+  html:root:root body #app#app .home-promotional-viewport,html:root:root body #app#app .home-promotional-carousel,html:root:root body #app#app .home-promotional-track{--slide-w:min(68vw,1000px)!important}
+  html:root:root body #app#app .home-promotional-slide{aspect-ratio:1.9/1!important}
+}
