@@ -3268,7 +3268,7 @@ html:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],htm
 html:root:root body #app#app .home-promotional-slide.lv-fy::before,html:root:root body #app#app .home-promotional-slide.lv-fy::after{display:none!important}
 html:root:root body #app#app .home-promotional-slide.lv-fy{color:#fff;--dot:rgba(255,255,255,.2)}
 html:root:root body #app#app .lv-fy.lv-fy-join{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#10c476,#0a6b48 115%)!important}
-html:root:root body #app#app .lv-fy.lv-fy-sell{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#2c1790,#3b1ea8)!important}
+html:root:root body #app#app .lv-fy.lv-fy-sell{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#8438e8,#6a22c9)!important}
 html:root:root body #app#app .lv-fy.lv-fy-store{--dot:rgba(120,90,0,.2);background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#ffd43b,#ffc928)!important;color:#0c2b20}
 html:root:root body #app#app .lv-fy.lv-fy-follow{--dot:rgba(90,60,200,.16);background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(145deg,#efe6ff,#c7b2fb)!important;color:#1a1040}
 html:root:root body #app#app .lv-fy.lv-fy-win{background:radial-gradient(var(--dot) 1.4px,transparent 2px) 0 0/22px 22px,linear-gradient(135deg,#13a56e,#0a3f31 115%)!important}
@@ -4335,3 +4335,17 @@ html:root body #lvCampusBar .lvcb-trophy i.fa-award{font-size:1.5rem!important;w
 .lvsu-go{width:100%;border:0;border-radius:999px;padding:.95rem;font:inherit;font-weight:800;font-size:1rem;background:var(--primary,#16a06a);color:#fff;cursor:pointer}
 .lvsu-go:disabled{opacity:.6}
 .lvsu-skip{margin-top:.7rem;border:0;background:none;color:var(--text-muted,#8a8f98);font:inherit;font-weight:700;padding:.6rem;cursor:pointer}
+
+/* order box: item price / delivery fee / you'll pay sit flat on the page, no frame; only a thin line above the total */
+html:root:root:root body #app .price-breakdown-table{box-shadow:none!important;border:0!important;background:transparent!important;padding:0!important;border-radius:0!important}
+html:root:root:root body #app .price-breakdown-table .price-breakdown-row{border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0!important}
+html:root:root:root body #app .price-breakdown-table .price-breakdown-row.price-breakdown-total{border-top:1px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;margin-top:.25rem;padding-top:.6rem}
+html:root:root:root body #app .price-breakdown-table::before,html:root:root:root body #app .price-breakdown-table::after{display:none!important}
+html:root:root:root body #app #buyDeliveryFields{border-bottom:0!important}
+html:root:root:root body #app #buyDeliveryFields .price-breakdown-table{border-top:0!important;margin-top:.4rem!important}
+
+/* one-tap reactions above the comment box */
+.lv-cmt-chips{display:flex;gap:.45rem;overflow-x:auto;padding:.1rem 0 .55rem;scrollbar-width:none}
+.lv-cmt-chips::-webkit-scrollbar{display:none}
+.lv-cmt-chips button{flex:0 0 auto;border:1px solid var(--border,rgba(128,128,128,.3));background:var(--card,#111);border-radius:999px;padding:.35rem .8rem;font-size:1.05rem;line-height:1.2;cursor:pointer}
+.lv-cmt-chips button:active{transform:scale(.96)}
