@@ -2661,3 +2661,63 @@ window.lvAskCancel = async function (orderId) {
   try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
   dress();
 })();
+
+/* ===== Laptop / desktop: the side menu hides behind a menu button, and side-scrolling rows get arrows ===== */
+(function () {
+  var mq = window.matchMedia("(min-width: 1024px)");
+  var root = document.documentElement;
+  function close() { root.classList.remove("lv-rail-open"); var b = document.getElementById("lvRailBtn"); if (b) b.setAttribute("aria-expanded", "false"); }
+  function toggle() { var open = !root.classList.contains("lv-rail-open"); root.classList.toggle("lv-rail-open", open); var b = document.getElementById("lvRailBtn"); if (b) b.setAttribute("aria-expanded", String(open)); }
+  window.lvCloseRail = close;
+  function ensure() {
+    var row = document.querySelector("header .header-top-row");
+    if (row && !document.getElementById("lvRailBtn")) {
+      var b = document.createElement("button");
+      b.type = "button"; b.id = "lvRailBtn"; b.className = "lv-rail-btn"; b.setAttribute("aria-label", "Menu"); b.setAttribute("aria-expanded", "false"); b.setAttribute("aria-controls", "bottomNav");
+      b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+      b.onclick = function (e) { e.stopPropagation(); toggle(); };
+      row.insertBefore(b, row.firstChild);
+    }
+    if (!document.getElementById("lvRailScrim")) {
+      var s = document.createElement("div"); s.id = "lvRailScrim"; s.onclick = close; document.body.appendChild(s);
+    }
+  }
+  // choosing anything in the menu closes it
+  document.addEventListener("click", function (e) { if (root.classList.contains("lv-rail-open") && e.target.closest && e.target.closest("#bottomNav .bottom-nav-item, #bottomNav .bottom-nav-add")) setTimeout(close, 60); }, true);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  if (mq.addEventListener) mq.addEventListener("change", function () { if (!mq.matches) close(); });
+  ensure(); document.addEventListener("DOMContentLoaded", ensure); setTimeout(ensure, 1500);
+
+  // arrows for rows that scroll sideways (a mouse cannot swipe them)
+  var prev, next, cur = null, hideT = 0;
+  function btn(dir) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "lv-row-arrow lv-row-" + dir; b.setAttribute("aria-label", dir === "prev" ? "Scroll left" : "Scroll right");
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="' + (dir === "prev" ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6") + '"/></svg>';
+    b.onclick = function () { if (cur) cur.scrollBy({ left: (dir === "prev" ? -1 : 1) * Math.max(240, cur.clientWidth * 0.8), behavior: "smooth" }); setTimeout(place, 420); };
+    b.onmouseenter = function () { clearTimeout(hideT); };
+    document.body.appendChild(b); return b;
+  }
+  function scroller(el) {
+    while (el && el !== document.body) {
+      if (el.scrollWidth > el.clientWidth + 8) { var ox = getComputedStyle(el).overflowX; if (ox === "auto" || ox === "scroll") return el; }
+      el = el.parentElement;
+    }
+    return null;
+  }
+  function place() {
+    if (!cur || !mq.matches) { if (prev) { prev.classList.remove("on"); next.classList.remove("on"); } return; }
+    var r = cur.getBoundingClientRect(), y = r.top + r.height / 2 - 20;
+    if (r.bottom < 0 || r.top > innerHeight) { prev.classList.remove("on"); next.classList.remove("on"); return; }
+    prev.style.top = next.style.top = y + "px"; prev.style.left = (r.left + 8) + "px"; next.style.left = (r.right - 48) + "px";
+    prev.classList.toggle("on", cur.scrollLeft > 4); next.classList.toggle("on", cur.scrollLeft + cur.clientWidth < cur.scrollWidth - 4);
+  }
+  document.addEventListener("mouseover", function (e) {
+    if (!mq.matches || !e.target.closest || e.target.closest(".lv-row-arrow")) return;
+    var s = scroller(e.target);
+    if (!s || s.closest("#bottomNav, .leaflet-container, .vmpage")) { clearTimeout(hideT); hideT = setTimeout(function () { cur = null; place(); }, 250); return; }
+    clearTimeout(hideT);
+    if (!prev) { prev = btn("prev"); next = btn("next"); }
+    cur = s; place();
+  }, { passive: true });
+  addEventListener("scroll", function () { if (cur) place(); }, { passive: true, capture: true });
+})();

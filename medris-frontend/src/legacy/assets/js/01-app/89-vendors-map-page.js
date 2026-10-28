@@ -74,7 +74,10 @@ async function initVendorsMapPage(tries = 0) {
   document.querySelectorAll("#bottomNav .bottom-nav-item").forEach((b) => b.classList.toggle("active", /vendors/i.test(b.textContent)));
   try { await loadLeaflet(); } catch (err) { el.innerHTML = `<p class="muted" style="padding:1rem;">${esc(err.message)}</p>`; return; }
   let vendors = [];
-  try { vendors = (await loadVendorsDirectory()) || []; } catch (_) {}
+  // vendors already loaded this visit open the map at once; the full list is refreshed in the background
+  const cached = Array.isArray(window.__allVendors) && window.__allVendors.length ? window.__allVendors : null;
+  if (cached) { vendors = cached; loadVendorsDirectory().catch(() => {}); }
+  else { try { vendors = (await loadVendorsDirectory()) || []; } catch (_) {} }
   vmpAll = vendors.filter((v) => v.lat != null && v.lng != null && (typeof lvVendorVisible !== "function" || lvVendorVisible(v.id)));
   if (!byId("vmpMap")) return;
   let center = [6.5244, 3.3792], zoom = 11;
@@ -84,7 +87,9 @@ async function initVendorsMapPage(tries = 0) {
   // The map follows the app's theme (Night in dark mode, Map in light mode); a style picked on the map itself lasts until the theme changes.
   vmpSetStyle(["dark", "black"].includes(document.documentElement.getAttribute("data-theme")) ? "night" : "streets", false);
   vmpLayer = window.L.layerGroup().addTo(vmpMap);
-  vmpMap.on("zoomend moveend", () => { vmpDrawPins(); });
+  // pins are grouped by zoom level only, so panning does not need a redraw (redrawing on every move made the map slow on big screens)
+  let vmpPinZoom = null;
+  vmpMap.on("zoomend", () => { const z = vmpMap.getZoom(); if (z === vmpPinZoom) return; vmpPinZoom = z; vmpDrawPins(); });
   vmpMap.on("dragstart", () => { vmpMap.__userDrag = true; });
   vmpMap.on("click", () => { vmpClearRoute(); vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });
   vmpDrawChips();
@@ -121,8 +126,8 @@ function vmpSetStyle(key, remember = true) {
   if (remember) { try { localStorage.setItem("levromart-vmp-style-v3", key); } catch (_) {} }
   if (vmpTiles) vmpMap.removeLayer(vmpTiles);
   if (window.vmpRefTiles) { vmpMap.removeLayer(window.vmpRefTiles); window.vmpRefTiles = null; }
-  vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: 4 }).addTo(vmpMap);
-  if (s.ref) window.vmpRefTiles = window.L.tileLayer(s.ref, { maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: 4 }).addTo(vmpMap);
+  vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: window.innerWidth >= 1024 ? 1 : 4 }).addTo(vmpMap);
+  if (s.ref) window.vmpRefTiles = window.L.tileLayer(s.ref, { maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: window.innerWidth >= 1024 ? 1 : 4 }).addTo(vmpMap);
   byId("vmPage")?.setAttribute("data-style", key);
   vmpDrawSheet();
 }

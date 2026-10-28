@@ -26,7 +26,8 @@ function lvTabSame(view) {
 // Tapping Home while already on a clean Home does nothing (no reload, no flash). With a category/search active it resets them.
 function lvHomeTap() {
   const filtered = !!(currentHomeCategoryId || currentSectorId || (byId("searchInput")?.value || "").trim());
-  if (currentView === "home" && !filtered) return;
+  // already on Home: go back to the top (and close any open panel) instead of doing nothing
+  if (currentView === "home" && !filtered) { try { window.lvCloseRail && window.lvCloseRail(); } catch (_) {} window.scrollTo({ top: 0, behavior: "smooth" }); return; }
   resetHomeFilters();
   navigate("home");
 }
