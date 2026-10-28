@@ -4483,3 +4483,19 @@ html:root:root:root body #app#app .home-promotional-dots,html:root:root:root bod
   /* the map page fills the whole screen width now that the menu is tucked away */
   html:root:root body #app#app:has(.vmpage){max-width:none!important;padding-left:0!important;padding-right:0!important}
 }
+
+/* sign-in screen: the circle around the character turns at a lively pace */
+html .lv-ring,html[data-levro-motion] .lv-ring{animation-duration:7s!important}
+
+/* ===== Laptop / desktop map: search and categories in one line across the top, vendor cards in a row along the bottom ===== */
+@media (min-width:1024px){
+  html:root:root body #app .vmpage .vmp-top{left:1.5rem;right:5rem;max-width:none;flex-direction:row;align-items:center;gap:.9rem}
+  html:root:root body #app .vmpage .vmp-bar{flex:0 0 420px}
+  html:root:root body #app .vmpage .vmp-sugg{position:absolute;top:3.4rem;left:0;width:420px}
+  html:root:root body #app .vmpage .vmp-chips{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;margin-right:0;padding:.35rem .2rem;scrollbar-width:thin}
+  html:root:root body #app .vmpage .vmp-chips > *{flex:none}
+  html:root:root body #app .vmpage .vmp-bottom{left:0!important;right:0!important;width:auto!important;padding:0 1.5rem 1.2rem!important}
+  html:root:root body #app .vmpage .vmp-rail{flex-direction:row!important;max-height:none!important;overflow-x:auto!important;overflow-y:hidden!important;padding:.3rem .2rem .5rem!important;scrollbar-width:thin}
+  html:root:root body #app .vmpage .vmp-card{flex:0 0 320px!important}
+  html:root:root body #app .vmpage .vmp-route{max-width:520px}
+}
