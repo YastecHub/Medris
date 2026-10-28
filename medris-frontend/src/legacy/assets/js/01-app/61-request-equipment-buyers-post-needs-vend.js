@@ -35,6 +35,7 @@ window.lvPageHero = function (kind) {
 };
 // Second Home strip, between Trending and Featured Vendors: sell + rent
 window.lvHomeBand2 = function () {
+  return ""; // Open-your-shop / Rent-from-vendors strip removed: the action buttons cover both
   setTimeout(() => lvFloatHero(), 450); setTimeout(() => lvFloatHero(), 1400);
   return `<section class="lv-band lv-band2" aria-label="Sell or rent on Levromart">
     <button type="button" class="lv-band-card lv-band-d" onclick="navigate('vendorApply')"><span class="lv-band-t"><b>Open your shop</b></span><img class="lv-fl" src="/lb/person-c.webp" alt="" width="64" height="64" loading="lazy" decoding="async"><i class="lv-fl lv-bfl fa-solid fa-store"></i></button>

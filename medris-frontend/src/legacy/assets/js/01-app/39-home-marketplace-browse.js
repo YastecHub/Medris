@@ -196,6 +196,9 @@ async function renderHome() {
     : (window.__levroRailCategories || []);
   if (activeSectorIds?.categoryIds) window.__levroRailCategories = railCategories;
   window.__levroAllCategories = categories || window.__levroAllCategories || [];
+  // The Category filter lists only categories vendors have really listed products under.
+  const usedCatIds = new Set((railCategories || []).map((c) => String(c.id)));
+  const browseCats = subCats.filter((c) => usedCatIds.has(String(c.id)) || String(c.id) === String(currentHomeCategoryId));
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -294,7 +297,7 @@ async function renderHome() {
         <button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || "All categories")}</strong><i class="fa-solid fa-chevron-down"></i></button>
         <div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu">
           <input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" />
-          <div id="browseCategoryOptions">${subCats.map((c) => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace(/'/g, '&#39;')}')">${esc(c.name)}</button>`).join("")}</div>
+          <div id="browseCategoryOptions">${browseCats.map((c) => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace(/'/g, '&#39;')}')">${esc(c.name)}</button>`).join("")}</div>
           <button type="button" data-value="" data-label="All categories" onclick="chooseBrowseCategory('','All categories')">All categories</button>
         </div>
       </div>
@@ -308,7 +311,7 @@ async function renderHome() {
       <button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button>
     </div>
     <select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select>
-    <select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map((c) => `<option value="${c.id}" ${activeCategory && String(activeCategory.id) === String(c.id) ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
+    <select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${browseCats.map((c) => `<option value="${c.id}" ${activeCategory && String(activeCategory.id) === String(c.id) ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
   </div>`;
   html += `<div class="grid" id="productGrid"><p class="muted">Loading…</p></div>`;
   html += `<div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;

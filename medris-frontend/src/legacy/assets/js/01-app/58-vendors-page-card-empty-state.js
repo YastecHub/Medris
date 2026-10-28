@@ -319,7 +319,8 @@ async function loadVendorsDirectory() {
   }
   const catSel = byId("vendorCategoryFilter");
   if (catSel) {
-    const allCats = [...new Set(Object.values(catsByVendor).flatMap((s) => [...s]))].sort();
+    const shownIds = new Set(vendors.map((v) => v.id));
+    const allCats = [...new Set(Object.entries(catsByVendor).filter(([id]) => shownIds.has(id)).flatMap(([, s]) => [...s]))].sort();
     catSel.innerHTML = '<option value="">Known for: anything</option>' + allCats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
   }
   filterVendorsDirectory();

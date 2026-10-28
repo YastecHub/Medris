@@ -19,6 +19,13 @@ describe("points for comments on a shop's products", () => {
     expect(await pointsFor(w.vendor.id)).toBe(10);
   });
 
+  it("a sticker counts like any other comment", async () => {
+    const u = (await seedUser(w.db, {})).id;
+    const before = await pointsFor(w.vendor.id);
+    await comment(u, "::s:1f525::");
+    expect(await pointsFor(w.vendor.id)).toBe(before + 5);
+  });
+
   it("a person's first 3 comments of a day count; the 4th that day does not", async () => {
     const u = (await seedUser(w.db, {})).id;
     for (const t of ["⭐⭐⭐", "🔥🔥🔥", "👏👏👏", "Fourth one does not count"]) await comment(u, t);
