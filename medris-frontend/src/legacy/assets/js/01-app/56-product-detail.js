@@ -1036,7 +1036,9 @@ window.__lvHoldHeight = function (el) {
     if (tok !== st.tok || typeof html !== "string" || !host || currentView !== "productDetail") return;
     const t = document.createElement("template"); t.innerHTML = html;
     t.content.querySelectorAll(".lm-related, video, audio, script").forEach((n) => n.remove());
-    t.content.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    // ids are kept on purpose: some styles hide parts of the page by id (e.g. the "Selected variety" strip above the title),
+    // and without them the waiting copy showed extra lines the real page does not, so the page jumped when it took over.
+    // The real page comes first in the document, so getElementById still finds the real elements.
     // its pictures are fetched now, not when they scroll into view, so nothing pops in (or swells) as the page slides over
     t.content.querySelectorAll("img").forEach((i) => { i.loading = "eager"; i.decoding = "sync"; });
     const el = document.createElement("div");

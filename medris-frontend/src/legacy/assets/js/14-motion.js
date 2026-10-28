@@ -624,7 +624,8 @@
     var acts = "";
     if (["on_hold", "failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm" onclick="lvPayAct(\'release\',\'' + esc(p.id) + '\')">Release</button>';
     if (p.status === "pending" || p.status === "failed") acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'hold\',\'' + esc(p.id) + '\')">Hold</button>';
-    if (["pending", "on_hold", "failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'manual\',\'' + esc(p.id) + '\')">Paid by hand</button>';
+    // payouts are sent by Paystack on their own; "paid by hand" is only for a payout that failed or came back
+    if (["failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'manual\',\'' + esc(p.id) + '\')">Paid outside Levromart</button>';
     return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + pill(p.status) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
   function txRow(t) {
@@ -1101,8 +1102,8 @@
   var busy = false, prodCache = {}, colorCache = {};
   function esc2(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function hueOf(id) { var h = 2166136261; String(id).split("").forEach(function (ch) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }); return (h >>> 0) % 360; }
-  // hand-picked pairs (no greens): the banners cycle through these, each one a step apart, and fade between them
-  var PAL = [["#6d28d9", "#be185d"], ["#1d4ed8", "#7c3aed"], ["#e11d48", "#f97316"], ["#0e7490", "#1e3a8a"], ["#c2410c", "#9d174d"], ["#4338ca", "#0ea5e9"], ["#be123c", "#6d28d9"]];
+  // hand-picked pairs (no greens, no blues): the banners cycle through these, each one a step apart, and fade between them
+  var PAL = [["#8438e8", "#6a22c9"], ["#6d28d9", "#be185d"], ["#e11d48", "#f97316"], ["#c2410c", "#9d174d"], ["#d946ef", "#7c3aed"], ["#be123c", "#6d28d9"], ["#f59e0b", "#ea580c"]];
   var palStep = 0, logoPal = null;
   function pickPal(offset) { var list = logoPal ? [logoPal].concat(PAL) : PAL; return list[(palStep + offset) % list.length]; }
   function palette(offset) { var c = pickPal(offset); return "--wv-a:" + c[0] + ";--wv-b:" + c[1] + ";--wv-ink:" + c[0]; }
@@ -1647,7 +1648,7 @@
       var payoutBy = {}; payouts.forEach(function (p) { payoutBy[p.order_id] = p; });
       var commBy = {}; charges.forEach(function (c) { commBy[c.order_id] = (commBy[c.order_id] || 0) + Number(c.amount || 0); });
       var requests = (res[5] && res[5].data) || [];
-      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0, asked = 0;
+      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0, asked = 0, heldReason = "";
       orders.forEach(function (o) {
         var paid = (o.payments || []).filter(function (p) { return p.status === "paid" && FEE_TYPES[p.payment_type] && (p.method === "card" || /^(lvm_ord_|medris_)/.test(String(p.provider_reference || ""))); });
         if (!paid.length) return;
@@ -1661,6 +1662,7 @@
         } else if (pay) {
           if (pay.status === "success" || pay.status === "paid_manually") { state = "paid"; if (Number(pay.amount_kobo) > 0) amount = Number(pay.amount_kobo) / 100; date = pay.updated_at || pay.created_at; }
           else if (pay.status === "on_hold" && pay.hold_reason === "Waiting for the vendor to withdraw") state = o.status === "disputed" ? "held" : pay.withdrawal_id ? "asked" : "ready";
+          else if (pay.status === "on_hold") { state = "held"; if (!heldReason) heldReason = pay.hold_reason || ""; }
           else state = "onway";
         } else if (o.status === "disputed") state = "held";
         else if (o.status === "completed") state = "onway";
@@ -1672,7 +1674,7 @@
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
       var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
-      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
+      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, heldReason: heldReason, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
       cache = { at: Date.now(), data: data };
       writeStored(data);
       return data;
@@ -1694,6 +1696,7 @@
         '<div><span>Ready</span><b>' + (d ? money(d.ready) : "—") + '</b><small>you can withdraw</small></div>' +
         '<div><span>On its way</span><b>' + (d ? money(d.onWay) : "—") + '</b><small>to your bank</small></div>' +
       '</div>' +
+      (d && d.held > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-circle-exclamation"></i> On hold <b>' + money(d.held) + '</b>' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>' : '') +
       (d && d.asked > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-hourglass-half"></i> Waiting for Levromart to approve your withdrawal <b>' + money(d.asked) + '</b></div>' : '') +
       '<div class="lvw-paidline">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
       '<div class="lvw-actions"><button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' +
@@ -2602,5 +2605,44 @@ window.lvAskCancel = async function (orderId) {
       var blocked = ["setPasswordModal", "vendorPayoutNudgeModal"].some(function (id) { var m = document.getElementById(id); return m && !m.classList.contains("hidden"); });
       if (!blocked) show();
     } catch (_) {}
+  };
+})();
+
+/* ===== Comments: one-tap reactions under the box; a shop cannot start a comment on its own product (it can still reply) ===== */
+(function () {
+  var CHIPS = ["❤️❤️❤️", "🔥🔥🔥", "⭐⭐⭐", "👏👏👏", "😍😍😍"];
+  function ownProduct() {
+    try {
+      var d = typeof currentProductDetail !== "undefined" ? currentProductDetail : null;
+      var vid = d && (d.vendor_id || (d.vendor && d.vendor.id));
+      return !!(vid && typeof isOwnVendorId === "function" && isOwnVendorId(vid));
+    } catch (_) { return false; }
+  }
+  function dress() {
+    document.querySelectorAll(".product-comment-composer").forEach(function (c) {
+      if (c.dataset.lvChips) return;
+      var ta = c.querySelector("textarea"); var send = c.querySelector(".product-comment-compose-row button");
+      if (!ta || !send || /package/i.test(ta.id)) return;
+      c.dataset.lvChips = "1";
+      if (ownProduct()) { ta.placeholder = "You can reply to customers' comments here"; return; }
+      var row = document.createElement("div"); row.className = "lv-cmt-chips";
+      CHIPS.forEach(function (t) {
+        var b = document.createElement("button"); b.type = "button"; b.textContent = t;
+        b.onclick = function () {
+          if (!session) { try { showLogin(); } catch (_) {} return; }
+          ta.value = t; ta.dispatchEvent(new Event("input", { bubbles: true })); send.click();
+        };
+        row.appendChild(b);
+      });
+      var compose = c.querySelector(".product-comment-compose-row"); c.insertBefore(row, compose);
+    });
+  }
+  var raf = 0;
+  try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+  dress();
+  var orig = window.submitProductComment;
+  if (typeof orig === "function") window.submitProductComment = function () {
+    if (ownProduct() && !window.__levroActiveProductReply) { try { showToast("You can't comment on your own product. You can reply to customers' comments.", "info"); } catch (_) {} return; }
+    return orig.apply(this, arguments);
   };
 })();
