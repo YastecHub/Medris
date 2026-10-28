@@ -851,7 +851,7 @@ function hideLeviFromPanel() {
     LB.mapReady = false; try { window.lvVendorMapReady ? window.lvVendorMapReady().then(() => { LB.mapReady = true; if ($("lbBody")) window.lbRerender(); }, () => { LB.mapReady = true; if ($("lbBody")) window.lbRerender(); }) : (LB.mapReady = true); } catch (_) { LB.mapReady = true; }
     return `<div class="lb-page">
       <div class="lb-hero">
-        <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
+        <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-award"></i></div>
           <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left<span id="lbScope"></span></span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
@@ -1132,7 +1132,7 @@ function hideLeviFromPanel() {
     const w = LB.spot?.winner && inView(LB.spot.winner.vendor_id) ? LB.spot.winner : null;
     let html = "";
     if (w) {
-      html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-award"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-trophy"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
+      html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-award"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-award"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
     }
     html += `<div class="lb-card"><h3>Hall of fame</h3><p class="lb-sub" style="margin:0">A new Vendor of the Week is crowned every Monday, based on the previous week's points.</p></div>`;
     if (!LB.winners.filter((x) => inView(x.vendor_id)).length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-award"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
@@ -1350,7 +1350,7 @@ function hideLeviFromPanel() {
     const title = w ? `Vendor of the Week: ${esc(w.business_name)}` : "Vendor Leaderboard";
     const lead = leaders[0];
     const sub = w ? `New race ends in ${countdownText()} · tap to see the board` : lead ? `Ends in ${countdownText()} · ${esc(lead.business_name)} leads with ${num(lead.points)} pts` : `Ends in ${countdownText()} · see who is most active`;
-    return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-award" : "fa-trophy"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
+    return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-award" : "fa-award"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
   }
   window.lvVendorSpot = () => homeSpot();
   async function mountHomeCard() {
@@ -1611,7 +1611,7 @@ function levroPulseLbCard() {
     if (!document.body.contains(card)) { clearInterval(card.__t); return; }
     const r = card.getBoundingClientRect(); if (r.bottom < 80 || r.top > innerHeight - 40) { ring(); return; }
     ring();
-    const n = document.createElement("div"); n.className = "lb-nudge"; n.innerHTML = '<i class="fa-solid fa-trophy"></i> See who is leading this week';
+    const n = document.createElement("div"); n.className = "lb-nudge"; n.innerHTML = '<i class="fa-solid fa-award"></i> See who is leading this week';
     card.appendChild(n);
     const a = n.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)", offset: .15 }, { opacity: 1, transform: "translateY(0)", offset: .8 }, { opacity: 0, transform: "translateY(-6px)" }], { duration: 4200, fill: "forwards" });
     a.onfinish = () => n.remove();

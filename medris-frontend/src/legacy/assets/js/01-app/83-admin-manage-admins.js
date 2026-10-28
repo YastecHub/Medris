@@ -299,6 +299,8 @@ async function renderVendorSuggestionsInbox() {
   html += (suggestions && suggestions.length)
     ? `<div class="sg-list">${suggestions.map(suggestionRowHtml).join("")}</div>`
     : `<div class="sg-empty"><i class="fa-regular fa-lightbulb"></i><strong>No suggestions yet</strong><span>When someone sends your shop an idea, it shows up here.</span></div>`;
+  // answers to suggestions this shop's owner sent to other shops or to Levromart live here too
+  try { const mine = await suggestionRepliesBodyHtml(true); if (mine) html += `<h3 class="sr-mine-h">Replies to suggestions you sent</h3><div class="sr-page">${mine}</div>`; } catch (_) {}
   return html;
 }
 

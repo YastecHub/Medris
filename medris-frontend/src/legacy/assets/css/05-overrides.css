@@ -4296,3 +4296,17 @@ html:root:root body #app .vmpage[data-style="streets"] #vmpMap,html:root:root[da
 /* "Who's winning?" slide: the initials of a vendor without a logo sit in the middle of the circle */
 html:root:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-fallback{display:flex!important;align-items:center!important;justify-content:center!important;line-height:1}
 html:root:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-fallback>span{display:block;line-height:1;margin:0;padding:0}
+
+/* action cards: compact (about the height of the old buttons) */
+#app .lv-act-grid{gap:.55rem}
+#app .lv-act-card{min-height:0;height:112px;border-radius:18px}
+#app .lv-act-copy{min-height:0;height:100%;width:60%;gap:.2rem;padding:.75rem 0 .65rem .8rem;box-sizing:border-box}
+#app .lv-act-title{font-size:.98rem}
+#app .lv-act-desc{font-size:.7rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#app .lv-act-go{width:1.65rem;height:1.65rem;font-size:.72rem}
+#app .lv-act-img{max-height:100%;max-width:50%}
+#app .lv-act-services .lv-act-img{max-height:108%;max-width:46%}
+@media(min-width:720px){#app .lv-act-card{height:140px}#app .lv-act-copy{min-height:0}}
+/* suggestion cards must not float above the fixed top bar while scrolling */
+html:root body #app .sg-card{isolation:isolate}
+.sr-mine-h{margin:1.2rem 0 .5rem;font-size:1.02rem}
