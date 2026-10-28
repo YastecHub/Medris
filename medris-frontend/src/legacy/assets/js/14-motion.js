@@ -2452,6 +2452,7 @@ window.lvAskCancel = async function (orderId) {
     img.style.transform = "translate(calc(-50% + " + st.x + "px), calc(-50% + " + st.y + "px)) scale(" + st.s + ")";
   }
   function zoomBy(f) { st.s = Math.max(1, Math.min(6, st.s * f)); paint(); }
+  window.lvCropZoom = function (f) { if (st) zoomBy(f); };
 
   window.updateAvatarCropTransform = paint;
   window.bindAvatarCropDrag = function () {};
@@ -2469,10 +2470,10 @@ window.lvAskCancel = async function (orderId) {
       m.id = "avatarCropModal"; m.className = "lvc";
       m.innerHTML = '<div class="lvc-top"><button type="button" class="lvc-x" aria-label="Cancel" onclick="closeAvatarCropModal()"><i class="fa-solid fa-xmark"></i></button><span>Move and scale</span><i></i></div>' +
         '<div class="lvc-stage" id="avatarCropViewport"><img id="avatarCropImage" alt="" draggable="false" src="' + reader.result + '"><div class="lvc-mask" style="width:' + D + 'px;height:' + D + 'px"></div></div>' +
-        '<div class="lvc-bar"><button type="button" class="lvc-btn lvc-ghost" onclick="closeAvatarCropModal()">Cancel</button><button type="button" class="lvc-btn lvc-go" id="avatarCropDone" onclick="saveAvatarCrop()">Done</button></div>';
+        '<div class="lvc-bar"><button type="button" class="lvc-btn lvc-ghost" onclick="closeAvatarCropModal()">Cancel</button><span class="lvc-zoom"><button type="button" aria-label="Zoom out" onclick="lvCropZoom(1/1.25)"><i class="fa-solid fa-minus"></i></button><button type="button" aria-label="Zoom in" onclick="lvCropZoom(1.25)"><i class="fa-solid fa-plus"></i></button></span><button type="button" class="lvc-btn lvc-go" id="avatarCropDone" onclick="saveAvatarCrop()">Done</button></div>';
       document.body.appendChild(m);
       document.documentElement.classList.add("lvc-open");
-      st = { D: D, s: 1, x: 0, y: 0, iw: 1, ih: 1, base: 1 };
+      st = { D: D, s: 1.25, x: 0, y: 0, iw: 1, ih: 1, base: 1 };
       var img = document.getElementById("avatarCropImage");
       img.onload = function () {
         st.iw = img.naturalWidth || 1; st.ih = img.naturalHeight || 1;
@@ -2491,6 +2492,8 @@ window.lvAskCancel = async function (orderId) {
         else { st.x += e.clientX - lx; st.y += e.clientY - ly; lx = e.clientX; ly = e.clientY; paint(); }
       });
       function up(e) { delete ptrs[e.pointerId]; var a = pts(); last = a.length > 1 ? dist(a) : 0; if (a.length === 1) { lx = a[0].x; ly = a[0].y; } }
+      var lastTap = 0;
+      stage.addEventListener("pointerup", function (e) { if (Object.keys(ptrs).length === 1 && Math.hypot(e.clientX - lx, e.clientY - ly) < 6) { var now = Date.now(); if (now - lastTap < 320 && st) { st.s = st.s > 1.4 ? 1 : 2.2; st.x = 0; st.y = 0; paint(); lastTap = 0; } else lastTap = now; } });
       stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
       stage.addEventListener("wheel", function (e) { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.08 : 1 / 1.08); }, { passive: false });
     };
@@ -2544,4 +2547,60 @@ window.lvAskCancel = async function (orderId) {
     setTimeout(tick, wait);
   }
   setTimeout(tick, 1200);
+})();
+
+/* ===== New accounts: a skippable "Set up your profile" page (photo + name), like WhatsApp ===== */
+(function () {
+  var orig = window.runPostAuthChecks;
+  if (typeof orig !== "function") return;
+  function flagKey() { return "lv-setup-done:" + (session && session.user && session.user.id); }
+  function done() { try { return !!localStorage.getItem(flagKey()); } catch (_) { return true; } }
+  function markDone() { try { localStorage.setItem(flagKey(), "1"); } catch (_) {} }
+  function isNew() {
+    var t = profile && profile.created_at ? new Date(profile.created_at).getTime() : 0;
+    return t && Date.now() - t < 3 * 86400000;
+  }
+  var timer = 0;
+  function close() { clearInterval(timer); var e = document.getElementById("lvSetup"); if (e) e.remove(); document.documentElement.classList.remove("lvsu-open"); }
+  function paintAvatar() {
+    var box = document.getElementById("lvSetupAv"); if (!box) return;
+    box.innerHTML = (typeof profileAvatarHtml === "function" ? profileAvatarHtml(profile.avatar_url, profile.name || "You", "100%") : "") + '<span class="lvsu-cam"><i class="fa-solid fa-camera"></i></span>';
+  }
+  function show() {
+    if (document.getElementById("lvSetup")) return;
+    var d = document.createElement("div"); d.id = "lvSetup"; d.className = "lvsu";
+    d.innerHTML = '<div class="lvsu-card"><h2>Set up your profile</h2><p>Add a photo and check your name so people know it\'s you. You can skip this and do it later.</p>' +
+      '<button type="button" class="lvsu-av" id="lvSetupAv" aria-label="Choose a profile photo"></button>' +
+      '<input type="file" id="lvSetupFile" accept="image/*" hidden onchange="uploadAvatar(event)">' +
+      '<label class="lvsu-l" for="lvSetupName">Your name</label><input id="lvSetupName" class="lvsu-name" type="text" maxlength="60" autocomplete="name" value="">' +
+      '<button type="button" class="lvsu-go" id="lvSetupGo">Continue</button><button type="button" class="lvsu-skip" id="lvSetupSkip">Skip for now</button></div>';
+    document.body.appendChild(d);
+    document.documentElement.classList.add("lvsu-open");
+    document.getElementById("lvSetupName").value = profile.name || "";
+    paintAvatar();
+    document.getElementById("lvSetupAv").onclick = function () { document.getElementById("lvSetupFile").click(); };
+    var last = profile.avatar_url;
+    timer = setInterval(function () { if (profile && profile.avatar_url !== last) { last = profile.avatar_url; paintAvatar(); } }, 500);
+    document.getElementById("lvSetupSkip").onclick = function () { markDone(); close(); };
+    document.getElementById("lvSetupGo").onclick = async function () {
+      var btn = this, v = document.getElementById("lvSetupName").value.trim();
+      if (v && v !== profile.name) {
+        if (v.length < 2) { showToast("Please enter your name.", "error"); return; }
+        btn.disabled = true; btn.textContent = "Saving…";
+        var r = await sb.from("users").update({ name: v }).eq("id", session.user.id);
+        if (r.error) { btn.disabled = false; btn.textContent = "Continue"; showToast(r.error.message || "Couldn't save your name. Try again.", "error"); return; }
+        profile.name = v; try { updateAuthUI(); } catch (_) {}
+      }
+      markDone(); close();
+    };
+  }
+  window.runPostAuthChecks = async function () {
+    await orig.apply(this, arguments);
+    try {
+      if (!profile || !session || profile.role === "admin" || done() || !isNew()) return;
+      if (!String(profile.phone || "").trim() || profile.has_password === false) return;
+      var blocked = ["setPasswordModal", "vendorPayoutNudgeModal"].some(function (id) { var m = document.getElementById(id); return m && !m.classList.contains("hidden"); });
+      if (!blocked) show();
+    } catch (_) {}
+  };
 })();

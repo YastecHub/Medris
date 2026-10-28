@@ -2,7 +2,7 @@
 function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
-    <p class="muted">Last updated: 27 October 2026</p>
+    <p class="muted">Last updated: 28 October 2026</p>
     <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
@@ -39,7 +39,7 @@ function renderTerms() {
     <ul>
       <li>Comments, replies and reviews must be honest and respectful. Do not post abuse, hate, spam, other people's private details, or anything unlawful. Levromart may hide or remove content and restrict accounts that break these rules.</li>
       <li>Following a vendor lets them reach you with updates; you control the kinds of notifications you receive in Settings.</li>
-      <li>Vendors earn leaderboard points from genuine activity on Levromart. The vendor with the most points for a week is named Vendor of the Week and is promoted on the home page for the whole of the following week, including their name, logo and products, until the next winner is named. Points that come from fake, self-dealt or manipulated activity can be removed, and Levromart may disqualify a vendor. Promotions and rewards may change or end at any time.</li>
+      <li>Vendors earn leaderboard points from genuine activity on Levromart. The vendor with the most points for a week is named Vendor of the Week and is promoted on the home page for the whole of the following week, including their name, logo and products, until the next winner is named. Genuine comments left on a vendor's products by other customers also earn points (up to 10 a day); a vendor's own comments, very short comments and repeated comments from the same person do not count. Points that come from fake, self-dealt or manipulated activity can be removed, and Levromart may disqualify a vendor. Promotions and rewards may change or end at any time.</li>
     </ul>
 
     <h3>4B. Levi, our AI assistant</h3>
