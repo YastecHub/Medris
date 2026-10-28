@@ -497,15 +497,14 @@ function scrollToBrowse(listingType) {
 // as one shared function so the two places Home can render from (the live
 // path and the offline-cache fast-repaint path) can never drift apart.
 function homeQuickActionsHtml() {
+  // Four image cards (2 x 2). All Vendors and Chat Directly are still reachable elsewhere in the app.
   const actions = [
-    { key: "products", icon: "fa-bag-shopping", tone: "mint", title: "Shop Products", desc: "Local vendors" },
-    { key: "services", icon: "fa-screwdriver-wrench", tone: "peach", title: "Book Services", desc: "Trusted providers" },
-    { key: "rent", icon: "fa-key", tone: "lavender", title: "Rent Items", desc: "No need to buy" },
-    { key: "vendors", icon: "fa-store", tone: "pink", title: "All Vendors", desc: "Discover nearby" },
-    { key: "request", icon: "fa-clipboard-list", tone: "aqua", title: "Request Item", desc: "Let vendors find it" },
-    { key: "chat", icon: "fa-comment-dots", tone: "blue", title: "Chat Directly", desc: "Get quick answers" },
+    { key: "products", img: "shop-products", title: "Shop Products", desc: "From trusted vendors near you", w: 480, h: 440 },
+    { key: "services", img: "book-services", title: "Book Services", desc: "Trusted providers for everyday needs", w: 480, h: 573 },
+    { key: "rent", img: "rent-items", title: "Rent Items", desc: "Get what you need without buying", w: 480, h: 383 },
+    { key: "request", img: "request-item", title: "Request Item", desc: "Let vendors find it for you", w: 480, h: 385 },
   ];
-  return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon"><i class="fa-solid ${a.icon}"></i></span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
+  return `<section class="lv-act-grid" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="lv-act-card lv-act-${a.key}" onclick="openHomeQuickAction('${a.key}')"><span class="lv-act-copy"><strong class="lv-act-title">${a.title}</strong><span class="lv-act-desc">${a.desc}</span><span class="lv-act-go" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></span><img class="lv-act-img" src="/action-cards/${a.img}.webp" width="${a.w}" height="${a.h}" alt="" decoding="async"></button>`).join("")}</section>`;
 }
 // Icon comes from the sector's own database row. Rows saved with the generic
 // placeholder (or none) fall back to a keyword match on the name, then to a

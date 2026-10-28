@@ -1154,7 +1154,7 @@
     var thumbs = thumbsHtml(rows);
     if (kind === "a") {
       return "<button type=\"button\"" + open + "Vendor of the week: " + nm + '"><span class="lv-wv-in">' +
-        '<span class="lv-wv-badge"><i class="fa-solid fa-crown"></i> Vendor of the week</span>' +
+        '<span class="lv-wv-badge"><i class="fa-solid fa-award"></i> Vendor of the week</span>' +
         logoHtml(w, "lv-wv-logo-big") +
         '<span class="lv-wv-name">' + nm + "</span>" +
         '<span class="lv-wv-sub">' + (Number(w.points) ? "Won last week with " + Number(w.points).toLocaleString("en-NG") + " points" : "Last week\u2019s winner") + "</span>" +
@@ -2355,7 +2355,7 @@ window.lvAskCancel = async function (orderId) {
   }
   window.lv3d = function (c, cls) { return '<img class="lv3d ' + (cls || "") + '" src="/icons3d/' + c + '.webp" alt="" aria-hidden="true" decoding="async">'; };
   window.levroSectorArt = function (sector) { return "/icons3d/" + code(sector && (sector.name || sector.id)) + ".webp"; };
-  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f451", "fa-trophy": "1f451",
+  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", 
     "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "1f4dd", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
   var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
   function dress() {
