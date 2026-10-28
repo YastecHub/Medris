@@ -112,7 +112,8 @@ async function renderVendorDashboard() {
   }, 0);
 
   // ---------- 3. Commission (only when owed) ----------
-  if (commissionOwed > 0) {
+  // Commission is taken from each payout by Levromart: a shop never pays it by hand, so no "you owe" card is shown.
+  if (false && commissionOwed > 0) {
     html += commissionCardHtml(commissionOwed, commissionIsOverdue, commissionDeadline?.[0]?.earliest_due_at, commissionIsOverdue ? "Your 7-day payment window has elapsed and your storefront is paused until this balance is settled." : "Pay anytime before the deadline. Your storefront stays active until then, and we will remind you 5, 3, 2 and 1 days before.");
   }
   html += statusBanner;

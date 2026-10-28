@@ -4125,3 +4125,49 @@ html:root:root body #lvCampusBar .seg button.on{color:#7c5ce6!important;border-b
 html[data-theme="dark"]:root:root body #lvCampusBar .seg button.on,html[data-theme="black"]:root:root body #lvCampusBar .seg button.on{color:#a58bfa!important;border-bottom-color:#a58bfa!important}
 html:root:root body .lb-scope-seg button.on{color:#7c5ce6!important;border-bottom-color:#7c5ce6!important}
 html[data-theme="dark"]:root:root body .lb-scope-seg button.on,html[data-theme="black"]:root:root body .lb-scope-seg button.on{color:#a58bfa!important;border-bottom-color:#a58bfa!important}
+
+/* ===== Follow buttons: a light outline (like LinkedIn's Connect), not a glowing green block ===== */
+:root{--lv-fo:#6d4fd8;--lv-fo-bg:rgba(124,92,230,.08)}
+:root[data-theme="dark"],:root[data-theme="black"]{--lv-fo:#b7a2ff;--lv-fo-bg:rgba(165,139,250,.14)}
+html:root:root:root body #app :is(.vendor-card-follow-btn,.vd-follow,.fn-follow,.sr-follow,.vc2-follow):not(.following),
+html:root:root:root body #app .storefront-profile .follow-btn[aria-pressed="false"]{background:transparent!important;background-image:none!important;color:var(--lv-fo)!important;-webkit-text-fill-color:var(--lv-fo)!important;border:1.5px solid var(--lv-fo)!important;box-shadow:none!important;text-shadow:none!important;font-weight:700!important;min-height:2.2rem!important;padding:0 1rem!important}
+html:root:root:root body #app :is(.vendor-card-follow-btn,.vd-follow,.fn-follow,.sr-follow,.vc2-follow).following,
+html:root:root:root body #app .storefront-profile .follow-btn[aria-pressed="true"]{background:transparent!important;background-image:none!important;color:color-mix(in srgb,var(--text,#111) 62%,transparent)!important;-webkit-text-fill-color:color-mix(in srgb,var(--text,#111) 62%,transparent)!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 22%,transparent)!important;box-shadow:none!important;font-weight:600!important;min-height:2.2rem!important;padding:0 1rem!important}
+html:root:root:root body #app :is(.vendor-card-follow-btn,.vd-follow,.fn-follow,.sr-follow,.vc2-follow):not(.following):active,
+html:root:root:root body #app .storefront-profile .follow-btn[aria-pressed="false"]:active{background:var(--lv-fo-bg)!important}
+html:root:root:root body #app :is(.vendor-card-follow-btn,.vd-follow,.fn-follow,.sr-follow,.vc2-follow)::before{color:inherit!important}
+html:root:root:root body #app .storefront-profile .follow-btn i,html:root:root:root body #app .storefront-profile .follow-btn .follow-btn-label{color:inherit!important;-webkit-text-fill-color:currentColor!important}
+
+/* ===== 3D icons, small round category pills, tidier Browse and Vendors pages ===== */
+img.lv3d{display:inline-block;object-fit:contain;flex:none;pointer-events:none;-webkit-user-drag:none}
+html:root body #app .section-title img.lv3d-ico{width:1.9rem;height:1.9rem;margin-right:.35rem;vertical-align:-.45rem}
+html:root body #app .levro-quick-icon img.lv3d-ico{width:1.7rem;height:1.7rem;display:block}
+html:root body #lvCampusBar img.lv3d-ico{width:1.7rem;height:1.7rem;display:block}
+html:root body #lvCampusBar .lvcb-trophy img.lv3d-ico{width:1.7rem;height:1.7rem;animation:none}
+html:root body #lvCampusBar .ico{background:transparent!important;border:0!important}
+/* section heading badges become plain (the picture is the icon) */
+html:root body #app .section-title>img.lv3d-ico,html:root body #app .section-title>span>img.lv3d-ico{background:none!important}
+/* pills */
+.lv-pills{display:flex;gap:.5rem;overflow-x:auto;scrollbar-width:none;padding:.15rem .05rem .6rem;margin:0 0 .3rem}
+.lv-pills::-webkit-scrollbar{display:none}
+html:root body #app .lv-pill,html:root body #app .vd-page .vd-chip.vd-chip{flex:none;display:inline-flex!important;align-items:center;gap:.4rem;height:2.5rem;padding:0 .95rem 0 .45rem!important;border-radius:999px!important;background:var(--card,#fff)!important;background-image:none!important;border:1px solid color-mix(in srgb,var(--text,#111) 11%,transparent)!important;color:var(--text,#111)!important;-webkit-text-fill-color:var(--text,#111)!important;font:inherit;font-size:.86rem!important;font-weight:600!important;box-shadow:none!important;cursor:pointer;white-space:nowrap}
+html:root body #app .lv-pill img.lv3d,html:root body #app .vd-page .vd-chip .vd-chip-art,html:root body #app .vd-page .vd-chip .vd-chip-art img{width:1.7rem!important;height:1.7rem!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;filter:none!important}
+html:root body #app .vd-page .vd-chip .vd-chip-art{display:inline-flex;align-items:center;justify-content:center;padding:0!important}
+html:root body #app .lv-pill.on,html:root body #app .vd-page .vd-chip.vd-chip.active{background:var(--card,#fff)!important;border-color:color-mix(in srgb,var(--text,#111) 38%,transparent)!important;box-shadow:none!important}
+html:root body #app .vd-page .vd-chip.vd-chip.active>span:last-child,html:root body #app .lv-pill.on span{font-weight:800!important}
+html:root body #app .vd-page .vd-chip.vd-chip>span:last-child{color:inherit!important;-webkit-text-fill-color:currentColor!important}
+html:root body #app .vd-page #vendorCatChips{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;gap:.5rem;scrollbar-width:none;padding:.15rem .05rem .6rem}
+/* Browse: no search box / filter button (the controls stay in the page, hidden, so the pills can drive them) */
+html:root body #app .browse-filter-toolbar{display:none!important}
+/* Vendors: no search box / filter button; tabs and the grid-list-map switch share one row */
+html:root body #app .vd-page .vd-tools,html:root body #app .vd-page .vendors-directory-search,html:root body #app .vd-page .vendors-directory-toolbar{display:none!important}
+html:root body #app .vd-page .vd-toprow{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.2rem 0 .5rem}
+html:root body #app .vd-page .vd-toprow #vendorsListingTabs{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;margin:0!important}
+html:root body #app .vd-page .vd-toprow .vd-views{flex:none;margin:0!important;display:flex;gap:.2rem}
+html:root body #app .vd-page .vd-head:not(:has(*)){display:none!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page>.vd-tools,html:root:root:root:root:root:root body #app#app#app .vd-page .vendors-directory-search,html:root:root:root:root:root:root body #app#app#app .vd-page .vendors-directory-toolbar{display:none!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip.vd-chip.active,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip.vd-chip-all,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip.vd-chip-all.active{background:var(--card,#fff)!important;background-image:none!important;box-shadow:none!important;border:1px solid color-mix(in srgb,var(--text,#111) 11%,transparent)!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip.vd-chip.active,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip.vd-chip-all.active{border-color:color-mix(in srgb,var(--text,#111) 38%,transparent)!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip .vd-chip-art,html:root:root:root:root:root:root body #app#app#app .vd-page .vd-chip .vd-chip-art img{width:1.7rem!important;height:1.7rem!important}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-seg .vd-tab{white-space:nowrap;padding-inline:.7rem}
+html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views button{width:2.3rem;height:2.3rem;min-width:0;padding:0}

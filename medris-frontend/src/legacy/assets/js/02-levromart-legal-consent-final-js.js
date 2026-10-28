@@ -56,6 +56,7 @@
   // is actually overdue. This just nudges a vendor 3 days out, 1 day out, and
   // on the due day itself, at most once per day so it never spams.
   window.__levroCheckCommissionDueReminder = async function(){
+    return;   // commission comes off each payout automatically; no reminders
     if(!session?.user?.id||!vendor?.id||profile?.role!=="vendor"||vendor.commission_paused)return;
     try{
       const {data:deadline}=await sb.rpc("get_vendor_commission_deadline",{p_vendor_id:vendor.id});

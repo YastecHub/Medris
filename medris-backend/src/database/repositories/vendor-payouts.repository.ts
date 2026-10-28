@@ -153,6 +153,14 @@ export class VendorPayoutsRepository {
     return (r?.n ?? 0) > 0;
   }
 
+  async otpAlertedToday(): Promise<boolean> {
+    const r = await jsonRow<{ n: number }>(
+      this.db,
+      sql`select count(*)::int as n from public.notifications where title = 'Paystack is holding vendor payouts' and created_at > now() - interval '24 hours'`,
+    );
+    return (r?.n ?? 0) > 0;
+  }
+
   async logAdminAction(adminId: string, action: string, payoutId: string, label: string): Promise<void> {
     await this.db.execute(sql`
       insert into public.admin_actions (admin_id, admin_name, action, target_type, target_id, target_label)

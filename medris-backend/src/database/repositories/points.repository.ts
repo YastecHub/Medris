@@ -281,12 +281,13 @@ export class PointsRepository {
    * number of times this week (each logged as a skip). Returns what happened, in the original's words.
    */
   async awardOrder(orderId: string, notify = true): Promise<string> {
-    const o = await jsonRow<{ completed: boolean; buyer_id: string | null; vendor_user: string | null; under_min: boolean; min_text: string; cap: number | null; meta: string }>(
+    const o = await jsonRow<{ completed: boolean; buyer_id: string | null; vendor_user: string | null; under_min: boolean; min_text: string; cap: number | null; meta: string; total: number }>(
       this.db,
       sql`select o.status::text = 'completed' as completed, o.buyer_id, v.user_id as vendor_user,
                  coalesce(o.total_amount, 0) < coalesce(r.min_amount, 0) as under_min,
                  coalesce(r.min_amount, 0)::bigint::text as min_text, r.per_source_weekly_cap as cap,
-                 jsonb_build_object('order_id', o.id, 'amount', o.total_amount)::text as meta
+                 jsonb_build_object('order_id', o.id, 'amount', o.total_amount)::text as meta,
+                 coalesce(o.total_amount, 0)::float8 as total
           from public.orders o
           left join public.vendors v on v.id = o.vendor_id
           left join (select * from public.points_rules where kind = 'order_completed' limit 1) r on true
@@ -297,10 +298,6 @@ export class PointsRepository {
     if (o.vendor_user === o.buyer_id) {
       await this.logSkip(o.vendor_user, "order_completed", orderId, "Your own order does not count");
       return "own order";
-    }
-    if (o.under_min) {
-      await this.logSkip(o.vendor_user, "order_completed", orderId, `Order total is under the ₦${o.min_text} minimum`);
-      return "under minimum";
     }
     if (o.cap != null) {
       const week = await this.weekStart();
@@ -315,7 +312,7 @@ export class PointsRepository {
         return "customer cap";
       }
     }
-    const points = await this.award({ userId: o.vendor_user, kind: "order_completed", key: `order:${orderId}`, sourceUserId: o.buyer_id, note: "Completed sale", meta: o.meta, notify });
+    const points = await this.award({ userId: o.vendor_user, kind: "order_completed", key: `order:${orderId}`, sourceUserId: o.buyer_id, note: "Completed sale", meta: o.meta, points: o.total > 5000 ? 100 : o.total >= 1000 ? 50 : 20, notify });
     return points > 0 ? "awarded" : "already counted";
   }
 

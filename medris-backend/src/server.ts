@@ -92,6 +92,28 @@ if (config.paystack.checkoutEnabled && config.env !== "test" && process.env.PAYS
     }
   };
   setInterval(() => void settleWaitingPayments(), 60_000).unref();
+
+  // The money jobs also run inside this server, so vendors are paid and buyers refunded even when no outside scheduler
+  // (Heroku Scheduler, a cron service) is calling /api/v1/jobs. Each job claims its rows with "for update skip locked",
+  // so running here and from a scheduler at the same time never sends anything twice.
+  const every = (name: string, ms: number, job: () => Promise<unknown>) => {
+    let busy = false;
+    setInterval(() => {
+      if (busy) return;
+      busy = true;
+      job()
+        .then((r) => {
+          const n = r && typeof r === "object" ? Object.values(r as Record<string, unknown>).reduce<number>((a, v) => a + (typeof v === "number" ? v : 0), 0) : 0;
+          if (n > 0) logger.info(`${name}: ran`, { result: r });
+        })
+        .catch((err: unknown) => logger.warn(`${name}: failed`, { err }))
+        .finally(() => {
+          busy = false;
+        });
+    }, ms).unref();
+  };
+  every("vendor payouts", 60_000, () => services.vendorPayouts.run());
+  every("refunds", 120_000, () => services.refunds.run());
 }
 server.listen(port, () => {
   const url = `http://localhost:${port}`;

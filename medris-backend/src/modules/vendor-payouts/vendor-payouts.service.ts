@@ -124,6 +124,15 @@ export class VendorPayoutsService {
         });
         return true;
       }
+      if (String(t.status).toLowerCase() === "otp") {
+        // Paystack is waiting for a one-time code before it sends this money: it will not move until transfer OTP is switched off
+        await this.db().asService(async (tx) => {
+          const repo = new VendorPayoutsRepository(tx);
+          if (!(await repo.otpAlertedToday())) {
+            await new NotificationWriter(tx).notifyAdmins("Paystack is holding vendor payouts", "Paystack is asking for a confirmation code before it sends a payout, so payouts will stay \"on its way\". In the Paystack dashboard open Settings, then Preferences or Transfers, and switch off \"Confirm transfers before sending\" (transfer OTP). Then the waiting payouts go through.", "adminPayments", { tab: "payouts" }, null);
+          }
+        });
+      }
       // "pending" / "otp": Paystack will tell us with transfer.success / transfer.failed (the reconcile job asks if it does not)
       return false;
     } catch (err) {

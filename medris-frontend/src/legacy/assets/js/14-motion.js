@@ -2306,3 +2306,72 @@ window.lvAskCancel = async function (orderId) {
   var raf = 0;
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true });
 })();
+
+/* ===== Realistic 3D icons (Microsoft Fluent Emoji, MIT, in /icons3d) for categories, home headings and quick cards ===== */
+(function () {
+  "use strict";
+  var RULES = [
+    [/snack|popcorn|chips/, "1f37f"], [/bakery|bread|pastr|cake/, "1f35e"], [/beverage|drink|juice|water/, "1f9c3"], [/grocer/, "1f957"], [/food|restaurant|cater|kitchen|dining|shawarma/, "1f354"],
+    [/shoe|footwear|sneaker/, "1f45f"], [/bag|handbag/, "1f45c"], [/watch/, "231a"], [/jewel|jewell|ring|accessor/, "1f48d"], [/fashion|cloth|tailor|fabric|wear|thrift|design/, "1f457"],
+    [/skin|perfume|fragrance|scent|cosmetic/, "1f9f4"], [/salon|barb|braid/, "1f488"], [/beauty|hair|personal|wellness|care/, "1f484"],
+    [/computer|laptop|software|web|digital/, "1f4bb"], [/phone|electronic|gadget|tech|tv|audio|telecom|game|gaming/, "1f4f1"],
+    [/home|furniture|decor|interior|living|property|real estate|appliance/, "1f3e0"], [/health|pharmac|medical|health/, "1f48a"],
+    [/book|station|educat|office|print/, "1f4da"], [/gift/, "1f381"], [/baby|kid|toy/, "1f9f8"], [/sport|fitness|gym/, "1f3cb-fe0f"], [/pet/, "1f43e"],
+    [/auto|car|transport|logistic|travel|vehicle/, "1f697"], [/photo|video|media|camera/, "1f4f7"], [/art|craft|handmade|graphic|brand/, "1f3a8"],
+    [/music|event|entertain/, "1f3b6"], [/clean|laundry/, "1f9f9"], [/repair|tool|construct|electrical|industr|hardware|solar|energy|manufactur|safety/, "1f6e0-fe0f"],
+    [/agri|farm/, "1f33e"], [/financ|wholesale|retail|market/, "1f4b0"], [/service/, "2728"]
+  ];
+  function code(name) {
+    var n = String(name || "").toLowerCase();
+    for (var i = 0; i < RULES.length; i++) if (RULES[i][0].test(n)) return RULES[i][1];
+    return "1f6cd-fe0f";
+  }
+  window.lv3d = function (c, cls) { return '<img class="lv3d ' + (cls || "") + '" src="/icons3d/' + c + '.webp" alt="" aria-hidden="true" decoding="async">'; };
+  window.levroSectorArt = function (sector) { return "/icons3d/" + code(sector && (sector.name || sector.id)) + ".webp"; };
+  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f451", "fa-trophy": "1f3c6",
+    "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "270b", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
+  var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #app .levro-quick-icon > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
+  function dress() {
+    document.querySelectorAll(SEL).forEach(function (i) {
+      if (i.dataset.lv3) return;
+      var c = null; for (var k in FA) if (i.classList.contains(k)) { c = FA[k]; break; }
+      if (!c) return;
+      i.dataset.lv3 = "1";
+      var img = document.createElement("img"); img.className = "lv3d lv3d-ico"; img.src = "/icons3d/" + c + ".webp"; img.alt = ""; img.setAttribute("aria-hidden", "true");
+      i.replaceWith(img);
+    });
+    // the "All campuses" badge
+    var ico = document.querySelector("#lvCampusBar .lvcb-main .ico:not([data-lv3])");
+    if (ico && !ico.querySelector("img")) { ico.dataset.lv3 = "1"; ico.innerHTML = '<img class="lv3d lv3d-ico" src="/icons3d/1f393.webp" alt="" aria-hidden="true">'; }
+    // "All" chips
+    document.querySelectorAll("#app .vd-chip-all img, #app .levro-home-cat-all img").forEach(function (im) { if (!im.dataset.lv3) { im.dataset.lv3 = "1"; im.src = "/icons3d/1f6d2.webp"; } });
+    dressBrowse(); dressVendors();
+  }
+  // Browse everything: no search box or filter button any more; a rail of small round category pills sits on top instead
+  function dressBrowse() {
+    var grid = document.getElementById("productGrid"), sel = document.getElementById("filterCategory");
+    if (!grid || !sel) return;
+    var rail = document.getElementById("lvBrowsePills");
+    var opts = [].filter.call(sel.options, function (o) { return o.value; });
+    if (!opts.length) { if (rail) rail.remove(); return; }
+    var key = opts.map(function (o) { return o.value; }).join(",") + "|" + sel.value;
+    if (rail && rail.dataset.k === key) return;
+    if (!rail) { rail = document.createElement("div"); rail.id = "lvBrowsePills"; rail.className = "lv-pills"; rail.setAttribute("role", "group"); rail.setAttribute("aria-label", "Categories"); grid.parentNode.insertBefore(rail, grid); }
+    rail.dataset.k = key;
+    rail.innerHTML = '<button type="button" class="lv-pill' + (sel.value ? "" : " on") + '" data-v="">' + lv3d("1f6d2") + '<span>All</span></button>' + opts.map(function (o) {
+      return '<button type="button" class="lv-pill' + (sel.value === o.value ? " on" : "") + '" data-v="' + o.value + '">' + lv3d(code(o.textContent)) + "<span>" + o.textContent.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</span></button>";
+    }).join("");
+    rail.onclick = function (e) { var b = e.target.closest("button.lv-pill"); if (!b) return; try { chooseBrowseCategory(b.dataset.v, b.textContent.trim()); } catch (_) {} };
+  }
+  // Vendors page: no search box or filter button; the grid / list / map switch sits beside the tabs
+  function dressVendors() {
+    var tabs = document.getElementById("vendorsListingTabs"), views = document.querySelector("#app .vd-page .vd-views");
+    if (!tabs || !views || tabs.parentNode.classList.contains("vd-toprow")) return;
+    var t0 = tabs.querySelector("button[data-filter='all'], .vd-tab"); if (t0 && /^all vendors$/i.test(t0.textContent.trim())) t0.textContent = "All";
+    var row = document.createElement("div"); row.className = "vd-toprow";
+    tabs.parentNode.insertBefore(row, tabs); row.appendChild(tabs); row.appendChild(views);
+  }
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true });
+  dress();
+})();

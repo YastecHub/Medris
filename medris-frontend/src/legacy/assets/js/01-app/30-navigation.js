@@ -150,6 +150,7 @@ async function levroCommissionGate(view) {
   return false;
 }
 async function levroCommissionGateCheck() {
+  return false;   // commission comes off each payout automatically; nothing is owed by hand, so nothing locks a shop
   try {
     // Repair any stale lock first, then evaluate the actual due_at timestamp.
     // A balance is allowed during its seven-day window. Only a charge whose
