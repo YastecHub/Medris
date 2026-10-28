@@ -84,8 +84,8 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",leaderboard:"Leaderboard",adminPoints:"Points manager",search:"Search"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",leaderboard:"fa-trophy",adminPoints:"fa-sliders",search:"fa-magnifying-glass"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",suggestionReplies:"Suggestion replies",leaderboard:"Leaderboard",adminPoints:"Points manager",search:"Search"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",suggestionReplies:"fa-comments",leaderboard:"fa-trophy",adminPoints:"fa-sliders",search:"fa-magnifying-glass"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
   if(view==="vendorProducts")return vlSkeletonHtml();
@@ -255,7 +255,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const protectedRouteViews = new Set([
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
     "vendorEarnings","vendorWallet","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
-    "settings","supportRequest","wishlist","buyerOrders","orderHistory","orderDetail","leaveReview",
+    "settings","supportRequest","suggestionReplies","wishlist","buyerOrders","orderHistory","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminPayments",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminCampuses","adminLog","adminMonthlyListings","adminConversations","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration","adminR2Optimize"
@@ -459,6 +459,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "requestEquipment": html = await renderRequestEquipment(); break;
       case "supportRequest": html = await renderSupportRequest(); break;
       case "contactUs": html = renderContactUs(); break;
+      case "suggestionReplies": html = await renderSuggestionReplies(); break;
       case "leaderboard": html = renderLeaderboard(params); break;
       case "adminPoints": html = renderAdminPoints(); break;
       case "search": html = renderSearchPage(); break;

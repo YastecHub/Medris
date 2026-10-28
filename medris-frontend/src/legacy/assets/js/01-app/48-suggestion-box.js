@@ -350,3 +350,25 @@ function updateMsgSelectionBar() {
   if (el) el.innerHTML = msgSelectionHeaderHtml();
 }
 
+
+// Replies to suggestions the signed-in person sent. A reply reaches them as a notification
+// (type "suggestion_reply"), so this page just lists those, newest first.
+async function renderSuggestionReplies() {
+  const head = `<h2 class="sr-title"><i class="fa-solid fa-comments"></i> Suggestion replies</h2><p class="muted sr-sub">Answers from shops and Levromart to the suggestions you sent.</p>`;
+  if (!session) return `<div class="sr-page">${head}<div class="card"><p class="muted">Sign in to see replies.</p></div></div>`;
+  const { data, error } = await sb.from("notifications").select("id,title,body,created_at,read,target_view,target_params")
+    .eq("user_id", session.user.id).eq("type", "suggestion_reply").is("deleted_at", null).order("created_at", { ascending: false }).limit(50);
+  if (error) return `<div class="sr-page">${head}<div class="card"><p class="muted">Couldn't load your replies. Please try again.</p></div></div>`;
+  if (!data || !data.length) return `<div class="sr-page">${head}<div class="card sr-empty"><i class="fa-regular fa-comments"></i><p><strong>No replies yet</strong></p><p class="muted">When a shop or Levromart answers a suggestion you sent, it shows up here and in your notifications.</p></div></div>`;
+  const ids = data.filter((n) => !n.read).map((n) => n.id);
+  if (ids.length) { try { sb.from("notifications").update({ read: true }).in("id", ids).then(() => { try { refreshNotifications(false); } catch (_) {} }); } catch (_) {} }
+  const items = data.map((n) => {
+    const body = String(n.body || "");
+    const m = body.match(/^You wrote: "([\s\S]*?)"\s*\nReply: ([\s\S]*)$/);
+    const wrote = m ? m[1] : "", reply = m ? m[2] : body;
+    const from = String(n.title || "").replace(/ replied to your suggestion$/, "");
+    const vid = n.target_params && n.target_params.vendorId;
+    return `<div class="card sr-item"><div class="sr-from"><strong>${esc(from)}</strong><span class="muted">${esc(new Date(n.created_at).toLocaleDateString())}</span></div>${wrote ? `<div class="sr-wrote muted">You wrote: ${esc(wrote)}</div>` : ""}<div class="sr-reply">${esc(reply)}</div>${vid ? `<button type="button" class="btn btn-outline sr-open" onclick="navigate('storefront',{vendorId:'${esc(vid)}'})">Visit shop</button>` : ""}</div>`;
+  }).join("");
+  return `<div class="sr-page">${head}${items}</div>`;
+}

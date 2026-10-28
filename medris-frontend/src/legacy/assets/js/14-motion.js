@@ -2354,7 +2354,7 @@ window.lvAskCancel = async function (orderId) {
   window.levroSectorArt = function (sector) { return "/icons3d/" + code(sector && (sector.name || sector.id)) + ".webp"; };
   var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f3c6", "fa-trophy": "1f3c6",
     "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "1f4dd", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
-  var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #app .levro-quick-icon > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
+  var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
   function dress() {
     document.querySelectorAll(SEL).forEach(function (i) {
       if (i.dataset.lv3) return;
@@ -2398,4 +2398,126 @@ window.lvAskCancel = async function (orderId) {
   var raf = 0;
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true });
   dress();
+})();
+
+/* ===== Profile photo: load the current picture through the proxy when the direct read is blocked, and a modern
+   pinch / drag / scroll circular cropper (replaces the old slider dialog). Later definitions win. ===== */
+(function () {
+  function lvLoadImageBlob(url) {
+    var direct = function () { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); }); };
+    var proxied = function () { return fetch("/api/delete-account?imgproxy=" + encodeURIComponent(url)).then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); }); };
+    return direct().catch(proxied);
+  }
+  window.lvLoadImageBlob = lvLoadImageBlob;
+
+  window.editCurrentAvatar = async function () {
+    try { closeMediaActionSheet(); } catch (_) {}
+    if (!profile || !profile.avatar_url) return;
+    try {
+      var blob = await lvLoadImageBlob(profile.avatar_url);
+      pendingAvatarFile = new File([blob], "current-avatar.jpg", { type: blob.type || "image/jpeg" });
+      openAvatarCropModal(pendingAvatarFile);
+    } catch (e) {
+      showToast("Couldn't open your current photo. Choose a new one instead.", "error");
+      var inp = document.getElementById("avatarFileInput"); if (inp) inp.click();
+    }
+  };
+  window.editCurrentVendorCover = async function () {
+    try { closeMediaActionSheet(); } catch (_) {}
+    if (!vendor || !vendor.cover_url) return;
+    try {
+      var blob = await lvLoadImageBlob(vendor.cover_url);
+      pendingVendorCoverFile = new File([blob], "current-cover.jpg", { type: blob.type || "image/jpeg" });
+      openVendorCoverCropModal(pendingVendorCoverFile);
+    } catch (e) {
+      showToast("Couldn't open your current header. Choose a new one instead.", "error");
+      var inp = document.getElementById("vendorCoverInput"); if (inp) inp.click();
+    }
+  };
+
+  var st = null;
+  function dia() { return Math.round(Math.min(window.innerWidth * 0.86, window.innerHeight * 0.56, 420)); }
+  function clamp() {
+    var D = st.D, bw = st.iw * st.base * st.s, bh = st.ih * st.base * st.s;
+    var mx = Math.max(0, (bw - D) / 2), my = Math.max(0, (bh - D) / 2);
+    st.x = Math.max(-mx, Math.min(mx, st.x)); st.y = Math.max(-my, Math.min(my, st.y));
+  }
+  function paint() {
+    var img = document.getElementById("avatarCropImage"); if (!img || !st) return;
+    clamp();
+    img.style.width = (st.iw * st.base) + "px"; img.style.height = (st.ih * st.base) + "px";
+    img.style.transform = "translate(calc(-50% + " + st.x + "px), calc(-50% + " + st.y + "px)) scale(" + st.s + ")";
+  }
+  function zoomBy(f) { st.s = Math.max(1, Math.min(6, st.s * f)); paint(); }
+
+  window.updateAvatarCropTransform = paint;
+  window.bindAvatarCropDrag = function () {};
+  window.closeAvatarCropModal = function () {
+    var m = document.getElementById("avatarCropModal"); if (m) m.remove();
+    st = null; try { avatarCropState = null; pendingAvatarFile = null; } catch (_) {}
+    document.documentElement.classList.remove("lvc-open");
+  };
+  window.openAvatarCropModal = function (file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var old = document.getElementById("avatarCropModal"); if (old) old.remove();
+      var D = dia();
+      var m = document.createElement("div");
+      m.id = "avatarCropModal"; m.className = "lvc";
+      m.innerHTML = '<div class="lvc-top"><button type="button" class="lvc-x" aria-label="Cancel" onclick="closeAvatarCropModal()"><i class="fa-solid fa-xmark"></i></button><span>Move and scale</span><i></i></div>' +
+        '<div class="lvc-stage" id="avatarCropViewport"><img id="avatarCropImage" alt="" draggable="false" src="' + reader.result + '"><div class="lvc-mask" style="width:' + D + 'px;height:' + D + 'px"></div></div>' +
+        '<div class="lvc-bar"><button type="button" class="lvc-btn lvc-ghost" onclick="closeAvatarCropModal()">Cancel</button><button type="button" class="lvc-btn lvc-go" id="avatarCropDone" onclick="saveAvatarCrop()">Done</button></div>';
+      document.body.appendChild(m);
+      document.documentElement.classList.add("lvc-open");
+      st = { D: D, s: 1, x: 0, y: 0, iw: 1, ih: 1, base: 1 };
+      var img = document.getElementById("avatarCropImage");
+      img.onload = function () {
+        st.iw = img.naturalWidth || 1; st.ih = img.naturalHeight || 1;
+        st.base = Math.max(st.D / st.iw, st.D / st.ih); paint();
+      };
+      var stage = document.getElementById("avatarCropViewport");
+      var ptrs = {}, last = 0, lx = 0, ly = 0;
+      function pts() { return Object.keys(ptrs).map(function (k) { return ptrs[k]; }); }
+      function dist(a) { return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
+      stage.addEventListener("pointerdown", function (e) { ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; try { stage.setPointerCapture(e.pointerId); } catch (_) {} var a = pts(); last = a.length > 1 ? dist(a) : 0; lx = e.clientX; ly = e.clientY; });
+      stage.addEventListener("pointermove", function (e) {
+        if (!st || !ptrs[e.pointerId]) return;
+        ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var a = pts();
+        if (a.length > 1) { var d = dist(a); if (last) zoomBy(d / last); last = d; }
+        else { st.x += e.clientX - lx; st.y += e.clientY - ly; lx = e.clientX; ly = e.clientY; paint(); }
+      });
+      function up(e) { delete ptrs[e.pointerId]; var a = pts(); last = a.length > 1 ? dist(a) : 0; if (a.length === 1) { lx = a[0].x; ly = a[0].y; } }
+      stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+      stage.addEventListener("wheel", function (e) { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.08 : 1 / 1.08); }, { passive: false });
+    };
+    reader.readAsDataURL(file);
+  };
+  window.saveAvatarCrop = async function () {
+    var img = document.getElementById("avatarCropImage");
+    if (!st || !img || !session) return;
+    var out = 800, canvas = document.createElement("canvas"); canvas.width = out; canvas.height = out;
+    var k = 1 / (st.base * st.s), side = st.D * k;
+    var cx = st.iw / 2 - st.x * k, cy = st.ih / 2 - st.y * k;
+    canvas.getContext("2d").drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, out, out);
+    var btn = document.getElementById("avatarCropDone");
+    var busy = function (on) { if (btn) { btn.disabled = on; btn.textContent = on ? "Saving…" : "Done"; } };
+    busy(true);
+    canvas.toBlob(async function (blob) {
+      if (!blob) { busy(false); showToast("Could not prepare that photo.", "error"); return; }
+      try {
+        var publicUrl = await uploadToR2(blob, "avatars/" + session.user.id + "/avatar.jpg", "image/jpeg");
+        var url = publicUrl + "?t=" + Date.now();
+        var r = await sb.from("users").update({ avatar_url: url }).eq("id", session.user.id);
+        if (r.error) throw r.error;
+        profile.avatar_url = url;
+        if (vendor && vendor.id) {
+          var v = await sb.from("vendors").update({ logo_url: url }).eq("id", vendor.id);
+          if (!v.error) vendor.logo_url = url;
+        }
+        updateAuthUI(); closeAvatarCropModal(); showToast("Profile photo updated.", "success");
+        try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
+      } catch (err) { busy(false); showToast((err && err.message) || "Couldn't save the photo. Try again.", "error"); }
+    }, "image/jpeg", 0.9);
+  };
 })();
