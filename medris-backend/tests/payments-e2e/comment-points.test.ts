@@ -22,6 +22,8 @@ describe("points for comments on a shop's products", () => {
     await comment(w.buyer.id, "🔥🔥🔥");
     await comment(w.buyer.id, "Fourth one does not count");
     expect(await pointsFor(w.vendor.id)).toBe(20);
+    // the limit of 3 follows the commenter, not the shop
+    expect(Number((await rowOf<{ n: string }>(w, `select count(*) as n from public.points_ledger where kind = 'product_comment' and source_user_id = $1`, [w.buyer.id]))?.n)).toBe(3);
   });
 
   it("at most 10 comments a day count", async () => {
