@@ -4438,3 +4438,8 @@ html:root body #app h3.section-title>span{display:inline-flex;align-items:center
 html:root body #app .rq-form .flex>label.theme-option:has(input[value=buy]:checked){background:#16b982!important;border-color:#16b982!important;color:#fff!important}
 html:root body #app .rq-form .flex>label.theme-option:has(input[value=rent]:checked){background:#3985ed!important;border-color:#3985ed!important;color:#fff!important}
 html:root body #app .rq-form .flex>label.theme-option:has(input:checked) *{color:#fff!important}
+
+/* WhatsApp card mirrors the winner card: logo top-left; no dots under carousels */
+html:root:root:root body #app#app .lv-band-wa-logo{right:auto!important;left:.6rem!important}
+html:root:root:root body #app#app .lv-band-card.lv-band-c .lv-band-t{margin-top:auto}
+html:root:root:root body #app#app .home-promotional-dots,html:root:root:root body #app#app .lv-b3-dots{display:none!important}

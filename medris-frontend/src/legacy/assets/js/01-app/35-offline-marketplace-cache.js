@@ -63,7 +63,8 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   window.__categories = categories;
   const activeSector = sectors.find(s => String(s.id) === String(currentSectorId)) || null;
   const activeCategory = categories.find(c => String(c.id) === String(currentHomeCategoryId)) || null;
-  const subCats = categories.filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
+  const usedCatIds = new Set((cache.categoriesWithListings || []).map(c => String(c.id)));
+  const subCats = categories.filter(c => c.parent_category_id && usedCatIds.has(String(c.id)) && (!activeSector || String(c.sector_id) === String(activeSector.id)));
   const inScope = p => { const cat = categories.find(c => String(c.id) === String(p.category_id)); return (!activeSector || String(cat?.sector_id) === String(activeSector.id)) && (!activeCategory || String(p.category_id) === String(activeCategory.id)); };
   const trending = (cache.trending || []).filter(inScope);
   const packages = (cache.packages || []).filter(pkg => (!activeSector || (pkg.items || []).some(it => String((categories.find(c => String(c.id) === String(it.product?.category_id)) || {}).sector_id) === String(activeSector.id))) && (!activeCategory || (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))).slice(0, 8);
