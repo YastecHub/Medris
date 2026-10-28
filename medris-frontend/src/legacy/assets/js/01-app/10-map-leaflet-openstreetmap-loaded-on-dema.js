@@ -34,17 +34,18 @@ function loadLeaflet() {
 // provider API-key requirement. The product stays keyless; keep the standard
 // OSM attribution visible as required by the tile service.
 function mapTileConfig() {
-  // OpenStreetMap's own tiles: keyless, so the map never shows an "API key required" watermark.
-  // The softer, cleaner look comes from the CSS filter on .leaflet-tile-pane (see the Vendors map styles).
-  return {
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-    maxZoom: 19,
-  };
+  // Esri's keyless light grey map by day (clean, uncluttered) and its dark grey map plus labels at night; the map follows the app's theme.
+  const dark = ["dark", "black"].includes(document.documentElement.getAttribute("data-theme"));
+  const base = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+  return dark
+    ? { url: base + "Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", ref: base + "Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", native: 16, attribution: "Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors", maxZoom: 19 }
+    : { url: base + "Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", ref: base + "Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", native: 16, attribution: "Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors", maxZoom: 19 };
 }
 function addBasemapTileLayer(map) {
   const cfg = mapTileConfig();
-  return window.L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom, updateWhenIdle: false, keepBuffer: 4 }).addTo(map);
+  const layer = window.L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom, maxNativeZoom: cfg.native, updateWhenIdle: false, keepBuffer: 4 }).addTo(map);
+  if (cfg.ref) window.L.tileLayer(cfg.ref, { maxZoom: cfg.maxZoom, maxNativeZoom: cfg.native, updateWhenIdle: false, keepBuffer: 4 }).addTo(map);
+  return layer;
 }
 // Vendors page pins: the vendor's own round logo (or a shop icon) in a green ring with a little pointer.
 function vendorDirectoryMapIcon(v) {

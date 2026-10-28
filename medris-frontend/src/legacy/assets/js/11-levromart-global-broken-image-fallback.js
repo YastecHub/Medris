@@ -917,6 +917,8 @@ function hideLeviFromPanel() {
     try {
       const r = await sb.from("products").select("id,name,photos").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(30);
       const pool = ((r && r.data) || []).filter((p) => p.photos && p.photos[0]);
+      // a different mix every time the page opens, not always the newest three
+      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
       const again = $("lbHeroProds"); if (!again || again.dataset.v !== String(vid) || !pool.length) return;
       let at = 0;
       const show = (first) => {
@@ -1056,6 +1058,9 @@ function hideLeviFromPanel() {
     return html;
   }
 
+  window.lvSaleTiersHtml = function () {
+    return `<div class="lb-card lv-tiers"><h3>Points for every sale</h3><p class="lb-sub">Every completed sale earns points. The bigger the sale, the more you earn.</p><div class="lv-tier-rows"><div class="lv-tier"><b>+20</b><span>Sale under ₦1,000</span></div><div class="lv-tier"><b>+50</b><span>Sale from ₦1,000 to ₦5,000</span></div><div class="lv-tier"><b>+100</b><span>Sale above ₦5,000</span></div></div></div>`;
+  };
   function earnHtml() {
     const rules = LB.rules;
     if (!rules) return skeleton(6);
@@ -1064,11 +1069,12 @@ function hideLeviFromPanel() {
     rules.forEach((r) => { (groups[r.category] = groups[r.category] || []).push(r); });
     const done = new Set(LB.summary?.socials || []);
     let html = `<div class="lb-card"><h3>How points work</h3><p class="lb-sub" style="margin:0">Points are added automatically the moment something happens on Levromart. The board resets every Monday at 12:00 am, so everyone starts level and new vendors can win straight away. The vendor with the most points each week becomes Vendor of the Week. A completed sale is the biggest earner.</p></div>`;
+    html += window.lvSaleTiersHtml();
     Object.keys(CAT).forEach((k) => {
       const g = groups[k]; if (!g) return;
       html += `<div class="lb-rule-group"><h4>${CAT[k][0]}</h4>${g.map((r) => {
         const caps = [r.daily_cap ? `up to ${r.daily_cap} a day` : "", r.weekly_cap ? `up to ${r.weekly_cap} a week` : ""].filter(Boolean).join(", ");
-        return `<div class="lb-rule${r.points === top ? " top" : ""}" style="--ic:${CAT[k][1]}"><span class="lb-rule-ico"><i class="fa-solid ${esc(r.icon)}"></i></span><div class="lb-rule-copy"><strong>${esc(r.label)}${r.points === top ? '<span class="lb-tag you" style="background:var(--lb-gold);color:#5a3b00">Biggest</span>' : ""}</strong><p>${esc(r.description)}${caps ? ` (${caps})` : ""}</p></div><span class="lb-rule-pts">+${r.points}</span></div>`;
+        return `<div class="lb-rule${r.points === top ? " top" : ""}" style="--ic:${CAT[k][1]}"><span class="lb-rule-ico"><i class="fa-solid ${esc(r.icon)}"></i></span><div class="lb-rule-copy"><strong>${esc(r.label)}${r.points === top ? '<span class="lb-tag you" style="background:var(--lb-gold);color:#5a3b00">Biggest</span>' : ""}</strong><p>${esc(r.description)}${caps ? ` (${caps})` : ""}</p></div><span class="lb-rule-pts">${r.kind === "order_completed" ? "+20 to +100" : "+" + r.points}</span></div>`;
       }).join("")}</div>`;
     });
     html += `<div class="lb-card"><h3>Follow Levromart, earn points</h3><p class="lb-sub">Each platform is worth 5 points, once. Your referrer earns 5 too.</p>

@@ -117,6 +117,8 @@ export class BuyerWalletService {
       const reference = REFUND_TRANSFER_PREFIX + randomUUID().replace(/-/g, "");
       const id = await repo.insertWithdrawal(me.userId, total, reference);
       await repo.attach(id, credits.map((c) => c.id));
+      // admins are told of every refund withdrawal (it is sent automatically, no approval step)
+      await new NotificationWriter(tx).notifyAdmins("Refund withdrawal", `A buyer is withdrawing ${naira(total)} of refund money to their bank account. It is sent automatically; nothing to approve.`, null, null, me.userId);
       return { id, reference, total, recipient: account.transfer_recipient_code };
     }));
     // the Paystack call is made after that transaction has ended, with the withdrawal's own stable reference

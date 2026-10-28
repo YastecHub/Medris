@@ -3588,7 +3588,7 @@ html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .st
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;border:0!important;border-radius:50%!important}
 
 /* bottom bar: slim, LinkedIn height (icon over a small label, about 50px plus the phone's bottom edge), one colour for line, icon and label */
-:root{--lv-nav-blue:#7c5ce6;--lv-nav-line:#7c5ce6}
+:root{--lv-nav-blue:#15a46b;--lv-nav-line:#15a46b}
 :root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#a58bfa;--lv-nav-line:#a58bfa}
 @media (max-width:720px){
 :root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{padding:0 4px env(safe-area-inset-bottom,0px)!important;align-items:stretch!important}
@@ -4021,9 +4021,9 @@ html:root body .ap-pick-badge{margin-left:auto;margin-right:.4rem}
 html:root body .lv-pay-badge.hidden{display:none!important}
 html:root body #app .lv-ap-row{border-radius:16px;box-shadow:none}
 html:root body .admin-nav-pick .dash-tab-dot{background:#e0463f!important;color:#fff!important;border-radius:999px!important;min-width:1.3rem;height:1.3rem;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;padding:0 .3rem}
-html:root:root:root:root:root body #bottomNav.bottom-nav,html:root:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#7c5ce6;--lv-nav-line:#7c5ce6}
-html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav.has-add,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#a58bfa;--lv-nav-line:#a58bfa}
-html:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#7c5ce6!important;-webkit-text-fill-color:#7c5ce6!important}
+html:root:root:root:root:root body #bottomNav.bottom-nav,html:root:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#15a46b;--lv-nav-line:#15a46b}
+html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav.has-add,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#3fb97f;--lv-nav-line:#3fb97f}
+html:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#15a46b!important;-webkit-text-fill-color:#15a46b!important}
 html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#fff!important;-webkit-text-fill-color:#fff!important}
 
 /* ===== Levi: clean, neutral chat (like ChatGPT / Claude): grey user bubble, plain answers, black-and-white icons ===== */
@@ -4079,12 +4079,12 @@ html:root:root body #aiChatPanel .lvc-shop>span:last-child{overflow:hidden;text-
 html:root:root body #aiChatPanel .lvc-logo{width:1.2rem;height:1.2rem;flex:none;border-radius:50%;object-fit:cover;font-size:.62rem;background:var(--lvl-soft)}
 
 /* bottom bar, final: active tab is purple (light purple in dark mode), the rest black / white; vendor + ring is purple; the bell rings when something is waiting */
-html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#7c5ce6!important;-webkit-text-fill-color:#7c5ce6!important}
-html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#a58bfa!important;-webkit-text-fill-color:#a58bfa!important}
-html:root:root:root:root:root:root body #bottomNav .bn-ind{background:#7c5ce6!important}
-html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bn-ind,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bn-ind{background:#a58bfa!important}
-html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#7c5ce6!important;color:#7c5ce6!important}
-html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#a58bfa!important;color:#a58bfa!important}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#15a46b!important;-webkit-text-fill-color:#15a46b!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#3fb97f!important;-webkit-text-fill-color:#3fb97f!important}
+html:root:root:root:root:root:root body #bottomNav .bn-ind{background:#15a46b!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bn-ind,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bn-ind{background:#3fb97f!important}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#15a46b!important;color:#15a46b!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#3fb97f!important;color:#3fb97f!important}
 html:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon svg{stroke:currentColor!important}
 html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:lvJiggle 2.8s ease-in-out infinite;transform-origin:50% 12%}
 @media (prefers-reduced-motion:reduce){html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:none}}
@@ -4201,3 +4201,74 @@ html:root body #app .levro-quick-icon::before,html:root body #app .levro-quick-i
 html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views{background:none!important;box-shadow:none!important;border:0!important;padding:0!important;width:auto!important;margin-left:auto!important;align-self:flex-end}
 html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow{display:flex!important;flex-direction:column;align-items:stretch}
 html:root:root:root:root:root:root body #app#app#app .vd-page .vd-toprow .vd-views{display:inline-flex!important;align-self:flex-end}
+
+/* ===== profile photo cropper (full screen, pinch / drag) ===== */
+.lvc{position:fixed;inset:0;z-index:100000;background:#000;color:#fff;display:flex;flex-direction:column;touch-action:none}
+.lvc-top{display:flex;align-items:center;justify-content:space-between;padding:calc(.7rem + env(safe-area-inset-top)) .9rem .5rem;font-weight:600;font-size:1rem}
+.lvc-top i{width:2.4rem}
+.lvc-x{width:2.4rem;height:2.4rem;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:1.05rem;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lvc-stage{position:relative;flex:1;overflow:hidden;cursor:grab;touch-action:none;user-select:none}
+.lvc-stage img{position:absolute;left:50%;top:50%;max-width:none;transform-origin:center;pointer-events:none;will-change:transform}
+.lvc-mask{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 0 200vmax rgba(0,0,0,.62);border:2px solid rgba(255,255,255,.9);pointer-events:none}
+.lvc-bar{display:flex;gap:.7rem;justify-content:space-between;padding:.8rem 1rem calc(1rem + env(safe-area-inset-bottom))}
+.lvc-btn{border:0;border-radius:999px;padding:.8rem 1.6rem;font:inherit;font-weight:700;font-size:.98rem;cursor:pointer}
+.lvc-ghost{background:rgba(255,255,255,.14);color:#fff}
+.lvc-go{background:var(--primary,#7c3aed);color:#fff;min-width:7rem}
+.lvc-go:disabled{opacity:.6}
+
+/* ===== initials sit in the middle of the round vendor logo ===== */
+html:root body #app#app#app .vc2-logo .vd-initials{position:absolute;inset:0;width:100%;height:100%;display:flex!important;align-items:center;justify-content:center;padding:0;margin:0}
+html:root body #app#app#app .vc2-logo .vd-initials>span{display:block;line-height:1;margin:0;padding:0;position:static;transform:none}
+
+/* ===== quick actions: plain white glyph on a coloured rounded tile (like iOS Reminders) ===== */
+html:root body #app .levro-home-quick-actions .levro-quick-icon{width:2.6rem!important;height:2.6rem!important;border-radius:12px!important;display:grid!important;place-items:center;background:var(--qa,#007aff)!important;box-shadow:none!important}
+html:root body #app .levro-home-quick-actions .levro-quick-icon>i.fa-solid{color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:1.15rem!important;line-height:1}
+html:root body #app .levro-home-quick-actions .levro-quick-mint{--qa:#ff9500}
+html:root body #app .levro-home-quick-actions .levro-quick-peach{--qa:#007aff}
+html:root body #app .levro-home-quick-actions .levro-quick-lavender{--qa:#af52de}
+html:root body #app .levro-home-quick-actions .levro-quick-pink{--qa:#ff2d55}
+html:root body #app .levro-home-quick-actions .levro-quick-aqua{--qa:#5856d6}
+html:root body #app .levro-home-quick-actions .levro-quick-blue{--qa:#34c759}
+/* a little less space between the top carousel and the quick actions */
+html:root body #app#app .home-promotional-carousel{margin-bottom:.35rem!important}
+html:root body #app#app .levro-home-quick-actions{margin-top:.2rem!important}
+/* quick-action cards: calm surface, the colour lives only in the icon tile */
+html:root body #app#app .levro-home-quick-actions .levro-quick-action{background:var(--card,#fff)!important;background-image:none!important;border:1px solid var(--border,rgba(128,128,128,.22))!important;box-shadow:none!important}
+html:root body #app#app .levro-home-quick-actions .levro-quick-action::before,html:root body #app#app .levro-home-quick-actions .levro-quick-action::after{display:none!important}
+html:root body #app#app .levro-home-quick-actions .levro-quick-action .levro-quick-title{color:var(--text)!important}
+html:root body #app#app .levro-home-quick-actions .levro-quick-action .levro-quick-desc{color:var(--text-muted,#8a8f98)!important;opacity:1}
+html:root body #app#app .levro-home-quick-actions .levro-quick-action .levro-quick-arrow{background:transparent!important}
+html:root body #app#app .levro-home-quick-actions .levro-quick-action .levro-quick-arrow i{color:var(--text-muted,#8a8f98)!important}
+html:root:root:root:root body #app#app .levro-home-quick-actions .levro-quick-action .levro-quick-icon{background:var(--qa,#007aff)!important;width:2.4rem!important;height:2.4rem!important;border-radius:11px!important}
+html:root:root:root:root body #app#app .levro-home-quick-actions .levro-quick-action .levro-quick-icon>i{color:#fff!important;font-size:1.05rem!important}
+
+/* ===== Suggestion replies page ===== */
+.sr-page{padding:.2rem 0 1rem}
+.sr-title{display:flex;align-items:center;gap:.5rem;margin:.2rem 0 .2rem;font-size:1.25rem}
+.sr-sub{margin:0 0 .9rem}
+.sr-item{margin-bottom:.7rem;padding:.9rem 1rem}
+.sr-from{display:flex;justify-content:space-between;gap:.6rem;margin-bottom:.35rem}
+.sr-wrote{font-size:.85rem;margin-bottom:.45rem;padding-left:.6rem;border-left:3px solid var(--border,rgba(128,128,128,.3));overflow-wrap:anywhere}
+.sr-reply{font-size:.95rem;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.sr-open{margin-top:.6rem}
+.sr-empty{text-align:center;padding:1.6rem 1rem}
+.sr-empty>i{font-size:2rem;opacity:.5}
+
+/* ===== sale points tiers (earnings and leaderboard) ===== */
+.lv-tiers{margin:.9rem 0}
+.lv-tiers h3{margin:0 0 .2rem;font-size:1.02rem}
+.lv-tier-rows{display:grid;gap:.5rem;margin-top:.7rem}
+.lv-tier{display:flex;align-items:center;gap:.8rem;padding:.65rem .8rem;border-radius:12px;border:1px solid var(--border,rgba(128,128,128,.25))}
+.lv-tier b{min-width:3.4rem;font-size:1.15rem;color:var(--primary,#16a06a)}
+.lv-tier span{font-size:.92rem}
+/* My Orders: no filter button */
+html:root body #app .order-filters-trigger{display:none!important}
+
+/* the bottom bar stays fully up while Levi's tour points at it (scrolling must not tuck it away) */
+html:root:root:root body.tour-active #bottomNav.bottom-nav,html:root:root:root body.tour-active #bottomNav.bottom-nav.nav-scroll-hide,html:root:root:root body.tour-active #bottomNav.bottom-nav.nav-scroll-shrink{transform:none!important;opacity:1!important;visibility:visible!important}
+
+/* maps: the tiles are already light (Voyager) or dark (Dark Matter), so no colour filters on top */
+html:root:root:root:root body #app .vmpage .leaflet-tile-pane,html:root:root:root:root body #app #vendorsMap .leaflet-tile-pane,html:root:root:root:root[data-theme="dark"] body #app #vendorsMap .leaflet-tile-pane,html:root:root:root:root[data-theme="black"] body #app #vendorsMap .leaflet-tile-pane,html:root:root:root:root body #app .vmpage[data-style="night"] .leaflet-tile-pane{filter:none!important}
+html:root:root body #app .vmpage[data-style="night"] #vmpMap,html:root:root[data-theme="dark"] body #app #vendorsMap,html:root:root[data-theme="black"] body #app #vendorsMap{background:#1b1f26}
+html:root:root body #app .vmpage[data-style="streets"] #vmpMap,html:root:root[data-theme="light"] body #app #vendorsMap{background:#e9eef2}
+.vmp-types{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}

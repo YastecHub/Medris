@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <div className="legal-page">
       <h2>Privacy Policy</h2>
-      <p className="muted">Last updated: 25 October 2026</p>
+      <p className="muted">Last updated: 28 October 2026</p>
       <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
       <h3>1. What we collect</h3>
@@ -45,6 +45,7 @@ export default function PrivacyPage() {
       <li><strong>Google Gemini:</strong> powers the in-app AI assistant; only the text of your chat messages is sent, never your account or order data.</li>
       <li>The vendor or buyer on an order you're part of, so they can fulfill/receive it.</li>
       <li><strong>Cloudflare:</strong> stores and serves public listing, banner and profile images.</li>
+      <li><strong>Esri:</strong> supplies the map pictures shown on the vendor map (your device asks Esri for the map tiles it needs, so Esri can see your device's internet address).</li>
       <li><strong>Browser push services and call-connection servers:</strong> deliver notifications and help two devices connect for a voice call; they handle connection details, not call audio content.</li>
       </ul>
       <p><strong>How long we keep conversations:</strong> an order conversation closes 24 hours after the order is completed and disappears from your chat list. The messages themselves are kept, as a record of what was agreed, for dispute resolution, fraud prevention and legal compliance. Only the two people in the conversation (while it is open) and Levromart administrators can read them. If you order from the same vendor again, the earlier messages reappear in the reopened chat.</p>

@@ -502,7 +502,7 @@ function homeQuickActionsHtml() {
     { key: "services", icon: "fa-screwdriver-wrench", tone: "peach", title: "Book Services", desc: "Trusted providers" },
     { key: "rent", icon: "fa-key", tone: "lavender", title: "Rent Items", desc: "No need to buy" },
     { key: "vendors", icon: "fa-store", tone: "pink", title: "All Vendors", desc: "Discover nearby" },
-    { key: "request", icon: "fa-hand", tone: "aqua", title: "Request Item", desc: "Let vendors find it" },
+    { key: "request", icon: "fa-clipboard-list", tone: "aqua", title: "Request Item", desc: "Let vendors find it" },
     { key: "chat", icon: "fa-comment-dots", tone: "blue", title: "Chat Directly", desc: "Get quick answers" },
   ];
   return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon"><i class="fa-solid ${a.icon}"></i></span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
