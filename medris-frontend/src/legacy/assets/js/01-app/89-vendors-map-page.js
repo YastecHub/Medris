@@ -1,11 +1,10 @@
 // ---------- VENDORS MAP PAGE: a whole screen for the map (search, categories, grouped pins, vendor cards, map styles) ----------
 let vmpMap = null, vmpTiles = null, vmpLayer = null, vmpMe = null;
 let vmpAll = [], vmpQuery = "", vmpSector = "", vmpSelected = "", vmpStyle = "";
+const VMP_ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
 const VMP_STYLES = {
-  streets: { label: "Default", icon: "fa-route", url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", sub: "abc", attr: "© OpenStreetMap contributors", max: 19 },
-  satellite: { label: "Satellite", icon: "fa-satellite", url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", sub: "", attr: "Imagery © Esri", max: 19 },
-  terrain: { label: "Terrain", icon: "fa-mountain", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", sub: "abc", attr: "© OpenStreetMap contributors, SRTM | © OpenTopoMap", max: 17 },
-  night: { label: "Night", icon: "fa-moon", url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", sub: "abc", attr: "© OpenStreetMap contributors", max: 19 },
+  streets: { label: "Default", icon: "fa-route", url: VMP_ESRI + "Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", ref: VMP_ESRI + "Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", native: 16, attr: "Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors", max: 19 },
+  night: { label: "Night", icon: "fa-moon", url: VMP_ESRI + "Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", ref: VMP_ESRI + "Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", native: 16, attr: "Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors", max: 19 },
 };
 // travel-time estimates (Lagos pace): the road distance comes from the route, the speeds are typical
 const VMP_MODES = [
@@ -83,7 +82,7 @@ async function initVendorsMapPage(tries = 0) {
   vmpMap = window.L.map("vmpMap", { zoomControl: false, tap: false, attributionControl: true, zoomSnap: 0.5, zoomDelta: 0.5, inertia: true, worldCopyJump: true }).setView(center, zoom);
   vmpMap.attributionControl.setPrefix(false);
   // The map follows the app's theme (Night in dark mode, Map in light mode); a style picked on the map itself lasts until the theme changes.
-  vmpSetStyle((() => { try { const k = localStorage.getItem("levromart-vmp-style-v3"); if (k && VMP_STYLES[k]) return k; } catch (_) {} return ["dark", "black"].includes(document.documentElement.getAttribute("data-theme")) ? "night" : "streets"; })(), false);
+  vmpSetStyle(["dark", "black"].includes(document.documentElement.getAttribute("data-theme")) ? "night" : "streets", false);
   vmpLayer = window.L.layerGroup().addTo(vmpMap);
   vmpMap.on("zoomend moveend", () => { vmpDrawPins(); });
   vmpMap.on("dragstart", () => { vmpMap.__userDrag = true; });
@@ -121,17 +120,17 @@ function vmpSetStyle(key, remember = true) {
   const s = VMP_STYLES[key] || VMP_STYLES.streets; vmpStyle = key;
   if (remember) { try { localStorage.setItem("levromart-vmp-style-v3", key); } catch (_) {} }
   if (vmpTiles) vmpMap.removeLayer(vmpTiles);
-  vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, subdomains: s.sub || "abc", updateWhenIdle: false, keepBuffer: 4, detectRetina: false }).addTo(vmpMap);
+  if (window.vmpRefTiles) { vmpMap.removeLayer(window.vmpRefTiles); window.vmpRefTiles = null; }
+  vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: 4 }).addTo(vmpMap);
+  if (s.ref) window.vmpRefTiles = window.L.tileLayer(s.ref, { maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: 4 }).addTo(vmpMap);
   byId("vmPage")?.setAttribute("data-style", key);
   vmpDrawSheet();
 }
 function vmpDrawSheet() {
   const box = byId("vmpStyles"); if (!box) return;
   box.innerHTML = `<div class="vmp-sheet-back" onclick="vmpToggleStyles()"></div><div class="vmp-sheet" role="dialog" aria-label="Map type">
-    <div class="vmp-sheet-head"><strong>Map type</strong><button type="button" aria-label="Close" onclick="vmpToggleStyles()"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="vmp-types">${Object.entries(VMP_STYLES).map(([k, v]) => `<button type="button" class="${k === vmpStyle ? "on" : ""}" onclick="vmpSetStyle('${k}')"><span class="vmp-type-pic vmp-type-${k}"><i class="fa-solid ${v.icon}"></i></span><small>${v.label}</small></button>`).join("")}</div>
-    <div class="vmp-sheet-head"><strong>Map details</strong></div>
-    <div class="vmp-types"><button type="button" class="${vmpDetails.names ? "on" : ""}" onclick="vmpDetails.names=!vmpDetails.names;vmpDrawSheet();vmpDrawPins()"><span class="vmp-type-pic vmp-type-names"><i class="fa-solid fa-tag"></i></span><small>Vendor names</small></button></div>
+    <div class="vmp-sheet-head"><strong>Map</strong><button type="button" aria-label="Close" onclick="vmpToggleStyles()"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="vmp-types">${Object.entries(VMP_STYLES).map(([k, v]) => `<button type="button" class="${k === vmpStyle ? "on" : ""}" onclick="vmpSetStyle('${k}')"><span class="vmp-type-pic vmp-type-${k}"><i class="fa-solid ${v.icon}"></i></span><small>${v.label}</small></button>`).join("")}<button type="button" class="${vmpDetails.names ? "on" : ""}" onclick="vmpDetails.names=!vmpDetails.names;vmpDrawSheet();vmpDrawPins()"><span class="vmp-type-pic vmp-type-names"><i class="fa-solid fa-tag"></i></span><small>Vendor names</small></button></div>
   </div>`;
 }
 function vmpToggleStyles() { byId("vmpStyles")?.classList.toggle("hidden"); }

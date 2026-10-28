@@ -49,7 +49,7 @@ window.lvHomeBand3 = function () {
   return `<section class="lv-band3" id="lvBand3" aria-roledescription="carousel" aria-label="More on Levromart"><div class="lv-b3-track">${
     slide("s1", "navigate('vendors')", "Shop from your campus", "Follow your favourite vendors and never miss a drop.", "See vendors", "fa-bag-shopping") +
     slide("s2", req, "Can't find it?", "Tell vendors what you need and let them come to you.", "Request it", "fa-hand") +
-    slide("s3", "navigate('leaderboard')", "Who's winning?", "See the top vendors on campus right now.", "Vendor leaderboard", "fa-trophy").replace('<i class="lv-fl lv-b3-bigic fa-solid fa-trophy"></i>', '<span class="lv-fl lv-b3-bigic lv-b3-logo" id="lvB3Logo" aria-hidden="true"></span><i class="lv-fl lv-b3-bigic lv-b3-trophy fa-solid fa-trophy"></i>') +
+    slide("s3", "navigate('leaderboard')", "Who's winning?", "See the top vendors on campus right now.", "Vendor leaderboard", "fa-crown").replace('<i class="lv-fl lv-b3-bigic fa-solid fa-crown"></i>', '<span class="lv-fl lv-b3-bigic lv-b3-logo" id="lvB3Logo" aria-hidden="true"></span><i class="lv-fl lv-b3-bigic lv-b3-trophy fa-solid fa-crown"></i>') +
     slide("s4", "navigate('leaderboard')", "Follow us", "Instagram and TikTok: @levromart. Tap to find us.", "Follow us", "fa-heart").replace("navigate('leaderboard')", "window.open('https://instagram.com/levromart','_blank','noopener')") +
     slide("s5", "window.open('https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs','_blank','noopener')", "Join the family", "Our WhatsApp community: deals, tips and campus news.", "Join the group", "fa-whatsapp").replace("fa-solid fa-whatsapp", "fa-brands fa-whatsapp")
   }</div><div class="lv-b3-dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i><i></i></div></section>`;
@@ -100,7 +100,7 @@ window.lvHomeBand = function () {
   setTimeout(() => lvBandWinner(), 200);
   const req = session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')";
   return `<section class="lv-band" aria-label="More on Levromart">
-    <button type="button" class="lv-band-card lv-band-b" data-lbw onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><span class="lv-fl lv-band-logo" aria-hidden="true"></span><i class="lv-fl lv-bfl fa-solid fa-trophy"></i></button>
+    <button type="button" class="lv-band-card lv-band-b" data-lbw onclick="navigate('leaderboard')"><span class="lv-band-t">Who's winning?<b>Vendor leaderboard</b></span><span class="lv-fl lv-band-logo" aria-hidden="true"></span><i class="lv-fl lv-bfl fa-solid fa-crown"></i></button>
     <a class="lv-band-card lv-band-c" href="https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs" target="_blank" rel="noopener"><span class="lv-band-t">Join the family<b>WhatsApp community</b></span><span class="lv-fl lv-band-wa-logo" aria-hidden="true"><img src="/icon-192.png" alt="" width="56" height="56" loading="lazy" decoding="async"><i class="fa-brands fa-whatsapp"></i></span></a>
   </section>`;
 };

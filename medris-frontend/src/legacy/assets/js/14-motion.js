@@ -490,7 +490,7 @@
     var html = await orig.apply(this, arguments);
     if (typeof html !== "string" || html.indexOf("Access denied") >= 0) return html;
     setTimeout(window.lvLoadPayoutList, 0);
-    return html + '<section class="lv-payouts" id="lvPayoutList" aria-live="polite"></section>';
+    return html + (window.lvSaleTiersHtml ? window.lvSaleTiersHtml() : "") + '<section class="lv-payouts" id="lvPayoutList" aria-live="polite"></section>';
   };
   window.lvLoadPayoutList = async function () {
     var box = document.getElementById("lvPayoutList");
@@ -1523,7 +1523,7 @@
       var start = opts.lat != null && opts.lng != null ? [Number(opts.lat), Number(opts.lng)] : [6.5244, 3.3792];
       map = window.L.map("lvlpMap", { zoomControl: false, attributionControl: true, tap: false }).setView(start, opts.lat != null ? 17 : 12);
       map.attributionControl.setPrefix(false);
-      window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map);
+      (typeof addBasemapTileLayer === "function" ? addBasemapTileLayer(map) : window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map));
       if (opts.lat == null && school) geocode(school).then(function (g) { if (g) go(g.lat, g.lng, 16); });
     });
     var q = w.querySelector("#lvlpQ"), t = null;
@@ -1612,8 +1612,10 @@
   "use strict";
   var HIDE = "lv-wallet-hide", TTL = 45000;
   var cache = null, loading = null, filter = "all", tab = "tx";
-  function hidden() { try { return localStorage.getItem(HIDE) === "1"; } catch (_) { return false; } }
-  function setHidden(v) { try { localStorage.setItem(HIDE, v ? "1" : "0"); } catch (_) {} }
+  // amounts are hidden every time the app is opened; showing them lasts only until the app is closed
+  var revealed = false;
+  function hidden() { return !revealed; }
+  function setHidden(v) { revealed = !v; }
   function money(n) { return hidden() ? "₦ ••••" : "₦" + Number(n || 0).toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
   function when(d) { try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + new Date(d).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" }); } catch (_) { return ""; } }
 
@@ -1645,7 +1647,7 @@
       var payoutBy = {}; payouts.forEach(function (p) { payoutBy[p.order_id] = p; });
       var commBy = {}; charges.forEach(function (c) { commBy[c.order_id] = (commBy[c.order_id] || 0) + Number(c.amount || 0); });
       var requests = (res[5] && res[5].data) || [];
-      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0;
+      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0, asked = 0;
       orders.forEach(function (o) {
         var paid = (o.payments || []).filter(function (p) { return p.status === "paid" && FEE_TYPES[p.payment_type] && (p.method === "card" || /^(lvm_ord_|medris_)/.test(String(p.provider_reference || ""))); });
         if (!paid.length) return;
@@ -1663,14 +1665,14 @@
         } else if (o.status === "disputed") state = "held";
         else if (o.status === "completed") state = "onway";
         else state = "pending";
-        if (state === "pending") pending += amount; else if (state === "ready") ready += amount; else if (state === "held") held += amount; else if (state === "onway" || state === "asked") onWay += amount; else paidOut += amount;
+        if (state === "pending") pending += amount; else if (state === "ready") ready += amount; else if (state === "held") held += amount; else if (state === "asked") asked += amount; else if (state === "onway") onWay += amount; else paidOut += amount;
         var names = (o.items || []).map(function (i) { return i && i.product && i.product.name; }).filter(Boolean);
         var title = names.length ? names[0] + (names.length > 1 ? " +" + (names.length - 1) + " more" : "") : "Order";
         tx.push({ id: o.id, state: state, amount: amount, gross: gross, comm: comm, date: date, title: title });
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
       var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
-      var data = { pending: pending, ready: ready, held: held, requests: requests, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
+      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
       cache = { at: Date.now(), data: data };
       writeStored(data);
       return data;
@@ -1681,7 +1683,7 @@
   var LABEL = { pending: "Pending", ready: "Ready to withdraw", asked: "Awaiting approval", held: "On hold (dispute)", onway: "On its way", paid: "Paid out" };
   function card(d, compact) {
     var eye = hidden();
-    var balance = d ? d.pending + d.onWay + (d.ready || 0) + (d.held || 0) : 0;
+    var balance = d ? d.pending + d.onWay + (d.ready || 0) + (d.held || 0) + (d.asked || 0) : 0;
     return '<div class="lvw-card' + (compact ? " is-compact" : "") + '">' +
       '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
       '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
@@ -1692,10 +1694,11 @@
         '<div><span>Ready</span><b>' + (d ? money(d.ready) : "—") + '</b><small>you can withdraw</small></div>' +
         '<div><span>On its way</span><b>' + (d ? money(d.onWay) : "—") + '</b><small>to your bank</small></div>' +
       '</div>' +
+      (d && d.asked > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-hourglass-half"></i> Waiting for Levromart to approve your withdrawal <b>' + money(d.asked) + '</b></div>' : '') +
       '<div class="lvw-paidline">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
       '<div class="lvw-actions"><button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' +
       '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
-      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvWalletHow()"><i class="fa-solid fa-circle-info"></i> Help</button>' +
+      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvWalletHow()"><i class="fa-solid fa-circle-question"></i> Help</button>' +
       '</div>' +
       (d && !d.hasPayout ? '<button type="button" class="lvw-warn" onclick="lvGoToPayout()"><i class="fa-solid fa-triangle-exclamation"></i> Add your bank account so we can pay you <i class="fa-solid fa-chevron-right"></i></button>' : "") +
     '</div>';
@@ -2352,7 +2355,7 @@ window.lvAskCancel = async function (orderId) {
   }
   window.lv3d = function (c, cls) { return '<img class="lv3d ' + (cls || "") + '" src="/icons3d/' + c + '.webp" alt="" aria-hidden="true" decoding="async">'; };
   window.levroSectorArt = function (sector) { return "/icons3d/" + code(sector && (sector.name || sector.id)) + ".webp"; };
-  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f3c6", "fa-trophy": "1f3c6",
+  var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", "fa-crown": "1f451", "fa-trophy": "1f451",
     "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "1f4dd", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
   var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
   function dress() {
@@ -2520,4 +2523,27 @@ window.lvAskCancel = async function (orderId) {
       } catch (err) { busy(false); showToast((err && err.message) || "Couldn't save the photo. Try again.", "error"); }
     }, "image/jpeg", 0.9);
   };
+})();
+
+/* ===== Header search: the hint types itself out ("Search for products", "Search for vendors near you", ...) ===== */
+(function () {
+  var PHRASES = ["Search for products", "Search for vendors near you", "Search for services", "Search for things to rent", "Search for food & drinks"];
+  var i = 0, n = 0, dir = 1, timer = 0, el = null;
+  try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (_) {}
+  function idle() { return el && !el.value && document.activeElement !== el; }
+  function tick() {
+    timer = 0;
+    el = document.getElementById("searchInput");
+    if (!el) { timer = setTimeout(tick, 1200); return; }
+    if (!idle()) { if (!el.value) el.placeholder = "Search marketplace…"; timer = setTimeout(tick, 600); return; }
+    var p = PHRASES[i];
+    n += dir;
+    el.placeholder = p.slice(0, n) + (n < p.length || dir < 0 ? "|" : "");
+    var wait = 70;
+    if (dir > 0 && n >= p.length) { dir = -1; wait = 1500; }
+    else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % PHRASES.length; wait = 350; }
+    else if (dir < 0) wait = 30;
+    timer = setTimeout(tick, wait);
+  }
+  timer = setTimeout(tick, 1500);
 })();

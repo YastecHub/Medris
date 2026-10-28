@@ -4253,3 +4253,22 @@ html:root:root:root:root body #app#app .levro-home-quick-actions .levro-quick-ac
 .sr-open{margin-top:.6rem}
 .sr-empty{text-align:center;padding:1.6rem 1rem}
 .sr-empty>i{font-size:2rem;opacity:.5}
+
+/* ===== sale points tiers (earnings and leaderboard) ===== */
+.lv-tiers{margin:.9rem 0}
+.lv-tiers h3{margin:0 0 .2rem;font-size:1.02rem}
+.lv-tier-rows{display:grid;gap:.5rem;margin-top:.7rem}
+.lv-tier{display:flex;align-items:center;gap:.8rem;padding:.65rem .8rem;border-radius:12px;border:1px solid var(--border,rgba(128,128,128,.25))}
+.lv-tier b{min-width:3.4rem;font-size:1.15rem;color:var(--primary,#16a06a)}
+.lv-tier span{font-size:.92rem}
+/* My Orders: no filter button */
+html:root body #app .order-filters-trigger{display:none!important}
+
+/* the bottom bar stays fully up while Levi's tour points at it (scrolling must not tuck it away) */
+html:root:root:root body.tour-active #bottomNav.bottom-nav,html:root:root:root body.tour-active #bottomNav.bottom-nav.nav-scroll-hide,html:root:root:root body.tour-active #bottomNav.bottom-nav.nav-scroll-shrink{transform:none!important;opacity:1!important;visibility:visible!important}
+
+/* maps: the tiles are already light (Voyager) or dark (Dark Matter), so no colour filters on top */
+html:root:root:root:root body #app .vmpage .leaflet-tile-pane,html:root:root:root:root body #app #vendorsMap .leaflet-tile-pane,html:root:root:root:root[data-theme="dark"] body #app #vendorsMap .leaflet-tile-pane,html:root:root:root:root[data-theme="black"] body #app #vendorsMap .leaflet-tile-pane,html:root:root:root:root body #app .vmpage[data-style="night"] .leaflet-tile-pane{filter:none!important}
+html:root:root body #app .vmpage[data-style="night"] #vmpMap,html:root:root[data-theme="dark"] body #app #vendorsMap,html:root:root[data-theme="black"] body #app #vendorsMap{background:#1b1f26}
+html:root:root body #app .vmpage[data-style="streets"] #vmpMap,html:root:root[data-theme="light"] body #app #vendorsMap{background:#e9eef2}
+.vmp-types{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
