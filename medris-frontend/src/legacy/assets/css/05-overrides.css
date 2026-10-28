@@ -4311,14 +4311,9 @@ html:root:root:root:root:root body #app#app .lv-b3-slide .lv-b3-logo.on .avatar-
 html:root body #app .sg-card{isolation:isolate}
 .sr-mine-h{margin:1.2rem 0 .5rem;font-size:1.02rem}
 
-/* storefront without a banner: a soft, plain colour picked from the shop's name (different from its logo colour) */
-html:root body #app .storefront-cover.lv-cover-soft{background:hsl(var(--cov-h,160) 42% 84%)!important;background-image:none!important}
-html:root[data-theme="dark"] body #app .storefront-cover.lv-cover-soft,html:root[data-theme="black"] body #app .storefront-cover.lv-cover-soft{background:hsl(var(--cov-h,160) 38% 40%)!important}
-html:root body #app .storefront-cover.lv-cover-soft .storefront-cover-empty{color:color-mix(in srgb,var(--text) 70%,transparent)}
 
 /* leaderboard / Vendor of the Week: three shields with a star (replaces the award glyph everywhere) */
 html:root body #app i.fa-award::before,html:root body #lvCampusBar i.fa-award::before{content:""!important;display:block;width:1.25em;height:1.05em;background:url(/icons/leaderboard-shields.svg) center/contain no-repeat}
 html:root body #app i.fa-award,html:root body #lvCampusBar i.fa-award{display:inline-flex;align-items:center;justify-content:center;color:transparent!important;-webkit-text-fill-color:transparent!important;filter:none!important;text-shadow:none!important}
 html:root body #lvCampusBar .lvcb-trophy i.fa-award{font-size:1.5rem!important;width:auto;height:auto}
 #lvCampusBar .lvcb-allart{width:30px;height:30px;display:block;object-fit:contain}
-html:root body #app .storefront-cover.lv-cover-soft::before,html:root body #app .storefront-cover.lv-cover-soft::after{display:none!important}
