@@ -25,7 +25,8 @@ const MAX_TOOL_ROUNDS = 8;
 let catalogCache = { expires: 0, value: null };
 // the model that answered last time is tried first, so a retired or unavailable model costs one wasted call, not one per message
 let goodModel = null;
-function modelChain(primary) { return [...new Set([goodModel, primary, FALLBACK_MODEL, "gemini-2.5-flash"].filter(Boolean))]; }
+// Fast Flash models go before the slow Pro one: a chat answer in a few seconds matters more than the extra depth.
+function modelChain(primary) { return [...new Set([goodModel, process.env.GEMINI_MODEL && primary, FALLBACK_MODEL, "gemini-2.5-flash", primary].filter(Boolean))]; }
 
 function jsonSafe(value) {
   try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
@@ -1043,7 +1044,7 @@ module.exports = async function handler(req, res) {
 
 async function geminiOnce(apiKey, model, body) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 22000);
+  const timer = setTimeout(() => controller.abort(), 14000);
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
@@ -1073,7 +1074,9 @@ async function callGemini(apiKey, model, contents, systemInstruction, withTools)
       goodModel = m; return out;
     } catch (err) {
       lastErr = err;
-      // a model that rejects the thinking setting is retried once without it
+      console.error("[levi] model failed:", m, String(err && err.message || err).slice(0, 200));
+      // only a model that rejects the thinking setting is retried (once, without it); a busy or missing model moves straight on
+      if (!/think|budget|level|invalid|argument/i.test(String(err && err.message))) continue;
       try { const out = await geminiOnce(apiKey, m, body); goodModel = m; return out; } catch (err2) { lastErr = err2; }
     }
   }

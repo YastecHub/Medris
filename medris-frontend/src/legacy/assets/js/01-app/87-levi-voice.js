@@ -570,7 +570,7 @@ async function leviOfflineFallback(text) {
       return `I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""}, opening it for you now.`;
     }
   } catch (_) {}
-  if (/\b(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(q)) {
+  if (/\b(hi+|hello+|hey+|good morning|good afternoon|good evening)\b/.test(q)) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
     return `Hi${name ? `, ${name}` : ''}. I'm Levi. Tell me what you need and I'll help you get there.`;
   }
