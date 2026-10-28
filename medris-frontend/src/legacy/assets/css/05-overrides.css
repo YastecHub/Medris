@@ -4356,7 +4356,8 @@ html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-sell{backg
 html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-win{background:#16b982!important}
 html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-request{background:#3985ed!important;color:#fff}
 html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-follow{background:#d3c0fa!important;color:#1a1040}
-html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"]{background:var(--wv-a)!important}
+html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="a"],html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="b"],html:root:root:root body #app#app .home-promotional-slide.lv-wv[data-wv-kind="c"]{background:var(--wv-a)!important}
+html:root:root:root body #app#app .home-promotional-slide.lv-fy.lv-fy-join{background:#12a06a!important}
 /* text on the recoloured banners */
 .lv-fy-request .lv-fy-h em{color:#fff}
 .lv-fy-request .lv-fy-h strong{color:#ffe066}
@@ -4378,8 +4379,7 @@ html:root:root:root body #app#app .lv-band-card img.lv-fl,html:root:root:root bo
 html:root:root:root body #app#app .lv-band-a{background:#16b982!important}
 html:root:root:root body #app#app .lv-band-b{background:#8438e8!important}
 html:root:root:root body #app#app .lv-band-c{background:#16b982!important}
-html:root:root:root body #app#app .lv-band-d{background:#f5a623!important;color:#2a1a00}
-html:root:root:root body #app#app .lv-band-d .lv-band-t b,html:root:root:root body #app#app .lv-band-d .lv-bfl{color:#2a1a00!important}
+html:root:root:root body #app#app .lv-band-d{background:#f26b1d!important}
 html:root:root:root body #app#app .lv-band-e{background:#3985ed!important}
 :root[data-theme="dark"] body #app .lv-band-card,:root[data-theme="black"] body #app .lv-band-card{border-color:rgba(255,255,255,.08)}
 
