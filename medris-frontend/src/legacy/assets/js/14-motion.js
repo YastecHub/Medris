@@ -1245,9 +1245,9 @@
   var FY = [
     { k: "join", act: "join", link: "https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", label: "Join the community", h1: "Join the", h2: "community.", sub: "Be first to hear new vendors, offers and campus updates on WhatsApp.", cta: "Tap to join the group", ph: "join", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star"] },
     { k: "sell", act: "vendorApply", link: "?levro=vendorApply", label: "Sell to your whole campus", h1: "Sell to your", h2: "whole campus.", sub: "Open your shop in minutes. List products, get orders, grow.", cta: "Become a vendor", ph: "sell", tiles: ["fa-box", "star", "fa-tag", "fa-cart-shopping"] },
-    { k: "store", act: "vendors", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Buy \u00b7 Sell \u00b7 Rent", ph: "store", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
-    { k: "follow", act: "links", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "", ph: "follow", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true, foot: "Tap our link in bio \u00b7 levromart.com/links" },
-    { k: "win", act: "leaderboard", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true, foot: '<i class="fa-solid fa-globe"></i> levromart.com' },
+    { k: "store", act: "vendors", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Buy \u00b7 Sell \u00b7 Rent", ph: "follow", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
+    { k: "follow", act: "links", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "", ph: "store", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true, foot: "Tap our link in bio \u00b7 levromart.com/links" },
+    { k: "win", act: "leaderboard", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true },
     { k: "request", act: "requestEquipment", link: "?levro=requestEquipment", label: "Can't find it? Request it.", h1: "Can't find it?", h2: "Request it.", sub: "Tell vendors what you need. They come to you with offers.", cta: "Request an item", ph: "request", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star", "fa-box"] }
   ];
   var SOC = [["fa-instagram", "#e1306c"], ["fa-tiktok", "#111"], ["fa-facebook-f", "#1877f2"], ["fa-x-twitter", "#000"], ["fa-linkedin-in", "#0a66c2"], ["substack", "#ff6719"], ["fa-whatsapp", "#25d366"]];
@@ -2611,6 +2611,14 @@ window.lvAskCancel = async function (orderId) {
 /* ===== Comments: one-tap reactions under the box; a shop cannot start a comment on its own product (it can still reply) ===== */
 (function () {
   var CHIPS = ["❤️❤️❤️", "🔥🔥🔥", "⭐⭐⭐", "👏👏👏", "😍😍😍"];
+  var STK = ["1f525", "2764-fe0f", "1f60d", "1f602", "1f44f", "1f64f", "1f4af", "1f389", "1f60e", "1f929", "1f973", "1f62d", "1f60a", "1f44d", "1f4aa", "2b50", "1f496", "1f970", "1f64c", "1f618", "1f440", "1f48e", "1f381", "1f680", "1f91d", "1f6cd-fe0f", "1f62e", "1f914", "1f631", "1f921"];
+  function showStickers() {
+    document.querySelectorAll(".product-comment-body:not([data-stk])").forEach(function (b) {
+      var m = /^::s:([0-9a-f-]+)::$/.exec((b.textContent || "").trim());
+      b.dataset.stk = "1";
+      if (m) b.innerHTML = '<img class="lv-stk" src="/stickers/' + m[1] + '.webp" alt="sticker" width="96" height="96" loading="lazy" decoding="async">';
+    });
+  }
   function ownProduct() {
     try {
       var d = typeof currentProductDetail !== "undefined" ? currentProductDetail : null;
@@ -2619,6 +2627,7 @@ window.lvAskCancel = async function (orderId) {
     } catch (_) { return false; }
   }
   function dress() {
+    showStickers();
     document.querySelectorAll(".product-comment-composer").forEach(function (c) {
       if (c.dataset.lvChips) return;
       var ta = c.querySelector("textarea"); var send = c.querySelector(".product-comment-compose-row button");
@@ -2634,7 +2643,19 @@ window.lvAskCancel = async function (orderId) {
         };
         row.appendChild(b);
       });
-      var compose = c.querySelector(".product-comment-compose-row"); c.insertBefore(row, compose);
+      var compose = c.querySelector(".product-comment-compose-row");
+      // stickers: a button at the start of the row opens a grid; tapping a sticker posts it as the comment
+      var panel = document.createElement("div"); panel.className = "lv-stk-panel hidden";
+      STK.forEach(function (code) {
+        var sb2 = document.createElement("button"); sb2.type = "button"; sb2.setAttribute("aria-label", "Send sticker");
+        sb2.innerHTML = '<img src="/stickers/' + code + '.webp" alt="" width="48" height="48" loading="lazy" decoding="async">';
+        sb2.onclick = function () { if (!session) { try { showLogin(); } catch (_) {} return; } panel.classList.add("hidden"); ta.value = "::s:" + code + "::"; ta.dispatchEvent(new Event("input", { bubbles: true })); send.click(); };
+        panel.appendChild(sb2);
+      });
+      var tog = document.createElement("button"); tog.type = "button"; tog.className = "lv-stk-tog"; tog.setAttribute("aria-label", "Stickers"); tog.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
+      tog.onclick = function () { panel.classList.toggle("hidden"); };
+      row.insertBefore(tog, row.firstChild);
+      c.insertBefore(panel, compose); c.insertBefore(row, panel);
     });
   }
   var raf = 0;
