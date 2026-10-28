@@ -4439,9 +4439,7 @@ html:root body #app .rq-form .flex>label.theme-option:has(input[value=buy]:check
 html:root body #app .rq-form .flex>label.theme-option:has(input[value=rent]:checked){background:#3985ed!important;border-color:#3985ed!important;color:#fff!important}
 html:root body #app .rq-form .flex>label.theme-option:has(input:checked) *{color:#fff!important}
 
-/* WhatsApp card mirrors the winner card: logo top-left; no dots under carousels */
-html:root:root:root body #app#app .lv-band-wa-logo{right:auto!important;left:.6rem!important}
-html:root:root:root body #app#app .lv-band-card.lv-band-c .lv-band-t{margin-top:auto}
+/* no dots under carousels */
 html:root:root:root body #app#app .home-promotional-dots,html:root:root:root body #app#app .lv-b3-dots{display:none!important}
 
 /* PC / wide screens: the home banner is wider and shorter so its text is not cut off */

@@ -44,6 +44,9 @@
     }
   ],
   "functions": {
+    "api/chat.js": {
+      "maxDuration": 60
+    },
     "api/delete-account.js": {
       "includeFiles": "medris-frontend/dist/{index.html,og-frame.png,og-levromart.png,icon-512.png,levromart-notification-icon.png,notif-icons/*.png,levromart-badge.png,fonts/*.ttf}"
     }
