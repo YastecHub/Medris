@@ -390,6 +390,9 @@ function handleProductImageTap(evt, productId) {
   // Buttons inside the card (add to cart, etc.) keep their own behaviour.
   if (evt.target?.closest?.("button, a, .card-cart-btn")) return;
   evt.stopPropagation();
+  // With a mouse (laptop/desktop) one click opens the product straight away: waiting for a possible
+  // second click made clicks feel ignored, and a second impatient click saved to wishlist instead.
+  if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) { navigate("productDetail", { productId }); return; }
   const now = Date.now();
   const DOUBLE_TAP_MS = 320;
   const state = __productImageTapState.get(productId);

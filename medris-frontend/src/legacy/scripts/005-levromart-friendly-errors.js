@@ -42,7 +42,7 @@
   /* Read cache + request merging. Identical reads of slow-changing tables are answered from memory for a short time
      (and shared when several parts of the app ask at once), so the same rows are not downloaded again and again.
      Any write clears it; if the backend is down/over quota the last good copy is served instead of an error. */
-  var CACHE=new Map(), FLIGHT=new Map(), STALE_MS=3600000, MAX_ENTRIES=160, MAX_BYTES=600000;
+  var CACHE=new Map(), FLIGHT=new Map(), STALE_MS=3600000, SWR_MS=600000, MAX_ENTRIES=160, MAX_BYTES=600000;
   var TTL={sectors:600000,categories:600000,points_rules:600000,homepage_carousel_slides:300000,
     products:25000,vendor_packages:25000,vendors:25000,package_items:25000,product_variants:25000,
     product_rating_stats:40000,product_engagement_settings:60000,package_engagement_settings:60000};
@@ -63,9 +63,15 @@
       var method=String((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
       if(method!=="GET"&&method!=="HEAD"&&/(\.supabase\.(co|in)\/(rest|functions)\/v1\/|\/rest\/v1\/|\/api\/v1\/)/.test(url)) CACHE.clear();
       var ttl=tableTtl(input,init);
+      if(window.__levroCacheDebug&&/rest\/v1\//.test(url)) console.log('[cache]',ttl,typeof input,!!(init&&init.signal),url.slice(0,80));
       if(!ttl) return rawSafe(input,init);
       var key=url+"#"+hkey(init.headers), now=Date.now(), hit=CACHE.get(key);
       if(hit&&now-hit.t<ttl){ stats.hit++; return Promise.resolve(rebuild(hit)); }
+      /* a recent copy (under 10 minutes) is shown at once and quietly refreshed for next time, so pages never wait */
+      if(hit&&now-hit.t<SWR_MS){ stats.swr=(stats.swr||0)+1;
+        if(!FLIGHT.has(key)){ var bg=rawSafe(input,Object.assign({},init)).then(async function(res){ if(res.ok){ var body=await res.clone().text(); if(body.length<=MAX_BYTES){ var ct=res.headers.get("content-type"), cr=res.headers.get("content-range"), hd={}; if(ct) hd["content-type"]=ct; if(cr) hd["content-range"]=cr; CACHE.set(key,{t:Date.now(),body:body,status:res.status,headers:hd}); } } return CACHE.get(key)||hit; },function(){ return hit; });
+          FLIGHT.set(key,bg); var dn=function(){ FLIGHT.delete(key); }; bg.then(dn,dn); }
+        return Promise.resolve(rebuild(hit)); }
       if(FLIGHT.has(key)){ stats.merged++; return FLIGHT.get(key).then(rebuild); }
       stats.miss++;
       var p=rawSafe(input,init).then(async function(res){
