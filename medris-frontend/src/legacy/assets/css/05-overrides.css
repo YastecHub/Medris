@@ -3588,7 +3588,7 @@ html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .st
 html:root:root:root body #app#app .storefront-profile .storefront-avatar-row .storefront-avatar .avatar-circle{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;border:0!important;border-radius:50%!important}
 
 /* bottom bar: slim, LinkedIn height (icon over a small label, about 50px plus the phone's bottom edge), one colour for line, icon and label */
-:root{--lv-nav-blue:#7c5ce6;--lv-nav-line:#7c5ce6}
+:root{--lv-nav-blue:#15a46b;--lv-nav-line:#15a46b}
 :root[data-theme="dark"],:root[data-theme="black"]{--lv-nav-blue:#a58bfa;--lv-nav-line:#a58bfa}
 @media (max-width:720px){
 :root:root:root:root body #bottomNav.bottom-nav,:root:root:root:root body #bottomNav.bottom-nav.has-add{padding:0 4px env(safe-area-inset-bottom,0px)!important;align-items:stretch!important}
@@ -4021,9 +4021,9 @@ html:root body .ap-pick-badge{margin-left:auto;margin-right:.4rem}
 html:root body .lv-pay-badge.hidden{display:none!important}
 html:root body #app .lv-ap-row{border-radius:16px;box-shadow:none}
 html:root body .admin-nav-pick .dash-tab-dot{background:#e0463f!important;color:#fff!important;border-radius:999px!important;min-width:1.3rem;height:1.3rem;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;padding:0 .3rem}
-html:root:root:root:root:root body #bottomNav.bottom-nav,html:root:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#7c5ce6;--lv-nav-line:#7c5ce6}
-html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav.has-add,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#a58bfa;--lv-nav-line:#a58bfa}
-html:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#7c5ce6!important;-webkit-text-fill-color:#7c5ce6!important}
+html:root:root:root:root:root body #bottomNav.bottom-nav,html:root:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#15a46b;--lv-nav-line:#15a46b}
+html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav,html[data-theme="dark"]:root:root:root:root body #bottomNav.bottom-nav.has-add,html[data-theme="black"]:root:root:root:root body #bottomNav.bottom-nav.has-add{--lv-nav-blue:#3fb97f;--lv-nav-line:#3fb97f}
+html:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#15a46b!important;-webkit-text-fill-color:#15a46b!important}
 html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#fff!important;-webkit-text-fill-color:#fff!important}
 
 /* ===== Levi: clean, neutral chat (like ChatGPT / Claude): grey user bubble, plain answers, black-and-white icons ===== */
@@ -4079,12 +4079,12 @@ html:root:root body #aiChatPanel .lvc-shop>span:last-child{overflow:hidden;text-
 html:root:root body #aiChatPanel .lvc-logo{width:1.2rem;height:1.2rem;flex:none;border-radius:50%;object-fit:cover;font-size:.62rem;background:var(--lvl-soft)}
 
 /* bottom bar, final: active tab is purple (light purple in dark mode), the rest black / white; vendor + ring is purple; the bell rings when something is waiting */
-html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#7c5ce6!important;-webkit-text-fill-color:#7c5ce6!important}
-html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#a58bfa!important;-webkit-text-fill-color:#a58bfa!important}
-html:root:root:root:root:root:root body #bottomNav .bn-ind{background:#7c5ce6!important}
-html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bn-ind,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bn-ind{background:#a58bfa!important}
-html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#7c5ce6!important;color:#7c5ce6!important}
-html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#a58bfa!important;color:#a58bfa!important}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html:root:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#15a46b!important;-webkit-text-fill-color:#15a46b!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-item.active>span:last-child{color:#3fb97f!important;-webkit-text-fill-color:#3fb97f!important}
+html:root:root:root:root:root:root body #bottomNav .bn-ind{background:#15a46b!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bn-ind,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bn-ind{background:#3fb97f!important}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#15a46b!important;color:#15a46b!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#3fb97f!important;color:#3fb97f!important}
 html:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon svg{stroke:currentColor!important}
 html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:lvJiggle 2.8s ease-in-out infinite;transform-origin:50% 12%}
 @media (prefers-reduced-motion:reduce){html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:none}}

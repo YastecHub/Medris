@@ -829,7 +829,9 @@ window.__lvHoldHeight = function (el) {
     if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; dropPeek(); window.__lvNext?.drop(); target(d).then((id) => { if (id) { window.lvPdPrefetch?.(id); window.__lvSwipeWarm.id = id; window.__lvNext?.ensure(d, id); } }).catch(() => {}); }
     // the next product itself rides in beside the finger, so there is never an empty moment
     const wd = dx < 0 ? 1 : -1;
-    if (!peek && window.__lvSwipeWarm?.id) { const d = peekFor(window.__lvSwipeWarm.id); if (d) peek = buildPeek(d, wd); }
+    // once the next product's whole page is waiting beside this one, the reduced preview must go: it would cover that page
+    if (window.__lvNext?.ready(wd)) dropPeek();
+    else if (!peek && window.__lvSwipeWarm?.id) { const d = peekFor(window.__lvSwipeWarm.id); if (d) peek = buildPeek(d, wd); }
     if (peek) peek.el.style.transform = `translate3d(${wd * innerWidth + dx * 0.85}px,0,0)`;
   }, { passive: false });
   // A light preview of the next product (its photo, name and shop) taken from the data already prefetched.
@@ -1039,7 +1041,10 @@ window.__lvHoldHeight = function (el) {
     t.content.querySelectorAll("img").forEach((i) => { i.loading = "eager"; i.decoding = "sync"; });
     const el = document.createElement("div");
     el.className = "lv-pd-next"; el.setAttribute("aria-hidden", "true");
-    el.style.cssText = `position:absolute;top:${Math.max(0, window.scrollY - host.offsetTop)}px;left:${dir * 100}%;width:100%;pointer-events:none`;
+    // the page frame has side padding; the waiting copy must sit exactly inside it, or it is wider than the real page
+    // and visibly shrinks when the real page takes over
+    const hcs = getComputedStyle(host), padL = parseFloat(hcs.paddingLeft) || 0, padR = parseFloat(hcs.paddingRight) || 0;
+    el.style.cssText = `position:absolute;top:${Math.max(0, window.scrollY - host.offsetTop)}px;left:${dir * host.clientWidth + padL}px;width:${host.clientWidth - padL - padR}px;pointer-events:none`;
     el.appendChild(t.content);
     st.pos = host.style.position;
     if (getComputedStyle(host).position === "static") host.style.position = "relative";
