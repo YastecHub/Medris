@@ -2525,25 +2525,23 @@ window.lvAskCancel = async function (orderId) {
   };
 })();
 
-/* ===== Header search: the hint types itself out ("Search for products", "Search for vendors near you", ...) ===== */
+/* ===== Header search: the hint types itself out ("Search for products", "Search for vendors near you", ...) =====
+   The visible bar is the button .header-search-row (its text is a span); the real input opens when it is tapped. */
 (function () {
   var PHRASES = ["Search for products", "Search for vendors near you", "Search for services", "Search for things to rent", "Search for food & drinks"];
-  var i = 0, n = 0, dir = 1, timer = 0, el = null;
+  var i = 0, n = 0, dir = 1;
   try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (_) {}
-  function idle() { return el && !el.value && document.activeElement !== el; }
   function tick() {
-    timer = 0;
-    el = document.getElementById("searchInput");
-    if (!el) { timer = setTimeout(tick, 1200); return; }
-    if (!idle()) { if (!el.value) el.placeholder = "Search marketplace…"; timer = setTimeout(tick, 600); return; }
+    var el = document.querySelector(".header-search-row > span");
+    if (!el || document.hidden) { setTimeout(tick, 1000); return; }
     var p = PHRASES[i];
     n += dir;
-    el.placeholder = p.slice(0, n) + (n < p.length || dir < 0 ? "|" : "");
+    el.textContent = p.slice(0, n) + (n > 0 ? "" : "Search…");
     var wait = 70;
-    if (dir > 0 && n >= p.length) { dir = -1; wait = 1500; }
-    else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % PHRASES.length; wait = 350; }
-    else if (dir < 0) wait = 30;
-    timer = setTimeout(tick, wait);
+    if (dir > 0 && n >= p.length) { dir = -1; wait = 1600; }
+    else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % PHRASES.length; wait = 400; }
+    else if (dir < 0) wait = 28;
+    setTimeout(tick, wait);
   }
-  timer = setTimeout(tick, 1500);
+  setTimeout(tick, 1200);
 })();
