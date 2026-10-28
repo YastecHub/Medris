@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 96" width="120" height="96">
+  <defs>
+    <path id="sh" d="M-17 -22h34a7 7 0 0 1 7 7v22c0 15-13 26-24 32-11-6-24-17-24-32v-22a7 7 0 0 1 7-7z"/>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe266"/><stop offset="1" stop-color="#ffb800"/></linearGradient>
+  </defs>
+  <g transform="translate(26 54) rotate(-13) scale(.86)">
+    <use href="#sh" y="5" fill="#b9793f"/><use href="#sh" fill="#e2ab74"/><use href="#sh" transform="scale(.74)" fill="#cf9560"/>
+  </g>
+  <g transform="translate(94 54) rotate(13) scale(.86)">
+    <use href="#sh" y="5" fill="#8ea4bd"/><use href="#sh" fill="#d3deea"/><use href="#sh" transform="scale(.74)" fill="#b7c7d9"/>
+  </g>
+  <g transform="translate(60 46)">
+    <use href="#sh" y="6" fill="#e69a00"/><use href="#sh" fill="url(#g1)"/><use href="#sh" transform="scale(.74)" fill="#ffd23f"/>
+    <path d="M0 -13l4.2 8.6 9.5 1.4-6.9 6.7 1.6 9.4L0 8.4l-8.4 4.4 1.6-9.4-6.9-6.7 9.5-1.4z" fill="#f08c00"/>
+  </g>
+  <path d="M104 14l4 5-4 5-4-5z" fill="#ffe9a3"/><path d="M18 20l3 3.6-3 3.6-3-3.6z" fill="#ffe9a3"/>
+</svg>

@@ -274,7 +274,7 @@ function storefrontPackagesLoadingInnerHtml() {
 }
 function storefrontReviewsInnerHtml(st, reviews) {
   if (reviews && reviews.length > 0) {
-    return `<button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div>`;
+    return `<button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);transform:rotate(180deg);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div>`;
   }
   return `<h3 style="margin-top:0;">Reviews</h3><p class="muted">No reviews yet.</p>`;
 }
@@ -382,8 +382,8 @@ async function renderStorefrontInner(vendorId) {
   ].filter(Boolean).join("");
 
   let html = `<section class="storefront-profile" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
-    <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
-      ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
+    <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : "lv-cover-soft"}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : `style="--cov-h:${(Number(stableAvatarHue(String(v.business_name || v.id))) + 55) % 360}"`}>
+      ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : (isOwnStorefront ? '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>' : "")}
       ${storefrontMoreItems && !isOwnStorefront ? `<button class="storefront-banner-more" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-chevron-down"></i></button>` : ""}
     </div>
     <div class="storefront-profile-body">
