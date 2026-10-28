@@ -2608,7 +2608,7 @@ window.lvAskCancel = async function (orderId) {
   };
 })();
 
-/* ===== Comments: one-tap reactions under the box; a shop cannot start a comment on its own product (it can still reply) ===== */
+/* ===== Comments: one-tap reactions, a sticker button beside the box, and the comment count badge kept up to date ===== */
 (function () {
   var CHIPS = ["❤️❤️❤️", "🔥🔥🔥", "⭐⭐⭐", "👏👏👏", "😍😍😍"];
   var STK = ["1f525", "2764-fe0f", "1f60d", "1f602", "1f44f", "1f64f", "1f4af", "1f389", "1f60e", "1f929", "1f973", "1f62d", "1f60a", "1f44d", "1f4aa", "2b50", "1f496", "1f970", "1f64c", "1f618", "1f440", "1f48e", "1f381", "1f680", "1f91d", "1f6cd-fe0f", "1f62e", "1f914", "1f631", "1f921"];
@@ -2619,21 +2619,20 @@ window.lvAskCancel = async function (orderId) {
       if (m) b.innerHTML = '<img class="lv-stk" src="/stickers/' + m[1] + '.webp" alt="sticker" width="96" height="96" loading="lazy" decoding="async">';
     });
   }
-  function ownProduct() {
-    try {
-      var d = typeof currentProductDetail !== "undefined" ? currentProductDetail : null;
-      var vid = d && (d.vendor_id || (d.vendor && d.vendor.id));
-      return !!(vid && typeof isOwnVendorId === "function" && isOwnVendorId(vid));
-    } catch (_) { return false; }
+  function syncCount() {
+    var panel = document.getElementById("productCommentsPanel"); if (!panel) return;
+    if (panel.querySelector(".comment-fetch-placeholder")) return;
+    var n = panel.querySelectorAll("[data-comment-id]").length;
+    if (!n && !panel.querySelector(".product-comments-empty")) return;
+    document.querySelectorAll(".product-detail-card .lv-ccount, #productCommentsCount").forEach(function (b) { if (b.textContent !== String(n)) b.textContent = String(n); });
   }
   function dress() {
-    showStickers();
+    showStickers(); syncCount();
     document.querySelectorAll(".product-comment-composer").forEach(function (c) {
       if (c.dataset.lvChips) return;
       var ta = c.querySelector("textarea"); var send = c.querySelector(".product-comment-compose-row button");
       if (!ta || !send || /package/i.test(ta.id)) return;
       c.dataset.lvChips = "1";
-      if (ownProduct()) { ta.placeholder = "You can reply to customers' comments here"; return; }
       var row = document.createElement("div"); row.className = "lv-cmt-chips";
       CHIPS.forEach(function (t) {
         var b = document.createElement("button"); b.type = "button"; b.textContent = t;
@@ -2654,16 +2653,11 @@ window.lvAskCancel = async function (orderId) {
       });
       var tog = document.createElement("button"); tog.type = "button"; tog.className = "lv-stk-tog"; tog.setAttribute("aria-label", "Stickers"); tog.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
       tog.onclick = function () { panel.classList.toggle("hidden"); };
-      row.insertBefore(tog, row.firstChild);
+      compose.insertBefore(tog, compose.firstChild);
       c.insertBefore(panel, compose); c.insertBefore(row, panel);
     });
   }
   var raf = 0;
   try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
   dress();
-  var orig = window.submitProductComment;
-  if (typeof orig === "function") window.submitProductComment = function () {
-    if (ownProduct() && !window.__levroActiveProductReply) { try { showToast("You can't comment on your own product. You can reply to customers' comments.", "info"); } catch (_) {} return; }
-    return orig.apply(this, arguments);
-  };
 })();
