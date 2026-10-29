@@ -33,6 +33,7 @@ export interface LedgerRefund {
 export interface LedgerEvent {
   id: string;
   processed_at: string | null;
+  result: string | null;
 }
 
 /** The Paystack ledger tables of migration 0005 (service role only). */
@@ -76,7 +77,7 @@ export class PaystackLedgerRepository {
     await this.db.execute(sql`
       insert into public.paystack_events (event_key, event, reference) values (${eventKey}, ${event}, ${reference})
       on conflict (event_key) do nothing`);
-    const row = await jsonRow<LedgerEvent>(this.db, sql`select id, processed_at from public.paystack_events where event_key = ${eventKey}`);
+    const row = await jsonRow<LedgerEvent>(this.db, sql`select id, processed_at, result from public.paystack_events where event_key = ${eventKey}`);
     return row as LedgerEvent;
   }
 

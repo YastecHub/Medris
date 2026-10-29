@@ -124,6 +124,44 @@ describe("paystack webhook (issue #94)", () => {
     expect(alerts.length).toBeGreaterThan(0);
   });
 
+  it("Paystack adding its own charge on top still settles the order", async () => {
+    const s = await paidOrderSetup(150000);
+    verifyAnswer = () => verifySuccess(s.reference, s.id, 152250); // the dashboard passes fees to the customer
+    const res = await send("charge.success", { id: s.id, reference: s.reference });
+    expect((res.body as { result: string }).result).toBe("settled");
+    expect(await paymentStatus(s.orderId)).toBe("paid");
+  });
+
+  it("a payment held back for its amount is looked at again and settles once the amount is right, without new alerts", async () => {
+    const s = await paidOrderSetup(150000);
+    verifyAnswer = () => verifySuccess(s.reference, s.id, 100000);
+    expect(((await send("charge.success", { id: s.id, reference: s.reference })).body as { result: string }).result).toBe("amount_mismatch");
+    const alerts = async () => (await db.query(`select 1 from public.notifications where user_id = $1 and type = 'admin_alert' and body like $2`, [admin, `%${s.reference}%`])).length;
+    const before = await alerts();
+    // looked at again while still short: still held back, admins not told twice
+    expect((await service.confirmByReference(s.reference)).result).toBe("amount_mismatch");
+    expect(await alerts()).toBe(before);
+    // Paystack now reports the full amount (e.g. the code that judged it was corrected): it settles, once
+    verifyAnswer = () => verifySuccess(s.reference, s.id, 150000);
+    expect((await service.confirmByReference(s.reference)).result).toBe("settled");
+    expect(await paymentStatus(s.orderId)).toBe("paid");
+    expect((await service.confirmByReference(s.reference)).result).toBe("duplicate");
+    expect(await events(s.reference)).toHaveLength(1);
+  });
+
+  it("a payment through an older link of the order (its row was removed when Pay was tapped again) still pays the order", async () => {
+    const s = await paidOrderSetup(150000);
+    // tapping Pay again later set this attempt aside and removed its row, and opened a newer one
+    await db.query(`update public.paystack_transactions set status = 'abandoned' where reference = $1`, [s.reference]);
+    await db.query(`update public.payments set provider_reference = $2 where provider_reference = $1`, [s.reference, `${s.reference}_newer`]);
+    verifyAnswer = () =>
+      ok({ id: s.id, status: "success", reference: s.reference, amount: 150000, currency: "NGN", channel: "card", paid_at: new Date().toISOString(), metadata: { payment_type: "sale_price", net_kobo: 150000 } });
+    const res = await send("charge.success", { id: s.id, reference: s.reference });
+    expect((res.body as { result: string }).result).toBe("settled");
+    const rows = await db.query<{ status: string; provider_reference: string }>(`select status::text, provider_reference from public.payments where order_id = $1`, [s.orderId]);
+    expect(rows).toEqual([{ status: "paid", provider_reference: s.reference }]);
+  });
+
   it("a verify that times out is not settled, then the reconciliation job settles it exactly once", async () => {
     const s = await paidOrderSetup();
     verifyAnswer = () => {

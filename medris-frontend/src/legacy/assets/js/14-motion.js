@@ -351,7 +351,9 @@
     var outcome = await window.lvWaitForPayment(reference);
     closeModal();
     var info = window.__lvPayInfo || {};
-    if (outcome === "paid" && info.settled && !/^(applied|already_paid|ok)$/.test(String(info.settled))) showToast("Paystack confirmed your payment, but we could not update your order yet. Please screenshot this and send it to support. Code: " + String(info.settled).slice(0, 140), "error");
+    // "settled" = this check recorded it; "duplicate" = the webhook or the every-minute check had already recorded it
+    if (outcome === "paid" && info.settled === "amount_mismatch") showToast("Paystack took a different amount from your order total, so our team is checking this payment. You do not need to pay again; we will update your order.", "info");
+    else if (outcome === "paid" && info.settled && !/^(applied|already_paid|ok|settled|duplicate)/.test(String(info.settled))) showToast("Paystack confirmed your payment, but we could not update your order yet. Please screenshot this and send it to support. Code: " + String(info.settled).slice(0, 140), "error");
     else if (outcome === "paid") showToast("Paid. Thank you!", "success");
     else if (outcome === "failed") showToast("Payment not completed. You were not charged. Please try again.", "error");
     else showToast("We could not confirm that payment yet" + (info.status ? " (Paystack says: " + String(info.status) + ")" : "") + ". It may still be processing; check your order in a minute.", "info");
