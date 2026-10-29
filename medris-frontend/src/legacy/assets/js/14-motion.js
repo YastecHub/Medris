@@ -2614,7 +2614,7 @@ window.lvAskCancel = async function (orderId) {
   var STK = ["1f525", "2764-fe0f", "1f60d", "1f602", "1f44f", "1f64f", "1f4af", "1f389", "1f60e", "1f929", "1f973", "1f62d", "1f60a", "1f44d", "1f4aa", "2b50", "1f496", "1f970", "1f64c", "1f618", "1f440", "1f48e", "1f381", "1f680", "1f91d", "1f6cd-fe0f", "1f62e", "1f914", "1f631", "1f921", "1f308", "1f31f", "1f340", "1f354", "1f355", "1f37b", "1f37f", "1f383", "1f388", "1f38a", "1f3af", "1f3b6", "1f3c6", "1f431", "1f44a", "1f44b", "1f44c", "1f451", "1f47b", "1f480", "1f483", "1f48b", "1f493", "1f499", "1f49a", "1f49c", "1f4a1", "1f4a5", "1f4a9", "1f4b8", "1f4e6", "1f604", "1f605", "1f606", "1f607", "1f608", "1f609", "1f60b", "1f61c", "1f621", "1f622", "1f624", "1f62a", "1f634", "1f642", "1f643", "1f69a", "1f6d2", "1f90c", "1f90d", "1f911", "1f913", "1f916", "1f917", "1f919", "1f91e", "1f923", "1f92c", "1f92f", "1f942", "1f972", "1f975", "1f976", "1f979", "1f97a", "1f981", "1f984", "1f98b", "1f9e1", "26a1", "270a", "2728"];
   function showStickers() {
     document.querySelectorAll(".product-comment-body:not([data-stk])").forEach(function (b) {
-      var m = /^::s:([0-9a-f-]+)::$/.exec((b.textContent || "").trim());
+      var m = /^::s:((?:still\/)?[0-9a-f-]+)::$/.exec((b.textContent || "").trim());
       b.dataset.stk = "1";
       if (m) b.innerHTML = '<img class="lv-stk" src="/stickers/' + m[1] + '.webp" alt="sticker" width="96" height="96" loading="lazy" decoding="async">';
     });
@@ -2644,12 +2644,23 @@ window.lvAskCancel = async function (orderId) {
       });
       var compose = c.querySelector(".product-comment-compose-row");
       // stickers: a button at the start of the row opens a grid; tapping a sticker posts it as the comment
+      // two sets: still stickers and moving ones, switched with the tabs at the top of the panel
       var panel = document.createElement("div"); panel.className = "lv-stk-panel hidden";
-      STK.forEach(function (code) {
-        var sb2 = document.createElement("button"); sb2.type = "button"; sb2.setAttribute("aria-label", "Send sticker");
-        sb2.innerHTML = '<img src="/stickers/' + code + '.webp" alt="" width="48" height="48" loading="lazy" decoding="async">';
-        sb2.onclick = function () { if (!session) { try { showLogin(); } catch (_) {} return; } panel.classList.add("hidden"); ta.value = "::s:" + code + "::"; ta.dispatchEvent(new Event("input", { bubbles: true })); send.click(); };
-        panel.appendChild(sb2);
+      var tabs = document.createElement("div"); tabs.className = "lv-stk-tabs"; panel.appendChild(tabs);
+      var grids = {};
+      [["still", "Stickers"], ["", "Moving"]].forEach(function (set, i) {
+        var tb = document.createElement("button"); tb.type = "button"; tb.textContent = set[1]; tb.className = i === 0 ? "on" : "";
+        var grid = document.createElement("div"); grid.className = "lv-stk-grid" + (i === 0 ? "" : " hidden"); grids[set[0]] = grid;
+        tb.onclick = function () { tabs.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === tb); }); Object.keys(grids).forEach(function (k) { grids[k].classList.toggle("hidden", k !== set[0]); }); };
+        tabs.appendChild(tb);
+        STK.forEach(function (code) {
+          var id = (set[0] ? set[0] + "/" : "") + code;
+          var sb2 = document.createElement("button"); sb2.type = "button"; sb2.setAttribute("aria-label", "Send sticker");
+          sb2.innerHTML = '<img src="/stickers/' + id + '.webp" alt="" width="48" height="48" loading="lazy" decoding="async">';
+          sb2.onclick = function () { if (!session) { try { showLogin(); } catch (_) {} return; } panel.classList.add("hidden"); ta.value = "::s:" + id + "::"; ta.dispatchEvent(new Event("input", { bubbles: true })); send.click(); };
+          grid.appendChild(sb2);
+        });
+        panel.appendChild(grid);
       });
       var tog = document.createElement("button"); tog.type = "button"; tog.className = "lv-stk-tog"; tog.setAttribute("aria-label", "Stickers"); tog.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
       tog.onclick = function () { panel.classList.toggle("hidden"); };
