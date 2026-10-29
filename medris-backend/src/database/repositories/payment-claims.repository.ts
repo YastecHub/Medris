@@ -220,6 +220,14 @@ export class PaymentClaimsRepository {
         and provider_reference <> ${reference}`);
   }
 
+  /** Whether the order's payment row for a Paystack reference is marked paid (false when it is pending or missing). */
+  async referencePaid(reference: string): Promise<boolean> {
+    const [row] = rowsOf<{ paid: boolean }>(
+      await this.db.execute(sql`select bool_or(status = 'paid') as paid from public.payments where provider_reference = ${reference}`),
+    );
+    return Boolean(row?.paid);
+  }
+
   /** The payment type a Paystack reference pays for (the fee row first when a rental also carries a deposit row). */
   async paymentTypeByReference(reference: string): Promise<string | null> {
     const [row] = rowsOf<{ payment_type: string }>(

@@ -184,7 +184,10 @@ export class PaystackCheckoutService {
     });
     if (!found || !found.allowed) throw notFound("Payment not found.");
 
-    if (found.t.status === "initialized" || found.t.status === "abandoned") {   // "abandoned" can still become paid (a transfer that is still going through)
+    // "abandoned" can still become paid (a transfer that is still going through); "success" is checked again when the order was
+    // never marked paid with it, so the order is repaired instead of staying "Confirmed"
+    const unapplied = found.t.status === "success" && found.t.order_id ? !(await this.db().asService((tx) => new PaymentClaimsRepository(tx).referencePaid(reference))) : false;
+    if (found.t.status === "initialized" || found.t.status === "abandoned" || unapplied) {
       try {
         await new PaystackWebhookService(this.db).confirmByReference(reference);
       } catch (err) {

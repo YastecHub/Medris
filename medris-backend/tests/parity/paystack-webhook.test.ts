@@ -162,6 +162,31 @@ describe("paystack webhook (issue #94)", () => {
     expect(rows).toEqual([{ status: "paid", provider_reference: s.reference }]);
   });
 
+  it("a payment recorded as settled whose order was never marked paid is repaired by 'Check my payment', once", async () => {
+    const s = await paidOrderSetup(150000);
+    verifyAnswer = () => verifySuccess(s.reference, s.id);
+    await send("charge.success", { id: s.id, reference: s.reference });
+    await db.query(`update public.payments set status = 'pending', paid_at = null where provider_reference = $1`, [s.reference]);   // what was seen live
+    expect((await service.confirmByReference(s.reference)).result).toBe("settled (repaired)");
+    expect(await paymentStatus(s.orderId)).toBe("paid");
+    expect((await service.confirmByReference(s.reference)).result).toBe("duplicate");
+  });
+
+  it("the every-minute job repairs a settled payment whose row went missing, and leaves a cancelled order alone", async () => {
+    const meta = { payment_type: "sale_price", net_kobo: 150000 };
+    const a = await paidOrderSetup(150000);
+    const b = await paidOrderSetup(150000);
+    const answer = (ref: string, id: number) => ok({ id, status: "success", reference: ref, amount: 150000, currency: "NGN", channel: "card", paid_at: new Date().toISOString(), metadata: meta });
+    verifyAnswer = (ref) => (ref === a.reference ? answer(a.reference, a.id) : answer(b.reference, b.id));
+    await send("charge.success", { id: a.id, reference: a.reference });
+    await send("charge.success", { id: b.id, reference: b.reference });
+    await db.query(`delete from public.payments where provider_reference = any($1)`, [[a.reference, b.reference]]);
+    await db.query(`update public.orders set status = 'cancelled' where id = $1`, [b.orderId]);
+    await service.reconcile(2);
+    expect(await paymentStatus(a.orderId)).toBe("paid");
+    expect(await db.query(`select 1 from public.payments where order_id = $1`, [b.orderId])).toHaveLength(0);
+  });
+
   it("a verify that times out is not settled, then the reconciliation job settles it exactly once", async () => {
     const s = await paidOrderSetup();
     verifyAnswer = () => {
