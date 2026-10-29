@@ -157,6 +157,24 @@ export class PaystackLedgerRepository {
           order by created_at limit ${limit}`,
     );
   }
+  /** Holds the payment's ledger row until the caller's transaction ends. */
+  async lockTransaction(reference: string): Promise<void> {
+    await this.db.execute(sql`select 1 from public.paystack_transactions where reference = ${reference} for update`);
+  }
+
+  /** Order payments settled here whose order payment row is not marked paid (see PaystackWebhookService.repairOrderPayment). */
+  settledOrderPaymentsNotApplied(withinDays: number, limit: number): Promise<{ reference: string }[]> {
+    return jsonRows<{ reference: string }>(
+      this.db,
+      sql`select t.reference from public.paystack_transactions t
+          join public.orders o on o.id = t.order_id
+          where t.status = 'success' and t.purpose in ('order_payment', 'order_balance')
+            and t.created_at > now() - make_interval(days => ${withinDays})
+            and o.status::text in ('pending', 'confirmed', 'payment_unresolved', 'handed_over')
+            and not exists (select 1 from public.payments p where p.provider_reference = t.reference and p.status = 'paid')
+          order by t.created_at limit ${limit}`,
+    );
+  }
   staleProcessingPayouts(olderThanMinutes: number, limit: number): Promise<{ transfer_reference: string }[]> {
     return jsonRows<{ transfer_reference: string }>(
       this.db,

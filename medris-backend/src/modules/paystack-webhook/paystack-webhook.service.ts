@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { requireEnv } from "../../config/env.js";
 import type { DataContext } from "../../database/context.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
+import { PaymentsRepository } from "../../database/repositories/orders.repository.js";
 import { PaymentClaimsRepository } from "../../database/repositories/payment-claims.repository.js";
 import { PaystackLedgerRepository, type LedgerTransaction } from "../../database/repositories/paystack-ledger.repository.js";
 import {
@@ -18,6 +19,8 @@ import { PaymentClaimsService } from "../payment-claims/payment-claims.service.j
 import { settleReference } from "../payments/settlement.service.js";
 import { MONTHLY_LISTING_KOBO, settleListingPaymentFromWebhook } from "../vendor-payments/listing-payment.service.js";
 import { canMovePayout, canMoveRefund } from "./paystack-state.js";
+
+const REPAIRABLE = ["pending", "confirmed", "payment_unresolved", "handed_over"];
 
 type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 type Obj = Record<string, unknown>;
@@ -268,6 +271,16 @@ export class PaystackWebhookService {
       }
     }
 
+    // order payments Paystack has, recorded as settled, whose order was never marked paid: repaired once each
+    for (const { reference } of await this.db().asService((tx) => new PaystackLedgerRepository(tx).settledOrderPaymentsNotApplied(14, 20))) {
+      try {
+        const v = await client.verifyTransaction(reference);
+        if (v.status === "success" && (await this.repairOrderPayment(reference, v))) settled++;
+      } catch {
+        problems++;
+      }
+    }
+
     for (const { transfer_reference } of stalePayouts) {
       try {
         const t = await client.verifyTransfer(transfer_reference);
@@ -292,12 +305,34 @@ export class PaystackWebhookService {
     const v = await getPaystackClient().verifyTransaction(reference);
     if (v.status === "success") {
       const result = await this.processVerifiedCharge(eventKey("charge.success", v as Obj, JSON.stringify({ event: "charge.success", data: v })), reference, v);
+      if (result.startsWith("duplicate")) return { paystackStatus: "success", result: (await this.repairOrderPayment(reference, v)) ?? result };
       return { paystackStatus: "success", result };
     }
     if (v.status === "failed" || v.status === "abandoned") {
       await this.db().asService((tx) => new PaystackLedgerRepository(tx).setTransactionStatus(reference, v.status as string, ["initialized", "abandoned"]));
     }
     return { paystackStatus: String(v.status ?? "unknown"), result: null };
+  }
+
+  /**
+   * Paystack has the money and it was recorded as settled, but the order's payment row was never marked paid (the order still
+   * shows "Confirmed" and asks to be paid): mark it paid and move the order on now, once. Null when nothing needed doing.
+   */
+  async repairOrderPayment(reference: string, verified: PaystackTransactionData): Promise<string | null> {
+    return this.db().asService(async (tx) => {
+      const t = await new PaystackLedgerRepository(tx).transactionByReference(reference);
+      if (!t || t.status !== "success" || !t.order_id || (t.purpose !== "order_payment" && t.purpose !== "order_balance")) return null;
+      await new PaystackLedgerRepository(tx).lockTransaction(reference);   // one repair at a time
+      // only an order still waiting for its money: never bring a cancelled or finished order back
+      if (!REPAIRABLE.includes(String(await new PaystackLedgerRepository(tx).orderStatus(t.order_id)))) return null;
+      const claims = new PaymentClaimsRepository(tx);
+      if (await claims.referencePaid(reference)) return null;
+      await restoreCardPaymentRow(tx, t.order_id, reference, verified);
+      if (!(await claims.paymentTypeByReference(reference))) return null;
+      await new PaymentsRepository(tx).markPaidByReference(reference, new Date().toISOString());
+      await new PaymentClaimsService(this.db).applyConfirmedCardPayment(tx, t.order_id, reference);
+      return "settled (repaired)";
+    });
   }
 
   private processVerifiedCharge(key: string, reference: string, verified: PaystackTransactionData): Promise<string> {
