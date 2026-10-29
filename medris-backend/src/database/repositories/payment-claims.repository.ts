@@ -212,6 +212,14 @@ export class PaymentClaimsRepository {
     await this.db.execute(sql`delete from public.payments where provider_reference = ${reference} and status = 'pending' and method = 'card'`);
   }
 
+  /** Another card attempt for the same payment, still waiting, once one of them has been paid. */
+  async deleteOtherPendingCard(orderId: string, type: string, reference: string): Promise<void> {
+    await this.db.execute(sql`
+      delete from public.payments
+      where order_id = ${orderId} and payment_type = ${type}::public.payment_type and method = 'card' and status = 'pending'
+        and provider_reference <> ${reference}`);
+  }
+
   /** The payment type a Paystack reference pays for (the fee row first when a rental also carries a deposit row). */
   async paymentTypeByReference(reference: string): Promise<string | null> {
     const [row] = rowsOf<{ payment_type: string }>(

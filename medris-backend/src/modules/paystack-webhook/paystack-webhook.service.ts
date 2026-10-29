@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { requireEnv } from "../../config/env.js";
 import type { DataContext } from "../../database/context.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
+import { PaymentClaimsRepository } from "../../database/repositories/payment-claims.repository.js";
 import { PaystackLedgerRepository, type LedgerTransaction } from "../../database/repositories/paystack-ledger.repository.js";
 import {
   PaystackUnavailable,
@@ -71,12 +72,12 @@ export class PaystackWebhookService {
         const ledger = new PaystackLedgerRepository(tx);
         await ledger.lockEvent(key);
         const row = await ledger.recordEvent(key, name, reference);
-        if (row.processed_at) return { result: "duplicate" };
+        if (row.processed_at && !retryable(row, name)) return { result: "duplicate" };
         if (verifyProblem) {
           await ledger.finishEvent(row.id, verifyProblem, "Could not confirm the payment with Paystack yet.");
           return { result: verifyProblem };
         }
-        const result = await this.apply(tx, ledger, name, data, verified);
+        const result = await this.apply(tx, ledger, name, data, verified, Boolean(row.processed_at));
         await ledger.finishEvent(row.id, result);
         return { result };
       });
@@ -98,10 +99,10 @@ export class PaystackWebhookService {
 
   /* ------------------------------------------------------------ event types */
 
-  private async apply(tx: Tx, ledger: PaystackLedgerRepository, name: string, data: Obj, verified: PaystackTransactionData | null): Promise<string> {
+  private async apply(tx: Tx, ledger: PaystackLedgerRepository, name: string, data: Obj, verified: PaystackTransactionData | null, alerted = false): Promise<string> {
     switch (name) {
       case "charge.success":
-        return this.chargeSuccess(tx, ledger, verified, data);
+        return this.chargeSuccess(tx, ledger, verified, data, alerted);
       case "transfer.success":
         return this.transferEvent(tx, ledger, data, "success");
       case "transfer.failed":
@@ -121,8 +122,11 @@ export class PaystackWebhookService {
     }
   }
 
-  /** A payment Paystack says succeeded (`verified` is Paystack's own answer, not the event's). */
-  private async chargeSuccess(tx: Tx, ledger: PaystackLedgerRepository, verified: PaystackTransactionData | null, event: Obj): Promise<string> {
+  /**
+   * A payment Paystack says succeeded (`verified` is Paystack's own answer, not the event's). `alerted`: this payment was
+   * already held back for its amount, so admins are not told again each time it is looked at.
+   */
+  private async chargeSuccess(tx: Tx, ledger: PaystackLedgerRepository, verified: PaystackTransactionData | null, event: Obj, alerted = false): Promise<string> {
     const reference = String(verified?.reference ?? event.reference ?? "");
     if (!verified || !reference) return "ignored: no reference";
     if (verified.status !== "success") return `ignored: paystack says ${String(verified.status)}`;
@@ -131,6 +135,7 @@ export class PaystackWebhookService {
     if (recorded) {
       const mismatch = amountProblem(recorded, verified);
       if (mismatch) {
+        if (alerted) return "amount_mismatch";
         await new NotificationWriter(tx).notifyAdmins(
           "Payment amount does not match",
           `Paystack reports ${mismatch} for payment ${reference}. The order was not settled. Please check it in the Paystack dashboard.`,
@@ -146,6 +151,9 @@ export class PaystackWebhookService {
         paidAt: typeof verified.paid_at === "string" ? verified.paid_at : null,
       });
       if (!first) return "duplicate: already settled";
+    }
+    if (recorded?.order_id && (recorded.purpose === "order_payment" || recorded.purpose === "order_balance")) {
+      await restoreCardPaymentRow(tx, recorded.order_id, reference, verified);
     }
     await this.settle(tx, reference, verified);
     // an order payment started in the app: move the order on and tell both sides, like a confirmed transfer
@@ -303,8 +311,8 @@ export class PaystackWebhookService {
       const ledger = new PaystackLedgerRepository(tx);
       await ledger.lockEvent(key);
       const row = await ledger.recordEvent(key, name, referenceOf(name, data));
-      if (row.processed_at) return "duplicate";
-      const result = await this.apply(tx, ledger, name, data, verified);
+      if (row.processed_at && !retryable(row, name)) return "duplicate";
+      const result = await this.apply(tx, ledger, name, data, verified, Boolean(row.processed_at));
       await ledger.finishEvent(row.id, result);
       return result;
     });
@@ -327,9 +335,38 @@ function referenceOf(name: string, data: Obj): string | null {
 }
 
 /** null when Paystack's amount and currency are what we recorded; otherwise a short description of the difference. */
+/**
+ * The buyer paid through an older link of the same order (they tapped Pay again later, which set that attempt aside and
+ * removed its payment row): put the row back from what the checkout told Paystack, so the order is updated with it. The
+ * newer attempt for the same payment, still waiting, is removed so the order no longer asks to be paid.
+ */
+async function restoreCardPaymentRow(tx: Tx, orderId: string, reference: string, verified: PaystackTransactionData): Promise<void> {
+  const claims = new PaymentClaimsRepository(tx);
+  if (await claims.paymentTypeByReference(reference)) return;
+  const metadata = (verified.metadata ?? {}) as Obj;
+  const type = typeof metadata.payment_type === "string" ? metadata.payment_type : null;
+  const netKobo = Number(metadata.net_kobo);
+  if (!type || !Number.isInteger(netKobo) || netKobo <= 0) return;
+  await claims.insertCardPayment(orderId, type, (netKobo / 100).toFixed(2), reference);
+  await claims.deleteOtherPendingCard(orderId, type, reference);
+}
+
+/**
+ * A payment held back for its amount is looked at again (by the webhook, the buyer's "Check my payment" and the
+ * every-minute job) instead of answering "duplicate" for ever: it settles once the amount is accepted.
+ */
+function retryable(row: { result: string | null }, name: string): boolean {
+  return name === "charge.success" && row.result === "amount_mismatch";
+}
+
+/**
+ * Whether Paystack took less than the order needs. Paystack adds its own charge on top when the dashboard is set to pass
+ * fees to the customer, so `amount` can be more than we asked for: the order is still fully paid. Only a smaller amount,
+ * or another currency, holds the payment back.
+ */
 function amountProblem(recorded: LedgerTransaction, verified: PaystackTransactionData): string | null {
   const paid = Number(verified.amount);
-  if (!Number.isInteger(paid) || BigInt(paid) !== BigInt(recorded.amount_kobo)) return `${String(verified.amount)} kobo instead of ${recorded.amount_kobo} kobo`;
+  if (!Number.isInteger(paid) || BigInt(paid) < BigInt(recorded.amount_kobo)) return `${String(verified.amount)} kobo instead of ${recorded.amount_kobo} kobo`;
   if (verified.currency && verified.currency !== recorded.currency) return `currency ${String(verified.currency)} instead of ${recorded.currency}`;
   return null;
 }
