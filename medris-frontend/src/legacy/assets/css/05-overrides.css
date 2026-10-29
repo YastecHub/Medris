@@ -4508,3 +4508,8 @@ html body .lv-stk-tabs button{border:1px solid var(--border,rgba(128,128,128,.3)
 html body .lv-stk-tabs button.on{background:var(--primary,#16a34a);border-color:var(--primary,#16a34a);color:#fff}
 html body .lv-stk-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.3rem}
 html body .lv-stk-grid.hidden{display:none}
+
+/* Refund account pop-up: "I'll do it later" under the main button */
+.lvw-sheet .lvrw-later { display: block; width: 100%; margin: .6rem 0 0; padding: .7rem 1rem; border: 1px solid var(--border, #d9dde3); border-radius: 12px; background: transparent; color: var(--text, #1f2937); font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
+.lvw-sheet .lvrw-later:hover { background: rgba(127, 127, 127, .08); }
+:root[data-theme="dark"] .lvw-sheet .lvrw-later { border-color: rgba(255, 255, 255, .18); color: #e5e7eb; }

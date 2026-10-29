@@ -2076,8 +2076,8 @@ window.lvAskCancel = async function (orderId) {
       '<label class="lvrw-l">Bank</label><button type="button" class="lvrw-bankbtn" id="lvrwBankBtn"><span class="ve-bank-ico" id="lvrwBankIco"><i class="fa-solid fa-building-columns"></i></span><span id="lvrwBankLabel" class="lvrw-bank-label">Choose your bank</span><i class="fa-solid fa-chevron-down"></i></button>' +
       '<label class="lvrw-l">Account number</label><input id="lvrwNum" class="lvrw-in" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="off">' +
       '<p id="lvrwMsg" class="lvw-sheet-msg" hidden></p><div id="lvrwName" class="lvrw-name" hidden></div>' +
-      '<button type="button" class="btn lvw-wd-go" id="lvrwGo">Check account</button>' + (fromPopup ? '<p class="muted" style="margin:.7rem 0 0;font-size:.78rem;text-align:center">This is required so any refund can reach you.</p>' : ""));
-    if (fromPopup) {   // required: no close button, no tap-outside, no "Later"
+      '<button type="button" class="btn lvw-wd-go" id="lvrwGo">Check account</button>' + (fromPopup ? '<button type="button" class="lvrw-later" onclick="lvRefundLater()">I\'ll do it later</button><p class="muted" style="margin:.5rem 0 0;font-size:.78rem;text-align:center">You can add it any time from your profile. Refunds can only reach you once it is added.</p>' : ""));
+    if (fromPopup) {   // no close button or tap-outside: "I'll do it later" is the way out, so the choice is a clear one
       var x0 = m.querySelector(".lvw-eye"); if (x0) x0.remove();
       m.classList.add("lvrw-locked");
       m.addEventListener("click", function (e) { if (e.target === m) e.stopImmediatePropagation(); }, true);
@@ -2203,14 +2203,16 @@ window.lvAskCancel = async function (orderId) {
   function wrapAll() { wrapFn("renderBuyerProfile"); wrapFn("renderCustomerOrders"); wrapFn("renderVendorOrders"); wrapEdit(); }
   wrapAll(); setTimeout(wrapAll, 1200); setTimeout(wrapAll, 4000);
 
-  // every customer must add a refund account: the form opens, cannot be closed, and comes back until one is saved
+  // every customer is asked for a refund account until one is saved; "I'll do it later" puts the question off for 3 days
+  var LATER_MS = 3 * 24 * 60 * 60 * 1000;
+  function putOff() { try { return Date.now() - Number(localStorage.getItem(DISMISS) || 0) < LATER_MS; } catch (_) { return false; } }
   async function ask() {
     if (document.hidden || !signedIn()) return;
-    if (pendingAcct()) return;
+    if (pendingAcct() || putOff()) return;
     if (document.querySelector(".modal.open, #lvrwSheet, #lvCampus, #levromartSplash:not(.is-hidden), .onboarding-overlay, .lvw-sheet-wrap")) return;
     var d = await load(false);
     if (!d || d.has_account || pendingAcct()) return;
-    window.lvRefundAccount(true);   // required: it comes back until a refund account is saved
+    window.lvRefundAccount(true);   // it comes back (3 days after "I'll do it later") until a refund account is saved
   }
   setInterval(ask, 20000); setTimeout(ask, 8000);
 })();
