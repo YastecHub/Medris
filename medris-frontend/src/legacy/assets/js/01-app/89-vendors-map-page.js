@@ -233,7 +233,7 @@ function vmpDrawPins() {
 }
 
 function vmpVendorInitials(v) {
-  const words = String(v?.business_name || "?").replace(/[^\\p{L}\\p{N} ]/gu, "").trim().split(/\\s+/).filter(Boolean);
+  const words = String(v?.business_name || "?").replace(/[^\p{L}\p{N} ]/gu, "").trim().split(/\s+/).filter(Boolean);
   return ((words[0]?.[0] || "?") + (words.length > 1 ? words[words.length - 1][0] : words[0]?.[1] || "")).toUpperCase();
 }
 function vmpVendorTint(v) {
