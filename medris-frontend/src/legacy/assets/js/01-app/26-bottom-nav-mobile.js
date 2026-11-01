@@ -44,6 +44,7 @@ window.lvLineIcon = function (n) {
     wallet: "<path d='M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1'/> <path d='M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4'/>",
     plus: "<path d='M5 12h14'/><path d='M12 5v14'/>",
     user: "<circle cx='12' cy='8' r='5'/> <path d='M20 21a8 8 0 0 0-16 0'/>",
+    map: "<path d='M3 6.5 9 3l6 3 6-3v14l-6 3-6-3-6 3z'/><path d='M9 3v14m6-11v14'/><path d='M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'/>",
   };
   return `<svg class="lv-line-ic" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.home}</svg>`;
 };
@@ -52,7 +53,7 @@ function renderBottomNav() {
   if (!nav) return;
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const vendorsTab = { icon: lvLineIcon("store"), label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
+  const vendorsTab = { icon: lvLineIcon("map"), label: "Map", action: "navigate('vendorsMap')", view: "vendorsMap" };
   const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const requestsTab = isVendorUser
     ? { icon: lvLineIcon("request"), label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
