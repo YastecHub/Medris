@@ -264,13 +264,9 @@ async function loadVendorsDirectory() {
 
   const vendors = vendorResult.data || [];
 
-  // These enrichments are useful for search/filtering but must never prevent
-  // the verified vendor directory from rendering.
-  // show the cards straight away from the vendor list itself; search words, categories and counts fill in right after
-  if (!(Array.isArray(window.__allVendors) && window.__allVendors.length)) {
-    window.__allVendors = vendors.map((v) => ({ ...v, categories: [], searchText: String(v.business_name || "").toLowerCase(), canBuy: true, canRent: false, follower_count: 0 }));
-    try { filterVendorsDirectory(); } catch (_) {}
-  }
+  // Keep the current DOM stable while optional product/package/sector
+  // enrichment completes. The page first paints a fixed-size skeleton (or a
+  // cached directory), then replaces it once with the fully enriched data.
   const [[productsRes, packagesRes], sectorsRes] = await Promise.all([
     __enrichStart,
     Promise.allSettled([sectors.length ? Promise.resolve({ data: sectors, error: null }) : levroData.catalogue.sectors("sort_order")]).then((r) => r[0]),
