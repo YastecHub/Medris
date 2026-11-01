@@ -263,7 +263,7 @@ function vmpRailItemHtml(v) {
   const id = String(v.id);
   const media = v.logo_url
     ? '<img src="' + esc(v.logo_url) + '" alt="" loading="lazy" draggable="false" onerror="vdImgFail(this)">'
-    : vdInitialsHtml(v.business_name || "Vendor", id);
+    : vmpRailInitialsHtml(v);
   return '<button type="button" class="vmp-rail-item' + (id === String(vmpSelected) ? " on" : "") +
     '" data-vid="' + esc(id) + '" onclick="vmpRailTap(\'' + esc(id) + '\')" aria-label="Show ' +
     esc(v.business_name || "vendor") + ' details" title="' + esc(v.business_name || "Vendor") + '">' +
