@@ -31,7 +31,7 @@ function renderVendorsMapPage() {
     <div id="vmpMap" aria-label="Map of vendors"></div>
     <div class="vmp-top vmp-social-top">
       <div class="vmp-social-head">
-        <button type="button" class="vmp-profile" onclick="navigate('buyerProfile')" aria-label="Open account">
+        <button type="button" class="vmp-profile" onclick="navigate(vendor ? 'vendorDashboard' : 'buyerProfile')" aria-label="Open account">
           ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" alt="" />` : `<span>${esc((profile?.name || "Me").slice(0,1).toUpperCase())}</span>`}
         </button>
         <button type="button" class="vmp-place" onclick="vmpOpenPlacePicker()" aria-label="Choose school or location">
@@ -62,12 +62,24 @@ function renderVendorsMapPage() {
 function vmpSetDisplay(mode) {
   if (mode === "grid") {
     try { localStorage.setItem("levromart-vendors-display", "grid"); } catch (_) {}
-    navigate("vendors");
+    navigate("vendors").then(() => setTimeout(vmpShowReturnMapButton, 100));
     return;
   }
   try { localStorage.setItem("levromart-vendors-display", "map"); } catch (_) {}
   byId("vmpMapViewBtn")?.classList.add("active");
   byId("vmpGridViewBtn")?.classList.remove("active");
+}
+
+function vmpShowReturnMapButton() {
+  document.getElementById("vmpReturnMapBtn")?.remove();
+  const btn = document.createElement("button");
+  btn.id = "vmpReturnMapBtn";
+  btn.type = "button";
+  btn.className = "vmp-return-map";
+  btn.innerHTML = '<i class="fa-solid fa-map-location-dot"></i><span>Map</span>';
+  btn.setAttribute("aria-label", "Return to vendor map");
+  btn.addEventListener("click", () => { btn.remove(); navigate("vendorsMap"); });
+  document.body.appendChild(btn);
 }
 function vmpOpenPlacePicker() {
   const current = window.__vmpPlaceName || buyerLocation?.label || profile?.city || "Choose location";
