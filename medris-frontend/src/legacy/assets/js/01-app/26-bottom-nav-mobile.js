@@ -88,7 +88,7 @@ function renderBottomNav() {
       : itemHtml(addTab);
     nav.innerHTML = [itemHtml(mapTab), itemHtml(messagesTab), addHtml, itemHtml(notificationsTab), itemHtml(accountTab)].join("");
   }
-}}
+}
 
 const LEVRO_MOTION_KEY="levromart-motion-preference-v1";
 function getLevromartMotionPreference(){try{return localStorage.getItem(LEVRO_MOTION_KEY)==="full"?"full":"calm";}catch(_){return "calm";}}
