@@ -154,6 +154,11 @@ export class PaystackClient {
     });
   }
 
+  /** What is in the Paystack balance that transfers are paid from (kobo, per currency). Card payments go to the bank, not here. */
+  balance() {
+    return this.request<{ currency: string; balance: number }[]>("GET", "/balance");
+  }
+
   verifyTransfer(reference: string) {
     return this.request<{ status: string; reference: string; transfer_code?: string; amount?: number }>(
       "GET",

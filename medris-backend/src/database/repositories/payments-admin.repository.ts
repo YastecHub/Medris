@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Executor } from "../client.js";
 import { jsonRow, jsonRows } from "../json.js";
+import { BALANCE_TOO_LOW } from "./vendor-payouts.repository.js";
 
 export interface Page {
   limit: number;
@@ -25,6 +26,9 @@ export interface Health {
   held_payouts: number;
   failed_payouts: number;
   stuck_refunds: number;
+  /** Payouts Paystack refused because its balance was too low; they are retried every 6 hours (see vendor-payouts.service). */
+  waiting_on_balance: number;
+  waiting_on_balance_kobo: string;
   open_payments: number;
   last_report_at: string | null;
   last_report_problems: number | null;
@@ -95,6 +99,8 @@ export class PaymentsAdminRepository {
             (select count(*) from public.vendor_payouts where status = 'on_hold')::int as held_payouts,
             (select count(*) from public.vendor_payouts where status in ('failed', 'reversed'))::int as failed_payouts,
             (select count(*) from public.paystack_refunds where status = 'processing' and updated_at < now() - interval '30 minutes')::int as stuck_refunds,
+            (select count(*) from public.vendor_payouts where status = 'pending' and last_error = ${BALANCE_TOO_LOW})::int as waiting_on_balance,
+            (select coalesce(sum(amount_kobo), 0) from public.vendor_payouts where status = 'pending' and last_error = ${BALANCE_TOO_LOW})::text as waiting_on_balance_kobo,
             (select count(*) from public.paystack_transactions where status = 'initialized' and created_at < now() - interval '1 hour' and created_at > now() - interval '2 days')::int as open_payments,
             (select created_at from public.paystack_reconciliation_reports order by created_at desc limit 1) as last_report_at,
             (select problems from public.paystack_reconciliation_reports order by created_at desc limit 1) as last_report_problems`,

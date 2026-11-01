@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PaymentsAdminService, windowOf } from "../../src/modules/payments-admin/payments-admin.service.js";
+import { VendorPayoutsService } from "../../src/modules/vendor-payouts/vendor-payouts.service.js";
 import { seedOrder, seedProduct, seedUser, seedVendor, setRole } from "../support/fixtures.js";
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
 
@@ -13,6 +14,7 @@ describe("admin payments and daily reconciliation (issue #101)", () => {
   let product: string;
   const savedKey = process.env.PAYSTACK_SECRET_KEY;
   let paystackRows: Array<{ reference: string; amount: number }> | "down";
+  let balanceKobo: number | "down" = 0;
   const DAY = "2026-10-20";
   const inDay = `${DAY}T10:00:00Z`;
   const as = (userId: string) => ({ userId }) as never;
@@ -37,9 +39,14 @@ describe("admin payments and daily reconciliation (issue #101)", () => {
     await db.query(`delete from public.paystack_reconciliation_reports`);
     await db.query(`delete from public.notifications where title like 'Payment%'`);
     paystackRows = [];
+    balanceKobo = 0;
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string | URL | Request) => {
+        if (/\/balance$/.test(String(url))) {
+          if (balanceKobo === "down") return new Response("{}", { status: 503 });
+          return new Response(JSON.stringify({ status: true, data: [{ currency: "NGN", balance: balanceKobo }] }), { status: 200 });
+        }
         if (/\/transaction\?/.test(String(url))) {
           if (paystackRows === "down") return new Response("{}", { status: 503 });
           return new Response(JSON.stringify({ status: true, data: paystackRows.map((r) => ({ ...r, status: "success", id: 1 })) }), { status: 200 });
@@ -148,5 +155,29 @@ describe("admin payments and daily reconciliation (issue #101)", () => {
     const s = await svc.summary(as(admin));
     expect(s.today.collected).toBe(2000); // order payments only: commission is not an order payment
     expect(s.health.held_payouts).toBe(0);
+  });
+
+  it("payouts Paystack refused for a low balance need attention, show the balance, and can be tried again at once", async () => {
+    const order = await seedOrder(db, buyer, shop, { status: "completed", productIds: [product], total: 97 });
+    await db.query(
+      `insert into public.vendor_payouts (order_id, vendor_id, amount_kobo, transfer_reference, status, last_error, next_attempt_at) values ($1, $2, 9700, 'lvm_po_bal', 'pending', 'Paystack balance too low', now() + interval '5 hours')`,
+      [order, shop],
+    );
+    balanceKobo = 1500;
+    const s = await svc.summary(as(admin));
+    expect(s.health.waiting_on_balance).toBe(1);
+    expect(s.health.waitingOnBalance).toBe(97);
+    expect(s.health.paystackBalance).toBe(15);
+    expect(s.health.needsAttention).toBeGreaterThanOrEqual(1);
+
+    balanceKobo = "down"; // Paystack not answering never breaks the page
+    expect((await svc.summary(as(admin))).health.paystackBalance).toBeNull();
+
+    const payouts = new VendorPayoutsService(() => db.data);
+    await expect(payouts.retryWaiting(as(stranger))).rejects.toThrow(/admin/i);
+    expect(await payouts.retryWaiting(as(admin))).toEqual({ queued: 1 });
+    const [row] = await db.query<{ next_attempt_at: string | null; status: string }>(`select next_attempt_at, status from public.vendor_payouts where transfer_reference = 'lvm_po_bal'`);
+    expect(row).toEqual({ next_attempt_at: null, status: "pending" });
+    expect(await payouts.retryWaiting(as(admin))).toEqual({ queued: 0 }); // already due: nothing to change
   });
 });

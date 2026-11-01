@@ -71,6 +71,8 @@ export const v1 = {
     payouts: (query: Record<string, string | number | undefined>) => v1Request<Array<Record<string, unknown>>>("GET", "admin/payouts", { query }),
     release: (id: string) => v1Request<{ id: string; status: string }>("POST", `admin/payouts/${encodeURIComponent(id)}/release`),
     hold: (id: string, reason: string) => v1Request<{ id: string; status: string }>("POST", `admin/payouts/${encodeURIComponent(id)}/hold`, { body: { reason } }),
+    /** After topping up the Paystack balance: payouts waiting for it are sent within a minute. */
+    retryWaiting: () => v1Request<{ queued: number }>("POST", "admin/payouts/retry-waiting"),
     markManual: (id: string, note: string) => v1Request<{ id: string; status: string }>("POST", `admin/payouts/${encodeURIComponent(id)}/mark-manual`, { body: { note } }),
     refund: (orderId: string, body: { amountNaira?: number; reason: string }) => v1Request<{ orderId: string; amount: number; status: string }>("POST", `admin/orders/${encodeURIComponent(orderId)}/refund`, { body }),
   },

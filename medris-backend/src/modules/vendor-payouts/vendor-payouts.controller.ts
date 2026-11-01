@@ -6,5 +6,6 @@ export const vendorPayoutsController = controller()
   .route(routes.myPayouts, async ({ services, user, input }) => ok(await services.vendorPayouts.mine(user(), input.query)))
   .route(routes.adminPayouts, async ({ services, user, input }) => ok(await services.vendorPayouts.list(user(), input.query)))
   .route(routes.releasePayout, async ({ services, user, input }) => ok(await services.vendorPayouts.release(user(), input.params.id)))
+  .route(routes.retryWaitingPayouts, async ({ services, user }) => ok(await services.vendorPayouts.retryWaiting(user())))
   .route(routes.holdPayout, async ({ services, user, input }) => ok(await services.vendorPayouts.hold(user(), input.params.id, input.body.reason)))
   .route(routes.markPayoutManual, async ({ services, user, input }) => ok(await services.vendorPayouts.markManual(user(), input.params.id, input.body.note)));
