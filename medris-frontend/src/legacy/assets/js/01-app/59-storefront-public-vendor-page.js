@@ -278,7 +278,7 @@ function storefrontFollowWrapInnerHtml(v, followState) {
     </div>
     <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
       <strong>Notifications from this vendor</strong>
-      <p class="follow-mode-intro">Choose how you want LevroMart to keep you updated.</p>
+      <p class="follow-mode-intro">Choose how you want Levromart to keep you updated.</p>
       <button type="button" class="follow-mode-row" data-notify-mode="all" aria-pressed="${mode === 'all' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-all"><i class="fa-solid fa-bell"></i></span><span class="follow-mode-copy"><b>All</b><small>Get notified about every update from this vendor.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
       <button type="button" class="follow-mode-row" data-notify-mode="relevant" aria-pressed="${mode === 'relevant' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-relevant"><i class="fa-solid fa-star"></i></span><span class="follow-mode-copy"><b>Most relevant</b><small>Get the updates that matter most to you.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
       <button type="button" class="follow-mode-row" data-notify-mode="off" aria-pressed="${mode === 'off' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-off"><i class="fa-regular fa-bell-slash"></i></span><span class="follow-mode-copy"><b>Off</b><small>Don't receive notifications from this vendor.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
@@ -425,6 +425,7 @@ async function renderStorefrontInner(vendorId) {
       ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : ""}
       <div class="sf-cover-shade" aria-hidden="true"></div>
       <div class="lv-cover-actions sf-cover-actions">
+        ${isOwnStorefront ? `<button type="button" class="lv-cover-btn" onclick="navigate('vendorEditProfile')" aria-label="Edit profile" title="Edit profile">${LV_EDIT_PROFILE_ICON}</button>` : ""}
         ${!isOwnStorefront ? `<button type="button" class="lv-cover-btn sf-bell" id="sfBannerBell" onclick="lvSfBell(event)" aria-label="Notifications from this shop" title="Notifications"><i class="fa-regular fa-bell" aria-hidden="true"></i></button>` : ""}
         <button type="button" class="lv-cover-btn" onclick="lvOpenProfileShare('vendor','${v.id}')" aria-label="Share this shop" title="Share">${LV_SHARE_ICON}</button>
         ${storefrontMoreItems ? `<button type="button" class="lv-cover-btn" onclick="openStorefrontMoreSheet(event)" aria-label="More options" title="More">${SF_DOTS}</button>` : ""}
@@ -435,12 +436,12 @@ async function renderStorefrontInner(vendorId) {
         <div class="storefront-avatar-row">
           ${logo}
         </div>
-        <div class="storefront-profile-actions storefront-public-actions">
-          ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : `<button type="button" class="btn btn-sm sf-edit-btn" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-pen"></i> Edit profile</button>`}
+        <div class="sf-id-main">
+          <div class="storefront-name-row sf-name">
+            <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
+          </div>
+          ${!isOwnStorefront ? `<div class="storefront-profile-actions storefront-public-actions"><div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div></div>` : ""}
         </div>
-      </div>
-      <div class="storefront-name-row sf-name">
-        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
       </div>
       ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>

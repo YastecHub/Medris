@@ -19,7 +19,7 @@ async function renderBuyerProfile() {
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "5.2rem", "vendor-profile-header-avatar", profile.name || profile.email)}
       </div>
-      <div class="lv-profile-title-row"><div><span class="lv-profile-eyebrow">MY ACCOUNT</span><h2 class="vendor-profile-header-name">${esc(profile.name || "Your profile")}</h2></div><span class="lv-profile-member-chip"><i class="fa-solid fa-sparkles"></i> Member</span></div>
+      <div class="lv-profile-title-row"><div><span class="lv-profile-eyebrow">MY ACCOUNT</span><h2 class="vendor-profile-header-name">${esc(profile.name || "Your profile")}</h2></div></div>
       ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}
       ${profile.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(profile.city)}</p>` : ""}
       <div class="lv-profile-actions"><button type="button" class="lv-profile-action active" aria-current="page"><i class="fa-solid fa-user"></i> My account</button><button type="button" class="lv-profile-action" onclick="navigate('vendors')"><i class="fa-solid fa-store"></i> Explore vendors</button></div>

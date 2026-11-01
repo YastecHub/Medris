@@ -2383,6 +2383,7 @@ window.lvAskCancel = async function (orderId) {
   }
   window.lv3d = function (c, cls) { return '<img class="lv3d ' + (cls || "") + '" src="/icons3d/' + c + '.webp" alt="" aria-hidden="true" decoding="async">'; };
   window.levroSectorArt = function (sector) { return "/icons3d/" + code(sector && (sector.name || sector.id)) + ".webp"; };
+  window.lvCat3d = function (name, all) { return lv3d(all ? "1f6d2" : code(name), "lv3d-chip"); };   // a category's 3D icon (the cart for "All")
   var FA = { "fa-fire": "1f525", "fa-gem": "1f48e", "fa-hand-holding-heart": "1f6ce-fe0f", "fa-box-open": "1f4e6", "fa-table-cells-large": "1f6cd-fe0f", 
     "fa-bag-shopping": "1f6cd-fe0f", "fa-screwdriver-wrench": "1f6e0-fe0f", "fa-key": "1f511", "fa-store": "1f3ea", "fa-hand": "1f4dd", "fa-comment-dots": "1f4ac", "fa-graduation-cap": "1f393" };
   var SEL = "#app .section-title > i.fa-solid, #app .section-title > span > i.fa-solid, #lvCampusBar .lvcb-trophy > i.fa-solid, #lvCampusBar .ico > i.fa-solid";
@@ -2756,4 +2757,33 @@ window.lvAskCancel = async function (orderId) {
     cur = s; place();
   }, { passive: true });
   addEventListener("scroll", function () { if (cur) place(); }, { passive: true, capture: true });
+})();
+
+/* ===== Wallet colours: a small palette button on each wallet card; the choice is remembered on this phone ===== */
+(function () {
+  "use strict";
+  var THEMES = ["", "violet", "ocean", "sunset", "rose", "midnight"];
+  var KEY = "lv-wallet-theme";
+  function apply(t) { if (t) document.documentElement.setAttribute("data-lvw-theme", t); else document.documentElement.removeAttribute("data-lvw-theme"); }
+  try { apply(localStorage.getItem(KEY) || ""); } catch (_) {}
+  window.lvWalletTheme = function (e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    var cur = document.documentElement.getAttribute("data-lvw-theme") || "";
+    var next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+    apply(next);
+    try { localStorage.setItem(KEY, next); } catch (_) {}
+  };
+  function addButtons() {
+    document.querySelectorAll(".lvw-card .lvw-top").forEach(function (top) {
+      if (top.querySelector(".lvw-theme-btn")) return;
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "lvw-theme-btn"; b.title = "Change wallet colour"; b.setAttribute("aria-label", "Change wallet colour");
+      b.innerHTML = '<i class="fa-solid fa-palette" aria-hidden="true"></i>';
+      b.onclick = window.lvWalletTheme;
+      top.appendChild(b);
+    });
+  }
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; addButtons(); }); }).observe(document.body, { childList: true, subtree: true });
+  addButtons();
 })();

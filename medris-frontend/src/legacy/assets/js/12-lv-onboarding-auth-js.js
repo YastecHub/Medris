@@ -130,8 +130,8 @@
 
   /* ---------- Authentication page behaviour ---------- */
   var COPY={
-    login:{e:"Welcome back",h:"Welcome <em>back.</em>",p:"Sign in to your LevroMart account and continue exploring great products, services and opportunities.",btn:"Sign In",sw:"Don't have an account?",swl:"Create Account",next:"register"},
-    register:{e:"Join LevroMart",h:"Create your <em>account.</em>",p:"Create your LevroMart account and start discovering what is around you.",btn:"Create Account",sw:"Already have an account?",swl:"Sign In",next:"login"},
+    login:{e:"Welcome back",h:"Welcome <em>back.</em>",p:"Sign in to your Levromart account and continue exploring great products, services and opportunities.",btn:"Sign In",sw:"Don't have an account?",swl:"Create Account",next:"register"},
+    register:{e:"Join Levromart",h:"Create your <em>account.</em>",p:"Create your Levromart account and start discovering what is around you.",btn:"Create Account",sw:"Already have an account?",swl:"Sign In",next:"login"},
     forgot:{e:"Account recovery",h:"Reset your <em>password.</em>",p:"Enter your account email and we will send you a link to set a new password.",btn:"Send Reset Link"}
   };
   function currentMode(){ try{ return authMode; }catch(e){ return "login"; } }
@@ -1769,7 +1769,7 @@ async function setVendorRequestPref(v){
       if(row&&row.status==="approved"){ box.innerHTML='<h4>Student verification</h4>'+stBadge()+'<p class="sub">'+(row.not_student?'Your account has been verified. A "Verified seller" badge shows on your store.':'Your student details have been verified. A "Verified student" badge shows on your store.')+'</p>'; if(cb) cb(); return; }
       var r=row||{};
       var ns=notStu||!!r.not_student; notStu=ns;
-      box.innerHTML='<h4>'+(ns?'Seller verification':'Student verification')+'</h4><p class="sub">'+(ns?'Tell us you are not a student and our team will review your account. Your documents are only seen by LevroMart admins.':'Show customers you\'re a real student. Your documents are only seen by LevroMart admins.')+'</p>'+stBadge()
+      box.innerHTML='<h4>'+(ns?'Seller verification':'Student verification')+'</h4><p class="sub">'+(ns?'Tell us you are not a student and our team will review your account. Your documents are only seen by Levromart admins.':'Show customers you\'re a real student. Your documents are only seen by Levromart admins.')+'</p>'+stBadge()
        +'<label class="sv-nostudent"><input type="checkbox" id="svNotStudent"'+(ns?' checked':'')+'> <span><b>I\'m not a student</b><small>You can still sell. You get a Verified seller badge instead of the student one once we check you.</small></span></label>'
        +'<div class="sv-stu'+(ns?' hidden':'')+'">'
        +'<label>Matric / registration number</label><input id="svMatric" value="'+e2(r.matric_number||"")+'" placeholder="e.g. 190401001" autocomplete="off"'+(r.matric_pending?' disabled':'')+'>'
@@ -1842,7 +1842,7 @@ async function setVendorRequestPref(v){
     });
     box.addEventListener("change",async function(e){
       if(e.target.id==="svNoMatric"){ setNo(e.target.checked); return; }
-      if(e.target.id==="svNotStudent"){ var kn=keepInputs(); notStu=e.target.checked; paint(); restoreInputs(kn); try{ var hh=document.querySelector("#lvSetup .st-top h2"); if(hh) hh.textContent=notStu?"Verify your account":"Verify you're a student"; var ss=document.querySelector("#lvSetup .st-top .st-sub"); if(ss) ss.textContent=notStu?"Tell us you are not a student. Our team reviews your account and adds a Verified seller badge.":"Add your student details and upload your ID card and biodata page. Only LevroMart admins see them."; }catch(_){} return; }
+      if(e.target.id==="svNotStudent"){ var kn=keepInputs(); notStu=e.target.checked; paint(); restoreInputs(kn); try{ var hh=document.querySelector("#lvSetup .st-top h2"); if(hh) hh.textContent=notStu?"Verify your account":"Verify you're a student"; var ss=document.querySelector("#lvSetup .st-top .st-sub"); if(ss) ss.textContent=notStu?"Tell us you are not a student. Our team reviews your account and adds a Verified seller badge.":"Add your student details and upload your ID card and biodata page. Only Levromart admins see them."; }catch(_){} return; }
       if(e.target.id==="svNoDocs"){ var kd=keepInputs(); noDocs=e.target.checked; paint(); restoreInputs(kd); return; }
       if(e.target.id!=="svFile"||!cur) return; var slot=cur, file=e.target.files[0]; e.target.value=""; if(!file) return;
       var keep={m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked};
@@ -2108,12 +2108,12 @@ async function setVendorRequestPref(v){
         foot='<button type="button" class="btn" data-a="next1">Continue</button>';
       } else if(step===2){
         head+='<h2>Where do you sell?</h2><p class="st-sub">Customers on these campuses will see your products.</p></div>';
-        body=hero("Sell on one campus or many. You can change this any time.")+[["one","Only my campus","Just "+e3(window.lvCampusShort(v.campus_id)||"your campus")],["multiple","Selected campuses","Tick every campus you sell on"],["all","All campuses","Everyone on LevroMart can buy from you"]].map(function(o){return '<button type="button" class="st-opt '+(ops.scope===o[0]?'on':'')+'" data-s="'+o[0]+'"><b>'+o[1]+'</b><small>'+o[2]+'</small></button>';}).join("")
+        body=hero("Sell on one campus or many. You can change this any time.")+[["one","Only my campus","Just "+e3(window.lvCampusShort(v.campus_id)||"your campus")],["multiple","Selected campuses","Tick every campus you sell on"],["all","All campuses","Everyone on Levromart can buy from you"]].map(function(o){return '<button type="button" class="st-opt '+(ops.scope===o[0]?'on':'')+'" data-s="'+o[0]+'"><b>'+o[1]+'</b><small>'+o[2]+'</small></button>';}).join("")
           +(ops.scope==="multiple"?'<button type="button" class="lv-campus-btn" data-a="many" style="margin-top:.4rem"><span class="ico"><i class="fa-solid fa-list-check"></i></span><span class="t">'+(ops.list.length?ops.list.length+" selected":"Choose campuses")+'<small>Tap to search and tick</small></span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i></button>'+chipsOf():'');
         foot='<button type="button" class="btn btn-outline" data-a="back2" style="flex:0 0 5rem">Back</button><button type="button" class="btn" data-a="next2">Continue</button>';
       } else {
-        head+=nonStu?'<h2>Verify your account</h2><p class="st-sub">Tell us you are not a student. Our team reviews your account and adds a Verified seller badge. Only LevroMart admins see your documents.</p></div>':'<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only LevroMart admins see them.</p></div>';
-        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=('<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
+        head+=nonStu?'<h2>Verify your account</h2><p class="st-sub">Tell us you are not a student. Our team reviews your account and adds a Verified seller badge. Only Levromart admins see your documents.</p></div>':'<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only Levromart admins see them.</p></div>';
+        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only Levromart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=('<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
       }
       w.innerHTML=head+'<div class="st-body">'+body+'</div><div class="st-foot">'+foot+'</div>';
       if(step===3){ window.lvSvNotStudent=nonStu; var host=w.querySelector("#stSv"); var anchor=document.createElement("div"); host.appendChild(anchor); window.lvMountSV(anchor,function(){ finish(); }); }

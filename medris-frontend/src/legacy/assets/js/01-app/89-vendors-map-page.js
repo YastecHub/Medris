@@ -192,7 +192,7 @@ function vmpToggleStyles() { byId("vmpStyles")?.classList.toggle("hidden"); }
 function vmpDrawChips() {
   const box = byId("vmpChips"); if (!box) return;
   const names = [...new Set(vmpAll.map(vmpSectorOf).filter(Boolean))].slice(0, 12);
-  const chip = (label, val) => `<button type="button" class="vmp-chip${vmpSector === val ? " on" : ""}" onclick="vmpSetSector(${JSON.stringify(val).replace(/"/g, "&quot;")})">${esc(label)}</button>`;
+  const chip = (label, val) => `<button type="button" class="vmp-chip${vmpSector === val ? " on" : ""}" onclick="vmpSetSector(${JSON.stringify(val).replace(/"/g, "&quot;")})">${typeof lvCat3d === "function" ? lvCat3d(label, val == null || val === "" || val === "all") : ""}<span>${esc(label)}</span></button>`;
   box.innerHTML = chip("All vendors", "") + names.map((n) => chip(n, n)).join("");
 }
 function vmpSetSector(v) { vmpSector = v; vmpDrawChips(); vmpDrawPins(); vmpDrawRail(); const list = vmpVisible(); if (list.length > 1) vmpFit(list); }

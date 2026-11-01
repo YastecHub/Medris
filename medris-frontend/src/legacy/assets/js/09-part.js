@@ -234,7 +234,7 @@
           <div class="va-copy">
             <p class="va-eyebrow">Become a vendor</p>
             <h2>Grow your <em>business.</em></h2>
-            <p class="va-lead">Open your LevroMart shop, reach nearby buyers and get paid safely. Every application is reviewed by our team.</p>
+            <p class="va-lead">Open your Levromart shop, reach nearby buyers and get paid safely. Every application is reviewed by our team.</p>
           </div>
           <div class="va-art"><span class="va-chip c1"><i class="fa-solid fa-store"></i></span><span class="va-chip c2"><i class="fa-solid fa-chart-line"></i></span>${(function(){var im=document.querySelectorAll("#lvOnb .lv-hero")[2]||document.querySelector("#loginModal .lv-auth-char");return im&&im.src?`<img class="va-char" alt="" src="${im.src}" draggable="false">`:"";})()}</div>
         </div>
@@ -964,7 +964,7 @@
           <div class="va-copy">
             <p class="va-eyebrow">Become a vendor</p>
             <h2>Grow your <em>business.</em></h2>
-            <p class="va-lead">Open your LevroMart shop, reach nearby buyers and get paid safely. Every application is reviewed by our team.</p>
+            <p class="va-lead">Open your Levromart shop, reach nearby buyers and get paid safely. Every application is reviewed by our team.</p>
           </div>
           <div class="va-art"><span class="va-chip c1"><i class="fa-solid fa-store"></i></span><span class="va-chip c2"><i class="fa-solid fa-chart-line"></i></span>${(function(){var im=document.querySelectorAll("#lvOnb .lv-hero")[2]||document.querySelector("#loginModal .lv-auth-char");return im&&im.src?`<img class="va-char" alt="" src="${im.src}" draggable="false">`:"";})()}</div>
         </div>

@@ -126,7 +126,7 @@ function vlRefreshEmpty() {
   if (!cards.length) {
     const noun = { all: "listings", products: "products", services: "services", packages: "packages" }[tab];
     const cta = tab === "packages" ? ["Add Package", "openAddPackageModal()"] : tab === "services" ? ["Add Service", "openAddProductModal()"] : [tab === "all" ? "Add Listing" : "Add Product", "openAddProductModal()"];
-    empty.innerHTML = `<span class="vl-empty-ico"><i class="fa-solid ${tab === "packages" ? "fa-box-open" : tab === "services" ? "fa-hand-holding-heart" : "fa-box"}"></i></span><strong>No ${noun} yet.</strong><p>Add your first ${tab === "all" ? "listing" : noun.replace(/s$/, "")} to start selling on LevroMart.</p><button type="button" class="vl-add" onclick="${cta[1]}"><i class="fa-solid fa-plus"></i> ${cta[0]}</button>`;
+    empty.innerHTML = `<span class="vl-empty-ico"><i class="fa-solid ${tab === "packages" ? "fa-box-open" : tab === "services" ? "fa-hand-holding-heart" : "fa-box"}"></i></span><strong>No ${noun} yet.</strong><p>Add your first ${tab === "all" ? "listing" : noun.replace(/s$/, "")} to start selling on Levromart.</p><button type="button" class="vl-add" onclick="${cta[1]}"><i class="fa-solid fa-plus"></i> ${cta[0]}</button>`;
   } else {
     empty.innerHTML = `<span class="vl-empty-ico"><i class="fa-solid fa-magnifying-glass"></i></span><strong>No listings found.</strong><p>Try a different search or filter.</p>`;
   }
