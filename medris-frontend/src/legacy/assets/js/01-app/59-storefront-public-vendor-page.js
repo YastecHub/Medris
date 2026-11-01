@@ -342,14 +342,14 @@ async function renderStorefrontInner(vendorId) {
   const { data: v, error } = await vendorPromise;
   if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
-  // Prefer the owner's canonical account avatar, retaining the business logo
-  // for accounts that intentionally have no personal profile photo.
+  // Keep the account profile picture distinct from the business logo.
+  // The account avatar is used consistently across public vendor surfaces.
   if (v.user_id) {
     try {
       const { data: ownerProfile, error: ownerProfileError } = await sb.from("users")
         .select("avatar_url").eq("id", v.user_id).maybeSingle();
       if (ownerProfileError) throw ownerProfileError;
-      v.logo_url = ownerProfile?.avatar_url || v.logo_url || null;
+      v.profile_avatar_url = ownerProfile?.avatar_url || null;
     } catch (avatarError) {
       console.warn("[Levromart storefront] Profile avatar lookup failed; using vendor logo.", avatarError);
     }
@@ -379,8 +379,9 @@ async function renderStorefrontInner(vendorId) {
   const customCoverUrl = v.cover_url || "";
   const isOwnStorefront = !!session?.user?.id && String(session.user.id) === String(v.user_id);
   if (!isOwnStorefront) sb.rpc("increment_vendor_profile_view", { p_vendor_id: v.id }).then(()=>{}).catch(()=>{});
-  const logo = v.logo_url
-    ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="" data-lvimg onload="this.classList.add('lv-ld')" loading="eager" draggable="false" /></button>`
+  const profileImage = v.profile_avatar_url || v.logo_url || null;
+  const logo = profileImage
+    ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(profileImage)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(profileImage)}" alt="" data-lvimg onload="this.classList.add('lv-ld')" loading="eager" draggable="false" /></button>`
     : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor", v.id)}</button>`;
   const location = [v.address, v.city].filter(Boolean).map(esc).join(", ") || "Online business";
 
