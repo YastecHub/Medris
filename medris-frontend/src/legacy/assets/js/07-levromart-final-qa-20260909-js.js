@@ -665,7 +665,7 @@
     try{
       const r=await levroData.follows.set(vendorId,next);
       if(r.error)throw r.error;
-      /* New follows use LevroMart's recommended notification level by default. */
+      /* New follows use Levromart's recommended notification level by default. */
       if(next) await saveFollowPrefsFromWrap(wrap,'none','relevant',true);
       /* follow/unfollow: no toast, the button already shows the state */
     }catch(e){

@@ -249,7 +249,7 @@
 #app .storefront-profile .storefront-follow-controls .follow-btn{min-width:112px!important;justify-content:center!important;gap:.42rem!important;}
 #app .storefront-profile .follow-btn-label{display:inline!important;}
 
-/* LinkedIn-inspired interaction pattern, but with LevroMart's own icon language. */
+/* LinkedIn-inspired interaction pattern, but with Levromart's own icon language. */
 #app .storefront-profile .follow-menu{padding:8px max(18px,env(safe-area-inset-left)) calc(20px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-right))!important;}
 #app .storefront-profile .follow-menu > strong{font-size:1.05rem!important;padding:.2rem 0 .25rem!important;border:0!important;}
 #app .storefront-profile .follow-mode-intro{margin:0 0 .8rem!important;color:var(--text-muted)!important;font-size:.74rem!important;line-height:1.45!important;}

@@ -1569,8 +1569,7 @@ html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .t small{color:#9db3
 @media (min-width:720px){.ac-stats{grid-template-columns:repeat(6,minmax(0,1fr))}.ac-tools{max-width:560px}}
 .ac-sec{margin:1rem 0 .3rem;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667)}
 
-/* =====================================================================================================
-   DESKTOP SHELL
+/* ==============================================================================================   DESKTOP SHELL
    Root cause of the "clumped / spread-out" desktop look: the phone bottom bar (a row of equal-width flex items) was
    turned into a vertical rail by turning its axis, but the items kept "flex:1", so each one stretched to a fifth of the
    screen height and the labels floated apart. Fix: items no longer grow, and from 1024px the rail is a real sidebar
@@ -1585,7 +1584,7 @@ html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .t small{color:#9db3
   html body{padding-left:var(--rail)!important}
   html body header{left:var(--rail)!important;width:auto!important}
   html body #bottomNav,html body #bottomNav.has-add,html body #bottomNav.buyer-no-add,html body #bottomNav.nav-scroll-hide,html body #bottomNav.nav-scroll-shrink{width:var(--rail)!important;padding:1.1rem .85rem 1.2rem!important;gap:.2rem!important;align-items:stretch!important;justify-content:flex-start!important;background:var(--card,#fff)!important}
-  html body #bottomNav::before{content:"LevroMart";display:block;flex:none;padding:.1rem .95rem 1.1rem;font-size:1.25rem;font-weight:800;letter-spacing:-.02em;color:var(--text,#111)}
+  html body #bottomNav::before{content:"Levromart";display:block;flex:none;padding:.1rem .95rem 1.1rem;font-size:1.25rem;font-weight:800;letter-spacing:-.02em;color:var(--text,#111)}
   html body #bottomNav .bn-group{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.2rem!important}
   html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item,html body #bottomNav.bottom-nav .bn-group .bottom-nav-item.bottom-nav-item{position:relative;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:.85rem!important;width:100%!important;min-height:48px!important;height:48px!important;padding:0 .95rem!important;border-radius:12px!important;font-size:.95rem!important;font-weight:600!important;text-align:left!important;color:var(--text-muted,#64748b)!important}
   html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item .bn-icon{position:relative;flex:0 0 1.7rem!important;width:1.7rem!important;display:inline-grid!important;place-items:center!important;font-size:1.2rem!important}
@@ -4592,7 +4591,8 @@ html body #app .vendor-profile-header-card .lv-profile-actions{display:grid!impo
 html body #app .lv-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
 html body #app .lv-stat{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:.6rem;align-items:center;text-align:left;padding:.8rem .85rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--text) 8%,transparent);background:var(--card);color:var(--text);font:inherit;min-width:0}
 html body #app button.lv-stat{cursor:pointer}
-html body #app .lv-stat-ico{grid-row:1/3;width:2.3rem;height:2.3rem;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,#13a875 14%,var(--card));color:#0f8a60;font-size:.95rem}
+html body #app .lv-stat-ico{grid-row:1/3;width:2.5rem;height:2.5rem;border-radius:13px;display:grid;place-items:center;background:color-mix(in srgb,var(--text) 5%,var(--card))}
+html body #app .lv-stat-ico .lv3d{width:1.7rem;height:1.7rem;object-fit:contain}
 html body #app .lv-stat-val{font-size:1.08rem;font-weight:800;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html body #app .lv-stat-label{font-size:.74rem;color:var(--muted,#6b7280)}
 /* Reviews & ratings card */
@@ -4669,7 +4669,7 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
    statistics and fixed navigation from painting over one another. */
 @media(max-width:720px){
   html body #app:has(.vendor-profile-header-card){
-    padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))!important;
+    padding-bottom:28px!important;   /* the page body already keeps room for the bottom bar */
     overflow-x:clip!important;
   }
   html body #app:has(.vendor-profile-header-card) .vendor-profile-header-card{
@@ -5087,7 +5087,7 @@ html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-p
 /* Trending now (products and services): the same compact footprint as the Featured Vendors cards.
    The picture keeps its own shape (it scales with the card instead of being cut shorter). */
 :root:root:root body #app .hscroll.trending-scroll > .product-card-wrap{flex:0 0 min(170px,44vw)!important;width:min(170px,44vw)!important;max-width:min(170px,44vw)!important;min-width:0!important}
-:root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img{height:auto!important;min-height:0!important;max-height:none!important;flex-basis:auto!important;aspect-ratio:10/11!important}
+:root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img{height:auto!important;min-height:0!important;max-height:none!important;flex-basis:auto!important;aspect-ratio:1/1!important}
 :root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img img{width:100%!important;height:100%!important;object-fit:cover!important}
 
 /* Profile banner: Edit and Share at the top right (frosted round buttons) */
@@ -5112,7 +5112,7 @@ html body #app .lv-cover-btn:active{transform:scale(.94)}
 .lvqr-products{display:flex;justify-content:center;gap:.45rem;margin:.85rem 0 .1rem}
 .lvqr-products img{width:3.4rem;height:3.4rem;border-radius:14px;object-fit:cover;border:2px solid color-mix(in srgb,var(--g2) 25%,#fff)}
 .lvqr-hint{margin:.65rem 0 .4rem;font-size:.84rem;font-weight:600;color:#3d4b44}
-.lvqr-brand{display:inline-flex;align-items:center;gap:.4rem;font-weight:800;font-size:.95rem;background:linear-gradient(120deg,var(--g1),var(--g3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lvqr-brand{display:inline-flex;align-items:center;gap:.4rem;font-weight:800;font-size:.95rem;color:#0f9d6b}
 .lvqr-swatches{display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-top:.85rem}
 .lvqr-sw{width:1.9rem;height:1.9rem;border-radius:50%;border:2px solid var(--card,#fff);background:linear-gradient(135deg,var(--g1),var(--g2) 55%,var(--g3));box-shadow:0 0 0 1px color-mix(in srgb,var(--text,#14201a) 15%,transparent);cursor:pointer;padding:0}
 .lvqr-sw[aria-checked="true"]{box-shadow:0 0 0 2.5px var(--text,#14201a);transform:scale(1.08)}
@@ -5141,21 +5141,22 @@ html:root:root body #app#app .storefront-profile.sf-snap .storefront-cover{posit
 html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-shade{position:absolute;left:0;right:0;bottom:0;height:48%;pointer-events:none;z-index:1;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg,#f4f6f5) 55%,transparent));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 75%);mask-image:linear-gradient(to bottom,transparent,#000 75%)}
 html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-actions{z-index:3}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-profile-body{position:relative!important;padding-top:0!important;margin-top:0!important}
-html:root:root body #app#app .storefront-profile.sf-snap .sf-id-row{position:relative!important;z-index:3!important;display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:.8rem!important;margin:-48px 0 .25rem!important;padding:0 1rem!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-id-row{position:relative!important;z-index:3!important;display:flex!important;align-items:flex-start!important;gap:.9rem!important;margin:-48px 0 .4rem!important;padding:0 1rem!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-id-main{flex:1 1 auto;min-width:0;padding-top:54px;display:flex;flex-direction:column;align-items:flex-start;gap:.45rem}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar-row{position:static!important;margin:0!important;left:auto!important;top:auto!important;transform:none!important;flex:0 0 auto!important;width:auto!important;height:auto!important}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar,html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar-button{width:96px!important;height:96px!important;min-width:96px!important;border-radius:50%!important;border:4px solid var(--bg,#fff)!important;box-shadow:0 6px 18px rgba(0,0,0,.16)!important;overflow:hidden!important;position:static!important;margin:0!important;transform:none!important}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}
-html:root:root body #app#app .storefront-profile.sf-snap .storefront-profile-actions.storefront-public-actions{position:static!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;transform:none!important;margin:0 0 .2rem!important;flex:0 0 auto!important;width:auto!important;display:flex!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-profile-actions.storefront-public-actions{position:static!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;transform:none!important;margin:0!important;flex:0 0 auto!important;width:auto!important;display:flex!important}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .storefront-follow-wrap{width:auto!important;position:relative!important}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .storefront-follow-controls{display:flex!important}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-btn.follow-btn-icon{width:auto!important;min-width:7.5rem!important;max-width:none!important;height:38px!important;min-height:38px!important;padding:0 1.25rem!important;border-radius:999px!important;font-size:.9rem!important;font-weight:750!important;justify-content:center!important}
-html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-btn.follow-btn-icon.btn-outline{background:#0f9d6b!important;border-color:#0f9d6b!important;color:#fff!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-btn.follow-btn-icon{background:transparent!important;border:1.5px solid color-mix(in srgb,var(--text) 22%,transparent)!important;color:var(--text)!important;box-shadow:none!important;height:34px!important;min-height:34px!important;min-width:6.5rem!important;font-size:.85rem!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-btn.follow-btn-icon.btn-outline{border-color:#0f9d6b!important;color:#0f9d6b!important}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-settings-btn{display:none!important}
 html:root:root body #app#app .storefront-profile.sf-snap .sf-edit-btn{height:38px;padding:0 1.1rem;border-radius:999px;font-weight:750;font-size:.9rem}
 html:root:root body #app#app .storefront-profile.sf-snap .storefront-banner-more,html:root:root body #app#app .storefront-profile.sf-snap .storefront-own-more-icon{display:none!important}
-html:root:root body #app#app .storefront-profile.sf-snap .sf-name.storefront-name-row{position:static!important;transform:none!important;margin:.5rem 0 .2rem!important;padding:0 1rem!important;width:auto!important;display:block!important}
-html:root:root body #app#app .storefront-profile.sf-snap .sf-name .storefront-profile-name{font-size:1.35rem!important;font-weight:850!important;letter-spacing:-.02em;line-height:1.2!important;margin:0!important}
-html:root:root body #app#app .storefront-profile.sf-snap .sf-bell[data-mode="all"],html:root:root body #app#app .storefront-profile.sf-snap .sf-bell[data-mode="relevant"]{background:rgba(124,58,237,.55)!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-name.storefront-name-row{position:static!important;transform:none!important;margin:0!important;padding:0!important;width:100%!important;display:block!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-name .storefront-profile-name{font-size:1.25rem!important;font-weight:850!important;letter-spacing:-.02em;line-height:1.2!important;margin:0!important;overflow-wrap:anywhere}
 /* Store options: lively coloured icon tiles instead of plain black icons */
 html body .levro-storefront-sheet-item i{width:2.4rem;height:2.4rem;border-radius:12px;display:inline-grid!important;place-items:center;font-size:1rem;flex:0 0 auto;background:color-mix(in srgb,var(--ic,#7c3aed) 14%,transparent);color:var(--ic,#7c3aed)!important}
 html body .levro-storefront-sheet-item:nth-child(5n+1){--ic:#7c3aed}
@@ -5208,3 +5209,34 @@ html:root body .ap-bal{display:flex;gap:.45rem;align-items:center;margin:0 0 .7r
 /* Vendor wallet: a payout taking longer than usual (the reason is shown to admins only) */
 /* (the wallet card is dark green in both themes) */
 html:root body .lvw-card .lvw-paidline.lvw-delayed{color:#fde68a}
+=======
+/* Vendor sign-up ticks ("I'm not a student", "I don't have a matric number yet"): small ticks on the same line as their text */
+html:root:root body .lvv-notstudent,html:root:root body .sv-nodocs,html:root:root body .sv-nomatric{display:flex!important;flex-direction:row!important;align-items:center!important;gap:.7rem!important}
+html:root:root body .sv-nomatric{margin:.6rem 0 .9rem!important;font-weight:600!important;cursor:pointer}
+html:root:root body .lvv-notstudent input[type="checkbox"],html:root:root body .sv-nodocs input[type="checkbox"],html:root:root body .sv-nomatric input[type="checkbox"]{-webkit-appearance:checkbox!important;appearance:auto!important;width:1.2rem!important;height:1.2rem!important;min-width:1.2rem!important;margin:0!important;padding:0!important;position:static!important;flex:0 0 auto!important;accent-color:#7c3aed;background:none!important;border:0!important;box-shadow:none!important;transform:none!important}
+html:root:root body .lvv-notstudent span,html:root:root body .sv-nodocs span{flex:1 1 auto!important}
+html:root:root body .lvv-notstudent b,html:root:root body .sv-nodocs b{font-size:.98rem!important}
+/* Profile "My account" button: light blue instead of solid green */
+html body #app .lv-profile-actions .lv-profile-action.active{background:#e0f2fe!important;color:#0369a1!important;border-color:#bae6fd!important;box-shadow:none!important}
+:root[data-theme="dark"] body #app .lv-profile-actions .lv-profile-action.active{background:rgba(56,189,248,.16)!important;color:#7dd3fc!important;border-color:rgba(56,189,248,.35)!important}
+/* Vendors map: category chips like the vendors page (3D icon, light chip, no blue fill); the map/list switch in light blue */
+html body #app .vmpage .vmp-chip{display:inline-flex!important;align-items:center!important;gap:.4rem!important;background:var(--card,#fff)!important;color:var(--text)!important;border:1px solid color-mix(in srgb,var(--text) 10%,transparent)!important;box-shadow:0 4px 12px rgba(0,0,0,.10)!important;padding:.4rem .85rem .4rem .45rem!important}
+html body #app .vmpage .vmp-chip.on{background:color-mix(in srgb,#7c3aed 10%,var(--card,#fff))!important;border-color:#7c3aed!important;color:#5b21b6!important}
+html body #app .vmpage .vmp-chip .lv3d-chip{width:1.35rem;height:1.35rem;object-fit:contain}
+html body #app .vmpage .vmp-view-switch button.active{background:#38bdf8!important;color:#fff!important}
+/* Wallet colours (palette button on the card) */
+.lvw-card .lvw-theme-btn{margin-left:auto;width:2rem;height:2rem;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:.85rem}
+html[data-lvw-theme="violet"] body .lvw-card{background:radial-gradient(120% 120% at 100% 0%,rgba(255,255,255,.18),transparent 55%),linear-gradient(135deg,#4f46e5,#7c3aed 55%,#c026d3)!important}
+html[data-lvw-theme="ocean"] body .lvw-card{background:radial-gradient(120% 120% at 100% 0%,rgba(255,255,255,.18),transparent 55%),linear-gradient(135deg,#0369a1,#0ea5e9 55%,#22d3ee)!important}
+html[data-lvw-theme="sunset"] body .lvw-card{background:radial-gradient(120% 120% at 100% 0%,rgba(255,255,255,.18),transparent 55%),linear-gradient(135deg,#c2410c,#f97316 55%,#facc15)!important}
+html[data-lvw-theme="rose"] body .lvw-card{background:radial-gradient(120% 120% at 100% 0%,rgba(255,255,255,.18),transparent 55%),linear-gradient(135deg,#9f1239,#f43f5e 55%,#fb923c)!important}
+html[data-lvw-theme="midnight"] body .lvw-card{background:radial-gradient(120% 120% at 100% 0%,rgba(255,255,255,.12),transparent 55%),linear-gradient(135deg,#0f172a,#1e293b 55%,#334155)!important}
+/* Trending now / Trending services: a shorter card (tighter details under the picture, smaller cart button) */
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap.product-card-compact{--lv-pad:.6rem!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .card > :not(.product-img){margin-top:0!important;margin-bottom:0!important;padding-top:.3rem!important;padding-bottom:0!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap h4{font-size:.86rem!important;line-height:1.2!important;margin:0!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-meta{min-height:0!important;align-items:center!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-meta .price,:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-meta strong{font-size:.95rem!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-meta button,:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-meta .btn{width:2rem!important;height:2rem!important;min-width:2rem!important;min-height:2rem!important;padding:0!important;border-radius:10px!important;font-size:.8rem!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-total-line{font-size:.72rem!important;padding-top:.3rem!important;padding-bottom:.45rem!important;min-height:0!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-compact-footer{font-size:.72rem!important;min-height:0!important}

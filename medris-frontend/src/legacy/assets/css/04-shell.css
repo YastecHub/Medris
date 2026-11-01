@@ -2603,7 +2603,7 @@ body:has(#app .storefront-profile) #app.container{
   font-size:1rem!important;
 }
 
-/* Preserve the three unique LevroMart notification identities. */
+/* Preserve the three unique Levromart notification identities. */
 #app .storefront-profile .follow-mode-icon-all{
   background:color-mix(in srgb,#3b82f6 9%,var(--card))!important;
   border-color:color-mix(in srgb,#3b82f6 18%,var(--border))!important;
@@ -2743,7 +2743,7 @@ body:has(#app .storefront-profile) #app.container{
   border-radius:50%!important;
 }
 /* ---- lv-onboarding-auth ---- */
-/* ===== LevroMart first-visit onboarding + full-page authentication ===== */
+/* ===== Levromart first-visit onboarding + full-page authentication ===== */
 :root{--lv-g:#3fb97f;--lv-g2:#12a266;--lv-ink:#052e1e;--lv-muted:#5f6f68;--lv-line:#dbe8e1}
 html.lv-lock,html.lv-lock body{overflow:hidden!important}
 .lv-onb,#loginModal.lv-auth{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--lv-ink);color-scheme:light;-webkit-font-smoothing:antialiased}

@@ -1,4 +1,4 @@
-/* LevroMart form autosave: vendor application + student verification.
+/* Levromart form autosave: vendor application + student verification.
    Text fields -> localStorage; ID/biodata/selfie files -> IndexedDB. Cleared on successful submit. */
 (function(){
   "use strict";
