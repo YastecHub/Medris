@@ -4921,3 +4921,21 @@ html body #app .vmpage .vmp-rail-item .vmp-rail-active-dot{
   body.vendors-map-full-page #app .app-content,
   body.vendors-map-full-page #app .page-content{padding-bottom:0!important}
 }
+
+
+/* Map-rail initials use the same first/last-word initials and matching stable tint
+   as vendorDirectoryMapIcon, centered inside the circular avatar. */
+html body #app .vmpage .vmp-rail-item{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  position:relative!important;box-sizing:border-box!important;padding:0!important;
+}
+html body #app .vmpage .vmp-rail-item>.vmp-rail-ini{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  position:static!important;inset:auto!important;transform:none!important;
+  flex:0 0 100%!important;width:100%!important;height:100%!important;
+  max-width:100%!important;max-height:100%!important;margin:0!important;padding:0!important;
+  border-radius:50%!important;background:var(--vmp-bg)!important;color:var(--vmp-fg)!important;
+  font-family:inherit!important;font-size:1.12rem!important;font-weight:850!important;
+  line-height:1!important;letter-spacing:0!important;text-align:center!important;
+  overflow:hidden!important;
+}
