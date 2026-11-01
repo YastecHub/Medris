@@ -141,7 +141,7 @@ function searchVendorRowHtml(v) {
   const following = recent && Date.now() - recent.at < 15000 ? !!recent.following : !!(session && window.followedVendorSet?.().has(String(v.id)));
   const loc = [v.city, null].filter(Boolean).map(esc).join("");
   return `<div class="search-result-row sr-row sr-vendor-row" data-vendor-id="${esc(v.id)}" ${searchRowOpen(`navigate('storefront',{vendorId:'${esc(v.id)}'})`)} aria-label="${esc(name)}">
-    <span class="sr-thumb sr-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" data-n="${esc(name)}" data-k="${esc(v.id)}" onerror="vdImgFail(this)">` : vdInitialsHtml(name, v.id)}</span>
+    <span class="sr-thumb sr-thumb-round">${v.profile_avatar_url || v.logo_url ? `<img src="${esc(v.profile_avatar_url || v.logo_url)}" alt="" loading="lazy" decoding="async" data-n="${esc(name)}" data-k="${esc(v.id)}" onerror="vdImgFail(this)">` : vdInitialsHtml(name, v.id)}</span>
     <div class="sr-main"><strong class="sr-name">${esc(name)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i></strong>
       <span class="sr-vendor"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${loc || "Online"}${searchDistanceMetaHtml(v).replace(/<i class="fa-solid fa-location-dot"><\/i> /, "")}</span>
       <span class="sr-meta"><em class="sr-type">Vendor</em>${sectorName ? `<span class="sr-sector">${esc(sectorName)}</span>` : ""}</span>

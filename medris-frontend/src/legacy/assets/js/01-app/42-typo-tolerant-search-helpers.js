@@ -93,7 +93,7 @@ async function runSearchPageQuery(term, saveToHistory) {
       wantVendors ? searchCached(`v2:${kind === "all" ? 6 : 30}:${enc}`, async () => {
         // Vendors match by shop name AND by what they sell: a search for a product or service also surfaces the shops offering it.
         const limit = kind === "all" ? 6 : 30;
-        const vendorCols = "id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id";
+        const vendorCols = "id,user_id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id";
         const byName = await sb.from("vendors").select(vendorCols).eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(limit).abortSignal(controller.signal);
         if (byName.error) return byName;
         const prodRes = await sb.rpc("search_products_full_v2", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
@@ -148,7 +148,7 @@ async function runSearchPageQuery(term, saveToHistory) {
   const results = byId("searchPageResults");
   if (!results) return;
   // Follower counts for the vendors shown (memoised for 3 minutes, one RPC at most).
-  const vendListHydrated = vendList.length ? await attachVendorFollowerCounts(vendList) : [];
+  const vendListHydrated = vendList.length ? await attachVendorFollowerCounts(await lvAttachOwnerAvatars(vendList)) : [];
   if (mySeq !== searchPageSeq) return;
   document.querySelectorAll(".search-page-section, .search-page-empty, .search-page-error").forEach((el) => el.remove());
 

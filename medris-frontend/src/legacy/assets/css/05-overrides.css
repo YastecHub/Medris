@@ -4565,18 +4565,58 @@ html body #app .vmpage .vmp-route{border-radius:22px!important;box-shadow:0 8px 
 html body #app .vmpage .vmp-card{border-radius:24px!important}
 .vmp-return-map{position:fixed;z-index:9998;right:1rem;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:.5rem;padding:.8rem 1.05rem;border:0;border-radius:999px;background:#07885d;color:#fff;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.22)}
 .vmp-return-map i{font-size:1.05rem}
+/* Profile header (own shop and customer "My account"): banner on top, picture overlapping it, then a
+   frosted information panel. Sits inside the page's normal side padding (no negative margins), so it is centred. */
 html body #app .vendor-profile-header-card{
-  overflow:hidden!important;border-radius:0 0 28px 28px!important;
-  border:0!important;box-shadow:0 10px 32px rgba(0,0,0,.10)!important;
-  background:var(--card)!important;margin:-.7rem -.75rem 1.1rem!important;
+  overflow:hidden!important;border-radius:26px!important;
+  border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;box-shadow:0 10px 30px rgba(0,0,0,.08)!important;
+  background:var(--card)!important;margin:.35rem 0 1.1rem!important;width:auto!important;max-width:700px!important;
 }
-html body #app .vendor-profile-header-card .vendor-profile-header-cover{min-height:190px!important;border-radius:0!important}
-html body #app .vendor-profile-header-card .vendor-profile-header-body{padding:0 1.1rem 1.15rem!important}
-html body #app .vendor-profile-header-card .vendor-profile-header-avatar-row{margin-top:-2.3rem!important;position:relative!important;z-index:2}
-html body #app .vendor-profile-header-card .vendor-profile-header-avatar{width:5rem!important;height:5rem!important;border:4px solid var(--card)!important;box-shadow:0 4px 16px rgba(0,0,0,.14)!important}
-html body #app .vendor-profile-header-card .vendor-profile-header-name{font-size:1.35rem!important;font-weight:850!important;letter-spacing:-.025em!important}
-html body #app .vendor-profile-header-card .storefront-stats{display:flex!important;gap:.45rem!important;overflow-x:auto!important;scrollbar-width:none!important;padding:.65rem 0 .15rem!important}
-html body #app .vendor-profile-header-card .storefront-stats>*{flex:0 0 auto!important;border-radius:999px!important;background:color-mix(in srgb,var(--text) 6%,var(--card))!important;padding:.55rem .8rem!important;border:0!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-cover{min-height:170px!important;border-radius:0!important;background-size:cover!important;background-position:center!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-body{
+  position:relative!important;z-index:1!important;margin-top:-28px!important;padding:0 1.1rem 1.15rem!important;
+  border-radius:24px 24px 0 0!important;border-top:1px solid rgba(255,255,255,.45)!important;
+  background:color-mix(in srgb,var(--card) 84%,transparent)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15);
+}
+html body #app .vendor-profile-header-card .vendor-profile-header-avatar-row{margin-top:-3rem!important;position:relative!important;z-index:2;display:flex!important;align-items:flex-end!important;justify-content:space-between!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-avatar{width:5.6rem!important;height:5.6rem!important;border:4px solid var(--card)!important;box-shadow:0 6px 18px rgba(0,0,0,.16)!important;object-fit:cover!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-name{font-size:1.35rem!important;font-weight:850!important;letter-spacing:-.025em!important;margin-top:.55rem!important}
+html body #app .vendor-profile-header-card .storefront-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:.4rem!important;padding:.75rem 0 .2rem!important;overflow:visible!important}
+html body #app .vendor-profile-header-card .storefront-stats>*{min-width:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:.05rem!important;border-radius:16px!important;background:color-mix(in srgb,var(--text) 5%,var(--card))!important;padding:.55rem .25rem!important;border:0!important;font-size:.72rem!important;color:var(--muted,#6b7280)!important;text-align:center!important}
+html body #app .vendor-profile-header-card .storefront-stats>* strong{font-size:1.02rem!important;color:var(--text)!important;font-weight:800!important}
+html body #app .vendor-profile-header-card .lv-profile-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:.5rem!important;margin-top:.85rem!important}
+/* Statistics: a two-column grid of tiles */
+html body #app .lv-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+html body #app .lv-stat{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:.6rem;align-items:center;text-align:left;padding:.8rem .85rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--text) 8%,transparent);background:var(--card);color:var(--text);font:inherit;min-width:0}
+html body #app button.lv-stat{cursor:pointer}
+html body #app .lv-stat-ico{grid-row:1/3;width:2.3rem;height:2.3rem;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,#13a875 14%,var(--card));color:#0f8a60;font-size:.95rem}
+html body #app .lv-stat-val{font-size:1.08rem;font-weight:800;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .lv-stat-label{font-size:.74rem;color:var(--muted,#6b7280)}
+/* Reviews & ratings card */
+html body #app .lv-rating-card{width:100%;display:flex;align-items:center;gap:.85rem;padding:.9rem 1rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--text) 8%,transparent);background:var(--card);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+html body #app .lv-rating-avg{font-size:2rem;font-weight:850;letter-spacing:-.03em;line-height:1}
+html body #app .lv-rating-copy{display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:0}
+html body #app .lv-rating-stars{color:#f5b400;font-size:.95rem;display:flex;gap:.12rem}
+html body #app .lv-rating-copy small{color:var(--muted,#6b7280);font-size:.78rem}
+html body #app .lv-rating-go{font-size:.8rem;font-weight:700;color:#0f8a60;white-space:nowrap}
+/* Working hours card */
+html body #app .lv-hours-card{border-radius:18px;border:1px solid color-mix(in srgb,var(--text) 8%,transparent);background:var(--card);padding:.4rem .95rem .85rem}
+html body #app .lv-hours-card ul{list-style:none;margin:0;padding:0}
+html body #app .lv-hours-card li{display:flex;justify-content:space-between;gap:.75rem;padding:.55rem 0;border-bottom:1px solid color-mix(in srgb,var(--text) 6%,transparent);font-size:.86rem}
+html body #app .lv-hours-card li:last-child{border-bottom:0}
+html body #app .lv-hours-card li b{font-weight:700}
+html body #app .lv-hours-card li.is-closed b{color:var(--muted,#6b7280);font-weight:600}
+html body #app .lv-hours-card li.is-today{color:#0f8a60}
+html body #app .lv-hours-card li.is-today em{font-style:normal;font-size:.68rem;font-weight:800;padding:.1rem .45rem;border-radius:999px;background:color-mix(in srgb,#13a875 15%,var(--card));margin-left:.3rem}
+html body #app .lv-hours-edit{margin-top:.5rem;width:100%;padding:.6rem;border-radius:12px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);background:transparent;color:var(--text);font:inherit;font-weight:700;font-size:.84rem;cursor:pointer}
+/* My listings: counts as tidy tiles, tabs as pills */
+html body #app .vh-hub .vh-stats{gap:.5rem!important}
+html body #app .vh-hub .vh-stat{border-radius:16px!important;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;background:var(--card)!important}
+html body #app .vh-hub .vh-tabs{display:flex!important;gap:.45rem!important;overflow-x:auto!important;scrollbar-width:none!important}
+html body #app .vh-hub .vh-tabs button{border-radius:999px!important;padding:.45rem .8rem!important;background:color-mix(in srgb,var(--text) 5%,var(--card))!important;border:0!important;white-space:nowrap!important}
+html body #app .vh-hub .vh-tabs em{font-style:normal;font-weight:800;margin-left:.25rem;padding:.05rem .45rem;border-radius:999px;background:var(--card)}
+@media(prefers-reduced-transparency:reduce){html body #app .vendor-profile-header-card .vendor-profile-header-body{background:var(--card)!important;-webkit-backdrop-filter:none;backdrop-filter:none}}
 html body #app .vendor-profile-section .lv-group,
 html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;overflow:hidden!important}
 @media(max-width:720px){
@@ -4633,7 +4673,7 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
   html body #app:has(.vendor-profile-header-card) .vendor-profile-header-card{
     position:relative!important;
     z-index:1!important;
-    margin-top:1.25rem!important;
+    margin-top:.35rem!important;
     clear:both!important;
   }
   html body #app:has(.vendor-profile-header-card) [class*="wallet-card"],
@@ -5041,3 +5081,9 @@ html body #app .vendor-profile-header-card:not(.buyer-profile-card) .vendor-prof
 html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions{display:flex!important;gap:.6rem!important;margin:.85rem 0 .15rem!important}
 html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:.45rem;padding:.72rem .6rem;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:transparent;color:var(--text,#172033);font:700 .84rem/1.2 inherit}
 html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action.active{background:#0b7557;border-color:#0b7557;color:#fff}
+
+/* Trending now (products and services): the same compact footprint as the Featured Vendors cards.
+   The picture keeps its own shape (it scales with the card instead of being cut shorter). */
+:root:root:root body #app .hscroll.trending-scroll > .product-card-wrap{flex:0 0 min(170px,44vw)!important;width:min(170px,44vw)!important;max-width:min(170px,44vw)!important;min-width:0!important}
+:root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img{height:auto!important;min-height:0!important;max-height:none!important;flex-basis:auto!important;aspect-ratio:10/11!important}
+:root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img img{width:100%!important;height:100%!important;object-fit:cover!important}

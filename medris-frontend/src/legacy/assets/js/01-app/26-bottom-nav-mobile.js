@@ -58,7 +58,7 @@ function renderBottomNav() {
   const vendorsTab = { icon: lvLineIcon("map"), label: "Vendors", action: "navigate('vendorsMap')", view: "vendorsMap" };
   const addTab = isVendorUser
     ? { icon: lvLineIcon("plus"), label: "Add", action: "openAddChooser()", view: null }
-    : { icon: lvLineIcon("plus"), label: "Add", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+    : { icon: lvLineIcon("request"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
   const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const ordersTab = isVendorUser
     ? { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
@@ -78,8 +78,8 @@ function renderBottomNav() {
   nav.classList.add("has-add");
   nav.innerHTML =
     '<div class="bn-group bn-group-left">' + [homeTab, vendorsTab].map(itemHtml).join("") + '</div>' +
-    '<button class="bottom-nav-add" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="Add">' +
-      '<span class="bn-icon">' + lvLineIcon("plus") + '</span><span>Add</span>' +
+    '<button class="bottom-nav-add" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="' + addTab.label + '">' +
+      '<span class="bn-icon">' + addTab.icon + '</span><span>' + addTab.label + '</span>' +
     '</button>' +
     '<div class="bn-group bn-group-right">' + [notificationsTab, ordersTab].map(itemHtml).join("") + '</div>';
 }

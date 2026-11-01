@@ -1880,7 +1880,10 @@
     // the shop's own full profile: the wallet takes the place of the top banner
     wrapFn("renderVendorDashboard", function (html) {
       if (typeof vendor === "undefined" || !vendor || html.indexOf("vendor-profile-header-card") < 0) return null;
-      return '<div class="lvw" data-lv-wallet="full">' + card((cache || (readStored(), cache)) && cache.data, false) + "</div>" + html;
+      // the wallet sits under the profile (not above it)
+      var wallet = '<div class="lvw" data-lv-wallet="full">' + card((cache || (readStored(), cache)) && cache.data, false) + "</div>";
+      var cut = html.indexOf('<hr class="vendor-profile-divider"');
+      return cut > 0 ? html.slice(0, cut) + wallet + html.slice(cut) : wallet + html;
     });
     // orders from customers: a slimmer wallet on top (not on "My purchases")
     wrapFn("renderVendorOrders", function (html, args) {
@@ -2187,7 +2190,9 @@ window.lvAskCancel = async function (orderId) {
       var str = String(html == null ? "" : html);
       if (!signedIn() || str.length < 200 || str.indexOf("data-lv-rwallet") >= 0 || (name === "renderVendorOrders" && arguments[5] !== "purchases")) return html;   // one wallet only: the page may already carry it
       setTimeout(function () { refresh(false); }, 30);
-      return '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>" + str;
+      var rw = '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>";
+      var end = name === "renderBuyerProfile" ? str.indexOf("</section>") : -1;   // on the profile: under the profile header
+      return end > 0 ? str.slice(0, end + 10) + rw + str.slice(end + 10) : rw + str;
     };
     w.__lvrw = true; w.__lvw = f.__lvw; window[name] = w;   // keep the other wallet's mark so it is never wrapped again on top of this one
   }

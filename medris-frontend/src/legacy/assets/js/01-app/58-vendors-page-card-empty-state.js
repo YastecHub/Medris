@@ -15,6 +15,30 @@ function vdImgFail(img) {
   img.insertAdjacentHTML("afterend", html);
   img.remove();
 }
+// The account (owner) profile picture for each vendor, the same picture shown on
+// notifications. Adds profile_avatar_url and keeps logo_url untouched as the
+// business logo, so cards can fall back to it. One query for the whole list.
+async function lvAttachOwnerAvatars(vendors) {
+  const list = Array.isArray(vendors) ? vendors : [];
+  const ownerIds = [...new Set(list.map((v) => v && v.user_id).filter(Boolean))];
+  const avatarByOwner = new Map();
+  if (ownerIds.length) {
+    try {
+      const { data: ownerProfiles, error: ownerProfilesError } = await sb
+        .from("users")
+        .select("id, avatar_url")
+        .in("id", ownerIds);
+      if (ownerProfilesError) throw ownerProfilesError;
+      (ownerProfiles || []).forEach((owner) => {
+        if (owner.avatar_url) avatarByOwner.set(String(owner.id), owner.avatar_url);
+      });
+    } catch (ownerProfilesError) {
+      console.warn("[Levromart] Could not load vendor profile pictures:", ownerProfilesError);
+    }
+  }
+  return list.map((v) => (v ? { ...v, profile_avatar_url: avatarByOwner.get(String(v.user_id || "")) || null } : v));
+}
+
 function vendorDirectoryCardHtml(v) {
   const id = String(v?.id || "");
   const name = v?.business_name || "Vendor";
@@ -269,25 +293,7 @@ async function loadVendorsDirectory() {
 
   // Use the account's canonical avatar across storefronts and every vendor
   // card. Keep logo_url as a fallback for vendors without a profile photo.
-  const ownerIds = [...new Set(vendors.map((v) => v.user_id).filter(Boolean))];
-  const avatarByOwner = new Map();
-  if (ownerIds.length) {
-    const { data: ownerProfiles, error: ownerProfilesError } = await sb
-      .from("users")
-      .select("id, avatar_url")
-      .in("id", ownerIds);
-    if (ownerProfilesError) {
-      console.warn("[Levromart] Could not load vendor profile pictures:", ownerProfilesError);
-    } else {
-      (ownerProfiles || []).forEach((owner) => {
-        if (owner.avatar_url) avatarByOwner.set(String(owner.id), owner.avatar_url);
-      });
-    }
-  }
-  const vendorsWithProfileImages = vendors.map((v) => ({
-    ...v,
-    profile_avatar_url: avatarByOwner.get(String(v.user_id || "")) || null,
-  }));
+  const vendorsWithProfileImages = await lvAttachOwnerAvatars(vendors);
 
   // Keep the current DOM stable while optional product/package/sector
   // enrichment completes. The page first paints a fixed-size skeleton (or a

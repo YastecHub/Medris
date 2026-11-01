@@ -49,7 +49,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, cover_url, bio, sector_id, lat, lng").eq("verification_status", "verified").eq("is_active",true).is("deleted_at",null);
+  let topVendorsQuery = sb.from("vendors").select("id, user_id, business_name, city, avg_rating, review_count, logo_url, cover_url, bio, sector_id, lat, lng").eq("verification_status", "verified").eq("is_active",true).is("deleted_at",null);
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -125,7 +125,8 @@ async function renderHome() {
       rows = data || [];
     }
     const uniqueRows = [...new Map(rows.map(v => [String(v.id), v])).values()];
-    const result = await attachVendorFollowerCounts(uniqueRows);
+    // the owner's account picture, the same one shown on notifications
+    const result = await attachVendorFollowerCounts(await lvAttachOwnerAvatars(uniqueRows));
     setCachedCatalog(cacheKey, result);
     return { data: result };
   };
