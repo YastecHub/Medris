@@ -4829,3 +4829,27 @@ html body #app .vmpage .vmp-empty{flex:1 0 100%;text-align:center;color:var(--te
 :root[data-theme="black"] body #app .vmpage .vmp-view-switch button.active,
 :root[data-theme="dark"] body #app .vmpage .vmp-chip.on,
 :root[data-theme="black"] body #app .vmpage .vmp-chip.on{background:var(--primary)!important;color:#fff!important}
+
+
+/* The chosen Night map layer must keep its floating controls legible even
+   when the rest of the application is in Light appearance. */
+html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-bar,
+html body #app .vmpage[data-style="night"] .vmp-view-switch,
+html body #app .vmpage[data-style="night"] .vmp-profile,
+html body #app .vmpage[data-style="night"] .vmp-fab,
+html body #app .vmpage[data-style="night"] .vmp-chip,
+html body #app .vmpage[data-style="night"] .vmp-expanded-card .vmp-card,
+html body #app .vmpage[data-style="night"] .vmp-route{
+  background:#252b35!important;color:#f3f4f6!important;border-color:#414957!important;
+}
+html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-bar input,
+html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-bar .vmp-back,
+html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-bar-ic,
+html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-profile span,
+html body #app .vmpage[data-style="night"] .vmp-view-switch button{
+  color:#f3f4f6!important;
+}
+html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-bar input::placeholder{color:#aeb7c4!important}
+html body #app .vmpage[data-style="night"] .vmp-view-switch button.active,
+html body #app .vmpage[data-style="night"] .vmp-chip.on{background:var(--primary)!important;color:#fff!important}
+html body #app .vmpage[data-style="night"] .vmp-rail-item{background:#252b35!important;border-color:#414957!important}
