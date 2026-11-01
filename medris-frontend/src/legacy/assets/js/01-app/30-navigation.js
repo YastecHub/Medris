@@ -241,6 +241,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (profile?.suspended_at && view !== "suspended") view = "suspended";
   const navToken = ++navigationGeneration;
   const previousView = currentView;
+  if (view === "vendorsMap" && previousView !== "vendorsMap") window.__vmpReturnRoute = { view: previousView || "home", params: currentViewParams || {} };
   const homeStartScroll = view === "home" ? window.scrollY : null;
   // Remember exactly where the user was scrolled to on Home before leaving
   // it (to view a product, open a vendor, etc.) so a Back navigation can
@@ -295,6 +296,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     messageChannelClosePromise = Promise.resolve(sb.removeChannel(channelToClose)).catch(() => {});
   }
   currentView = view;
+  document.body.classList.toggle("vendors-map-full-page", view === "vendorsMap");
   if (view !== "vendors") document.getElementById("vmpReturnMapBtn")?.remove();
   currentViewParams = params || {};
   try { syncLevromartLinkPreviewMeta(view, currentViewParams); } catch (_) {}
