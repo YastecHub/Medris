@@ -587,6 +587,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
+  // New route transitions are animated visually, but scroll is never animated.
+  // Disable browser scroll anchoring during the render swap so image/font/content
+  // hydration cannot repeatedly pull the viewport up and down.
+  const routeScrollSnapshot = preserveSameViewScroll ? sameViewScrollY : 0;
+  document.documentElement.classList.add("lv-route-transitioning");
   const preserveActiveFastChat = view === "messages" && !!currentViewParams?.conversationId && !!byId("chatInput") && window.__chatFastPaintDirty === true;
   if (preserveActiveFastChat) {
     // The user has already started typing into the instant-painted chat. Do
@@ -678,7 +683,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
-    requestAnimationFrame(() => window.scrollTo({ top: sameViewScrollY, behavior: "auto" }));
+    requestAnimationFrame(() => window.scrollTo({ top: routeScrollSnapshot, behavior: "auto" }));
   } else if ((view === "buyerProfile" || view === "vendorDashboard") && previousView === view) {
     // Re-opening the profile you are already on must not throw you back to the top.
     const y0 = window.__levroProfCurrentY ?? 0;
@@ -696,13 +701,13 @@ async function navigate(view, params = {}, pushHistory = true) {
     const y = window.__levroHomeScrollY;
     requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
   } else if (pushHistory || previousView !== view) {
-    // Real in-app navigation starts at the top. A browser/PWA reload is
-    // different: init() calls navigate(..., false), and the persisted route
-    // state below restores the exact viewport position for that page.
-    if(view !== "home" || window.scrollY === homeStartScroll) window.scrollTo(0, 0);
+    // Navigation gets one deterministic top reset. Do it synchronously after
+    // the new DOM is inserted; do not issue competing delayed scroll writes.
+    if(view !== "home" || window.scrollY === homeStartScroll) window.scrollTo({ left: 0, top: 0, behavior: "auto" });
   }
   if (!pushHistory && !preserveSameViewScroll) {
     try { window.__levromartRestoreScroll?.(view); } catch (err) {console.warn("Scroll restoration failed",err);}
   }
+  requestAnimationFrame(() => document.documentElement.classList.remove("lv-route-transitioning"));
 }
 
