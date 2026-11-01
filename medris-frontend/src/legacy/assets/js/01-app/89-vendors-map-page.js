@@ -277,7 +277,7 @@ function vmpDrawRail(keepSel) {
     box.addEventListener("scroll", () => { if (vmpRailBusy) return; vmpCollapseSelectedCard(); clearTimeout(vmpRailTimer); vmpRailTimer = setTimeout(vmpRailSettled, 130); }, { passive: true });
   }
 }
-function vmpRailCards() { return [...(byId("vmpRail")?.querySelectorAll(".vmp-card") || [])]; }
+function vmpRailCards() { return [...(byId("vmpRail")?.querySelectorAll(".vmp-rail-item") || [])]; }
 function vmpRailGo(idx, smooth) {
   const box = byId("vmpRail"), cards = vmpRailCards(), c = cards[idx]; if (!box || !c) return;
   vmpRailBusy++;
