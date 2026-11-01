@@ -397,17 +397,34 @@ function vmpSelect(id, fly, fromRail, expandCard = true) {
     vmpCollapseSelectedCard();
     return;
   }
+
+  const changedVendor = !wasSelected;
   vmpSelected = v.id;
   vmpHideSugg();
   const target = vmpMap.getZoom() < 14 ? 14 : vmpMap.getZoom();
+
+  if (changedVendor) {
+    // A different vendor owns a different route. Clear the previous route before
+    // calculating the new one; collapsing the same vendor never reaches this path.
+    vmpClearRoute();
+  }
+
   if (expandCard) {
     vmpDrawSelectedCard(v);
-    if (buyerLocation) vmpTrace(v);
-    else vmpRouteCardDraw(v);
-  } else {
+    if (buyerLocation) {
+      if (changedVendor || !vmpRoute) vmpTrace(v);
+      else vmpRouteCardDraw(v);
+    } else {
+      vmpRouteCardDraw(v);
+    }
+  } else if (changedVendor) {
     vmpCollapseSelectedCard();
     vmpMap.panTo([v.lat, v.lng], { animate: true });
+    if (buyerLocation) vmpTrace(v);
+  } else {
+    vmpCollapseSelectedCard();
   }
+
   if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 });
   else if (expandCard && !fromRail && !buyerLocation) vmpMap.panTo([v.lat, v.lng], { animate: true });
   vmpDrawPins();
