@@ -1,10 +1,13 @@
 // ---------- MY DETAILS (any logged-in buyer/vendor's own contact info) ----------
 async function renderBuyerProfile() {
   if (!session || !profile || profile.role === "admin" || vendor) return '<div class="empty-state">Access denied.</div>';
-  const [{ count: totalOrders }, { count: followingCount }] = await Promise.all([
+  const [{ count: totalOrders }, { count: followingCount }, followedRes] = await Promise.all([
     sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id),
     levroData.follows.count(session.user.id),
+    // the shops you follow, newest first, for the row of pictures (like friends on Snapchat)
+    sb.from("vendor_follows").select("vendor:vendors!inner(id,business_name,logo_url,is_active)").eq("follower_id", session.user.id).order("created_at", { ascending: false }).limit(15).then((r) => r, () => ({ data: [] })),
   ]);
+  const followed = (followedRes?.data || []).map((r) => r.vendor).filter((v) => v && v.is_active !== false);
   const wishlistCount = (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0);
   const memberSince = profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
 
@@ -23,6 +26,17 @@ async function renderBuyerProfile() {
     </div>
   </section>
 
+  <section class="lv-fol-strip" aria-label="Shops you follow">
+    <div class="lv-fol-head"><h3>Shops you follow</h3>${followed.length ? `<button type="button" onclick="navigate('customerFollowing')">See all</button>` : ""}</div>
+    ${followed.length
+      ? `<div class="lv-fol-row">${followed.map((v) => `<button type="button" class="lv-fol-item" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})"><span class="lv-fol-av">${profileAvatarHtml(lvVendorPic(v), v.business_name || "Shop", "3.6rem", { stableKey: v.id })}</span><small>${esc(v.business_name || "Shop")}</small></button>`).join("")}</div>`
+      : `<button type="button" class="lv-fol-empty" onclick="navigate('vendors')"><i class="fa-solid fa-store"></i> Follow shops to see them here</button>`}
+  </section>
+  <button type="button" class="lv-map-card" onclick="navigate('vendorsMap')">
+    <span class="lv-map-art" aria-hidden="true"><i class="fa-solid fa-location-dot"></i><i class="fa-solid fa-location-dot"></i><i class="fa-solid fa-location-dot"></i></span>
+    <span class="lv-map-copy"><strong>Vendors near you</strong><small>See shops on the map around you</small></span>
+    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+  </button>
   <div class="lv-group">
     <h3 class="lv-group-title">Activity</h3>
     ${lvLinkRow("fa-receipt", "My orders", Number(buyerPendingOrderCount || 0) > 0 ? `${buyerPendingOrderCount} pending` : `${totalOrders || 0}`, "navigate('buyerOrders')")}

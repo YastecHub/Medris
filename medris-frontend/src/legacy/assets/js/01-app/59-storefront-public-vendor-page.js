@@ -60,6 +60,31 @@ async function fetchVendorForShare(vendorId) {
   if (error || !data) throw new Error("This storefront is no longer available.");
   return data;
 }
+// The banner bell shows where you stand with this shop: a bell for "All", a star for "Most relevant", a crossed-out bell
+// for "Off", and an outline bell when you do not follow it.
+function lvSfBellSync() {
+  const bell = document.getElementById("sfBannerBell"), wrap = document.getElementById("storefrontFollowWrap");
+  if (!bell || !wrap) return;
+  const following = wrap.querySelector(".follow-btn")?.getAttribute("aria-pressed") === "true";
+  const mode = wrap.querySelector('.follow-mode-row[aria-pressed="true"]')?.dataset.notifyMode || "relevant";
+  const icon = !following ? "fa-regular fa-bell" : mode === "all" ? "fa-solid fa-bell" : mode === "off" ? "fa-solid fa-bell-slash" : "fa-solid fa-star";
+  const label = !following ? "Follow to get notifications" : mode === "all" ? "Notifications: all" : mode === "off" ? "Notifications: off" : "Notifications: most relevant";
+  const i = bell.querySelector("i");
+  if (i && i.className !== icon + "") i.className = icon;
+  bell.dataset.mode = following ? mode : "none";
+  bell.setAttribute("aria-label", label); bell.title = label;
+}
+(function () {
+  let mo = null;
+  const watch = () => {
+    const wrap = document.getElementById("storefrontFollowWrap");
+    if (!wrap || wrap.__lvBellWatched) return;
+    wrap.__lvBellWatched = true;
+    try { if (mo) mo.disconnect(); mo = new MutationObserver(lvSfBellSync); mo.observe(wrap, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-pressed"] }); } catch (_) {}
+    lvSfBellSync();
+  };
+  try { new MutationObserver(watch).observe(document.documentElement, { childList: true, subtree: true }); } catch (_) {}
+})();
 // The bell on the banner opens the follow wrap's notification choices (only once the shop is followed).
 function lvSfBell(e) {
   if (e) e.stopPropagation();
@@ -394,19 +419,15 @@ async function renderStorefrontInner(vendorId) {
   // Snapchat-style header: a tall banner (the shop's own image, or one generated in its colour) with the bell, share and
   // more buttons at its top right, the shop's picture overlapping its bottom left and the name beside it; Follow fills the
   // space to the right of the picture.
-  const SF_BELL = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>`;
   const SF_DOTS = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
   let html = `<section class="storefront-profile sf-snap" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
     <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : "lv-gen-cover"}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : lvGenCoverAttrs(v.id, profileImage)}>
       ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : ""}
       <div class="sf-cover-shade" aria-hidden="true"></div>
       <div class="lv-cover-actions sf-cover-actions">
-        ${!isOwnStorefront ? `<button type="button" class="lv-cover-btn" onclick="lvSfBell(event)" aria-label="Notifications from this shop" title="Notifications">${SF_BELL}</button>` : ""}
+        ${!isOwnStorefront ? `<button type="button" class="lv-cover-btn sf-bell" id="sfBannerBell" onclick="lvSfBell(event)" aria-label="Notifications from this shop" title="Notifications"><i class="fa-regular fa-bell" aria-hidden="true"></i></button>` : ""}
         <button type="button" class="lv-cover-btn" onclick="lvOpenProfileShare('vendor','${v.id}')" aria-label="Share this shop" title="Share">${LV_SHARE_ICON}</button>
         ${storefrontMoreItems ? `<button type="button" class="lv-cover-btn" onclick="openStorefrontMoreSheet(event)" aria-label="More options" title="More">${SF_DOTS}</button>` : ""}
-      </div>
-      <div class="storefront-name-row sf-cover-name">
-        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
       </div>
     </div>
     <div class="storefront-profile-body">
@@ -417,6 +438,9 @@ async function renderStorefrontInner(vendorId) {
         <div class="storefront-profile-actions storefront-public-actions">
           ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : `<button type="button" class="btn btn-sm sf-edit-btn" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-pen"></i> Edit profile</button>`}
         </div>
+      </div>
+      <div class="storefront-name-row sf-name">
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
       </div>
       ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>

@@ -41,11 +41,28 @@ function lvVendorPic(v) {
   return (v && (v.profile_avatar_url || window.__lvOwnerAv?.get(String(v.id)) || v.logo_url)) || null;
 }
 
-// A banner for a profile without its own header image: in the colour of the person's initials (or of their picture once
-// it has loaded), with soft circle watermarks. Returns the attributes for the cover element.
+// Hand-picked gradients for banners (and QR codes): h is the hue each one stands for, so a picture's colour can find its match.
+const LV_GRADIENTS = [
+  { h: 255, c: ["#4f46e5", "#7c3aed", "#c026d3"] },   // indigo, violet, fuchsia
+  { h: 330, c: ["#be185d", "#ec4899", "#f97316"] },   // pink to orange
+  { h: 200, c: ["#0369a1", "#0ea5e9", "#22d3ee"] },   // ocean
+  { h: 160, c: ["#047857", "#10b981", "#5eead4"] },   // emerald and mint
+  { h: 25, c: ["#c2410c", "#f97316", "#facc15"] },    // sunset
+  { h: 285, c: ["#6d28d9", "#a855f7", "#f472b6"] },   // grape to pink
+  { h: 222, c: ["#1e3a8a", "#3b82f6", "#a78bfa"] },   // royal blue
+  { h: 350, c: ["#9f1239", "#f43f5e", "#fb923c"] },   // rose
+  { h: 180, c: ["#0f766e", "#14b8a6", "#38bdf8"] },   // teal to sky
+  { h: 45, c: ["#b45309", "#f59e0b", "#fde047"] },    // gold
+];
+function lvGradientFor(key, hue) {
+  if (hue != null) return LV_GRADIENTS.reduce((best, g) => { const d = (x) => Math.min(Math.abs(x - hue), 360 - Math.abs(x - hue)); return d(g.h) < d(best.h) ? g : best; });
+  return LV_GRADIENTS[(typeof stableAvatarHue === "function" ? stableAvatarHue(key) : 0) % LV_GRADIENTS.length];
+}
+const lvGradientVars = (g) => `--g1:${g.c[0]};--g2:${g.c[1]};--g3:${g.c[2]}`;
+// A banner for a profile without its own header image: one of the gradients above, chosen for the person (and matched to
+// their picture's colour once it has loaded), with soft circle watermarks. Returns the attributes for the cover element.
 function lvGenCoverAttrs(key, picUrl) {
-  const hue = typeof stableAvatarHue === "function" ? stableAvatarHue(key) : 150;
-  return `data-gc="1" style="--gh:${hue}"${picUrl ? ` data-gc-img="${esc(picUrl)}"` : ""}`;
+  return `data-gc="1" style="${lvGradientVars(lvGradientFor(key))}"${picUrl ? ` data-gc-img="${esc(picUrl)}"` : ""}`;
 }
 // The main hue of a picture, or null for greys / pictures the browser may not read.
 function lvImageHue(img) {
@@ -68,7 +85,7 @@ function lvImageHue(img) {
   const tint = (el) => {
     el.dataset.gcDone = "1";
     const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async";
-    img.onload = () => { const h = lvImageHue(img); if (h != null) el.style.setProperty("--gh", String(h)); };
+    img.onload = () => { const h = lvImageHue(img); if (h != null) { const g = lvGradientFor(null, h); el.style.setProperty("--g1", g.c[0]); el.style.setProperty("--g2", g.c[1]); el.style.setProperty("--g3", g.c[2]); } };
     img.src = el.dataset.gcImg;
   };
   const scan = () => document.querySelectorAll("[data-gc-img]:not([data-gc-done])").forEach(tint);
