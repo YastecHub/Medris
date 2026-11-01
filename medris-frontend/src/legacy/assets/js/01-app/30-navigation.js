@@ -297,6 +297,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   currentView = view;
   document.body.classList.toggle("vendors-map-full-page", view === "vendorsMap");
+  document.body.classList.toggle("vendors-map-hide-dock", view === "vendorsMap");
   if (view !== "vendors") document.getElementById("vmpReturnMapBtn")?.remove();
   currentViewParams = params || {};
   try { syncLevromartLinkPreviewMeta(view, currentViewParams); } catch (_) {}

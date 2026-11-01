@@ -4853,3 +4853,89 @@ html body #app .vmpage[data-style="night"] .vmp-toolbar .vmp-bar input::placehol
 html body #app .vmpage[data-style="night"] .vmp-view-switch button.active,
 html body #app .vmpage[data-style="night"] .vmp-chip.on{background:var(--primary)!important;color:#fff!important}
 html body #app .vmpage[data-style="night"] .vmp-rail-item{background:#252b35!important;border-color:#414957!important}
+
+
+/* True edge-to-edge map: no header or bottom-navigation reserved bands. */
+body.vendors-map-full-page > header,
+body.vendors-map-hide-dock #bottomNav,
+body.vendors-map-hide-dock .bottom-nav,
+body.vendors-map-hide-dock #bottom-nav{display:none!important}
+body.vendors-map-full-page,
+body.vendors-map-full-page html,
+html body.vendors-map-full-page{height:100%!important;min-height:100%!important;overflow:hidden!important}
+body.vendors-map-full-page #app{
+  position:static!important;display:block!important;width:100%!important;max-width:none!important;
+  height:100dvh!important;min-height:100dvh!important;margin:0!important;padding:0!important;
+  overflow:visible!important;transform:none!important;
+}
+body.vendors-map-full-page #app main,
+body.vendors-map-full-page #app .app-content,
+body.vendors-map-full-page #app .page-content{
+  height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+}
+body.vendors-map-full-page #app .vmpage{
+  position:fixed!important;inset:0!important;z-index:7000!important;
+  width:100vw!important;height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;
+  margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+  overflow:hidden!important;box-sizing:border-box!important;
+}
+body.vendors-map-full-page #app .vmpage #vmpMap{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  min-height:100%!important;margin:0!important;padding:0!important;
+}
+body.vendors-map-full-page #app .vmpage .vmp-top{
+  top:max(.6rem,env(safe-area-inset-top,0px))!important;
+}
+body.vendors-map-full-page #app .vmpage .vmp-bottom{
+  bottom:max(.25rem,env(safe-area-inset-bottom,0px))!important;
+}
+html body #app .vmpage .vmp-rail-item{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;line-height:1!important;font-size:0!important;
+  overflow:hidden!important;text-align:center!important;
+}
+html body #app .vmpage .vmp-rail-item>img{
+  display:block!important;width:100%!important;height:100%!important;flex:0 0 100%!important;
+  object-fit:cover!important;border-radius:50%!important;
+}
+html body #app .vmpage .vmp-rail-item .vd-initials,
+html body #app .vmpage .vmp-rail-item .vd-initials *,
+html body #app .vmpage .vmp-rail-item>span:not(.vmp-rail-active-dot){
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  position:static!important;inset:auto!important;transform:none!important;
+  width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;
+  flex:0 0 100%!important;margin:0!important;padding:0!important;
+  border-radius:50%!important;line-height:1!important;text-align:center!important;
+  font-size:1rem!important;font-weight:800!important;letter-spacing:0!important;
+  overflow:hidden!important;object-fit:contain!important;
+}
+html body #app .vmpage .vmp-rail-item .vmp-rail-active-dot{
+  position:absolute!important;right:0!important;bottom:0!important;
+  width:12px!important;height:12px!important;flex:none!important;
+  border:2px solid var(--card)!important;z-index:2!important;
+}
+@media(max-width:720px){
+  body.vendors-map-full-page #app,
+  body.vendors-map-full-page #app main,
+  body.vendors-map-full-page #app .app-content,
+  body.vendors-map-full-page #app .page-content{padding-bottom:0!important}
+}
+
+
+/* Map-rail initials use the same first/last-word initials and matching stable tint
+   as vendorDirectoryMapIcon, centered inside the circular avatar. */
+html body #app .vmpage .vmp-rail-item{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  position:relative!important;box-sizing:border-box!important;padding:0!important;
+}
+html body #app .vmpage .vmp-rail-item>.vmp-rail-ini{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  position:static!important;inset:auto!important;transform:none!important;
+  flex:0 0 100%!important;width:100%!important;height:100%!important;
+  max-width:100%!important;max-height:100%!important;margin:0!important;padding:0!important;
+  border-radius:50%!important;background:var(--vmp-bg)!important;color:var(--vmp-fg)!important;
+  font-family:inherit!important;font-size:1.12rem!important;font-weight:850!important;
+  line-height:1!important;letter-spacing:0!important;text-align:center!important;
+  overflow:hidden!important;
+}

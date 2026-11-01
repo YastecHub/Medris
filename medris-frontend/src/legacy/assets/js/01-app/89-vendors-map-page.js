@@ -98,15 +98,18 @@ function vmpOpenPlacePicker() {
   vmpSearch(value.trim());
 }
 function vmpLayout() {
-  const page = byId("vmPage"); if (!page) return;
-  const nav = byId("bottomNav");
-  const top = Math.max(0, page.getBoundingClientRect().top);
-  let bottom = 0;
-  if (nav && getComputedStyle(nav).display !== "none") {
-    const r = nav.getBoundingClientRect();
-    if (r.width >= window.innerWidth * 0.5) bottom = Math.max(0, window.innerHeight - r.top);
-  }
-  page.style.height = `${Math.max(320, window.innerHeight - top - bottom)}px`;
+  const page = byId("vmPage");
+  if (!page) return;
+  // The map owns the complete viewport on this route. Do not subtract the
+  // marketplace header or bottom dock: both are hidden while the map is active.
+  page.style.position = "fixed";
+  page.style.inset = "0";
+  page.style.width = "100vw";
+  page.style.height = "100dvh";
+  page.style.minHeight = "100dvh";
+  page.style.zIndex = "7000";
+  page.style.margin = "0";
+  page.style.padding = "0";
   vmpMap?.invalidateSize(true);
 }
 
@@ -228,9 +231,24 @@ function vmpDrawPins() {
   });
   window.dispatchEvent(new Event("scroll"));
 }
+
+function vmpVendorInitials(v) {
+  const words = String(v?.business_name || "?").replace(/[^\p{L}\p{N} ]/gu, "").trim().split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] || "?") + (words.length > 1 ? words[words.length - 1][0] : words[0]?.[1] || "")).toUpperCase();
+}
+function vmpVendorTint(v) {
+  const seed = String(v?.id || v?.business_name || "?");
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) % 360;
+  return { background: `hsl(${hash} 70% 88%)`, foreground: `hsl(${hash} 55% 28%)` };
+}
+function vmpRailInitialsHtml(v) {
+  const initials = vmpVendorInitials(v), tint = vmpVendorTint(v);
+  return '<span class="vmp-rail-ini" style="--vmp-bg:' + tint.background + ';--vmp-fg:' + tint.foreground + '">' + esc(initials) + '</span>';
+}
 function vmpCardHtml(v) {
   const id = String(v.id), km = vmpDistKm(v), sector = vmpSectorOf(v);
-  const media = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" data-n="${esc(v.business_name || "")}" data-k="${esc(id)}" onerror="vdImgFail(this)">` : vdInitialsHtml(v.business_name || "Vendor", id);
+  const media = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" data-n="${esc(v.business_name || "")}" data-k="${esc(id)}" onerror="vdImgFail(this)">` : vmpRailInitialsHtml(v);
   const est = km != null ? `${vmpDistText(km)} · ${vmpMins(VMP_MODES[0].f(km * 1.3, Math.max(1, km * 1.3 / 22 * 60)))} by car` : "";
   const meta = [sector, v.city, est].filter(Boolean).map(esc).join(" · ");
   const dir = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.lat + "," + v.lng)}`;
@@ -243,8 +261,23 @@ function vmpCardHtml(v) {
 // The vendor cards: one endless row. Swiping it moves the map to the vendor in the middle; reaching the end carries on from the first.
 function vmpRailItemHtml(v) {
   const id = String(v.id);
-  const media = v.logo_url ? '<img src="' + esc(v.logo_url) + '" alt="" loading="lazy" draggable="false" onerror="vdImgFail(this)">' : vdInitialsHtml(v.business_name || "Vendor", id);
-  return '<button type="button" class="vmp-rail-item' + (id === String(vmpSelected) ? ' on' : '') + '" data-vid="' + esc(id) + '" onclick="vmpSelect(\'' + esc(id) + '\',true,true,true)" aria-label="Show ' + esc(v.business_name || "vendor") + ' details" title="' + esc(v.business_name || "Vendor") + '">' + media + '<span class="vmp-rail-active-dot"></span></button>';
+  const media = v.logo_url
+    ? '<img src="' + esc(v.logo_url) + '" alt="" loading="lazy" draggable="false" onerror="vdImgFail(this)">'
+    : vmpRailInitialsHtml(v);
+  return '<button type="button" class="vmp-rail-item' + (id === String(vmpSelected) ? " on" : "") +
+    '" data-vid="' + esc(id) + '" onclick="vmpRailTap(\'' + esc(id) + '\')" aria-label="Show ' +
+    esc(v.business_name || "vendor") + ' details" title="' + esc(v.business_name || "Vendor") + '">' +
+    media + '<span class="vmp-rail-active-dot"></span></button>';
+}
+function vmpRailTap(id) {
+  const selected = String(id) === String(vmpSelected);
+  const cardOpen = !!byId("vmpExpandedCard") && !byId("vmpExpandedCard").classList.contains("hidden");
+  const routeOpen = !!byId("vmpRouteCard") && !byId("vmpRouteCard").classList.contains("hidden");
+  if (selected && (cardOpen || routeOpen)) {
+    vmpCollapseSelectedCard();
+    return;
+  }
+  vmpSelect(id, true, true, true);
 }
 function vmpDrawSelectedCard(v) {
   const box = byId("vmpExpandedCard");
@@ -350,13 +383,22 @@ async function vmpTrace(v) {
   try { vmpMap.fitBounds(L.latLngBounds(coords).pad(0.25), { animate: true, maxZoom: 16, paddingTopLeft: [0, 120], paddingBottomRight: [0, 230] }); } catch (_) {}
 }
 function vmpSelect(id, fly, fromRail, expandCard = true) {
-  const v = vmpAll.find((x) => String(x.id) === String(id)); if (!v || !vmpMap) return;
+  const v = vmpAll.find((x) => String(x.id) === String(id));
+  if (!v || !vmpMap) return;
+  const wasSelected = String(v.id) === String(vmpSelected);
+  const cardOpen = !!byId("vmpExpandedCard") && !byId("vmpExpandedCard").classList.contains("hidden");
+  const routeOpen = !!byId("vmpRouteCard") && !byId("vmpRouteCard").classList.contains("hidden");
+  if (expandCard && wasSelected && (cardOpen || routeOpen)) {
+    vmpCollapseSelectedCard();
+    return;
+  }
   vmpSelected = v.id;
   vmpHideSugg();
   const target = vmpMap.getZoom() < 14 ? 14 : vmpMap.getZoom();
   if (expandCard) {
     vmpDrawSelectedCard(v);
-    if (buyerLocation) vmpTrace(v); else vmpRouteCardDraw(v);
+    if (buyerLocation) vmpTrace(v);
+    else vmpRouteCardDraw(v);
   } else {
     vmpCollapseSelectedCard();
     vmpMap.panTo([v.lat, v.lng], { animate: true });
