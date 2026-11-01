@@ -1,5 +1,5 @@
 const CACHE = 'levromart-shell-v{{asset-version}}';
-const RUNTIME = 'levromart-runtime-v11';
+const RUNTIME = 'levromart-runtime-v10';
 const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', event => {
@@ -70,27 +70,44 @@ self.addEventListener('fetch', event => {
             if (!(fresh && fresh.ok)) return null;
             let newer = false;
             if (saved) {
-          // Keep the already-cached app available immediately during releases.
-          // A slow deployment/network request must not hold the launch screen
-          // open or force users through a "network is slow" interstitial.
-          // Refresh the cached shell silently for the next navigation/reload.
-          event.waitUntil(refresh.then(() => {}).catch(() => {}));
+              try {
+                const [a, b] = await Promise.all([saved.clone().text(), fresh.clone().text()]);
+                newer = a !== b;
+              } catch (e) {}
+            }
+            await cache.put(request, fresh.clone()).catch(() => {});
+            return { fresh, newer };
+          })
+          .catch(() => null);
+
+        if (saved) {
+          const quick = await Promise.race([
+            refresh,
+            new Promise(resolve => setTimeout(() => resolve(null), 1200))
+          ]);
+          if (quick && quick.fresh) return quick.fresh;
+
+          event.waitUntil(
+            refresh.then(async done => {
+              if (done && done.newer) {
+                const open = await self.clients.matchAll({ type: 'window' });
+                open.forEach(c => c.postMessage({ type: 'LV_APP_UPDATED' }));
+              }
+            })
+          );
           return saved;
         }
 
-        // First visit on this device has no saved shell yet. Bound the wait so
-        // a stalled connection cannot leave the app in an endless launch state.
-        const firstLoad = await Promise.race([
-          refresh,
-          new Promise(resolve => setTimeout(() => resolve(null), 8000))
-        ]);
+        const done = await refresh;
         return (
-          (firstLoad && firstLoad.fresh) ||
+          (done && done.fresh) ||
           new Response(
-            'Levromart is temporarily unavailable. Please check your connection and try again.',
+            'Levromart is offline.',
             {
               status: 503,
-              headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+              headers: {
+                'Content-Type': 'text/plain'
+              }
             }
           )
         );
