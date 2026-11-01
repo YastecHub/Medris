@@ -185,7 +185,8 @@ function renderVendorsDirectory() {
       <label>Category<select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select></label>
     </div>
   </div>`;
-  html += `<div class="grid" id="vendorsGrid"><p class="muted">Loading…</p></div>`;
+  const cachedVendors = Array.isArray(window.__allVendors) ? window.__allVendors : [];
+  html += `<div class="grid" id="vendorsGrid">${cachedVendors.length ? cachedVendors.map(vendorCardHtml).join("") : vendorDirectorySkeletonHtml()}</div>`;
   html += `<div id="vendorsMapWrap" class="hidden">
     <div class="vmap-card">
       <div id="vendorsMap" style="background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
@@ -194,8 +195,9 @@ function renderVendorsDirectory() {
   </div>`;
   setTimeout(async () => {
     try {
-      // cards from the last visit appear at once; the fresh list then replaces them only if something changed
-      if (Array.isArray(window.__allVendors) && window.__allVendors.length) { try { filterVendorsDirectory(); } catch (_) {} }
+      // Render from the primary vendors response once. Optional enrichment is
+      // applied without replacing the directory with a second, differently-sized
+      // set of cards after the page has already appeared.
       await loadVendorsDirectory();
       if (buyerDistanceAutoEnabled) scheduleAutomaticLocationRefresh();
       else updateVendorsLocationUI();
