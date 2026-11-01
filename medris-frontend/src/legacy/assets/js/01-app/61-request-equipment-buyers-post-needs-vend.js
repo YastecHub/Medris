@@ -173,12 +173,6 @@ async function renderRequestEquipment() {
   return html;
 }
 
-  setTimeout(updateRequestFormFields, 0);
-  window.__reqPhotos = [];
-  window.__reqDraftPhotos = [];
-  setTimeout(() => { reqPhotosPaint(); reqDraftRestore(); }, 0);
-  return html;
-}
 
 
 async function renderMyEquipmentRequests() {
@@ -221,7 +215,6 @@ async function renderMyEquipmentRequests() {
 
   return html;
 }
-
 
 async function renderVendorRequests() {
   // On a hard refresh Safari can restore the Supabase session slightly after
