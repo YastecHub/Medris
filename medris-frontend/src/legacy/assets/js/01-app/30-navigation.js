@@ -1,4 +1,34 @@
 // ---------- NAVIGATION ----------
+/* Startup recovery: the legacy runtime can finish loading even when auth or
+   the first catalogue request is slow. Keep a real, navigable screen visible
+   and release the branded splash on a bounded timer. */
+(function () {
+  var began = Date.now();
+  function showRecovery() {
+    var app = document.getElementById("app");
+    if (!app || app.querySelector("#lv-startup-recovery")) return;
+    app.innerHTML = '<section id="lv-startup-recovery" role="status" style="min-height:45vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.25rem;gap:.75rem"><i class="fa-solid fa-shop" style="font-size:2rem;color:var(--primary,#159b70)"></i><strong>Opening Levromart</strong><span class="muted">The marketplace is taking longer than usual to respond.</span><button type="button" class="btn" id="lv-startup-retry">Try again</button></section>';
+    var retry = document.getElementById("lv-startup-retry");
+    if (retry) retry.onclick = function () {
+      try { window.navigate("home", {}, false); } catch (e) { location.reload(); }
+    };
+  }
+  function release() {
+    try { window.__levroSplashHidden = true; } catch (_) {}
+    var splash = document.getElementById("levromartSplash");
+    if (splash) { splash.classList.add("is-hidden"); splash.setAttribute("aria-hidden", "true"); }
+  }
+  function tick() {
+    if (Date.now() - began < 9000) { setTimeout(tick, 300); return; }
+    release();
+    var app = document.getElementById("app");
+    if (app && !app.innerHTML.trim()) showRecovery();
+  }
+  setTimeout(tick, 300);
+  window.addEventListener("error", function () { if (Date.now() - began > 7000) { release(); showRecovery(); } });
+  window.addEventListener("unhandledrejection", function () { if (Date.now() - began > 7000) { release(); showRecovery(); } });
+})();
+
 let currentView = "home";
 let currentViewParams = {};
 // So Levi can be told "the person is looking at page X" (and, if that page
