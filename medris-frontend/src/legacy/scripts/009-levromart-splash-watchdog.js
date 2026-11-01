@@ -42,10 +42,18 @@
   }
   setTimeout(function tick(){
     var waited=Date.now()-started;
-    if(!appArrived() && !window.__levroSplashHidden){ if(waited>6000) slowNotice(); setTimeout(tick,300); return; }
+    var arrived=appArrived();
+    // Never trap someone behind the splash screen. If the app bundle has
+    // failed to arrive, reveal the document after a firm 10-second ceiling.
+    // The app can still initialise underneath and take over when ready.
+    if(!arrived && !window.__levroSplashHidden && waited<10000){
+      if(waited>6000) slowNotice();
+      setTimeout(tick,300);
+      return;
+    }
     var n=document.getElementById("lvSlowNet"); if(n) n.remove();
-    if(!styled() && waited<10000){ setTimeout(tick,200); return; }
-    try{ window.__levroSplashHidden=true; }catch(_){} hide();
+    try{ window.__levroSplashHidden=true; }catch(_){}
+    hide();
   },4500);
 
 })();

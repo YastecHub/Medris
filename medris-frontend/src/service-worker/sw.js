@@ -1,5 +1,5 @@
 const CACHE = 'levromart-shell-v{{asset-version}}';
-const RUNTIME = 'levromart-runtime-v10';
+const RUNTIME = 'levromart-runtime-v11';
 const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', event => {
