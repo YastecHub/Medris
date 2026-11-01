@@ -5034,3 +5034,10 @@ html body #app .buyer-profile-card.lv-profile-hero + .lv-group{margin-top:0!impo
   html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar-row{margin-top:-2.55rem!important}
   html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar{width:5.2rem!important;height:5.2rem!important;flex-basis:5.2rem!important;min-width:5.2rem!important;min-height:5.2rem!important}
 }
+
+
+/* Vendor dashboard: restore the shop cover and show the two profile destinations. */
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .vendor-profile-header-cover{display:block!important;min-height:172px!important;height:172px!important}
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions{display:flex!important;gap:.6rem!important;margin:.85rem 0 .15rem!important}
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:.45rem;padding:.72rem .6rem;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:transparent;color:var(--text,#172033);font:700 .84rem/1.2 inherit}
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action.active{background:#0b7557;border-color:#0b7557;color:#fff}
