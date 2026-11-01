@@ -1,34 +1,44 @@
-// ---------- NAVIGATION ----------
-/* Startup recovery: the legacy runtime can finish loading even when auth or
-   the first catalogue request is slow. Keep a real, navigable screen visible
-   and release the branded splash on a bounded timer. */
+// Startup recovery: function declarations do not prove that a usable page rendered.
 (function () {
   var began = Date.now();
-  function showRecovery() {
-    var app = document.getElementById("app");
-    if (!app || app.querySelector("#lv-startup-recovery")) return;
-    app.innerHTML = '<section id="lv-startup-recovery" role="status" style="min-height:45vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.25rem;gap:.75rem"><i class="fa-solid fa-shop" style="font-size:2rem;color:var(--primary,#159b70)"></i><strong>Opening Levromart</strong><span class="muted">The marketplace is taking longer than usual to respond.</span><button type="button" class="btn" id="lv-startup-retry">Try again</button></section>';
-    var retry = document.getElementById("lv-startup-retry");
-    if (retry) retry.onclick = function () {
-      try { window.navigate("home", {}, false); } catch (e) { location.reload(); }
-    };
-  }
   function release() {
     try { window.__levroSplashHidden = true; } catch (_) {}
     var splash = document.getElementById("levromartSplash");
     if (splash) { splash.classList.add("is-hidden"); splash.setAttribute("aria-hidden", "true"); }
   }
-  function tick() {
-    if (Date.now() - began < 9000) { setTimeout(tick, 300); return; }
-    release();
-    var app = document.getElementById("app");
-    if (app && !app.innerHTML.trim()) showRecovery();
+  function hasUsableHome(app) {
+    return !!(app && app.querySelector(".levro-home-startup, .levro-home-hero, .home-promotional-carousel, #browseSection, #lv-startup-recovery"));
   }
-  setTimeout(tick, 300);
-  window.addEventListener("error", function () { if (Date.now() - began > 7000) { release(); showRecovery(); } });
-  window.addEventListener("unhandledrejection", function () { if (Date.now() - began > 7000) { release(); showRecovery(); } });
+  function showRecovery(reason) {
+    var app = document.getElementById("app");
+    if (!app || app.querySelector("#lv-startup-recovery") || hasUsableHome(app)) return;
+    console.warn("[Levromart startup] No usable marketplace first paint.", { elapsedMs: Date.now() - began, reason: reason || "timeout" });
+    app.innerHTML = '<section id="lv-startup-recovery" role="status" style="min-height:45vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.25rem;gap:.75rem"><i class="fa-solid fa-shop" style="font-size:2rem;color:var(--primary,#159b70)"></i><strong>Marketplace temporarily unavailable</strong><span class="muted">The marketplace could not finish opening. Your account is safe. Check your connection and retry.</span><button type="button" class="btn" id="lv-startup-retry">Try again</button></section>';
+    var retry = document.getElementById("lv-startup-retry");
+    if (retry) retry.onclick = function () {
+      if (typeof window.navigate === "function") {
+        app.innerHTML = homeStartupShellHtml({ offline: navigator.onLine === false });
+        Promise.resolve(window.navigate("home", {}, false)).catch(function (err) { console.warn("[Levromart startup] Retry failed.", err); });
+      } else location.reload();
+    };
+  }
+  setTimeout(function () {
+    release();
+    if (!hasUsableHome(document.getElementById("app"))) showRecovery("home-first-paint-timeout");
+  }, 9000);
+  window.addEventListener("error", function (event) {
+    if (Date.now() - began > 2500) {
+      release();
+      if (!hasUsableHome(document.getElementById("app"))) showRecovery(event && event.message ? event.message : "script-error");
+    }
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    if (Date.now() - began > 2500) {
+      release();
+      if (!hasUsableHome(document.getElementById("app"))) showRecovery(event && event.reason ? String(event.reason) : "unhandled-rejection");
+    }
+  });
 })();
-
 let currentView = "home";
 let currentViewParams = {};
 // So Levi can be told "the person is looking at page X" (and, if that page
@@ -433,7 +443,15 @@ async function navigate(view, params = {}, pushHistory = true) {
   // only when the fresh render is ready. This prevents the Home fallback/loading
   // state from ever becoming the visible result of a slow or transient request.
   if (view === "home" && app && !reactView && !routeHtmlCache.has(cacheKey) && !window.__levroCategorySwitch) {
-    try { paintHomeFromLocalCatalog(false); } catch (_) {}
+    let painted = false;
+    try { painted = paintHomeFromLocalCatalog(false); } catch (err) {
+      console.warn("[Levromart startup] Cached homepage paint failed.", err);
+    }
+    if (!painted && !app.querySelector(".levro-home-startup")) {
+      app.innerHTML = homeStartupShellHtml({ offline: browserLooksOffline() });
+      try { syncLeviFabVisibility(); initHomepageCarousel(); } catch (_) {}
+    }
+    try { hideLevromartSplash(); } catch (_) {}
   }
   let html;
   let __levroRouteHadRenderError = false;
