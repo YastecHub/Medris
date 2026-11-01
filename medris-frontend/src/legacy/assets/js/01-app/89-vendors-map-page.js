@@ -30,44 +30,48 @@ function renderVendorsMapPage() {
   return `<div class="vmpage" id="vmPage">
     <div id="vmpMap" aria-label="Map of vendors"></div>
     <div class="vmp-top vmp-social-top">
-      <div class="vmp-social-head">
+      <div class="vmp-toolbar">
         <button type="button" class="vmp-profile" onclick="navigate(vendor ? 'vendorDashboard' : 'buyerProfile')" aria-label="Open account">
           ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" alt="" />` : `<span>${esc((profile?.name || "Me").slice(0,1).toUpperCase())}</span>`}
         </button>
-        <button type="button" class="vmp-place" onclick="vmpOpenPlacePicker()" aria-label="Choose school or location">
-          <span class="vmp-place-copy"><strong id="vmpPlaceName">${esc(window.__vmpPlaceName || buyerLocation?.label || profile?.city || "Choose location")}</strong><small id="vmpPlaceSub">${esc(window.__vmpPlaceSub || "Explore vendors around you")}</small></span>
-          <i class="fa-solid fa-chevron-down"></i>
-        </button>
-        <button type="button" class="vmp-profile-action" onclick="navigate('settings')" aria-label="Map preferences"><i class="fa-solid fa-sliders"></i></button>
+        <div class="vmp-bar">
+          <button type="button" class="vmp-back" onclick="vmpBack()" aria-label="Back to previous page"><i class="fa-solid fa-arrow-left"></i></button>
+          <i class="fa-solid fa-magnifying-glass vmp-bar-ic" aria-hidden="true"></i>
+          <input id="vmpQ" type="search" autocomplete="off" placeholder="Search places, vendors…" oninput="vmpSearch(this.value)" onfocus="vmpSearch(this.value)" onkeydown="if(event.key==='Enter')vmpPickFirst()" aria-label="Search places and vendors">
+          <button type="button" class="vmp-clear hidden" id="vmpClear" aria-label="Clear search" onclick="vmpSearch('',true)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="vmp-view-switch" role="group" aria-label="Vendor display">
+          <button type="button" class="active" id="vmpMapViewBtn" onclick="vmpSetDisplay('map')" aria-label="Map view" aria-pressed="true"><i class="fa-solid fa-map-location-dot"></i></button>
+          <button type="button" id="vmpGridViewBtn" onclick="vmpSetDisplay('grid')" aria-label="Grid and list view" aria-pressed="false"><i class="fa-solid fa-grip"></i></button>
+        </div>
       </div>
-      <div class="vmp-search-row">
-        <div class="vmp-bar"><i class="fa-solid fa-magnifying-glass vmp-bar-ic" aria-hidden="true"></i><input id="vmpQ" type="search" autocomplete="off" placeholder="Search places, vendors…" oninput="vmpSearch(this.value)" onfocus="vmpSearch(this.value)" onkeydown="if(event.key==='Enter')vmpPickFirst()" aria-label="Search places and vendors"><button type="button" class="vmp-clear hidden" id="vmpClear" aria-label="Clear search" onclick="vmpSearch('',true)"><i class="fa-solid fa-xmark"></i></button></div>
-        <div class="vmp-view-switch" role="group" aria-label="Vendor display"><button type="button" class="active" id="vmpMapViewBtn" onclick="vmpSetDisplay('map')" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button><button type="button" id="vmpGridViewBtn" onclick="vmpSetDisplay('grid')" aria-label="Grid and list view"><i class="fa-solid fa-grip"></i></button></div>
-      </div>
-      <div class="vmp-sugg hidden" id="vmpSugg"></div><div class="vmp-chips" id="vmpChips"></div>
-    </div>
-    <div class="vmp-fabs">
+      <div class="vmp-sugg hidden" id="vmpSugg"></div>
+      <div class="vmp-chips" id="vmpChips"></div>
+    </div>    <div class="vmp-fabs">
       <button type="button" class="vmp-fab" aria-label="Map type" onclick="vmpToggleStyles()"><i class="fa-solid fa-layer-group"></i></button>
     </div>
     <div class="vmp-sheet-wrap hidden" id="vmpStyles"></div>
     <div class="vmp-bottom">
       <button type="button" class="vmp-fab vmp-locate" id="vmpLocate" aria-label="My location" onclick="vmpLocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
+      <div class="vmp-expanded-card hidden" id="vmpExpandedCard"></div>
       <div class="vmp-route hidden" id="vmpRouteCard"></div>
-      <div class="vmp-rail" id="vmpRail"></div>
+      <div class="vmp-rail" id="vmpRail" aria-label="Nearby vendor profiles"></div>
     </div>
   </div>`;
 }
 
 
+function vmpBack() {
+  const previous = window.__vmpReturnRoute;
+  if (previous?.view && previous.view !== "vendorsMap") { window.__vmpReturnRoute = null; navigate(previous.view, previous.params || {}); return; }
+  if (history.state?.view && history.state.view !== "vendorsMap") { history.back(); return; }
+  navigate("home");
+}
 function vmpSetDisplay(mode) {
-  if (mode === "grid") {
-    try { localStorage.setItem("levromart-vendors-display", "grid"); } catch (_) {}
-    navigate("vendors").then(() => setTimeout(vmpShowReturnMapButton, 100));
-    return;
-  }
+  if (mode === "grid") { try { localStorage.setItem("levromart-vendors-display", "grid"); } catch (_) {} navigate("vendors"); return; }
   try { localStorage.setItem("levromart-vendors-display", "map"); } catch (_) {}
-  byId("vmpMapViewBtn")?.classList.add("active");
-  byId("vmpGridViewBtn")?.classList.remove("active");
+  byId("vmpMapViewBtn")?.classList.add("active"); byId("vmpGridViewBtn")?.classList.remove("active");
+  byId("vmpMapViewBtn")?.setAttribute("aria-pressed", "true"); byId("vmpGridViewBtn")?.setAttribute("aria-pressed", "false");
 }
 
 function vmpShowReturnMapButton() {
