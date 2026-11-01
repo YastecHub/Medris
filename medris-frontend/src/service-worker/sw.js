@@ -23,7 +23,7 @@ self.addEventListener('activate', event => {
 
     await Promise.all(
       keys
-        .filter(k => ![CACHE, RUNTIME].includes(k))
+        .filter(k => (k.startsWith('levromart-shell-v') || k.startsWith('levromart-runtime-v')) && ![CACHE, RUNTIME].includes(k))
         .map(k => caches.delete(k))
     );
 
