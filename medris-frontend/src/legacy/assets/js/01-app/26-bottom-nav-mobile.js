@@ -45,6 +45,7 @@ window.lvLineIcon = function (n) {
     plus: "<path d='M5 12h14'/><path d='M12 5v14'/>",
     user: "<circle cx='12' cy='8' r='5'/> <path d='M20 21a8 8 0 0 0-16 0'/>",
     map: "<path d='M3 6.5 9 3l6 3 6-3v14l-6 3-6-3-6 3z'/><path d='M9 3v14m6-11v14'/><path d='M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'/>",
+    messages: "<path d='M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z'/>",
   };
   return `<svg class="lv-line-ic" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.home}</svg>`;
 };
@@ -53,58 +54,41 @@ function renderBottomNav() {
   if (!nav) return;
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const vendorsTab = { icon: lvLineIcon("map"), label: "Map", action: "navigate('vendorsMap')", view: "vendorsMap" };
-  const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
-  const requestsTab = isVendorUser
-    ? { icon: lvLineIcon("request"), label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
-    : { icon: lvLineIcon("request"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
-  const ordersTab = isVendorUser
-    ? { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
-    : { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
+  const mapTab = { icon: lvLineIcon("map"), label: "Map", action: "navigate('vendorsMap')", view: "vendorsMap" };
+  const messagesTab = { icon: lvLineIcon("messages"), label: "Chats", action: "navigate('messages')", view: "messages" };
+  const notificationsTab = { icon: lvLineIcon("bell"), label: "Activity", action: "navigate('notifications')", view: "notifications", badge: notifCount };
+  const accountTab = isVendorUser
+    ? { icon: lvLineIcon("user"), label: "Account", action: "navigate('vendorDashboard')", view: "vendorDashboard" }
+    : { icon: lvLineIcon("user"), label: "Account", action: session ? "navigate('buyerProfile')" : "showLogin()", view: session ? "buyerProfile" : null };
   const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
+  const addTab = isVendorUser
+    ? { icon: lvLineIcon("plus"), label: "Add", action: "openAddChooser()", view: null }
+    : { icon: lvLineIcon("plus"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
 
   let items;
   if (session && profile?.role === "admin") {
-    // Admin navigation remains unchanged; the centered + button is not used here.
-    items = [homeTab, vendorsTab,
+    items = [homeTab, mapTab,
       { icon: lvLineIcon("shield"), label: "Admin", action: "navigate('adminPanel')", view: "adminPanel", badge: Number(window.__lvPayPending||0) },
       { icon: lvLineIcon("wallet"), label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
-  } else if (isVendorUser) {
-    // Vendor navigation: Home, Vendors | + | Notifications, Orders.
-    // Messages moved to the header; My Shop moved into the vendor's
-    // profile page (tapping the header avatar opens it directly).
-    items = [homeTab, vendorsTab, notificationsTab, ordersTab];
-  } else if (session) {
-    // Buyer navigation: Home → Vendors → Request → Notifications → Orders (Home is always the first tab, same as every other account).
-    // Messages moved to the header, same as vendors.
-    items = [homeTab, vendorsTab, requestsTab, notificationsTab, ordersTab];
   } else {
-    items = [homeTab, vendorsTab, requestsTab,
-      { icon: lvLineIcon("user"), label: "Login", action: "showLogin()", view: null }];
+    // Snapchat-inspired dock: discovery, conversations, create/request, activity, account.
+    items = [mapTab, messagesTab, addTab, notificationsTab, accountTab];
   }
 
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}${it.view === "notifications" && it.badge ? " ringing" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"${it.view && it.view === currentView ? ' aria-current="page"' : ""}><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
 
-  if (isVendorUser) {
-    nav.classList.remove("buyer-no-add");
-    nav.classList.add("has-add");
-    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
-      <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><span class="bn-icon">${lvLineIcon("plus")}</span><span>Add listing</span></button>
-      <div class="bn-group bn-group-right">${items.slice(2, 4).map(itemHtml).join("")}</div>`;
-  } else if (session && profile?.role === "admin") {
+  if (session && profile?.role === "admin") {
     nav.classList.remove("has-add", "buyer-no-add");
-    nav.innerHTML = items.map(itemHtml).join("");
-  } else if (session) {
-    // Buyers use a clean five-item rail. Home is the first slot and there is
-    // deliberately no + creation control on the buyer interface.
-    nav.classList.remove("has-add");
-    nav.classList.add("buyer-no-add");
     nav.innerHTML = items.map(itemHtml).join("");
   } else {
-    nav.classList.remove("has-add", "buyer-no-add");
-    nav.innerHTML = items.map(itemHtml).join("");
+    nav.classList.remove("has-add");
+    nav.classList.add("buyer-no-add", "lv-snap-dock");
+    const addHtml = isVendorUser
+      ? `<button class="bottom-nav-item bottom-nav-create" onclick="openAddChooser()" aria-label="Add listing"><span class="bn-icon">${lvLineIcon("plus")}</span><span>Add</span></button>`
+      : itemHtml(addTab);
+    nav.innerHTML = [itemHtml(mapTab), itemHtml(messagesTab), addHtml, itemHtml(notificationsTab), itemHtml(accountTab)].join("");
   }
-}
+}}
 
 const LEVRO_MOTION_KEY="levromart-motion-preference-v1";
 function getLevromartMotionPreference(){try{return localStorage.getItem(LEVRO_MOTION_KEY)==="full"?"full":"calm";}catch(_){return "calm";}}
