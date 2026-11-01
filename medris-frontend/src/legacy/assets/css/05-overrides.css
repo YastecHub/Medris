@@ -4668,3 +4668,164 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
     margin-bottom:1.25rem!important;
   }
 }
+
+
+/* Full-screen vendor map: hide marketplace chrome only on this route. */
+body.vendors-map-full-page > header{display:none!important}
+body.vendors-map-full-page #app{
+  max-width:none!important;width:100%!important;margin:0!important;
+  padding:0!important;overflow:visible!important;
+}
+body.vendors-map-full-page #app .vmpage{
+  width:100%!important;max-width:none!important;margin:0!important;border-radius:0!important;
+  height:calc(100dvh - 68px - env(safe-area-inset-bottom,0px))!important;
+  min-height:calc(100dvh - 68px - env(safe-area-inset-bottom,0px))!important;
+}
+html body #app .vmpage .vmp-top.vmp-social-top{
+  top:max(.55rem,env(safe-area-inset-top,0px))!important;
+  left:.75rem!important;right:.75rem!important;max-width:none!important;
+  display:flex!important;flex-direction:column!important;gap:.55rem!important;
+}
+html body #app .vmpage .vmp-toolbar{
+  display:flex!important;align-items:center!important;gap:.5rem!important;width:100%!important;min-width:0!important;
+}
+html body #app .vmpage .vmp-profile{
+  width:44px!important;height:44px!important;min-width:44px!important;flex:0 0 44px!important;
+  border:1.5px solid var(--border)!important;border-radius:50%!important;
+  background:var(--card)!important;color:var(--text)!important;
+  box-shadow:0 2px 9px rgba(15,23,42,.16)!important;overflow:hidden!important;padding:0!important;
+}
+html body #app .vmpage .vmp-profile img{width:100%!important;height:100%!important;object-fit:cover!important}
+html body #app .vmpage .vmp-profile span{color:var(--text)!important}
+html body #app .vmpage .vmp-toolbar .vmp-bar{
+  display:flex!important;align-items:center!important;gap:.35rem!important;
+  height:46px!important;min-width:0!important;flex:1 1 auto!important;
+  border-radius:999px!important;padding:0 .55rem!important;
+  background:var(--card)!important;color:var(--text)!important;
+  border:1px solid var(--border)!important;box-shadow:0 3px 12px rgba(15,23,42,.14)!important;
+}
+html body #app .vmpage .vmp-toolbar .vmp-bar input{
+  min-width:0!important;flex:1!important;height:100%!important;
+  padding:.3rem .15rem!important;color:var(--text)!important;
+}
+html body #app .vmpage .vmp-toolbar .vmp-bar input::placeholder{color:var(--text-muted)!important;opacity:.85}
+html body #app .vmpage .vmp-toolbar .vmp-bar .vmp-bar-ic{color:var(--text-muted)!important;flex:0 0 auto}
+html body #app .vmpage .vmp-toolbar .vmp-back{
+  width:30px!important;height:34px!important;min-width:30px!important;padding:0!important;
+  display:grid!important;place-items:center!important;border:0!important;border-radius:50%!important;
+  background:transparent!important;color:var(--text)!important;box-shadow:none!important;
+}
+html body #app .vmpage .vmp-toolbar .vmp-back i{font-size:.95rem!important}
+html body #app .vmpage .vmp-view-switch{
+  flex:0 0 auto!important;display:flex!important;align-items:center!important;gap:2px!important;
+  padding:3px!important;border-radius:999px!important;
+  background:var(--card)!important;border:1px solid var(--border)!important;
+  box-shadow:0 3px 12px rgba(15,23,42,.14)!important;backdrop-filter:blur(12px)!important;
+}
+html body #app .vmpage .vmp-view-switch button{
+  width:34px!important;height:36px!important;border:0!important;border-radius:50%!important;
+  display:grid!important;place-items:center!important;background:transparent!important;
+  color:var(--text-muted)!important;box-shadow:none!important;
+}
+html body #app .vmpage .vmp-view-switch button.active{
+  background:var(--primary)!important;color:#fff!important;
+}
+html body #app .vmpage .vmp-chips{
+  display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+  gap:.45rem!important;margin:0!important;padding:.05rem .05rem .35rem!important;
+  scrollbar-width:none!important;
+}
+html body #app .vmpage .vmp-chips::-webkit-scrollbar{display:none!important}
+html body #app .vmpage .vmp-chip{
+  flex:0 0 auto!important;padding:.43rem .85rem!important;
+  border-radius:999px!important;background:var(--card)!important;color:var(--text)!important;
+  border:1px solid var(--border)!important;box-shadow:0 2px 8px rgba(15,23,42,.12)!important;
+}
+html body #app .vmpage .vmp-chip.on{
+  background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important;
+}
+html body #app .vmpage .vmp-fabs{top:7.2rem!important;right:.8rem!important}
+html body #app .vmpage .vmp-fab{
+  width:44px!important;height:44px!important;border:1px solid var(--border)!important;
+  border-radius:50%!important;background:var(--card)!important;color:var(--text)!important;
+  box-shadow:0 3px 12px rgba(15,23,42,.18)!important;
+}
+html body #app .vmpage .vmp-bottom{
+  left:0!important;right:0!important;width:100%!important;
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;
+  gap:.25rem!important;padding:0 0 max(.45rem,env(safe-area-inset-bottom,0px))!important;
+  background:linear-gradient(to top,color-mix(in srgb,var(--bg) 92%,transparent),transparent 100px)!important;
+}
+html body #app .vmpage .vmp-locate{
+  align-self:flex-end!important;margin:0 .8rem .35rem!important;
+}
+html body #app .vmpage .vmp-expanded-card{
+  display:block!important;width:calc(100% - 1.4rem)!important;max-width:470px!important;
+  margin:0 auto .25rem!important;pointer-events:auto!important;
+}
+html body #app .vmpage .vmp-expanded-card.hidden{display:none!important}
+html body #app .vmpage .vmp-expanded-card .vmp-card{
+  width:100%!important;max-width:none!important;min-width:0!important;flex:none!important;
+  border-radius:22px!important;padding:.75rem!important;
+  background:var(--card)!important;color:var(--text)!important;
+  border:1px solid var(--border)!important;box-shadow:0 4px 18px rgba(15,23,42,.18)!important;
+}
+html body #app .vmpage .vmp-expanded-card .vmp-card-logo{border-radius:50%!important}
+html body #app .vmpage .vmp-expanded-card .vmp-card-name{color:var(--text)!important}
+html body #app .vmpage .vmp-expanded-card .vmp-card-copy>span,
+html body #app .vmpage .vmp-expanded-card .vmp-distance{color:var(--text-muted)!important}
+html body #app .vmpage .vmp-route{
+  width:calc(100% - 1.4rem)!important;max-width:470px!important;
+  margin:0 auto .25rem!important;border:1px solid var(--border)!important;
+  background:var(--card)!important;color:var(--text)!important;border-radius:20px!important;
+  box-shadow:0 4px 18px rgba(15,23,42,.16)!important;
+}
+html body #app .vmpage .vmp-rail{
+  display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;
+  gap:.65rem!important;width:100%!important;max-width:none!important;
+  max-height:none!important;height:76px!important;overflow-x:auto!important;overflow-y:hidden!important;
+  padding:.35rem .85rem .5rem!important;margin:0!important;
+  scroll-snap-type:x mandatory!important;overscroll-behavior-x:contain!important;
+  scrollbar-width:none!important;background:transparent!important;
+}
+html body #app .vmpage .vmp-rail::-webkit-scrollbar{display:none!important}
+html body #app .vmpage .vmp-rail-item{
+  position:relative!important;display:grid!important;place-items:center!important;
+  flex:0 0 56px!important;width:56px!important;height:56px!important;min-width:56px!important;
+  padding:0!important;border-radius:50%!important;overflow:visible!important;scroll-snap-align:center!important;
+  background:var(--card)!important;color:var(--text)!important;border:2px solid var(--border)!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.20)!important;cursor:pointer!important;
+}
+html body #app .vmpage .vmp-rail-item>img,
+html body #app .vmpage .vmp-rail-item>.vd-initials{
+  display:block!important;width:100%!important;height:100%!important;max-width:none!important;
+  border-radius:50%!important;object-fit:cover!important;overflow:hidden!important;
+}
+html body #app .vmpage .vmp-rail-item.on{
+  border:3px solid var(--primary)!important;transform:scale(1.08)!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 20%,transparent),0 4px 12px rgba(15,23,42,.22)!important;
+}
+html body #app .vmpage .vmp-rail-active-dot{
+  position:absolute!important;right:0!important;bottom:0!important;width:12px!important;height:12px!important;
+  border:2px solid var(--card)!important;border-radius:50%!important;background:var(--primary)!important;
+  opacity:0!important;
+}
+html body #app .vmpage .vmp-rail-item.on .vmp-rail-active-dot{opacity:1!important}
+html body #app .vmpage .vmp-empty{flex:1 0 100%;text-align:center;color:var(--text-muted)}
+/* Theme-aware surfaces follow the chosen map appearance, not a fixed dark palette. */
+:root[data-theme="dark"] body #app .vmpage .vmp-toolbar .vmp-bar,
+:root[data-theme="black"] body #app .vmpage .vmp-toolbar .vmp-bar,
+:root[data-theme="dark"] body #app .vmpage .vmp-view-switch,
+:root[data-theme="black"] body #app .vmpage .vmp-view-switch,
+:root[data-theme="dark"] body #app .vmpage .vmp-chip,
+:root[data-theme="black"] body #app .vmpage .vmp-chip,
+:root[data-theme="dark"] body #app .vmpage .vmp-profile,
+:root[data-theme="black"] body #app .vmpage .vmp-profile,
+:root[data-theme="dark"] body #app .vmpage .vmp-fab,
+:root[data-theme="black"] body #app .vmpage .vmp-fab{
+  background:var(--card)!important;color:var(--text)!important;border-color:var(--border)!important;
+}
+:root[data-theme="dark"] body #app .vmpage .vmp-view-switch button.active,
+:root[data-theme="black"] body #app .vmpage .vmp-view-switch button.active,
+:root[data-theme="dark"] body #app .vmpage .vmp-chip.on,
+:root[data-theme="black"] body #app .vmpage .vmp-chip.on{background:var(--primary)!important;color:#fff!important}
