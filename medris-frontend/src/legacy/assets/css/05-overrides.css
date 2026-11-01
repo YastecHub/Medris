@@ -4586,3 +4586,38 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
 @media(prefers-reduced-motion:reduce){
   html body #app .vmpage *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+
+/* Snapchat-style five-slot bottom dock for buyer/vendor mobile navigation. */
+@media(max-width:720px){
+  html body #bottomNav.lv-snap-dock{
+    position:fixed!important;left:0!important;right:0!important;bottom:0!important;z-index:8500!important;
+    display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:center!important;
+    gap:0!important;height:calc(68px + env(safe-area-inset-bottom,0px))!important;
+    padding:7px 9px calc(7px + env(safe-area-inset-bottom,0px))!important;
+    margin:0!important;border:0!important;border-radius:0!important;
+    background:rgba(18,20,24,.97)!important;color:#f7f8fa!important;
+    box-shadow:0 -8px 28px rgba(0,0,0,.16)!important;backdrop-filter:blur(18px)!important;
+  }
+  html body #bottomNav.lv-snap-dock .bottom-nav-item{
+    min-width:0!important;height:52px!important;padding:4px 1px!important;margin:0!important;
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+    gap:3px!important;border:0!important;border-radius:14px!important;background:transparent!important;
+    color:rgba(255,255,255,.78)!important;font-size:.65rem!important;font-weight:650!important;
+  }
+  html body #bottomNav.lv-snap-dock .bottom-nav-item .bn-icon{width:28px!important;height:27px!important;position:relative!important;display:grid!important;place-items:center!important}
+  html body #bottomNav.lv-snap-dock .bottom-nav-item .lv-line-ic{width:25px!important;height:25px!important;color:currentColor!important}
+  html body #bottomNav.lv-snap-dock .bottom-nav-item.active{color:#20bd83!important;background:transparent!important}
+  html body #bottomNav.lv-snap-dock .bottom-nav-item.active::before{display:none!important}
+  html body #bottomNav.lv-snap-dock .bottom-nav-create{
+    width:49px!important;height:49px!important;justify-self:center!important;align-self:center!important;
+    border-radius:17px!important;background:#13a875!important;color:#fff!important;
+    box-shadow:0 5px 14px rgba(19,168,117,.32)!important
+  }
+  html body #bottomNav.lv-snap-dock .bottom-nav-create .bn-icon{width:28px!important;height:28px!important}
+  html body #bottomNav.lv-snap-dock .bottom-nav-create .lv-line-ic{width:26px!important;height:26px!important}
+  html body #bottomNav.lv-snap-dock .bn-badge{top:-5px!important;right:-8px!important}
+  html body #app{padding-bottom:calc(68px + env(safe-area-inset-bottom,0px))!important}
+  html body #app:has(.vmpage){padding-bottom:0!important}
+  html body #app .vmpage{height:calc(100dvh - 68px - env(safe-area-inset-bottom,0px))!important;min-height:calc(100dvh - 68px - env(safe-area-inset-bottom,0px))!important}
+}
