@@ -1,5 +1,5 @@
 const CACHE = 'levromart-shell-v{{asset-version}}';
-const RUNTIME = 'levromart-runtime-v10';
+const RUNTIME = 'levromart-runtime-v12';
 const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', event => {
@@ -25,7 +25,7 @@ self.addEventListener('activate', event => {
 
     await Promise.all(
       keys
-        .filter(k => ![CACHE, RUNTIME].includes(k))
+        .filter(k => ![CACHE, RUNTIME].includes(k) && !k.startsWith('levromart-runtime-v'))
         .map(k => caches.delete(k))
     );
 

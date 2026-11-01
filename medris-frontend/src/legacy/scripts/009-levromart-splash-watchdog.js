@@ -40,6 +40,10 @@
     el.appendChild(d);
     document.getElementById("lvSlowRetry").onclick=function(){ location.reload(); };
   }
+  // Independent hard ceiling for cold starts, including a missing app bundle.
+  setTimeout(function(){
+    if(!window.__levroSplashHidden){ try{ window.__levroSplashHidden=true; }catch(_){} hide(); }
+  },9000);
   setTimeout(function tick(){
     var waited=Date.now()-started;
     if(!appArrived() && !window.__levroSplashHidden){ if(waited>6000) slowNotice(); setTimeout(tick,300); return; }
