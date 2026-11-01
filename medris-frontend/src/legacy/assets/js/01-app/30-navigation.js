@@ -295,6 +295,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     messageChannelClosePromise = Promise.resolve(sb.removeChannel(channelToClose)).catch(() => {});
   }
   currentView = view;
+  if (view !== "vendors") document.getElementById("vmpReturnMapBtn")?.remove();
   currentViewParams = params || {};
   try { syncLevromartLinkPreviewMeta(view, currentViewParams); } catch (_) {}
   // A single open DM thread gets the dedicated, chrome-free full-page
