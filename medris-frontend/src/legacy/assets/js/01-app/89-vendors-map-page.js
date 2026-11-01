@@ -136,7 +136,7 @@ async function initVendorsMapPage(tries = 0) {
   let vmpPinZoom = null;
   vmpMap.on("zoomend", () => { const z = vmpMap.getZoom(); if (z === vmpPinZoom) return; vmpPinZoom = z; vmpDrawPins(); });
   vmpMap.on("dragstart", () => { vmpMap.__userDrag = true; });
-  vmpMap.on("click", () => { vmpClearRoute(); vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });
+  vmpMap.on("click", () => { vmpCollapseSelectedCard(); vmpHideSugg(); byId("vmpStyles")?.classList.add("hidden"); });
   vmpDrawChips();
   vmpDrawMe();
   vmpLayout();
@@ -239,6 +239,23 @@ function vmpCardHtml(v) {
   </div>`;
 }
 // The vendor cards: one endless row. Swiping it moves the map to the vendor in the middle; reaching the end carries on from the first.
+function vmpRailItemHtml(v) {
+  const id = String(v.id);
+  const media = v.logo_url ? '<img src="' + esc(v.logo_url) + '" alt="" loading="lazy" draggable="false" onerror="vdImgFail(this)">' : vdInitialsHtml(v.business_name || "Vendor", id);
+  return '<button type="button" class="vmp-rail-item' + (id === String(vmpSelected) ? ' on' : '') + '" data-vid="' + esc(id) + '" onclick="vmpSelect(\'' + esc(id) + '\',true,true,true)" aria-label="Show ' + esc(v.business_name || "vendor") + ' details" title="' + esc(v.business_name || "Vendor") + '">' + media + '<span class="vmp-rail-active-dot"></span></button>';
+}
+function vmpDrawSelectedCard(v) {
+  const box = byId("vmpExpandedCard");
+  if (!box) return;
+  if (!v) { box.innerHTML = ""; box.classList.add("hidden"); return; }
+  box.innerHTML = vmpCardHtml(v);
+  box.classList.remove("hidden");
+}
+function vmpCollapseSelectedCard() {
+  byId("vmpExpandedCard")?.classList.add("hidden");
+  byId("vmpRouteCard")?.classList.add("hidden");
+  vmpClearRoute();
+}
 function vmpRailList() {
   let list = vmpVisible().slice();
   list.sort((a, c) => (vmpDistKm(a) ?? 1e9) - (vmpDistKm(c) ?? 1e9) || String(a.business_name).localeCompare(String(c.business_name)));
@@ -248,7 +265,7 @@ function vmpDrawRail(keepSel) {
   const box = byId("vmpRail"); if (!box || !vmpMap) return;
   const list = vmpRailList();
   if (!list.length) { box.innerHTML = '<div class="vmp-empty"><i class="fa-solid fa-map-pin"></i> No vendors match that. Try another search.</div>'; box.__n = 0; return; }
-  const one = list.map(vmpCardHtml).join("");
+  const one = list.map(vmpRailItemHtml).join("");
   const loop = list.length > 1;
   box.innerHTML = loop ? one + one + one : one;
   box.__n = list.length; box.__loop = loop;
@@ -257,7 +274,7 @@ function vmpDrawRail(keepSel) {
   requestAnimationFrame(() => vmpRailGo(loop ? list.length + Math.max(0, sel) : Math.max(0, sel), false));
   if (!box.__bound) {
     box.__bound = true;
-    box.addEventListener("scroll", () => { if (vmpRailBusy) return; clearTimeout(vmpRailTimer); vmpRailTimer = setTimeout(vmpRailSettled, 130); }, { passive: true });
+    box.addEventListener("scroll", () => { if (vmpRailBusy) return; vmpCollapseSelectedCard(); clearTimeout(vmpRailTimer); vmpRailTimer = setTimeout(vmpRailSettled, 130); }, { passive: true });
   }
 }
 function vmpRailCards() { return [...(byId("vmpRail")?.querySelectorAll(".vmp-card") || [])]; }
@@ -282,7 +299,7 @@ function vmpRailSettled() {
     if (best < n || best >= 2 * n) { idx = n + (best % n); vmpRailGo(idx, false); }
   }
   const id = cards[idx]?.dataset.vid;
-  if (id && String(id) !== String(vmpSelected)) vmpSelect(id, false, true);
+  if (id && String(id) !== String(vmpSelected)) vmpSelect(id, false, true, false);
 }
 /* Route from you to the picked vendor: a thick blue line with a white edge (like the big map apps), plus travel times */
 let vmpRoute = null, vmpRouteTimer = null, vmpRouteSeq = 0;
@@ -330,14 +347,20 @@ async function vmpTrace(v) {
   vmpRoute = { edge, core, a: null, b };
   try { vmpMap.fitBounds(L.latLngBounds(coords).pad(0.25), { animate: true, maxZoom: 16, paddingTopLeft: [0, 120], paddingBottomRight: [0, 230] }); } catch (_) {}
 }
-function vmpSelect(id, fly, fromRail) {
+function vmpSelect(id, fly, fromRail, expandCard = true) {
   const v = vmpAll.find((x) => String(x.id) === String(id)); if (!v || !vmpMap) return;
-  const prev = vmpSelected; vmpSelected = v.id;
+  vmpSelected = v.id;
   vmpHideSugg();
   const target = vmpMap.getZoom() < 14 ? 14 : vmpMap.getZoom();
-  if (buyerLocation) { vmpTrace(v); } else { vmpRouteCardDraw(v); if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 }); else vmpMap.panTo([v.lat, v.lng], { animate: true }); }
+  if (expandCard) {
+    vmpDrawSelectedCard(v);
+    if (buyerLocation) vmpTrace(v); else vmpRouteCardDraw(v);
+  } else {
+    vmpCollapseSelectedCard();
+  }
+  if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 });
+  else if (!fromRail) vmpMap.panTo([v.lat, v.lng], { animate: true });
   vmpDrawPins();
-  // highlight the card; when the pick came from the map or a search, carry the row to it (without bouncing it back)
   vmpRailCards().forEach((c) => c.classList.toggle("on", String(c.dataset.vid) === String(vmpSelected)));
   if (!fromRail) {
     const box = byId("vmpRail"), list = vmpRailList(), i = list.findIndex((x) => String(x.id) === String(v.id));
