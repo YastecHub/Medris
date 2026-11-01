@@ -41,6 +41,40 @@ function lvVendorPic(v) {
   return (v && (v.profile_avatar_url || window.__lvOwnerAv?.get(String(v.id)) || v.logo_url)) || null;
 }
 
+// A banner for a profile without its own header image: in the colour of the person's initials (or of their picture once
+// it has loaded), with soft circle watermarks. Returns the attributes for the cover element.
+function lvGenCoverAttrs(key, picUrl) {
+  const hue = typeof stableAvatarHue === "function" ? stableAvatarHue(key) : 150;
+  return `data-gc="1" style="--gh:${hue}"${picUrl ? ` data-gc-img="${esc(picUrl)}"` : ""}`;
+}
+// The main hue of a picture, or null for greys / pictures the browser may not read.
+function lvImageHue(img) {
+  try {
+    const c = document.createElement("canvas"); c.width = c.height = 12;
+    const x = c.getContext("2d"); x.drawImage(img, 0, 0, 12, 12);
+    const d = x.getImageData(0, 0, 12, 12).data; let sx = 0, sy = 0, w = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, max = Math.max(r, g, b), min = Math.min(r, g, b), sat = max - min;
+      if (sat < 0.12) continue;
+      let h = max === r ? (g - b) / sat + (g < b ? 6 : 0) : max === g ? (b - r) / sat + 2 : (r - g) / sat + 4; h *= Math.PI / 3;
+      sx += Math.cos(h) * sat; sy += Math.sin(h) * sat; w += sat;
+    }
+    if (w < 3) return null;
+    return Math.round(((Math.atan2(sy, sx) * 180) / Math.PI + 360) % 360);
+  } catch (_) { return null; }
+}
+// Tints generated banners from the person's picture as soon as they appear on a page.
+(function () {
+  const tint = (el) => {
+    el.dataset.gcDone = "1";
+    const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async";
+    img.onload = () => { const h = lvImageHue(img); if (h != null) el.style.setProperty("--gh", String(h)); };
+    img.src = el.dataset.gcImg;
+  };
+  const scan = () => document.querySelectorAll("[data-gc-img]:not([data-gc-done])").forEach(tint);
+  try { new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true }); } catch (_) {}
+})();
+
 function vendorDirectoryCardHtml(v) {
   const id = String(v?.id || "");
   const name = v?.business_name || "Vendor";

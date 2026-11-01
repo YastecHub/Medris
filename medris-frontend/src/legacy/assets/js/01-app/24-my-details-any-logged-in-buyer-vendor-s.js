@@ -11,7 +11,7 @@ async function renderBuyerProfile() {
   // A customer profile uses a branded cover too, keeping the avatar fully
   // visible below the wallet/header area instead of letting the wallet overlap it.
   let html = `<section class="vendor-profile-header-card buyer-profile-card lv-profile-hero">
-    <div class="storefront-cover lv-profile-cover"><span class="lv-profile-cover-glow" aria-hidden="true"></span>${lvCoverActionsHtml("navigate('editProfile')", "lvOpenProfileShare('customer')")}</div>
+    <div class="storefront-cover lv-profile-cover lv-gen-cover" ${lvGenCoverAttrs(profile.name || profile.email, profile.avatar_url || null)}><span class="lv-profile-cover-glow" aria-hidden="true"></span>${lvCoverActionsHtml("navigate('editProfile')", "lvOpenProfileShare('customer')")}</div>
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "5.2rem", "vendor-profile-header-avatar", profile.name || profile.email)}

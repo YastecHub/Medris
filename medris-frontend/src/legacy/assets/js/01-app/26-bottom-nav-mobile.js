@@ -78,7 +78,7 @@ function renderBottomNav() {
   nav.classList.add("has-add");
   nav.innerHTML =
     '<div class="bn-group bn-group-left">' + [homeTab, vendorsTab].map(itemHtml).join("") + '</div>' +
-    '<button class="bottom-nav-add" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="' + addTab.label + '">' +
+    '<button class="bottom-nav-add' + (isVendorUser ? '' : ' is-request') + '" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="' + addTab.label + '">' +
       '<span class="bn-icon">' + addTab.icon + '</span><span>' + addTab.label + '</span>' +
     '</button>' +
     '<div class="bn-group bn-group-right">' + [notificationsTab, ordersTab].map(itemHtml).join("") + '</div>';

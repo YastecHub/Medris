@@ -16,12 +16,8 @@
   }
   function usable() {
     var app = document.getElementById("app");
-    return !!(app && app.querySelector(".levro-home-startup, .levro-home-hero, .home-promotional-carousel, #browseSection, #lv-startup-recovery"));
-  }
-  function fallback() {
-    var app = document.getElementById("app");
-    if (!app || usable()) return;
-    app.innerHTML = '<section id="lv-startup-recovery" role="alert" style="min-height:45vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.25rem;gap:.75rem"><strong>LevroMart could not finish starting</strong><span>Please check your connection and try again.</span><button type="button" class="btn" onclick="location.reload()">Retry</button></section>';
+    // any page that has drawn something counts, not only Home
+    return !!(app && (app.querySelector("#lv-startup-recovery") || (app.children.length && (app.textContent.trim().length || app.querySelector("img,svg,canvas,iframe")))));
   }
   function release() {
     try { window.__levroSplashHidden = true; } catch (_) {}
@@ -31,7 +27,8 @@
     var waited = Date.now() - started;
     if (!styled() && waited < 10000) { setTimeout(tick, 200); return; }
     if (usable()) { release(); return; }
-    if (waited >= 9000) { fallback(); release(); return; }
+    // the app's own startup check (30-navigation.js) redraws the page once and shows the message only if it stays empty
+    if (waited >= 9000) { release(); return; }
     setTimeout(tick, 250);
   })();
 })();
