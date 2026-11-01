@@ -3708,3 +3708,15 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 .profile-own-storefront-header:hover{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;}
 .profile-own-storefront-header:active{transform:scale(.99)!important;}
 .profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
+
+
+/* Stable route swaps: prevent the browser from anchoring the viewport to
+   changing content while a legacy route is being replaced or hydrated. */
+html.lv-route-transitioning,
+html.lv-route-transitioning body {
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+#app {
+  overflow-anchor: none;
+}
