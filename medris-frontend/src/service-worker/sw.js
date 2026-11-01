@@ -1,19 +1,17 @@
 const CACHE = 'levromart-shell-v{{asset-version}}';
-const RUNTIME = 'levromart-runtime-v10';
+const RUNTIME = 'levromart-runtime-v11';
 const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
 
-    try {
-      await cache.addAll([
-        OFFLINE_FALLBACK,
-        '/manifest.json',
-        '/levromart-notification-icon.png',
-        '/levromart-badge.png'
-      ]);
-    } catch (e) {}
+    await Promise.all([
+      OFFLINE_FALLBACK,
+      '/manifest.json',
+      '/levromart-notification-icon.png',
+      '/levromart-badge.png'
+    ].map(url => cache.add(url).catch(() => null)));
 
     self.skipWaiting();
   })());
@@ -25,7 +23,7 @@ self.addEventListener('activate', event => {
 
     await Promise.all(
       keys
-        .filter(k => ![CACHE, RUNTIME].includes(k) && !k.startsWith('levromart-runtime-v'))
+        .filter(k => ![CACHE, RUNTIME].includes(k))
         .map(k => caches.delete(k))
     );
 
@@ -164,6 +162,9 @@ self.addEventListener('fetch', event => {
           })
           .catch(() => null);
 
+        if (wantsKind) {
+          return await network || cached || new Response('', { status: 504 });
+        }
         return (
           cached ||
           await network ||
