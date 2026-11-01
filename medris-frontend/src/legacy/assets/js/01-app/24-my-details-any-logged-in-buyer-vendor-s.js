@@ -11,11 +11,10 @@ async function renderBuyerProfile() {
   // A customer profile uses a branded cover too, keeping the avatar fully
   // visible below the wallet/header area instead of letting the wallet overlap it.
   let html = `<section class="vendor-profile-header-card buyer-profile-card lv-profile-hero">
-    <div class="storefront-cover lv-profile-cover" aria-hidden="true"><span class="lv-profile-cover-glow"></span></div>
+    <div class="storefront-cover lv-profile-cover"><span class="lv-profile-cover-glow" aria-hidden="true"></span>${lvCoverActionsHtml("navigate('editProfile')", "lvOpenProfileShare('customer')")}</div>
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "5.2rem", "vendor-profile-header-avatar", profile.name || profile.email)}
-        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i></button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
       </div>
       <div class="lv-profile-title-row"><div><span class="lv-profile-eyebrow">MY ACCOUNT</span><h2 class="vendor-profile-header-name">${esc(profile.name || "Your profile")}</h2></div><span class="lv-profile-member-chip"><i class="fa-solid fa-sparkles"></i> Member</span></div>
       ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}

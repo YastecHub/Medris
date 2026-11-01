@@ -15,28 +15,30 @@ function vdImgFail(img) {
   img.insertAdjacentHTML("afterend", html);
   img.remove();
 }
-// The account (owner) profile picture for each vendor, the same picture shown on
-// notifications. Adds profile_avatar_url and keeps logo_url untouched as the
-// business logo, so cards can fall back to it. One query for the whole list.
+// The account (owner) profile picture for each vendor, the same picture shown on notifications. The browser
+// cannot read other people's accounts, so the server answers it (get_vendor_owner_avatars) for a whole list at
+// once; answers are remembered for the visit. Adds profile_avatar_url and keeps logo_url (the business logo)
+// untouched as the fallback.
+window.__lvOwnerAv = window.__lvOwnerAv || new Map();
 async function lvAttachOwnerAvatars(vendors) {
   const list = Array.isArray(vendors) ? vendors : [];
-  const ownerIds = [...new Set(list.map((v) => v && v.user_id).filter(Boolean))];
-  const avatarByOwner = new Map();
-  if (ownerIds.length) {
+  const known = window.__lvOwnerAv;
+  const missing = [...new Set(list.map((v) => v && v.id && String(v.id)).filter((id) => id && !known.has(id)))];
+  if (missing.length) {
     try {
-      const { data: ownerProfiles, error: ownerProfilesError } = await sb
-        .from("users")
-        .select("id, avatar_url")
-        .in("id", ownerIds);
-      if (ownerProfilesError) throw ownerProfilesError;
-      (ownerProfiles || []).forEach((owner) => {
-        if (owner.avatar_url) avatarByOwner.set(String(owner.id), owner.avatar_url);
-      });
-    } catch (ownerProfilesError) {
-      console.warn("[Levromart] Could not load vendor profile pictures:", ownerProfilesError);
+      const { data, error } = await sb.rpc("get_vendor_owner_avatars", { p_vendor_ids: missing.slice(0, 200) });
+      if (error) throw error;
+      missing.forEach((id) => known.set(id, null));
+      (data || []).forEach((r) => { if (r && r.vendor_id && r.avatar_url) known.set(String(r.vendor_id), r.avatar_url); });
+    } catch (avatarError) {
+      console.warn("[Levromart] Could not load vendor profile pictures:", avatarError);
     }
   }
-  return list.map((v) => (v ? { ...v, profile_avatar_url: avatarByOwner.get(String(v.user_id || "")) || null } : v));
+  return list.map((v) => (v ? { ...v, profile_avatar_url: v.profile_avatar_url || known.get(String(v.id)) || null } : v));
+}
+// The picture to show for a vendor: the account picture when known, else the business logo.
+function lvVendorPic(v) {
+  return (v && (v.profile_avatar_url || window.__lvOwnerAv?.get(String(v.id)) || v.logo_url)) || null;
 }
 
 function vendorDirectoryCardHtml(v) {
@@ -524,7 +526,7 @@ async function renderVendorsMap() {
     marker._levromartVendorId = v.id;
     const vendorName = esc(v.business_name || "Vendor");
     const vendorLogo = v.logo_url
-      ? `<img class="vendor-map-popup-avatar" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.classList.add('is-broken');this.style.display='none';" />`
+      ? `<img class="vendor-map-popup-avatar" src="${esc(lvVendorPic(v))}" alt="" loading="lazy" draggable="false" onerror="this.classList.add('is-broken');this.style.display='none';" />`
       : avatarFallbackHtml(v.business_name || "Vendor", "38px", "vendor-map-popup-avatar vendor-map-popup-avatar-fallback", v.business_name || "Vendor");
     const popupMeta = `${`★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})`}${dist ? ` · ${dist}` : ""}`;
     marker.bindPopup(`<div class="vendor-map-popup"><div class="vendor-map-popup-head">${vendorLogo}<div class="vendor-map-popup-copy"><strong>${vendorName}</strong>${popupMeta ? `<span>${esc(popupMeta)}</span>` : ""}</div></div><a class="vendor-map-popup-link" href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">View storefront</a></div>`);

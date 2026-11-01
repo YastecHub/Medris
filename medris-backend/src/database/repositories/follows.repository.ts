@@ -138,6 +138,21 @@ export class FollowReadsRepository {
     );
   }
 
+  /**
+   * get_vendor_owner_avatars(p_vendor_ids): the owner's account picture for each live, verified shop, the picture the
+   * vendor cards show (public like the card itself; the users table is not readable from the browser).
+   */
+  ownerAvatars(vendorIds: string[]): Promise<{ vendor_id: string; avatar_url: string }[]> {
+    return jsonRows<{ vendor_id: string; avatar_url: string }>(
+      this.db,
+      sql`select v.id as vendor_id, u.avatar_url
+          from unnest(${uuidArray(vendorIds)}) as requested(id)
+          join public.vendors v on v.id = requested.id and v.deleted_at is null and v.is_active and v.verification_status::text = 'verified'
+          join public.users u on u.id = v.user_id
+          where coalesce(u.avatar_url, '') <> ''`,
+    );
+  }
+
   /** The owner of a vendor that is not deleted (null when there is none). */
   async liveVendorOwner(vendorId: string): Promise<string | null> {
     const row = await jsonRow<{ user_id: string }>(this.db, sql`select user_id from public.vendors where id = ${vendorId} and deleted_at is null`);

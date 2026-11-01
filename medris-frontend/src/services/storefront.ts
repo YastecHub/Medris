@@ -75,20 +75,11 @@ export async function loadStorefront(vendorId: string): Promise<StorefrontResult
   if (error || !v) return { kind: "not-found" };
   if (!v.is_active) return { kind: "paused" };
 
-  // Keep the account avatar separate from the business logo. The account
-  // avatar is the canonical public profile picture across vendor surfaces.
-  if (v.user_id) {
-    const { data: ownerProfile, error: ownerProfileError } = await sb
-      .from("users")
-      .select("avatar_url")
-      .eq("id", v.user_id)
-      .maybeSingle();
-    if (ownerProfileError) {
-      console.warn("[Levromart] Storefront profile picture lookup failed:", ownerProfileError);
-    } else {
-      v.profile_avatar_url = ownerProfile?.avatar_url || null;
-    }
-  }
+  // The owner's account picture (the one on notifications), kept apart from the business logo. The browser
+  // cannot read other people's accounts, so the server answers it.
+  const { data: ownerAvatars, error: ownerAvatarError } = await sb.rpc("get_vendor_owner_avatars", { p_vendor_ids: [v.id] });
+  if (ownerAvatarError) console.warn("[Levromart] Storefront profile picture lookup failed:", ownerAvatarError);
+  else v.profile_avatar_url = (ownerAvatars as { avatar_url?: string }[] | null)?.[0]?.avatar_url || null;
 
   const extrasPromise = Promise.allSettled([
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),

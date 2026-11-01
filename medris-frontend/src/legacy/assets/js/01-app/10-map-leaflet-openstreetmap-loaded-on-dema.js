@@ -55,7 +55,7 @@ function vendorDirectoryMapIcon(v) {
   const words = String(v?.business_name || "?").replace(/[^\p{L}\p{N} ]/gu, "").trim().split(/\s+/).filter(Boolean);
   const ini = ((words[0]?.[0] || "?") + (words.length > 1 ? words[words.length - 1][0] : words[0]?.[1] || "")).toUpperCase();
   const initials = `<span class="vmp-ini">${esc(ini)}</span>`;
-  const inner = v?.logo_url ? `<img src="${esc(v.logo_url)}" alt="" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vmp-ini',textContent:'${esc(ini)}'}))">` : initials;
+  const inner = lvVendorPic(v) ? `<img src="${esc(lvVendorPic(v))}" alt="" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vmp-ini',textContent:'${esc(ini)}'}))">` : initials;
   const tint = v?.logo_url ? "" : ` style="--vmp-bg:hsl(${h} 70% 88%);--vmp-fg:hsl(${h} 55% 28%)"`;
   const tick = v?.id ? `<i class="fa-solid fa-circle-check lv-svi vmp-tick" data-vt="${esc(v.id)}" aria-label="Verified vendor"></i>` : "";
   return window.L.divIcon({ className: "vmp", html: `<div class="vmp-pin${v?.logo_url ? "" : " vmp-pin-ini"}"${tint}>${inner}${tick}</div>`, iconSize: [44, 52], iconAnchor: [22, 50], popupAnchor: [0, -46] });
