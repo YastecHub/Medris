@@ -3,6 +3,21 @@ let currentSectorId = null;
 let currentHomeCategoryId = null;
 let sectors = [];
 
+// Cold-start shell with no Supabase dependency; the live renderer replaces it.
+function homeStartupShellHtml({ offline = false } = {}) {
+  const message = offline ? "You are offline. Cached listings will appear when available." : "Loading the latest marketplace listings…";
+  return `<section class="levro-home-startup" aria-label="Levromart marketplace">
+    <div class="hero levro-home-hero">${typeof renderHomepageCarouselHtml === "function" ? renderHomepageCarouselHtml(INITIAL_HOME_CAROUSEL_SLIDES) : ""}</div>
+    ${typeof homeQuickActionsHtml === "function" ? homeQuickActionsHtml() : ""}
+    <h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3>
+    <p class="muted" role="status">${message}</p>
+    <h3 class="section-title" id="browseSection"><i class="fa-solid fa-table-cells-large"></i> Browse everything</h3>
+    <div class="browse-filter-toolbar"><input type="search" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search marketplace" /></div>
+    <div class="grid" id="productGrid" aria-live="polite"></div>
+    <div id="packageSearchResults" class="hidden" style="margin-top:1.3rem"></div>
+  </section>`;
+}
+
 async function renderHome() {
   const cachedHome = getOfflineHomeCache();
   if (browserLooksOffline()) {
@@ -14,10 +29,14 @@ async function renderHome() {
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
   }
   const cachedCats = levroCacheGet("categories", 10 * 60 * 1000);
-  const [{ data: categories }, { data: sectorsData }] = await Promise.all([
+  const [categoryResult, sectorResult] = await Promise.allSettled([
     cachedCats ? Promise.resolve({ data: cachedCats }) : levroData.catalogue.categories(),
     sectors.length ? Promise.resolve({ data: sectors }) : levroData.catalogue.sectors("sort_order"),
   ]);
+  const categories = categoryResult.status === "fulfilled" ? categoryResult.value?.data || [] : cachedHome?.categories || [];
+  const sectorsData = sectorResult.status === "fulfilled" ? sectorResult.value?.data || [] : cachedHome?.sectors || [];
+  if (categoryResult.status === "rejected") console.warn("[Levromart startup] Category query failed; using cached data.", categoryResult.reason);
+  if (sectorResult.status === "rejected") console.warn("[Levromart startup] Sector query failed; using cached data.", sectorResult.reason);
   if (!cachedCats && categories?.length) levroCacheSet("categories", categories);
   window.__categories = categories || [];
   if (!sectors.length) sectors = sectorsData || [];
@@ -129,13 +148,26 @@ async function renderHome() {
       return sd || [];
     } catch (_) { return []; }
   })();
-  const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts, index: browseIndex }] = await Promise.all([
+  const optionalHomeLoads = await Promise.allSettled([
     vendorQuery.order("view_count", { ascending: false }).limit(40),
     loadTopVendors(),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
     loadBrowseFirstPage(),
   ]);
+  const trendingResult = optionalHomeLoads[0].status === "fulfilled" ? optionalHomeLoads[0].value : { data: cachedHome?.trending || [], error: optionalHomeLoads[0].reason };
+  const vendorsResult = optionalHomeLoads[1].status === "fulfilled" ? optionalHomeLoads[1].value : { data: cachedHome?.topVendors || [] };
+  const recentResult = optionalHomeLoads[2].status === "fulfilled" ? optionalHomeLoads[2].value : { data: cachedHome?.recentProducts || [] };
+  const packagesResult = optionalHomeLoads[3].status === "fulfilled" ? optionalHomeLoads[3].value : { data: cachedHome?.packages || [] };
+  const browseResult = optionalHomeLoads[4].status === "fulfilled" ? optionalHomeLoads[4].value : { data: cachedHome?.browseProducts || [], index: window.__homeBrowseIndex || null };
+  const { data: trending, error: trendingError } = trendingResult || {};
+  const { data: topVendors } = vendorsResult || {};
+  const { data: recentProducts } = recentResult || {};
+  const { data: packages } = packagesResult || {};
+  const { data: browseProducts, index: browseIndex } = browseResult || {};
+  optionalHomeLoads.forEach((result, index) => {
+    if (result.status === "rejected") console.warn("[Levromart startup] Optional section failed.", { section: ["trending", "vendors", "recent", "packages", "browse"][index], error: result.reason });
+  });
   window.__homeBrowseIndex = Array.isArray(browseIndex) ? browseIndex : (window.__homeBrowseIndex || null);
   if (!activeSector && !activeCategory && Array.isArray(browseIndex)) window.__homeFullIndex = browseIndex;
   // Never discard a previously good Browse Everything catalogue just because
@@ -199,7 +231,10 @@ async function renderHome() {
   // The Category filter lists only categories vendors have really listed products under.
   const usedCatIds = new Set((railCategories || []).map((c) => String(c.id)));
   const browseCats = subCats.filter((c) => usedCatIds.has(String(c.id)) || String(c.id) === String(currentHomeCategoryId));
-  const homepageCarouselSlides = await loadHomepageCarouselSlides();
+  const homepageCarouselSlides = await loadHomepageCarouselSlides().catch((err) => {
+    console.warn("[Levromart startup] Carousel failed; using bundled slides.", err);
+    return INITIAL_HOME_CAROUSEL_SLIDES.slice();
+  });
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
   // must not be overwritten with only the currently selected category.
