@@ -22,7 +22,7 @@ async function renderBuyerProfile() {
       ${profile.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(profile.city)}</p>` : ""}
       <div class="lv-profile-actions"><button type="button" class="lv-profile-action active" aria-current="page"><i class="fa-solid fa-user"></i> My account</button><button type="button" class="lv-profile-action" onclick="navigate('vendors')"><i class="fa-solid fa-store"></i> Explore vendors</button></div>
     </div>
-  </section>`;
+  </section>
 
   <div class="lv-group">
     <h3 class="lv-group-title">Activity</h3>
