@@ -186,7 +186,8 @@ function renderVendorsDirectory() {
     </div>
   </div>`;
   const cachedVendors = Array.isArray(window.__allVendors) ? window.__allVendors : [];
-  html += `<div class="grid" id="vendorsGrid">${cachedVendors.length ? cachedVendors.map(vendorCardHtml).join("") : vendorDirectorySkeletonHtml()}</div>`;
+  const keepDirectoryHeight = cachedVendors.length ? "" : `style="min-height:52rem;contain:layout;"`;
+  html += `<div class="grid" id="vendorsGrid" ${keepDirectoryHeight}>${cachedVendors.length ? cachedVendors.map(vendorCardHtml).join("") : vendorDirectorySkeletonHtml()}</div>`;
   html += `<div id="vendorsMapWrap" class="hidden">
     <div class="vmap-card">
       <div id="vendorsMap" style="background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
