@@ -47,7 +47,8 @@ function renderVendorsMapPage() {
       </div>
       <div class="vmp-sugg hidden" id="vmpSugg"></div>
       <div class="vmp-chips" id="vmpChips"></div>
-    </div>    <div class="vmp-fabs">
+    </div>
+    <div class="vmp-fabs">
       <button type="button" class="vmp-fab" aria-label="Map type" onclick="vmpToggleStyles()"><i class="fa-solid fa-layer-group"></i></button>
     </div>
     <div class="vmp-sheet-wrap hidden" id="vmpStyles"></div>
@@ -68,7 +69,7 @@ function vmpBack() {
   navigate("home");
 }
 function vmpSetDisplay(mode) {
-  if (mode === "grid") { try { localStorage.setItem("levromart-vendors-display", "grid"); } catch (_) {} navigate("vendors"); return; }
+  if (mode === "grid") { try { localStorage.setItem("levromart-vendors-display", "grid"); } catch (_) {} navigate("vendors").then(() => setTimeout(vmpShowReturnMapButton, 100)); return; }
   try { localStorage.setItem("levromart-vendors-display", "map"); } catch (_) {}
   byId("vmpMapViewBtn")?.classList.add("active"); byId("vmpGridViewBtn")?.classList.remove("active");
   byId("vmpMapViewBtn")?.setAttribute("aria-pressed", "true"); byId("vmpGridViewBtn")?.setAttribute("aria-pressed", "false");
@@ -144,7 +145,8 @@ async function initVendorsMapPage(tries = 0) {
   const first = () => {
     if (!vmpMap) return;
     vmpMap.invalidateSize(false);
-    if (vmpMap.getSize().y > 0 && vmpAll.length > 1 && !buyerLocation) vmpFitAll(); else { vmpDrawPins(); vmpDrawRail(); }
+    if (vmpMap.getSize().y > 0 && vmpAll.length > 1 && !buyerLocation) vmpFitAll(); else vmpDrawPins();
+    vmpDrawRail();
   };
   first();
   // The page can be laid out a moment after the map is created (route transition): follow its size, and fit once it has one.
