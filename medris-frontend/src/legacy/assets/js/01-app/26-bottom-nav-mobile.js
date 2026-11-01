@@ -49,16 +49,70 @@ window.lvLineIcon = function (n) {
   };
   return `<svg class="lv-line-ic" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.home}</svg>`;
 };
+// Vendor centre action: a compact, role-specific sheet for creating a
+// product, service or package. The existing editors remain the single source
+// of truth for validation, uploads and saving.
+function openAddChooser() {
+  if (!session || profile?.role !== "vendor") {
+    showToast("Sign in with your vendor account to add a listing.", "error");
+    return;
+  }
+  let sheet = document.getElementById("lvVendorAddChooser");
+  if (!sheet) {
+    sheet = document.createElement("div");
+    sheet.id = "lvVendorAddChooser";
+    sheet.className = "lv-add-chooser-backdrop";
+    sheet.innerHTML = `
+      <section class="lv-add-chooser" role="dialog" aria-modal="true" aria-labelledby="lvAddChooserTitle">
+        <div class="lv-add-chooser-grip"></div>
+        <div class="lv-add-chooser-head">
+          <div><span class="lv-add-chooser-kicker">YOUR SHOP</span><h2 id="lvAddChooserTitle">Create a listing</h2><p>What would you like to offer?</p></div>
+          <button type="button" class="lv-add-chooser-close" aria-label="Close" onclick="closeAddChooser()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="lv-add-chooser-options">
+          <button type="button" class="lv-add-chooser-option" onclick="chooseVendorAddType('product')"><span class="lv-add-chooser-icon product"><i class="fa-solid fa-box"></i></span><span><strong>Product</strong><small>List an item customers can buy or rent.</small></span><i class="fa-solid fa-chevron-right"></i></button>
+          <button type="button" class="lv-add-chooser-option" onclick="chooseVendorAddType('service')"><span class="lv-add-chooser-icon service"><i class="fa-solid fa-handshake-angle"></i></span><span><strong>Service</strong><small>Offer a skill, task or professional service.</small></span><i class="fa-solid fa-chevron-right"></i></button>
+          <button type="button" class="lv-add-chooser-option" onclick="chooseVendorAddType('package')"><span class="lv-add-chooser-icon package"><i class="fa-solid fa-boxes-stacked"></i></span><span><strong>Package</strong><small>Bundle products together as one offer.</small></span><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </section>`;
+    sheet.addEventListener("click", (event) => { if (event.target === sheet) closeAddChooser(); });
+    document.body.appendChild(sheet);
+  }
+  requestAnimationFrame(() => sheet.classList.add("open"));
+  document.body.classList.add("lv-add-chooser-open");
+}
+function closeAddChooser() {
+  const sheet = document.getElementById("lvVendorAddChooser");
+  if (!sheet) return;
+  sheet.classList.remove("open");
+  document.body.classList.remove("lv-add-chooser-open");
+}
+async function chooseVendorAddType(type) {
+  closeAddChooser();
+  if (type === "package") { await openAddPackageModal(); return; }
+  await openAddProductModal();
+  const serviceToggle = byId("prodIsService");
+  if (serviceToggle) {
+    serviceToggle.checked = type === "service";
+    updateProductFormFields?.();
+    updateProductSaveButtonLabel?.();
+    const title = byId("productModalTitle");
+    if (title) title.textContent = type === "service" ? "Add New Service" : "Add New Product";
+  }
+}
+
 function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
 
-  const isVendorUser = session && profile?.role !== "admin" && !!vendor;
+  // The vendor role is authoritative even while the vendor row is still
+  // hydrating. Do not briefly render the buyer Request action for sellers.
+  const isVendorUser = !!session && profile?.role === "vendor";
   const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
   const vendorsTab = { icon: lvLineIcon("map"), label: "Vendors", action: "navigate('vendorsMap')", view: "vendorsMap" };
   const addTab = isVendorUser
     ? { icon: lvLineIcon("plus"), label: "Add", action: "openAddChooser()", view: null }
-    : { icon: lvLineIcon("plus"), label: "Add", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+    : { icon: lvLineIcon("request"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
   const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const ordersTab = isVendorUser
     ? { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
@@ -78,8 +132,8 @@ function renderBottomNav() {
   nav.classList.add("has-add");
   nav.innerHTML =
     '<div class="bn-group bn-group-left">' + [homeTab, vendorsTab].map(itemHtml).join("") + '</div>' +
-    '<button class="bottom-nav-add" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="Add">' +
-      '<span class="bn-icon">' + lvLineIcon("plus") + '</span><span>Add</span>' +
+    '<button class="bottom-nav-add ' + (isVendorUser ? 'bn-add-vendor' : 'bn-add-request') + '" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="' + (isVendorUser ? 'Add listing' : 'Request an item') + '">' +
+      '<span class="bn-icon">' + lvLineIcon(isVendorUser ? "plus" : "request") + '</span><span>' + (isVendorUser ? 'Add' : 'Request') + '</span>' +
     '</button>' +
     '<div class="bn-group bn-group-right">' + [notificationsTab, ordersTab].map(itemHtml).join("") + '</div>';
 }
