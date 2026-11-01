@@ -5205,6 +5205,6 @@ html:root body .ap-note.ap-bal-warn .btn{margin-left:auto;white-space:nowrap}
 html:root body .ap-bal{display:flex;gap:.45rem;align-items:center;margin:0 0 .7rem;font-size:.82rem;color:var(--text-muted,#5b6470)}
 :root[data-theme="dark"] body .ap-note.ap-bal-warn{background:rgba(248,113,113,.14);color:#fecaca}
 :root[data-theme="dark"] body .ap-bal{color:#aab3bd}
-/* Vendor wallet: a payout delayed on Levromart's side */
+/* Vendor wallet: a payout taking longer than usual (the reason is shown to admins only) */
 /* (the wallet card is dark green in both themes) */
 html:root body .lvw-card .lvw-paidline.lvw-delayed{color:#fde68a}

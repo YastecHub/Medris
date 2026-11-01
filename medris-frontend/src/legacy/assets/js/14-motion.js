@@ -1715,7 +1715,7 @@
       '</div>' +
       (d && d.held > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-circle-exclamation"></i> On hold <b>' + money(d.held) + '</b>' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>' : '') +
       (d && d.asked > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-hourglass-half"></i> Waiting for Levromart to approve your withdrawal <b>' + money(d.asked) + '</b></div>' : '') +
-      (d && d.delayed > 0 ? '<div class="lvw-paidline lvw-delayed"><i class="fa-solid fa-clock"></i> <b>' + money(d.delayed) + '</b> is delayed on Levromart\'s side. It will be sent to your bank automatically; you do not need to do anything.</div>' : '') +
+      (d && d.delayed > 0 ? '<div class="lvw-paidline lvw-delayed"><i class="fa-solid fa-clock"></i> <b>' + money(d.delayed) + '</b> is taking a little longer than usual to reach your bank. It will be sent automatically; you do not need to do anything.</div>' : '') +
       '<div class="lvw-paidline">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
       '<div class="lvw-actions"><button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' +
       '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
