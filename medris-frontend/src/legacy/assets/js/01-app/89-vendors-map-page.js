@@ -231,9 +231,24 @@ function vmpDrawPins() {
   });
   window.dispatchEvent(new Event("scroll"));
 }
+
+function vmpVendorInitials(v) {
+  const words = String(v?.business_name || "?").replace(/[^\\p{L}\\p{N} ]/gu, "").trim().split(/\\s+/).filter(Boolean);
+  return ((words[0]?.[0] || "?") + (words.length > 1 ? words[words.length - 1][0] : words[0]?.[1] || "")).toUpperCase();
+}
+function vmpVendorTint(v) {
+  const seed = String(v?.id || v?.business_name || "?");
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) % 360;
+  return { background: `hsl(${hash} 70% 88%)`, foreground: `hsl(${hash} 55% 28%)` };
+}
+function vmpRailInitialsHtml(v) {
+  const initials = vmpVendorInitials(v), tint = vmpVendorTint(v);
+  return '<span class="vmp-rail-ini" style="--vmp-bg:' + tint.background + ';--vmp-fg:' + tint.foreground + '">' + esc(initials) + '</span>';
+}
 function vmpCardHtml(v) {
   const id = String(v.id), km = vmpDistKm(v), sector = vmpSectorOf(v);
-  const media = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" data-n="${esc(v.business_name || "")}" data-k="${esc(id)}" onerror="vdImgFail(this)">` : vdInitialsHtml(v.business_name || "Vendor", id);
+  const media = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" data-n="${esc(v.business_name || "")}" data-k="${esc(id)}" onerror="vdImgFail(this)">` : vmpRailInitialsHtml(v);
   const est = km != null ? `${vmpDistText(km)} · ${vmpMins(VMP_MODES[0].f(km * 1.3, Math.max(1, km * 1.3 / 22 * 60)))} by car` : "";
   const meta = [sector, v.city, est].filter(Boolean).map(esc).join(" · ");
   const dir = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.lat + "," + v.lng)}`;
