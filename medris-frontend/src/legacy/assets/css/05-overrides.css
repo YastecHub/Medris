@@ -4636,8 +4636,8 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
     margin-top:1.25rem!important;
     clear:both!important;
   }
-  html body #app:has(.vendor-profile-header-card) [class*="wallet"]:not(button):not(.wallet-icon),
-  html body #app:has(.vendor-profile-header-card) [id*="wallet"]:not(button){
+  html body #app:has(.vendor-profile-header-card) [class*="wallet-card"],
+  html body #app:has(.vendor-profile-header-card) [id*="wallet-card"]{
     position:relative!important;
     z-index:2!important;
     inset:auto!important;
@@ -4660,7 +4660,7 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
     z-index:1!important;
     clear:both!important;
   }
-  html body #app:has(.vendor-profile-header-card) [class*="wallet"]:not(button):not(.wallet-icon){
+  html body #app:has(.vendor-profile-header-card) [class*="wallet-card"],html body #app:has(.vendor-profile-header-card) [id*="wallet-card"]{
     position:relative!important;
     z-index:2!important;
     inset:auto!important;
