@@ -583,6 +583,16 @@
     } else if (kind === "hold") ask("Hold payout", "Why are you holding it?", false, function (t) { return a.hold(id, t); });
     else if (kind === "manual") ask("Mark as paid by hand", "How did you pay (reference)?", false, function (t) { return a.markManual(id, t); });
     else if (kind === "refund") ask("Refund this order", "Reason for the refund", true, function (t, amt) { return a.refund(id, { amountNaira: amt, reason: t }); });
+    else if (kind === "retryWaiting") {
+      showConfirmDialog("Have you topped up the Paystack balance? The waiting payouts will be sent within a minute. If the balance is still too low, they wait again.", { title: "Send waiting payouts now", okLabel: "Send now" }).then(async function (yes) {
+        if (!yes) return;
+        var r = await a.retryWaiting();
+        if (r.error) return showToast(r.error.message, "error");
+        var n = (r.data && r.data.queued) || 0;
+        showToast(n ? n + " payout" + (n === 1 ? " is" : "s are") + " being sent now." : "They are already being tried. Check again in a minute.", "success");
+        setTimeout(function () { navigate("adminPayments", {}, false); }, 1500);
+      });
+    }
   };
   window.lvPayTab = function (t) { tab = t; picked = true; navigate("adminPayments", {}, false); };
   window.lvWithdrawDecide = function (id, how, hasDispute) {
@@ -628,7 +638,8 @@
     if (p.status === "pending" || p.status === "failed") acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'hold\',\'' + esc(p.id) + '\')">Hold</button>';
     // payouts are sent by Paystack on their own; "paid by hand" is only for a payout that failed or came back
     if (["failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'manual\',\'' + esc(p.id) + '\')">Paid outside Levromart</button>';
-    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + pill(p.status) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
+    var onBalance = p.status === "pending" && p.last_error === "Paystack balance too low";
+    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + (onBalance ? '<span class="badge badge-danger">Waiting for Paystack balance</span>' : pill(p.status)) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error && !onBalance ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
   function txRow(t) {
     var can = t.order_id && (t.status === "success" || t.status === "partially_refunded");
@@ -668,9 +679,13 @@
     var tabs = [["withdrawals", "Withdrawals" + (wdOpen ? " (" + wdOpen + ")" : "")], ["cancellations", "Cancel requests" + (crOpen ? " (" + crOpen + ")" : "")], ["payouts", "Payouts"], ["held", "On hold" + (h.held_payouts ? " (" + h.held_payouts + ")" : "")], ["failed", "Failed" + (h.failed_payouts ? " (" + h.failed_payouts + ")" : "")], ["payments", "Payments"], ["refunds", "Refunds"], ["checks", "Daily checks"]];
     var pending = wdOpen + crOpen;
     var tiles = [["Collected", t.collected, "fa-arrow-down"], ["Refunded", t.refunded, "fa-rotate-left"], ["Paid to vendors", t.paidToVendors, "fa-arrow-up-right-from-square"], ["Commission", t.commission, "fa-percent"]];
-    return nav + '<div class="ap-head"><h2>Payments</h2>' + (pending ? '<span class="ap-need"><b>' + pending + "</b> waiting for you</span>" : '<span class="ap-ok"><i class="fa-solid fa-circle-check"></i> All clear</span>') + "</div>" +
+    var stuckOnBalance = Number(h.waiting_on_balance || 0);
+    var balanceLine = h.paystackBalance == null ? "" : '<p class="ap-bal"><i class="fa-solid fa-building-columns"></i> Paystack balance (what vendor payouts are paid from): <b>' + naira(h.paystackBalance) + "</b></p>";
+    return nav + '<div class="ap-head"><h2>Payments</h2>' + (pending ? '<span class="ap-need"><b>' + pending + "</b> waiting for you</span>" : h.needsAttention ? '<span class="ap-need"><b>' + h.needsAttention + "</b> to check</span>" : '<span class="ap-ok"><i class="fa-solid fa-circle-check"></i> All clear</span>') + "</div>" +
+      (stuckOnBalance ? '<div class="ap-note ap-warn ap-bal-warn" role="alert"><i class="fa-solid fa-triangle-exclamation"></i> <span><b>' + stuckOnBalance + " vendor payout" + (stuckOnBalance === 1 ? "" : "s") + " (" + naira(h.waitingOnBalance) + ") cannot be sent: the Paystack balance is too low" + (h.paystackBalance != null ? " (" + naira(h.paystackBalance) + " now)" : "") + ".</b> Card payments go to your bank account, not to this balance. Top up the balance in the Paystack dashboard, then tap the button. Until then they are tried again every 6 hours.</span><button type=\"button\" class=\"btn btn-sm\" onclick=\"lvPayAct('retryWaiting')\">I've topped up: send now</button></div>" : "") +
+      (stuckOnBalance ? "" : balanceLine) +
       (missing.length ? '<details class="ap-setup"><summary><i class="fa-solid fa-screwdriver-wrench"></i> ' + missing.length + ' feature' + (missing.length === 1 ? "" : "s") + ' not switched on yet</summary><p>Ask your engineer to apply these database changes:</p><ul>' + missing.map(function (m) { return "<li><b>" + esc(m.version) + "</b> " + esc(m.what) + "</li>"; }).join("") + "</ul></details>" : "") +
-      (h.needsAttention ? '<div class="ap-note ap-warn" role="status"><i class="fa-solid fa-triangle-exclamation"></i> <span><b>' + h.needsAttention + ' thing(s) need attention.</b> Stuck or failed payouts and refunds, or a mismatch in the last daily check.</span></div>' : "") +
+      (h.needsAttention > stuckOnBalance ? '<div class="ap-note ap-warn" role="status"><i class="fa-solid fa-triangle-exclamation"></i> <span><b>' + (h.needsAttention - stuckOnBalance) + ' thing(s) need attention.</b> Stuck or failed payouts and refunds, or a mismatch in the last daily check.</span></div>' : "") +
       '<div class="ap-card"><div class="ap-range">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
       '<div class="ap-tiles">' + tiles.map(function (x) { return '<div class="ap-tile"><small>' + x[0] + "</small><b>" + naira(x[1]) + "</b></div>"; }).join("") + "</div></div>" +
       '<div class="ap-tabs" role="tablist">' + tabs.map(function (x) { var on = x[0] === tab; var m = /^(.*?)(?: \((\d+)\))?$/.exec(x[1]); return '<button role="tab" class="' + (on ? "active" : "") + '" onclick="lvPayTab(\'' + x[0] + '\')">' + esc(m[1]) + (m[2] ? '<i class="ap-n' + (x[0] === "withdrawals" || x[0] === "cancellations" ? " red" : "") + '">' + m[2] + "</i>" : "") + "</button>"; }).join("") + "</div>" +
@@ -1639,7 +1654,7 @@
       if (!v || !v.id) return null;
       var res = await Promise.all([
         sb.from("orders").select("id,status,created_at,completed_at,items:order_items(quantity,product:products(name)),payments(payment_type,amount,status,method,provider_reference,paid_at)").eq("vendor_id", v.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(150),
-        sb.from("vendor_payouts").select("order_id,amount_kobo,status,hold_reason,withdrawal_id,created_at,updated_at").eq("vendor_id", v.id),
+        sb.from("vendor_payouts").select("order_id,amount_kobo,status,hold_reason,last_error,withdrawal_id,created_at,updated_at").eq("vendor_id", v.id),
         sb.from("commission_charges").select("order_id,amount,status,created_at,paid_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(300),
         sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
         sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
@@ -1650,7 +1665,7 @@
       var payoutBy = {}; payouts.forEach(function (p) { payoutBy[p.order_id] = p; });
       var commBy = {}; charges.forEach(function (c) { commBy[c.order_id] = (commBy[c.order_id] || 0) + Number(c.amount || 0); });
       var requests = (res[5] && res[5].data) || [];
-      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0, asked = 0, heldReason = "";
+      var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0, asked = 0, heldReason = "", delayed = 0;
       orders.forEach(function (o) {
         var paid = (o.payments || []).filter(function (p) { return p.status === "paid" && FEE_TYPES[p.payment_type] && (p.method === "card" || /^(lvm_ord_|medris_)/.test(String(p.provider_reference || ""))); });
         if (!paid.length) return;
@@ -1665,7 +1680,7 @@
           if (pay.status === "success" || pay.status === "paid_manually") { state = "paid"; if (Number(pay.amount_kobo) > 0) amount = Number(pay.amount_kobo) / 100; date = pay.updated_at || pay.created_at; }
           else if (pay.status === "on_hold" && pay.hold_reason === "Waiting for the vendor to withdraw") state = o.status === "disputed" ? "held" : pay.withdrawal_id ? "asked" : "ready";
           else if (pay.status === "on_hold") { state = "held"; if (!heldReason) heldReason = pay.hold_reason || ""; }
-          else state = "onway";
+          else { state = "onway"; if (pay.status === "pending" && pay.last_error === "Paystack balance too low") delayed += amount; }
         } else if (o.status === "disputed") state = "held";
         else if (o.status === "completed") state = "onway";
         else state = "pending";
@@ -1676,7 +1691,7 @@
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
       var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
-      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, heldReason: heldReason, onWay: onWay, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
+      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, heldReason: heldReason, onWay: onWay, delayed: delayed, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
       cache = { at: Date.now(), data: data };
       writeStored(data);
       return data;
@@ -1700,6 +1715,7 @@
       '</div>' +
       (d && d.held > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-circle-exclamation"></i> On hold <b>' + money(d.held) + '</b>' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>' : '') +
       (d && d.asked > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-hourglass-half"></i> Waiting for Levromart to approve your withdrawal <b>' + money(d.asked) + '</b></div>' : '') +
+      (d && d.delayed > 0 ? '<div class="lvw-paidline lvw-delayed"><i class="fa-solid fa-clock"></i> <b>' + money(d.delayed) + '</b> is taking a little longer than usual to reach your bank. It will be sent automatically; you do not need to do anything.</div>' : '') +
       '<div class="lvw-paidline">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
       '<div class="lvw-actions"><button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' +
       '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +

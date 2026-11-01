@@ -1,7 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
-import { VendorPayoutsRepository, type PayoutWork } from "../../database/repositories/vendor-payouts.repository.js";
+import { BALANCE_TOO_LOW, VendorPayoutsRepository, type PayoutWork } from "../../database/repositories/vendor-payouts.repository.js";
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, koboToNaira } from "../../integrations/paystack/index.js";
 import { conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
 
@@ -181,7 +181,7 @@ export class VendorPayoutsService {
   private async balanceTooLow(p: PayoutWork): Promise<void> {
     await this.db().asService(async (tx) => {
       const repo = new VendorPayoutsRepository(tx);
-      await repo.requeue(p.id, { at: new Date(Date.now() + BALANCE_WAIT_MS), error: "Paystack balance too low", giveBackAttempt: true });
+      await repo.requeue(p.id, { at: new Date(Date.now() + BALANCE_WAIT_MS), error: BALANCE_TOO_LOW, giveBackAttempt: true });
       if (!(await repo.balanceAlertedToday())) {
         await new NotificationWriter(tx).notifyAdmins("Top up the Paystack balance", "Vendor payouts are waiting because the Paystack balance is too low. They will be tried again automatically.", null, null, null);
       }
@@ -216,6 +216,17 @@ export class VendorPayoutsService {
       if (!(await repo.release(id))) throw conflict(`A payout that is ${p.status.replace("_", " ")} cannot be released.`);
       await repo.logAdminAction(me.userId, "Released vendor payout", id, p.business_name ?? "");
       return { id, status: "pending" };
+    });
+  }
+
+  /** "Try again now" after topping up the Paystack balance: the waiting payouts go on the worker's next run (within a minute). */
+  async retryWaiting(me: Identity) {
+    return this.db().asService(async (tx) => {
+      await this.requireAdmin(tx, me);
+      const repo = new VendorPayoutsRepository(tx);
+      const queued = await repo.retryWaitingOnBalance();
+      if (queued) await repo.logAdminAction(me.userId, `Retried ${queued} payout(s) waiting for the Paystack balance`, null, "");
+      return { queued };
     });
   }
 

@@ -51,12 +51,18 @@ export class PaymentsAdminService {
         commission: naira(t.commission_kobo),
       });
       const health = await repo.health();
-      const stuck = health.stuck_payouts + health.stuck_refunds + health.failed_payouts;
+      const stuck = health.stuck_payouts + health.stuck_refunds + health.failed_payouts + health.waiting_on_balance;
       return {
         today: shape(await repo.totals("day")),
         week: shape(await repo.totals("week")),
         month: shape(await repo.totals("month")),
-        health: { ...health, needsAttention: stuck + (health.last_report_problems ?? 0) },
+        health: {
+          ...health,
+          waitingOnBalance: naira(health.waiting_on_balance_kobo),
+          // what Paystack can pay vendors from right now (null when Paystack could not be asked)
+          paystackBalance: await paystackBalanceNaira(),
+          needsAttention: stuck + (health.last_report_problems ?? 0),
+        },
       };
     });
   }
@@ -140,6 +146,24 @@ const LABEL: Record<Problem["kind"], string> = {
   transfer_stuck: "payouts stuck",
   refund_stuck: "refunds stuck",
 };
+/** The naira in the Paystack balance (what transfers are paid from), or null if Paystack could not be asked. Never blocks the page for long. */
+async function paystackBalanceNaira(): Promise<number | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const rows = await Promise.race([
+      getPaystackClient().balance(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("timeout")), 4000);
+      }),
+    ]);
+    const ngn = (rows ?? []).find((r) => String(r.currency).toUpperCase() === "NGN");
+    return ngn ? koboToNaira(Number(ngn.balance)) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 const fmt = (kobo: number) => "₦" + koboToNaira(kobo).toLocaleString("en-NG", { maximumFractionDigits: 2 });
 
 /** [start, end) of one UTC day as ISO strings; the day before today by default. */

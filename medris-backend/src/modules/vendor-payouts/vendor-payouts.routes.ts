@@ -65,6 +65,17 @@ export const releasePayout = defineRoute({
   responses: { 200: dataResponse(Result, "Queued."), ...errorResponses(400, 401, 403, 404, 409), ...commonErrors },
 });
 
+export const retryWaitingPayouts = defineRoute({
+  method: "post",
+  path: "/admin/payouts/retry-waiting",
+  tags,
+  security: signedIn,
+  middleware: [requireUser] as const,
+  summary: "Try the payouts waiting for the Paystack balance again now (admins)",
+  description: "After topping up the Paystack balance: payouts Paystack refused for a low balance are sent on the worker's next run (within a minute) instead of at their next 6-hourly try. Logged in the admin action log.",
+  responses: { 200: dataResponse(z.object({ queued: z.number().int() }).openapi("RetryWaitingPayoutsResult"), "How many were queued."), ...errorResponses(401, 403), ...commonErrors },
+});
+
 export const holdPayout = defineRoute({
   method: "post",
   path: "/admin/payouts/{id}/hold",

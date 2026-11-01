@@ -2,6 +2,9 @@ import { sql, type SQL } from "drizzle-orm";
 import type { Executor } from "../client.js";
 import { jsonReturning, jsonRow, jsonRows } from "../json.js";
 
+/** The last_error of a payout Paystack refused for lack of balance (it waits, then is tried again). */
+export const BALANCE_TOO_LOW = "Paystack balance too low";
+
 export interface PayoutWork {
   id: string;
   order_id: string;
@@ -161,10 +164,10 @@ export class VendorPayoutsRepository {
     return (r?.n ?? 0) > 0;
   }
 
-  async logAdminAction(adminId: string, action: string, payoutId: string, label: string): Promise<void> {
+  async logAdminAction(adminId: string, action: string, payoutId: string | null, label: string): Promise<void> {
     await this.db.execute(sql`
       insert into public.admin_actions (admin_id, admin_name, action, target_type, target_id, target_label)
-      select ${adminId}, u.name, ${action}, 'vendor_payout', ${payoutId}, ${label} from public.users u where u.id = ${adminId}`);
+      select ${adminId}, u.name, ${action}, 'vendor_payout', ${payoutId}::uuid, ${label} from public.users u where u.id = ${adminId}`);
   }
 
   /** The payout, with what the vendor needs to be told. */
@@ -198,6 +201,16 @@ export class VendorPayoutsRepository {
             and (${f.to ?? null}::timestamptz is null or p.created_at < ${f.to ?? null}::timestamptz)
           order by p.created_at desc limit ${limit} offset ${offset}`,
     );
+  }
+
+  /** After a top-up: payouts that were waiting for the Paystack balance are tried on the worker's next run instead of hours later. */
+  async retryWaitingOnBalance(): Promise<number> {
+    const rows = await jsonReturning(
+      this.db,
+      sql`update public.vendor_payouts set next_attempt_at = null
+          where status = 'pending' and last_error = ${BALANCE_TOO_LOW} and next_attempt_at > now() returning id`,
+    );
+    return rows.length;
   }
 
   async release(id: string): Promise<boolean> {

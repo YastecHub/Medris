@@ -5197,3 +5197,14 @@ html body #app .lv-map-copy strong{font-size:.95rem}
 html body #app .lv-map-copy small{color:var(--muted,#6b7280);font-size:.78rem}
 /* Profile header initials (no picture): centred in their circle */
 html body #app .vendor-profile-header-card .avatar-fallback.vendor-profile-header-avatar{display:grid!important;place-items:center!important;font-size:1.7rem!important;line-height:1!important}
+
+/* Admin Payments: payouts waiting for the Paystack balance, and the balance itself */
+html:root body .ap-note.ap-bal-warn{flex-wrap:wrap;background:rgba(220,38,38,.1);color:#9b1c1c}
+html:root body .ap-note.ap-bal-warn > span{flex:1 1 220px}
+html:root body .ap-note.ap-bal-warn .btn{margin-left:auto;white-space:nowrap}
+html:root body .ap-bal{display:flex;gap:.45rem;align-items:center;margin:0 0 .7rem;font-size:.82rem;color:var(--text-muted,#5b6470)}
+:root[data-theme="dark"] body .ap-note.ap-bal-warn{background:rgba(248,113,113,.14);color:#fecaca}
+:root[data-theme="dark"] body .ap-bal{color:#aab3bd}
+/* Vendor wallet: a payout taking longer than usual (the reason is shown to admins only) */
+/* (the wallet card is dark green in both themes) */
+html:root body .lvw-card .lvw-paidline.lvw-delayed{color:#fde68a}
