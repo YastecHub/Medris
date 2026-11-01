@@ -112,7 +112,7 @@ async function initVendorsMapPage(tries = 0) {
   vmpDestroy(true);
   vmpLayout();
   window.addEventListener("resize", vmpLayout);
-  document.querySelectorAll("#bottomNav .bottom-nav-item").forEach((b) => b.classList.toggle("active", /vendors/i.test(b.textContent)));
+  document.querySelectorAll("#bottomNav .bottom-nav-item").forEach((b) => b.classList.toggle("active", /vendors|map/i.test(b.textContent)));
   try { await loadLeaflet(); } catch (err) { el.innerHTML = `<p class="muted" style="padding:1rem;">${esc(err.message)}</p>`; return; }
   let vendors = [];
   // vendors already loaded this visit open the map at once; the full list is refreshed in the background
