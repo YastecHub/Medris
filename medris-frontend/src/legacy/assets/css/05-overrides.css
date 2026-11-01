@@ -5041,3 +5041,29 @@ html body #app .vendor-profile-header-card:not(.buyer-profile-card) .vendor-prof
 html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions{display:flex!important;gap:.6rem!important;margin:.85rem 0 .15rem!important}
 html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:.45rem;padding:.72rem .6rem;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:transparent;color:var(--text,#172033);font:700 .84rem/1.2 inherit}
 html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action.active{background:#0b7557;border-color:#0b7557;color:#fff}
+
+
+/* Vendor Add Listing chooser: premium, compact mobile bottom sheet. */
+.lv-add-chooser-backdrop{position:fixed;inset:0;z-index:12050;display:flex;align-items:flex-end;justify-content:center;padding:16px 12px calc(16px + env(safe-area-inset-bottom));background:rgba(12,22,35,.48);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}
+.lv-add-chooser-backdrop.open{opacity:1;visibility:visible}
+.lv-add-chooser{width:min(100%,520px);background:var(--surface,#fff);color:var(--text,#172033);border:1px solid rgba(120,140,160,.18);border-radius:26px;padding:10px 18px 20px;box-shadow:0 24px 80px rgba(5,18,32,.24);transform:translateY(24px);transition:transform .24s cubic-bezier(.2,.8,.2,1)}
+.lv-add-chooser-backdrop.open .lv-add-chooser{transform:translateY(0)}
+.lv-add-chooser-grip{width:42px;height:4px;border-radius:9px;background:#aab4c0;opacity:.55;margin:2px auto 18px}
+.lv-add-chooser-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.lv-add-chooser-kicker{font-size:.68rem;font-weight:850;letter-spacing:.13em;color:var(--primary,#159b70)}
+.lv-add-chooser-head h2{font-size:1.32rem;line-height:1.2;letter-spacing:-.035em;margin:5px 0 4px;font-weight:850}
+.lv-add-chooser-head p{margin:0;color:var(--muted,#68778a);font-size:.9rem}
+.lv-add-chooser-close{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:50%;background:rgba(120,140,160,.12);color:inherit;font-size:1rem}
+.lv-add-chooser-options{display:grid;gap:10px}
+.lv-add-chooser-option{display:flex;align-items:center;gap:13px;width:100%;min-height:78px;padding:12px 13px;text-align:left;border:1px solid rgba(120,140,160,.2);border-radius:17px;background:var(--card,#fff);color:inherit;cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.lv-add-chooser-option:active{transform:scale(.99);border-color:var(--primary,#159b70);background:rgba(25,164,119,.055)}
+.lv-add-chooser-icon{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:15px;font-size:1.15rem}
+.lv-add-chooser-icon.product{background:rgba(25,164,119,.12);color:#159b70}
+.lv-add-chooser-icon.service{background:rgba(59,130,246,.12);color:#3478d4}
+.lv-add-chooser-icon.package{background:rgba(124,58,237,.12);color:#7c3aed}
+.lv-add-chooser-option>span:nth-child(2){display:grid;gap:4px;flex:1;min-width:0}
+.lv-add-chooser-option strong{font-size:.98rem;font-weight:800}
+.lv-add-chooser-option small{font-size:.79rem;line-height:1.35;color:var(--muted,#68778a)}
+.lv-add-chooser-option>i{font-size:.8rem;color:var(--muted,#8793a2)}
+body.lv-add-chooser-open{overflow:hidden}
+@media(prefers-reduced-motion:reduce){.lv-add-chooser-backdrop,.lv-add-chooser{transition:none}}
