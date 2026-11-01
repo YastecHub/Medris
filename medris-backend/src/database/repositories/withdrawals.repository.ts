@@ -13,7 +13,8 @@ export interface Bucket {
   net_kobo: string;
   disputed: boolean;
 }
-export interface WithdrawalRow {
+/** A type (not an interface) so it fits the API's `Record<string, unknown>` response schema. */
+export type WithdrawalRow = {
   id: string;
   vendor_id: string;
   business_name: string | null;
@@ -26,7 +27,7 @@ export interface WithdrawalRow {
   reject_reason: string | null;
   decided_at: string | null;
   created_at: string;
-}
+};
 
 /** Withdrawals (migration 0017): the money waiting per order, and the requests for it. Service role only. */
 export class WithdrawalsRepository {
