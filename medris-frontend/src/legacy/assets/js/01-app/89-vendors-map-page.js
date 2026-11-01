@@ -29,15 +29,22 @@ function renderVendorsMapPage() {
   setTimeout(() => initVendorsMapPage(), 0);
   return `<div class="vmpage" id="vmPage">
     <div id="vmpMap" aria-label="Map of vendors"></div>
-    <div class="vmp-top">
-      <div class="vmp-bar">
-        <button type="button" class="vmp-back" aria-label="Back to vendors" onclick="navigate('vendors')"><i class="fa-solid fa-chevron-left"></i></button>
-        <i class="fa-solid fa-magnifying-glass vmp-bar-ic" aria-hidden="true"></i>
-        <input id="vmpQ" type="search" autocomplete="off" placeholder="Search vendors on the map" oninput="vmpSearch(this.value)" onfocus="vmpSearch(this.value)" onkeydown="if(event.key==='Enter')vmpPickFirst()" aria-label="Search vendors on the map">
-        <button type="button" class="vmp-clear hidden" id="vmpClear" aria-label="Clear search" onclick="vmpSearch('',true)"><i class="fa-solid fa-xmark"></i></button>
+    <div class="vmp-top vmp-social-top">
+      <div class="vmp-social-head">
+        <button type="button" class="vmp-profile" onclick="navigate('buyerProfile')" aria-label="Open account">
+          ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" alt="" />` : `<span>${esc((profile?.name || "Me").slice(0,1).toUpperCase())}</span>`}
+        </button>
+        <button type="button" class="vmp-place" onclick="vmpOpenPlacePicker()" aria-label="Choose school or location">
+          <span class="vmp-place-copy"><strong id="vmpPlaceName">${esc(window.__vmpPlaceName || buyerLocation?.label || profile?.city || "Choose location")}</strong><small id="vmpPlaceSub">${esc(window.__vmpPlaceSub || "Explore vendors around you")}</small></span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <button type="button" class="vmp-profile-action" onclick="navigate('settings')" aria-label="Map preferences"><i class="fa-solid fa-sliders"></i></button>
       </div>
-      <div class="vmp-sugg hidden" id="vmpSugg"></div>
-      <div class="vmp-chips" id="vmpChips"></div>
+      <div class="vmp-search-row">
+        <div class="vmp-bar"><i class="fa-solid fa-magnifying-glass vmp-bar-ic" aria-hidden="true"></i><input id="vmpQ" type="search" autocomplete="off" placeholder="Search places, vendors…" oninput="vmpSearch(this.value)" onfocus="vmpSearch(this.value)" onkeydown="if(event.key==='Enter')vmpPickFirst()" aria-label="Search places and vendors"><button type="button" class="vmp-clear hidden" id="vmpClear" aria-label="Clear search" onclick="vmpSearch('',true)"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="vmp-view-switch" role="group" aria-label="Vendor display"><button type="button" class="active" id="vmpMapViewBtn" onclick="vmpSetDisplay('map')" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button><button type="button" id="vmpGridViewBtn" onclick="vmpSetDisplay('grid')" aria-label="Grid and list view"><i class="fa-solid fa-grip"></i></button></div>
+      </div>
+      <div class="vmp-sugg hidden" id="vmpSugg"></div><div class="vmp-chips" id="vmpChips"></div>
     </div>
     <div class="vmp-fabs">
       <button type="button" class="vmp-fab" aria-label="Map type" onclick="vmpToggleStyles()"><i class="fa-solid fa-layer-group"></i></button>
@@ -51,6 +58,28 @@ function renderVendorsMapPage() {
   </div>`;
 }
 
+
+function vmpSetDisplay(mode) {
+  if (mode === "grid") {
+    try { localStorage.setItem("levromart-vendors-display", "grid"); } catch (_) {}
+    navigate("vendors");
+    return;
+  }
+  try { localStorage.setItem("levromart-vendors-display", "map"); } catch (_) {}
+  byId("vmpMapViewBtn")?.classList.add("active");
+  byId("vmpGridViewBtn")?.classList.remove("active");
+}
+function vmpOpenPlacePicker() {
+  const current = window.__vmpPlaceName || buyerLocation?.label || profile?.city || "Choose location";
+  const value = window.prompt("Choose a school, campus or location", current);
+  if (value == null || !value.trim()) return;
+  window.__vmpPlaceName = value.trim();
+  window.__vmpPlaceSub = "Selected area";
+  try { localStorage.setItem("levromart-vmp-place", value.trim()); } catch (_) {}
+  const name = byId("vmpPlaceName"); if (name) name.textContent = value.trim();
+  const sub = byId("vmpPlaceSub"); if (sub) sub.textContent = "Selected area";
+  vmpSearch(value.trim());
+}
 function vmpLayout() {
   const page = byId("vmPage"); if (!page) return;
   const nav = byId("bottomNav");
