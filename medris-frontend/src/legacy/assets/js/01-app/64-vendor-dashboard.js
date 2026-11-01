@@ -79,8 +79,7 @@ async function renderVendorDashboard() {
 
   // ---------- 1. Profile header ----------
   let html = `<div class="vendor-profile-header-card">
-    <div class="storefront-cover vendor-profile-header-cover ${v.cover_url ? "has-custom-cover" : ""}" ${v.cover_url ? `style="background-image:url('${esc(v.cover_url)}');"` : ""}>
-      ${v.cover_url ? "" : '<div class="storefront-cover-empty">No custom header image yet</div>'}
+    <div class="storefront-cover vendor-profile-header-cover ${v.cover_url ? "has-custom-cover" : "lv-gen-cover"}" ${v.cover_url ? `style="background-image:url('${esc(v.cover_url)}');"` : lvGenCoverAttrs(profile?.name || v.business_name || "Vendor", profile?.avatar_url || null)}>
       ${lvCoverActionsHtml("navigate('vendorEditProfile')", `lvOpenProfileShare('vendor','${v.id}')`)}
     </div>
     <div class="vendor-profile-header-body">

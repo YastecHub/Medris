@@ -4084,7 +4084,9 @@ html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-ite
 html:root:root:root:root:root:root body #bottomNav .bn-ind{background:#15a46b!important}
 html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bn-ind,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bn-ind{background:#3fb97f!important}
 html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#15a46b!important;color:#15a46b!important}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add.is-request .bn-icon{border-color:#7c3aed!important;color:#7c3aed!important}
 html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon{border-color:#3fb97f!important;color:#3fb97f!important}
+html[data-theme="dark"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add.is-request .bn-icon,html[data-theme="black"]:root:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add.is-request .bn-icon{border-color:#a78bfa!important;color:#a78bfa!important}
 html:root:root:root:root body #bottomNav .bottom-nav-add.bottom-nav-add .bn-icon svg{stroke:currentColor!important}
 html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:lvJiggle 2.8s ease-in-out infinite;transform-origin:50% 12%}
 @media (prefers-reduced-motion:reduce){html:root:root:root:root body #bottomNav .bottom-nav-item.ringing .bn-icon svg{animation:none}}
@@ -5114,3 +5116,38 @@ html body #app .lv-cover-btn:active{transform:scale(.94)}
 .lvqr-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-top:.9rem}
 .lvqr-act{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.75rem .3rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--text,#14201a) 10%,transparent);background:var(--card,#fff);color:var(--text,#14201a);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}
 .lvqr-act i{font-size:1.1rem;color:#0b7a52}
+
+/* Generated banner for a profile without a header image: the person's colour (--gh) with soft circle watermarks */
+html body #app .storefront-cover.lv-gen-cover,
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover.lv-gen-cover{
+  position:relative!important;overflow:hidden!important;background-image:none!important;
+  background:radial-gradient(120% 140% at 100% 0%,hsl(var(--gh,150) 70% 55% / .40),transparent 55%),linear-gradient(120deg,hsl(var(--gh,150) 70% 12%) 0%,hsl(var(--gh,150) 72% 25%) 50%,hsl(var(--gh,150) 55% 44%) 100%)!important;
+}
+html body #app .storefront-cover.lv-gen-cover::before,
+html body #app .storefront-cover.lv-gen-cover::after{content:"";position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.16);pointer-events:none;z-index:0}
+html body #app .storefront-cover.lv-gen-cover::before{width:260px;height:260px;right:-60px;top:-130px;background:rgba(255,255,255,.08)}
+html body #app .storefront-cover.lv-gen-cover::after{width:180px;height:180px;right:100px;bottom:-130px;background:rgba(255,255,255,.07)}
+html body #app .storefront-cover.lv-gen-cover .storefront-cover-empty{display:none!important}
+
+/* Storefront header, Snapchat style. Written with a stronger prefix than the older header rules (which pin the name, picture
+   and Follow button with "html:root:root body #app#app"), so these are the ones that apply. */
+html:root:root body #app#app .storefront-profile.sf-snap{overflow:visible!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-cover{position:relative!important;height:236px!important;min-height:236px!important;background-size:cover!important;background-position:center!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-shade{position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to bottom,transparent,rgba(0,0,0,.42));pointer-events:none;z-index:1}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-actions{z-index:3}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-name.storefront-name-row{position:absolute!important;top:auto!important;left:calc(1rem + 108px + .8rem)!important;right:1rem!important;bottom:.8rem!important;width:auto!important;z-index:2!important;margin:0!important;padding:0!important;transform:none!important;display:block!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-name .storefront-profile-name{color:#fff!important;-webkit-text-fill-color:#fff!important;background:none!important;font-size:1.4rem!important;font-weight:850!important;line-height:1.15!important;letter-spacing:-.02em;margin:0!important;text-shadow:0 2px 12px rgba(0,0,0,.4);display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-cover-name .storefront-profile-name .muted{color:rgba(255,255,255,.8)!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-profile-body{position:relative!important;padding-top:0!important;margin-top:0!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-id-row{position:relative!important;z-index:3!important;display:flex!important;align-items:flex-end!important;gap:.8rem!important;margin:-54px 0 .5rem!important;padding:0 1rem!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar-row{position:static!important;margin:0!important;left:auto!important;top:auto!important;transform:none!important;flex:0 0 auto!important;width:auto!important;height:auto!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar,html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar-button{width:108px!important;height:108px!important;min-width:108px!important;border-radius:50%!important;border:4px solid var(--bg,#fff)!important;box-shadow:0 6px 18px rgba(0,0,0,.18)!important;overflow:hidden!important;position:static!important;margin:0!important;transform:none!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-profile-actions.storefront-public-actions{position:static!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;transform:none!important;margin:0 0 .3rem!important;flex:1 1 auto!important;min-width:0!important;width:auto!important;display:flex!important;justify-content:stretch!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .storefront-follow-wrap{width:100%!important;flex:1 1 auto!important;position:relative!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .storefront-follow-controls{width:100%!important;display:flex!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-btn.follow-btn-icon{flex:1 1 auto!important;width:100%!important;max-width:none!important;height:44px!important;min-height:44px!important;border-radius:999px!important;font-weight:750!important;justify-content:center!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-btn.follow-btn-icon.btn-outline{background:#0f9d6b!important;border-color:#0f9d6b!important;color:#fff!important}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-public-actions .follow-settings-btn{display:none!important}
+html:root:root body #app#app .storefront-profile.sf-snap .sf-edit-btn{flex:1;height:44px;border-radius:999px;font-weight:750}
+html:root:root body #app#app .storefront-profile.sf-snap .storefront-banner-more,html:root:root body #app#app .storefront-profile.sf-snap .storefront-own-more-icon{display:none!important}

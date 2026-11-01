@@ -6,8 +6,9 @@
     var splash = document.getElementById("levromartSplash");
     if (splash) { splash.classList.add("is-hidden"); splash.setAttribute("aria-hidden", "true"); }
   }
+  // Any page that has drawn something counts (a product, a profile, notifications...), not only Home.
   function hasUsableHome(app) {
-    return !!(app && app.querySelector(".levro-home-startup, .levro-home-hero, .home-promotional-carousel, #browseSection, #lv-startup-recovery"));
+    return !!(app && (app.querySelector("#lv-startup-recovery") || (app.children.length && (app.textContent.trim().length || app.querySelector("img,svg,canvas,iframe")))));
   }
   function showRecovery(reason) {
     var app = document.getElementById("app");
@@ -22,22 +23,27 @@
       } else location.reload();
     };
   }
+  // Only while the app is opening, and only when the page is still empty: first draw the page again quietly; the message
+  // appears only if that also leaves it empty. Later errors (a failed request while browsing) never replace a page.
+  var STARTUP_MS = 20000;
+  var startup = function () { return Date.now() - began < STARTUP_MS; };
   setTimeout(function () {
     release();
-    if (!hasUsableHome(document.getElementById("app"))) showRecovery("home-first-paint-timeout");
+    var app = document.getElementById("app");
+    if (hasUsableHome(app)) return;
+    try {
+      if (typeof window.navigate === "function") Promise.resolve(window.navigate(typeof currentView === "string" && currentView ? currentView : "home", typeof currentViewParams === "object" && currentViewParams ? currentViewParams : {}, false)).catch(function () {});
+    } catch (_) {}
+    setTimeout(function () { if (!hasUsableHome(document.getElementById("app"))) showRecovery("first-paint-timeout"); }, 9000);
   }, 9000);
-  window.addEventListener("error", function (event) {
-    if (Date.now() - began > 2500) {
-      release();
-      if (!hasUsableHome(document.getElementById("app"))) showRecovery(event && event.message ? event.message : "script-error");
-    }
-  });
-  window.addEventListener("unhandledrejection", function (event) {
-    if (Date.now() - began > 2500) {
-      release();
-      if (!hasUsableHome(document.getElementById("app"))) showRecovery(event && event.reason ? String(event.reason) : "unhandled-rejection");
-    }
-  });
+  function onStartupError(reason) {
+    if (!startup() || Date.now() - began < 2500) return;
+    var app = document.getElementById("app");
+    if (hasUsableHome(app)) return;
+    setTimeout(function () { if (startup() && !hasUsableHome(document.getElementById("app"))) { release(); showRecovery(reason); } }, 4000);
+  }
+  window.addEventListener("error", function (event) { onStartupError(event && event.message ? event.message : "script-error"); });
+  window.addEventListener("unhandledrejection", function (event) { onStartupError(event && event.reason ? String(event.reason) : "unhandled-rejection"); });
 })();
 let currentView = "home";
 let currentViewParams = {};
