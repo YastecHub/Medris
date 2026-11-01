@@ -156,59 +156,13 @@
   };
 
   /* ---------------------------------------------------------------
-     APPROVED VENDOR SESSION AUTO-LOCATION.
-     This runs on vendor login/return and never requires opening Business Profile.
-     It only updates the logged-in vendor's own row.
+     VENDOR LOCATION IS OWNER-CONTROLLED.
+     A vendor's saved coordinates are intentionally not refreshed from the
+     device on login, focus, pageshow, or visibility changes. The only code
+     allowed to persist new coordinates lives in Business Profile's explicit
+     location editor, after the vendor confirms the change.
      --------------------------------------------------------------- */
-  let vendorAutoLocationInFlight=false;
-  let vendorAutoLocationLastRun=0;
-
-  async function refreshOwnVendorLocationSilently(force){
-    // A shop's location is set once by its owner (on the application or in Business profile) and never moved by the phone.
-    return null;
-    if(vendorAutoLocationInFlight) return null;
-    if(!session || profile?.role !== "vendor") return null;
-    if(!navigator.geolocation) return null;
-
-    const now=Date.now();
-    if(!force && now-vendorAutoLocationLastRun < 5*60*1000) return null;
-    vendorAutoLocationLastRun=now;
-    vendorAutoLocationInFlight=true;
-
-    try{
-      const {data:ownVendor,error:vendorError}=await sb
-        .from("vendors")
-        .select("id,verification_status,is_active,lat,lng")
-        .eq("user_id",session.user.id)
-        .maybeSingle();
-
-      if(vendorError || !ownVendor || ownVendor.verification_status !== "verified" || !ownVendor.is_active) return null;
-
-      const loc=await getCurrentPositionOnce();
-      const {error}=await sb.from("vendors").update({lat:loc.lat,lng:loc.lng}).eq("id",ownVendor.id);
-      if(error){
-        console.warn("[Levromart] Automatic vendor location update failed:",error.message);
-        return null;
-      }
-
-      return loc;
-    }catch(err){
-      console.warn("[Levromart] Automatic vendor location unavailable:",err?.message||err);
-      return null;
-    }finally{
-      vendorAutoLocationInFlight=false;
-    }
-  }
-
-  window.refreshOwnVendorLocationSilently=refreshOwnVendorLocationSilently;
-
-  /* Give the approved vendor a location as soon as their session is ready. */
-  setTimeout(()=>refreshOwnVendorLocationSilently(false),1800);
-  window.addEventListener("focus",()=>setTimeout(()=>refreshOwnVendorLocationSilently(false),300));
-  window.addEventListener("pageshow",()=>setTimeout(()=>refreshOwnVendorLocationSilently(false),500));
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState === "visible") setTimeout(()=>refreshOwnVendorLocationSilently(false),500);
-  });
+  window.refreshOwnVendorLocationSilently = async function(){ return null; };
 
 })();
 

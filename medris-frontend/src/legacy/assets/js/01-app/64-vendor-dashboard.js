@@ -82,6 +82,10 @@ async function renderVendorDashboard() {
         <button type="button" class="storefront-stat-link" onclick="navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300);"><strong>★ ${Number(v.avg_rating ?? 0).toFixed(1)}</strong> rating</button>
         <button type="button" class="storefront-stat-link" onclick="navigate('vendorFollowers')"><strong>${totalFollowers.toLocaleString()}</strong> follower${totalFollowers === 1 ? "" : "s"}</button>
       </div>
+      <div class="lv-profile-actions lv-vendor-profile-actions">
+        <button type="button" class="lv-profile-action active" aria-current="page" onclick="navigate('vendorDashboard')"><i class="fa-solid fa-user-gear"></i> My account</button>
+        <button type="button" class="lv-profile-action" onclick="navigate('storefront',{vendorId:'${v.id}'})"><i class="fa-solid fa-arrow-up-right-from-square"></i> Public profile</button>
+      </div>
     </div>
   </div>`;
 

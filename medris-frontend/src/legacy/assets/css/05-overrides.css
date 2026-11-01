@@ -4983,3 +4983,61 @@ body.vendors-map-full-page #app .vmpage .vmp-bottom{
     padding:.3rem .85rem .3rem!important;
   }
 }
+
+
+/* ===== Account profile refresh: hero, avatar and profile actions ===== */
+html body #app .buyer-profile-card.lv-profile-hero{
+  position:relative!important;isolation:isolate!important;overflow:hidden!important;
+  margin:0 0 1.15rem!important;border-radius:0 0 28px 28px!important;
+  background:var(--card,#fff)!important;border:0!important;
+  box-shadow:0 12px 34px rgba(15,23,42,.10)!important;
+}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover{
+  display:block!important;position:relative!important;height:172px!important;min-height:172px!important;
+  border-radius:0!important;overflow:hidden!important;
+  background:linear-gradient(120deg,#063f35 0%,#087b5b 48%,#31b77d 100%)!important;
+}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover:before,
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover:after{
+  content:"";position:absolute;border:1px solid rgba(255,255,255,.16);border-radius:50%;
+}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover:before{width:250px;height:250px;right:-50px;top:-120px;background:rgba(255,255,255,.08)}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover:after{width:170px;height:170px;right:95px;bottom:-125px;background:rgba(255,255,255,.07)}
+html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-body{
+  position:relative!important;padding:0 1rem 1rem!important;
+}
+html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar-row{
+  display:flex!important;align-items:flex-end!important;justify-content:space-between!important;
+  min-height:0!important;margin-top:-2.7rem!important;position:relative!important;z-index:2!important;
+}
+html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar{
+  display:block!important;flex:0 0 5.4rem!important;width:5.4rem!important;height:5.4rem!important;
+  min-width:5.4rem!important;min-height:5.4rem!important;object-fit:cover!important;
+  object-position:center!important;border:4px solid var(--card,#fff)!important;border-radius:50%!important;
+  box-sizing:border-box!important;box-shadow:0 5px 18px rgba(0,0,0,.18)!important;
+}
+html body #app .buyer-profile-card.lv-profile-hero .buyer-profile-row-actions{display:flex!important;gap:.55rem!important;padding-bottom:.35rem!important}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-title-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.65rem}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-eyebrow{font-size:.68rem;font-weight:850;letter-spacing:.13em;color:var(--muted,#64748b)}
+html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-name{margin:.1rem 0 .15rem!important;font-size:1.55rem!important;font-weight:850!important;letter-spacing:-.035em!important}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-member-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.42rem .65rem;border-radius:99px;background:color-mix(in srgb,#15966a 12%,transparent);color:#087b5b;font-size:.72rem;font-weight:750;white-space:nowrap}
+html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-personal,
+html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-location{margin:.35rem 0!important}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-actions{display:flex;gap:.6rem;margin-top:1rem}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-action{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:.45rem;padding:.72rem .6rem;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:transparent;color:var(--text,#172033);font:700 .84rem/1.2 inherit}
+html body #app .buyer-profile-card.lv-profile-hero .lv-profile-action.active{background:#0b7557;border-color:#0b7557;color:#fff}
+html body #app .buyer-profile-card.lv-profile-hero + .lv-group{margin-top:0!important}
+@media(max-width:720px){
+  html body #app .buyer-profile-card.lv-profile-hero{margin:0 -1rem 1rem!important;border-radius:0 0 25px 25px!important}
+  html body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover{height:158px!important;min-height:158px!important}
+  html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-body{padding:0 1rem .95rem!important}
+  html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar-row{margin-top:-2.55rem!important}
+  html body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar{width:5.2rem!important;height:5.2rem!important;flex-basis:5.2rem!important;min-width:5.2rem!important;min-height:5.2rem!important}
+}
+
+
+/* Vendor dashboard: restore the shop cover and show the two profile destinations. */
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .vendor-profile-header-cover{display:block!important;min-height:172px!important;height:172px!important}
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions{display:flex!important;gap:.6rem!important;margin:.85rem 0 .15rem!important}
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:.45rem;padding:.72rem .6rem;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:transparent;color:var(--text,#172033);font:700 .84rem/1.2 inherit}
+html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-profile-actions .lv-profile-action.active{background:#0b7557;border-color:#0b7557;color:#fff}
