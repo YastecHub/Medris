@@ -4513,3 +4513,76 @@ html body .lv-stk-grid.hidden{display:none}
 .lvw-sheet .lvrw-later { display: block; width: 100%; margin: .6rem 0 0; padding: .7rem 1rem; border: 1px solid var(--border, #d9dde3); border-radius: 12px; background: transparent; color: var(--text, #1f2937); font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
 .lvw-sheet .lvrw-later:hover { background: rgba(127, 127, 127, .08); }
 :root[data-theme="dark"] .lvw-sheet .lvrw-later { border-color: rgba(255, 255, 255, .18); color: #e5e7eb; }
+
+
+/* ---- Snapchat-inspired LevroMap and social profile refresh ---- */
+html body #app .vmpage{
+  position:relative!important;isolation:isolate!important;overflow:hidden!important;
+  width:100%!important;max-width:none!important;border-radius:0!important;
+  background:#101827!important;min-height:calc(100dvh - 4rem)!important;
+}
+html body #app .vmpage .vmp-top.vmp-social-top{
+  top:max(.65rem,env(safe-area-inset-top,0px))!important;left:.85rem!important;right:.85rem!important;
+  display:flex!important;flex-direction:column!important;gap:.7rem!important;max-width:none!important;
+  pointer-events:none!important;
+}
+html body #app .vmpage .vmp-social-head,
+html body #app .vmpage .vmp-search-row,
+html body #app .vmpage .vmp-chips{pointer-events:auto!important}
+html body #app .vmpage .vmp-social-head{display:flex;align-items:center;gap:.65rem;min-height:3.1rem}
+html body #app .vmpage .vmp-profile,
+html body #app .vmpage .vmp-profile-action{
+  flex:0 0 46px;width:46px;height:46px;border:2px solid rgba(255,255,255,.8);
+  border-radius:50%;padding:0;display:grid;place-items:center;overflow:hidden;
+  background:rgba(12,18,29,.82);color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.22)
+}
+html body #app .vmpage .vmp-profile img{width:100%;height:100%;object-fit:cover}
+html body #app .vmpage .vmp-profile span{font-size:1.05rem;font-weight:800;color:#fff}
+html body #app .vmpage .vmp-place{
+  min-width:0;flex:1;display:flex;align-items:center;justify-content:space-between;gap:.6rem;
+  border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:.62rem .95rem;
+  color:#fff;background:rgba(12,18,29,.78);backdrop-filter:blur(14px);text-align:left;
+  box-shadow:0 5px 16px rgba(0,0,0,.2)
+}
+html body #app .vmpage .vmp-place-copy{display:flex;flex-direction:column;min-width:0;gap:.08rem}
+html body #app .vmpage .vmp-place-copy strong{font-size:.98rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body #app .vmpage .vmp-place-copy small{font-size:.68rem;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body #app .vmpage .vmp-place>i{font-size:.8rem;color:#fff}
+html body #app .vmpage .vmp-search-row{display:flex;align-items:center;gap:.55rem}
+html body #app .vmpage .vmp-bar{flex:1;min-width:0;height:48px;border-radius:999px!important;padding:0 .95rem!important;background:rgba(255,255,255,.96)!important;box-shadow:0 5px 18px rgba(0,0,0,.18)!important}
+html body #app .vmpage .vmp-bar input{font-size:.92rem!important}
+html body #app .vmpage .vmp-view-switch{display:flex;gap:.2rem;padding:.22rem;border-radius:999px;background:rgba(12,18,29,.8);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(12px)}
+html body #app .vmpage .vmp-view-switch button{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#fff;display:grid;place-items:center}
+html body #app .vmpage .vmp-view-switch button.active{background:#18a875;color:#fff}
+html body #app .vmpage .vmp-chips{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;gap:.5rem!important;scrollbar-width:none!important;padding:.1rem .05rem .4rem!important}
+html body #app .vmpage .vmp-chips::-webkit-scrollbar{display:none}
+html body #app .vmpage .vmp-chip{flex:none!important;border-radius:999px!important;padding:.55rem .95rem!important;background:rgba(12,18,29,.84)!important;color:#fff!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important}
+html body #app .vmpage .vmp-chip.on{background:#168f68!important;color:#fff!important}
+html body #app .vmpage .vmp-fabs{top:10rem!important;right:.85rem!important}
+html body #app .vmpage .vmp-fab{width:46px!important;height:46px!important;border-radius:50%!important}
+html body #app .vmpage .vmp-bottom{padding-bottom:.65rem!important}
+html body #app .vmpage .vmp-route{border-radius:22px!important;box-shadow:0 8px 24px rgba(0,0,0,.18)!important}
+html body #app .vmpage .vmp-card{border-radius:24px!important}
+.vmp-return-map{position:fixed;z-index:9998;right:1rem;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:.5rem;padding:.8rem 1.05rem;border:0;border-radius:999px;background:#07885d;color:#fff;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.vmp-return-map i{font-size:1.05rem}
+html body #app .vendor-profile-header-card{
+  overflow:hidden!important;border-radius:0 0 28px 28px!important;
+  border:0!important;box-shadow:0 10px 32px rgba(0,0,0,.10)!important;
+  background:var(--card)!important;margin:-.7rem -.75rem 1.1rem!important;
+}
+html body #app .vendor-profile-header-card .vendor-profile-header-cover{min-height:190px!important;border-radius:0!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-body{padding:0 1.1rem 1.15rem!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-avatar-row{margin-top:-2.3rem!important;position:relative!important;z-index:2}
+html body #app .vendor-profile-header-card .vendor-profile-header-avatar{width:5rem!important;height:5rem!important;border:4px solid var(--card)!important;box-shadow:0 4px 16px rgba(0,0,0,.14)!important}
+html body #app .vendor-profile-header-card .vendor-profile-header-name{font-size:1.35rem!important;font-weight:850!important;letter-spacing:-.025em!important}
+html body #app .vendor-profile-header-card .storefront-stats{display:flex!important;gap:.45rem!important;overflow-x:auto!important;scrollbar-width:none!important;padding:.65rem 0 .15rem!important}
+html body #app .vendor-profile-header-card .storefront-stats>*{flex:0 0 auto!important;border-radius:999px!important;background:color-mix(in srgb,var(--text) 6%,var(--card))!important;padding:.55rem .8rem!important;border:0!important}
+html body #app .vendor-profile-section .lv-group,
+html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;overflow:hidden!important}
+@media(max-width:720px){
+  html body #app:has(.vmpage){padding:0!important;margin:0!important}
+  html body #app .vmpage{height:calc(100dvh - var(--lv-bottom-nav-h,4.4rem))!important;min-height:calc(100dvh - var(--lv-bottom-nav-h,4.4rem))!important}
+}
+@media(prefers-reduced-motion:reduce){
+  html body #app .vmpage *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
