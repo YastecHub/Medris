@@ -4621,3 +4621,50 @@ html body #app .buyer-profile-card + .lv-group{border-radius:20px!important;over
   html body #app:has(.vmpage){padding-bottom:0!important}
   html body #app .vmpage{height:calc(100dvh - 68px - env(safe-area-inset-bottom,0px))!important;min-height:calc(100dvh - 68px - env(safe-area-inset-bottom,0px))!important}
 }
+
+
+/* Vendor wallet/profile spacing and mobile safe-area: prevent wallet card, profile hero,
+   statistics and fixed navigation from painting over one another. */
+@media(max-width:720px){
+  html body #app:has(.vendor-profile-header-card){
+    padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))!important;
+    overflow-x:clip!important;
+  }
+  html body #app:has(.vendor-profile-header-card) .vendor-profile-header-card{
+    position:relative!important;
+    z-index:1!important;
+    margin-top:1.25rem!important;
+    clear:both!important;
+  }
+  html body #app:has(.vendor-profile-header-card) [class*="wallet-card"],
+  html body #app:has(.vendor-profile-header-card) [id*="wallet-card"]{
+    position:relative!important;
+    z-index:2!important;
+    inset:auto!important;
+    transform:none!important;
+    margin-bottom:1.15rem!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body #app:has(.vendor-profile-header-card) .vendor-profile-header-avatar-row{
+    margin-top:-1.5rem!important;
+  }
+  html body #bottomNav.bottom-nav{
+    min-height:68px!important;
+    padding-bottom:max(.4rem,env(safe-area-inset-bottom,0px))!important;
+  }
+}
+@media(min-width:721px){
+  html body #app:has(.vendor-profile-header-card) .vendor-profile-header-card{
+    position:relative!important;
+    z-index:1!important;
+    clear:both!important;
+  }
+  html body #app:has(.vendor-profile-header-card) [class*="wallet-card"],html body #app:has(.vendor-profile-header-card) [id*="wallet-card"]{
+    position:relative!important;
+    z-index:2!important;
+    inset:auto!important;
+    transform:none!important;
+    margin-bottom:1.25rem!important;
+  }
+}
