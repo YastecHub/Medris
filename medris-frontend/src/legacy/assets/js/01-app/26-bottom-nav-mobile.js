@@ -53,12 +53,14 @@ function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
 
-  const isVendorUser = session && profile?.role !== "admin" && !!vendor;
+  // The vendor role is authoritative even while the vendor row is still
+  // hydrating. Do not briefly render the buyer Request action for sellers.
+  const isVendorUser = !!session && profile?.role === "vendor";
   const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
   const vendorsTab = { icon: lvLineIcon("map"), label: "Vendors", action: "navigate('vendorsMap')", view: "vendorsMap" };
   const addTab = isVendorUser
     ? { icon: lvLineIcon("plus"), label: "Add", action: "openAddChooser()", view: null }
-    : { icon: lvLineIcon("plus"), label: "Add", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+    : { icon: lvLineIcon("request"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
   const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const ordersTab = isVendorUser
     ? { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
@@ -78,8 +80,8 @@ function renderBottomNav() {
   nav.classList.add("has-add");
   nav.innerHTML =
     '<div class="bn-group bn-group-left">' + [homeTab, vendorsTab].map(itemHtml).join("") + '</div>' +
-    '<button class="bottom-nav-add" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="Add">' +
-      '<span class="bn-icon">' + lvLineIcon("plus") + '</span><span>Add</span>' +
+    '<button class="bottom-nav-add ' + (isVendorUser ? 'bn-add-vendor' : 'bn-add-request') + '" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="' + (isVendorUser ? 'Add listing' : 'Request an item') + '">' +
+      '<span class="bn-icon">' + lvLineIcon(isVendorUser ? "plus" : "request") + '</span><span>' + (isVendorUser ? 'Add' : 'Request') + '</span>' +
     '</button>' +
     '<div class="bn-group bn-group-right">' + [notificationsTab, ordersTab].map(itemHtml).join("") + '</div>';
 }
