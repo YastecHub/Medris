@@ -194,6 +194,8 @@ function showCommissionPaywall(owedAmount) {
 
 async function navigate(view, params = {}, pushHistory = true) {
   if (await levroCommissionGate(view)) return;
+  const __isSlideRoute = ["requestEquipment", "myEquipmentRequests"].includes(view);
+  const __previousIsSlideRoute = ["requestEquipment", "myEquipmentRequests"].includes(currentView);
   // Leaving the notification surface commits the unread items that were
   // visible during this visit. This covers Back, bottom-nav taps, links, and
   // any other route transition that does not pass through closeAllPanels().
@@ -614,7 +616,20 @@ async function navigate(view, params = {}, pushHistory = true) {
       liveStorefrontFollowHtml = liveWrap.innerHTML;
     }
   }
+  if (__isSlideRoute || __previousIsSlideRoute) {
+    app.classList.add("lv-page-slide-transition");
+    app.dataset.routeTransition = "request";
+  } else {
+    app.classList.remove("lv-page-slide-transition");
+    delete app.dataset.routeTransition;
+  }
   app.innerHTML = html;
+  if (__isSlideRoute || __previousIsSlideRoute) {
+    app.classList.add("lv-page-slide-enter");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => app.classList.remove("lv-page-slide-enter"));
+    });
+  }
   // REACT-REGISTRY HOOK (4/4): draw the React screen into the placeholder. If React is late or
   // the screen fails, the registry switches that screen off for the session and the legacy
   // screen is rendered instead, so the page is never left blank.
