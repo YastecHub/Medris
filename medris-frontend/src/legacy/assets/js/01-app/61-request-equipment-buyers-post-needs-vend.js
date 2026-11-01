@@ -132,15 +132,12 @@ window.lvFloatHero = function () {
 };
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
-  const [{ data: myRequests, error: myRequestsError }] = await Promise.all([
-    withRouteTimeout(sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, message, price, status, created_at, vendor:vendors(business_name, avg_rating, phone, whatsapp_number, delivery_fee))")
-      .eq("buyer_id", session.user.id).order("created_at", { ascending: false }), 7000, { data: null, error: new Error("Your requests are taking too long to load.") }),
+  await Promise.all([
     (async () => { if (!sectors.length) { const { data } = await levroData.catalogue.sectors("sort_order"); sectors = data || []; } })(),
     (async () => { if (!window.__categories?.length) { const { data } = await levroData.catalogue.categories(); window.__categories = data || []; } })(),
   ]);
 
-  window.__myEquipmentRequestCount = (myRequests || []).filter((r) => r.status !== "cancelled").length;
-  let html = `${lvPageHero("request")}<div class="rq-head"><div class="rq-title"><span class="rq-ic"><svg viewBox='0 0 24 24' width='26' height='26' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 22V12'/><path d='M20.27 18.27 22 20'/><path d='M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559'/><path d='M3.29 7 12 12l8.71-5'/><path d='m7.5 4.27 8.997 5.148'/><circle cx='18.5' cy='16.5' r='2.5'/></svg></span><div><h2>Request an item</h2><p>Tell vendors what you need. They come to you with offers.</p></div></div><button type="button" class="rq-mine" onclick="navigate('myEquipmentRequests')" aria-label="Your requests" title="Your requests">${(window.__myEquipmentRequestCount || 0) > 0 ? `<b class="rq-count">${window.__myEquipmentRequestCount > 9 ? "9+" : window.__myEquipmentRequestCount}</b>` : ""}<i class="fa-solid fa-list-check"></i></button></div>
+  let html = `${lvPageHero("request")}<div class="rq-head"><div class="rq-title"><span class="rq-ic"><svg viewBox='0 0 24 24' width='26' height='26' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 22V12'/><path d='M20.27 18.27 22 20'/><path d='M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559'/><path d='M3.29 7 12 12l8.71-5'/><path d='m7.5 4.27 8.997 5.148'/><circle cx='18.5' cy='16.5' r='2.5'/></svg></span><div><h2>Request an item</h2><p>Tell vendors what you need. They come to you with offers.</p></div></div><button type="button" class="rq-mine" onclick="navigate('myEquipmentRequests')" aria-label="Your requests" title="Your requests"><i class="fa-solid fa-list-check"></i></button></div>
     <div class="card request-equipment-page rq-form" style="max-width:520px;">
       <div id="reqError" class="error-text hidden"></div>
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
@@ -165,13 +162,15 @@ async function renderRequestEquipment() {
         <label>Needed to</label><input type="date" id="reqTo" style="width:100%;" />
       </div>
       <button type="button" class="btn" id="postEquipmentRequestBtn" style="margin-top:0.6rem;" aria-label="Post request">Post request</button>
-    </div>
+    </div>`;
   setTimeout(updateRequestFormFields, 0);
   window.__reqPhotos = [];
   window.__reqDraftPhotos = [];
   setTimeout(() => { reqPhotosPaint(); reqDraftRestore(); }, 0);
   return html;
 }
+
+
 
 
 
@@ -182,13 +181,17 @@ async function renderMyEquipmentRequests() {
       .eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
     7000, { data: null, error: new Error("Your requests are taking too long to load.") }
   );
-  let html = `<div class="rq-head"><div class="rq-title"><div><h2>Your requests</h2><p>Track your requests and compare vendor offers.</p></div></div><button class="btn btn-sm btn-outline" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button></div>`;
+  const activeRequests = (myRequests || []).filter((r) => r.status !== "cancelled");
+  window.__myEquipmentRequestCount = activeRequests.length;
+  let html = `<div class="rq-head"><div class="rq-title"><div><h2>Your requests</h2><p>Track your requests and compare vendor offers.</p></div></div><button class="btn btn-sm btn-outline" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button></div>
+    <div class="rq-history-toolbar"><input id="myEquipmentRequestSearch" type="search" placeholder="Search your requests…" aria-label="Search your requests" oninput="filterMyEquipmentRequests()" /><span class="muted" id="myEquipmentRequestResultsCount">${activeRequests.length} request${activeRequests.length===1?"":"s"}</span></div>
+    <div id="myEquipmentRequestsList">`;
   if (myRequestsError) html += `<p class="muted">Your request history could not be loaded right now.</p>`;
   else if (!myRequests || myRequests.length === 0) html += `<div class="empty-state">You haven't posted any requests yet.</div>`;
-  (myRequests || []).filter((r) => r.status !== "cancelled").forEach((r) => {
+  activeRequests.forEach((r) => {
     // an offer a shop declined or withdrew disappears from this page
     const offers = (r.offers || []).filter((o) => !["declined", "rejected", "withdrawn"].includes(String(o.status)));
-    html += `<div class="card">
+    html += `<div class="card my-equipment-request-card" data-request-search="${esc([r.title,r.description,r.city,r.request_type,r.status].filter(Boolean).join(" ").toLowerCase())}">
       <div class="flex" style="justify-content:space-between;"><strong>${esc(r.title)}</strong><div class="flex"><span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span><span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status)}</span></div></div>
       ${r.status === "open" ? `<button class="btn btn-sm btn-outline" style="margin-top:0.4rem;" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel request</button>` : ""}
       ${r.description ? `<p class="muted" style="margin:0.3rem 0;">${esc(r.description)}</p>` : ""}
@@ -213,9 +216,24 @@ async function renderMyEquipmentRequests() {
     </div>`;
   });
 
+  html += `</div>`;
   return html;
 }
 
+
+function filterMyEquipmentRequests() {
+  const query = String(document.getElementById("myEquipmentRequestSearch")?.value || "").trim().toLowerCase();
+  const cards = [...document.querySelectorAll("#myEquipmentRequestsList .my-equipment-request-card")];
+  let visible = 0;
+  cards.forEach((card) => {
+    const haystack = String(card.dataset.requestSearch || card.textContent || "").toLowerCase();
+    const show = !query || haystack.includes(query);
+    card.classList.toggle("hidden", !show);
+    if (show) visible += 1;
+  });
+  const count = document.getElementById("myEquipmentRequestResultsCount");
+  if (count) count.textContent = query ? `${visible} of ${cards.length} requests` : `${cards.length} request${cards.length === 1 ? "" : "s"}`;
+}
 async function renderVendorRequests() {
   // On a hard refresh Safari can restore the Supabase session slightly after
   // the route is resumed. Resolve auth/vendor state here before enforcing the
