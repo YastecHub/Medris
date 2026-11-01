@@ -198,20 +198,7 @@ async function renderMyEquipmentRequests() {
       ${reqPhotosHtml(r.photos)}
       <p class="muted" style="font-size:0.8rem;">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
       ${offers.length ? `<div style="margin-top:0.6rem;"><strong style="font-size:0.85rem;">${offers.length} offer${offers.length === 1 ? "" : "s"}:</strong>
-        ${offers.map((o) => {
-          const delivery = Number(o.vendor?.delivery_fee) || 0;
-          return `<div style="border-top:1px solid var(--border);padding:0.5rem 0;">
-          <div class="flex" style="justify-content:space-between;">
-            <div><strong>${esc(o.vendor?.business_name || "")}</strong>${o.vendor?.avg_rating != null ? ` · ★${Number(o.vendor.avg_rating).toFixed(1)}` : ""}<p class="muted" style="margin:0;">${esc(o.message || "")}</p></div>
-            <div class="flex">
-              ${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}
-              <span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status)}</span>
-              ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-danger" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
-            </div>
-          </div>
-          ${o.price != null ? `<p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Quoted total: ${naira(o.price)}${o.status === "accepted" ? " · Delivery details are handled from the listing/request." : ""}</p>` : ""}
-        </div>`;
-        }).join("")}
+${offers.map((o) => requestOfferCardHtml(o, r)).join("")}
       </div>` : `<p class="muted" style="margin-top:0.5rem;">No offers yet.</p>`}
     </div>`;
   });
@@ -220,6 +207,22 @@ async function renderMyEquipmentRequests() {
   return html;
 }
 
+
+
+function requestOfferCardHtml(o, r) {
+  const delivery = Number(o.vendor?.delivery_fee) || 0;
+  return `<div style="border-top:1px solid var(--border);padding:0.5rem 0;">
+    <div class="flex" style="justify-content:space-between;">
+      <div><strong>${esc(o.vendor?.business_name || "")}</strong>${o.vendor?.avg_rating != null ? ` · ★${Number(o.vendor.avg_rating).toFixed(1)}` : ""}<p class="muted" style="margin:0;">${esc(o.message || "")}</p></div>
+      <div class="flex">
+        ${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}
+        <span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status)}</span>
+        ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-danger" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
+      </div>
+    </div>
+    ${o.price != null ? `<p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Quoted total: ${naira(o.price)}${o.status === "accepted" ? " · Delivery details are handled from the listing/request." : ""}</p>` : ""}
+  </div>`;
+}
 
 function filterMyEquipmentRequests() {
   const query = String(document.getElementById("myEquipmentRequestSearch")?.value || "").trim().toLowerCase();
