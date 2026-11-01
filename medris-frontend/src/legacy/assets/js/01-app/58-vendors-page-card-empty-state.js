@@ -29,8 +29,9 @@ function vendorDirectoryCardHtml(v) {
   const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
   // Aura luxe hub: show her initials instead of her uploaded logo (her request).
   const hideLogo = /^aura\s+lux/i.test(String(name).trim());
-  const media = v?.logo_url && !hideLogo
-    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
+  const profileImage = v?.profile_avatar_url || v?.avatar_url || v?.logo_url;
+  const media = profileImage && !(hideLogo && !v?.profile_avatar_url && !v?.avatar_url)
+    ? `<img src="${esc(profileImage)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
     : vdInitialsHtml(name, id);
   return `<div class="vd-card" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vd-cover">${media}<span data-vt="${esc(id)}" class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
@@ -58,8 +59,9 @@ function vendorPageCardHtml(v, feat) {
   const rating = Number(v?.avg_rating || 0), reviews = Number(v?.review_count || 0);
   const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
   const hideLogo = /^aura\s+lux/i.test(String(name).trim());
-  const logo = v?.logo_url && !hideLogo
-    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
+  const profileImage = v?.profile_avatar_url || v?.avatar_url || v?.logo_url;
+  const logo = profileImage && !(hideLogo && !v?.profile_avatar_url && !v?.avatar_url)
+    ? `<img src="${esc(profileImage)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
     : vdInitialsHtml(name, id);
  const coverSrc = v?.cover_url || v?.cover_image_url || "";
   let hue = 150; { const k = String(id || name); let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; hue = h % 360; }
@@ -245,7 +247,7 @@ async function loadVendorsDirectory() {
     sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
   ]);
   const vendorResult = await sb.from("vendors")
-    .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, cover_url, cover_image_url, lat, lng")
+    .select("id, user_id, business_name, city, avg_rating, review_count, sector_id, logo_url, cover_url, cover_image_url, lat, lng")
     .eq("verification_status", "verified")
     .eq("is_active", true)
     .order("business_name");
@@ -264,6 +266,28 @@ async function loadVendorsDirectory() {
   }
 
   const vendors = vendorResult.data || [];
+
+  // Use the account's canonical avatar across storefronts and every vendor
+  // card. Keep logo_url as a fallback for vendors without a profile photo.
+  const ownerIds = [...new Set(vendors.map((v) => v.user_id).filter(Boolean))];
+  const avatarByOwner = new Map();
+  if (ownerIds.length) {
+    const { data: ownerProfiles, error: ownerProfilesError } = await sb
+      .from("users")
+      .select("id, avatar_url")
+      .in("id", ownerIds);
+    if (ownerProfilesError) {
+      console.warn("[Levromart] Could not load vendor profile pictures:", ownerProfilesError);
+    } else {
+      (ownerProfiles || []).forEach((owner) => {
+        if (owner.avatar_url) avatarByOwner.set(String(owner.id), owner.avatar_url);
+      });
+    }
+  }
+  const vendorsWithProfileImages = vendors.map((v) => ({
+    ...v,
+    profile_avatar_url: avatarByOwner.get(String(v.user_id || "")) || null,
+  }));
 
   // Keep the current DOM stable while optional product/package/sector
   // enrichment completes. The page first paints a fixed-size skeleton (or a
@@ -293,7 +317,7 @@ async function loadVendorsDirectory() {
     (productTextByVendor[pkg.vendor_id] ||= []).push(pkg.name, pkg.description, "package", "bundle");
   });
 
-  window.__allVendors = await attachVendorFollowerCounts(vendors.map((v) => ({
+  window.__allVendors = await attachVendorFollowerCounts(vendorsWithProfileImages.map((v) => ({
     ...v,
     categories: [...(catsByVendor[v.id] || [])],
     searchText: [v.business_name, ...(productTextByVendor[v.id] || [])].filter(Boolean).join(" ").toLowerCase(),

@@ -130,10 +130,11 @@ function Distance({ v }: { v: StorefrontVendor }) {
 function Avatar({ v }: { v: StorefrontVendor }) {
   const name = v.business_name || "Vendor";
   const open = (url: string) => (e: React.MouseEvent) => call("openProfileImageLightbox", url, name, e.nativeEvent);
-  if (v.logo_url) {
+  const profileImage = v.profile_avatar_url || v.logo_url;
+  if (profileImage) {
     return (
-      <button type="button" className="storefront-avatar storefront-avatar-button" aria-label={`View ${name} profile picture`} onClick={open(v.logo_url)}>
-        <img src={v.logo_url} alt="" data-lvimg="" onLoad={(e) => e.currentTarget.classList.add("lv-ld")} loading="eager" draggable={false} />
+      <button type="button" className="storefront-avatar storefront-avatar-button" aria-label={`View ${name} profile picture`} onClick={open(profileImage)}>
+        <img src={profileImage} alt="" data-lvimg="" onLoad={(e) => e.currentTarget.classList.add("lv-ld")} loading="eager" draggable={false} />
       </button>
     );
   }

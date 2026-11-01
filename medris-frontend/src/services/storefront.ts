@@ -17,6 +17,7 @@ export interface StorefrontVendor {
   previous_business_name?: string | null;
   name_changed_at?: string | null;
   logo_url?: string | null;
+  profile_avatar_url?: string | null;
   cover_url?: string | null;
   bio?: string | null;
   address?: string | null;
@@ -73,6 +74,21 @@ export async function loadStorefront(vendorId: string): Promise<StorefrontResult
   const v = data as StorefrontVendor | null;
   if (error || !v) return { kind: "not-found" };
   if (!v.is_active) return { kind: "paused" };
+
+  // Keep the account avatar separate from the business logo. The account
+  // avatar is the canonical public profile picture across vendor surfaces.
+  if (v.user_id) {
+    const { data: ownerProfile, error: ownerProfileError } = await sb
+      .from("users")
+      .select("avatar_url")
+      .eq("id", v.user_id)
+      .maybeSingle();
+    if (ownerProfileError) {
+      console.warn("[Levromart] Storefront profile picture lookup failed:", ownerProfileError);
+    } else {
+      v.profile_avatar_url = ownerProfile?.avatar_url || null;
+    }
+  }
 
   const extrasPromise = Promise.allSettled([
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
