@@ -108,13 +108,13 @@ async function renderVendorDashboard() {
   html += `<hr class="vendor-profile-divider" />
   <div class="vendor-profile-section">
     <h3 class="lv-group-title">Statistics</h3>
-    <div class="lv-group lv-group-flush">
-      ${lvLinkRow("fa-clipboard-list", "Total orders", `${totalOrders}`, "navigate('vendorOrders')")}
-      ${lvLinkRow("fa-sack-dollar", "Revenue (completed)", naira(revenue), "navigate('vendorEarnings')")}
-      ${lvLinkRow("fa-box", "Listings", `${totalListings}`, "navigate('vendorProducts')")}
-      ${lvLinkRow("fa-user-group", "Followers", `${totalFollowers}`, "navigate('vendorFollowers')")}
-      ${lvLinkRow("fa-eye", "Product views", `${totalViews}`, "")}
-      ${lvLinkRow("fa-heart", "Wishlist saves", `${totalFavorites}`, "")}
+    <div class="lv-stat-grid">
+      ${lvStatTile("fa-clipboard-list", `${totalOrders}`, "Total orders", "navigate('vendorOrders')")}
+      ${lvStatTile("fa-sack-dollar", naira(revenue), "Revenue", "navigate('vendorEarnings')")}
+      ${lvStatTile("fa-box", `${totalListings}`, "Listings", "navigate('vendorProducts')")}
+      ${lvStatTile("fa-user-group", `${totalFollowers}`, "Followers", "navigate('vendorFollowers')")}
+      ${lvStatTile("fa-eye", `${totalViews}`, "Product views", "")}
+      ${lvStatTile("fa-heart", `${totalFavorites}`, "Wishlist saves", "")}
     </div>
     <div id="vendorRevenueChartArea" style="margin-top:0.6rem;"></div>
     <button type="button" class="vendor-profile-see-more" onclick="navigate('vendorEarnings')">See full earnings <i class="fa-solid fa-chevron-right"></i></button>
@@ -161,10 +161,12 @@ async function renderVendorDashboard() {
     <h3 class="vh-group">Management tools</h3>
     <div class="vh-list">
       ${hubRow("fa-list-check", "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
-      ${hubRow("fa-clock", "Working hours", "Set when your store is open.", v.opening_hours ? esc(v.opening_hours) : "Not set", "navigate('vendorEditProfile')")}
-      ${hubRow("fa-star", "Reviews", "See what customers are saying about you.", `<span class="vh-star"><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} (${Number(v.review_count || 0)})</span>`, `navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300)`)}
       ${hubRow("fa-calendar-days", "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
     </div>
+    <h3 class="vh-group">Reviews &amp; ratings</h3>
+    ${lvRatingCardHtml(v)}
+    <h3 class="vh-group">Working hours</h3>
+    ${lvHoursCardHtml(v)}
     <h3 class="vh-group">More options</h3>
     <div class="vh-list">
       ${hubRow("fa-comments", "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
@@ -175,6 +177,31 @@ async function renderVendorDashboard() {
   </div>`;
 
   return html;
+}
+
+// A statistic tile: the value large, the label small; a button when it leads somewhere.
+function lvStatTile(icon, value, label, onclick) {
+  const inner = `<span class="lv-stat-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><strong class="lv-stat-val">${value}</strong><small class="lv-stat-label">${label}</small>`;
+  return onclick ? `<button type="button" class="lv-stat" onclick="${onclick}">${inner}</button>` : `<div class="lv-stat">${inner}</div>`;
+}
+// The shop's average rating, its stars and the number of reviews; opens the reviews on the public profile.
+function lvRatingCardHtml(v) {
+  const avg = Number(v.avg_rating || 0), count = Number(v.review_count || 0);
+  const stars = [1, 2, 3, 4, 5].map((i) => `<i class="fa-${avg >= i - 0.25 ? "solid fa-star" : avg >= i - 0.75 ? "solid fa-star-half-stroke" : "regular fa-star"}" aria-hidden="true"></i>`).join("");
+  return `<button type="button" class="lv-rating-card" onclick="navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300)" aria-label="Rating ${avg.toFixed(1)} out of 5 from ${count} reviews">
+    <span class="lv-rating-avg">${avg.toFixed(1)}</span>
+    <span class="lv-rating-copy"><span class="lv-rating-stars">${stars}</span><small>${count ? `${count} review${count === 1 ? "" : "s"}` : "No reviews yet"}</small></span>
+    <span class="lv-rating-go">See reviews <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+  </button>`;
+}
+// Working hours day by day (today marked), from the structured hours; the old text summary when that is all there is.
+function lvHoursCardHtml(v) {
+  const hours = v.business_hours && typeof v.business_hours === "object" ? v.business_hours : null;
+  const today = typeof nowInLagos === "function" ? nowInLagos().dayKey : "";
+  const rows = hours
+    ? HOURS_DAYS.map(({ key, label }) => { const d = hours[key]; const open = d && !d.closed; return `<li class="${key === today ? "is-today" : ""}${open ? "" : " is-closed"}"><span>${label}${key === today ? " <em>Today</em>" : ""}</span><b>${open ? `${formatTime12(d.open)} – ${formatTime12(d.close)}` : "Closed"}</b></li>`; }).join("")
+    : `<li><span>${v.opening_hours ? esc(v.opening_hours) : "Not set yet"}</span></li>`;
+  return `<div class="lv-hours-card"><ul>${rows}</ul><button type="button" class="lv-hours-edit" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-pen" aria-hidden="true"></i> Edit hours</button></div>`;
 }
 
 async function toggleVendorActive(currentlyActive) {
