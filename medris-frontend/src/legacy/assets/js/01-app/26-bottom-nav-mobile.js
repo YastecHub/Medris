@@ -54,40 +54,34 @@ function renderBottomNav() {
   if (!nav) return;
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const mapTab = { icon: lvLineIcon("map"), label: "Map", action: "navigate('vendorsMap')", view: "vendorsMap" };
-  const messagesTab = { icon: lvLineIcon("messages"), label: "Chats", action: "navigate('messages')", view: "messages" };
-  const notificationsTab = { icon: lvLineIcon("bell"), label: "Activity", action: "navigate('notifications')", view: "notifications", badge: notifCount };
-  const accountTab = isVendorUser
-    ? { icon: lvLineIcon("user"), label: "Account", action: "navigate('vendorDashboard')", view: "vendorDashboard" }
-    : { icon: lvLineIcon("user"), label: "Account", action: session ? "navigate('buyerProfile')" : "showLogin()", view: session ? "buyerProfile" : null };
   const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
+  const vendorsTab = { icon: lvLineIcon("map"), label: "Vendors", action: "navigate('vendorsMap')", view: "vendorsMap" };
   const addTab = isVendorUser
     ? { icon: lvLineIcon("plus"), label: "Add", action: "openAddChooser()", view: null }
-    : { icon: lvLineIcon("plus"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
-
-  let items;
-  if (session && profile?.role === "admin") {
-    items = [homeTab, mapTab,
-      { icon: lvLineIcon("shield"), label: "Admin", action: "navigate('adminPanel')", view: "adminPanel", badge: Number(window.__lvPayPending||0) },
-      { icon: lvLineIcon("wallet"), label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
-  } else {
-    // Snapchat-inspired dock: discovery, conversations, create/request, activity, account.
-    items = [mapTab, messagesTab, addTab, notificationsTab, accountTab];
-  }
+    : { icon: lvLineIcon("plus"), label: "Add", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+  const notificationsTab = { icon: lvLineIcon("bell"), label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
+  const ordersTab = isVendorUser
+    ? { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
+    : { icon: lvLineIcon("orders"), label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
 
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}${it.view === "notifications" && it.badge ? " ringing" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"${it.view && it.view === currentView ? ' aria-current="page"' : ""}><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
 
   if (session && profile?.role === "admin") {
-    nav.classList.remove("has-add", "buyer-no-add");
-    nav.innerHTML = items.map(itemHtml).join("");
-  } else {
-    nav.classList.remove("has-add");
-    nav.classList.add("buyer-no-add", "lv-snap-dock");
-    const addHtml = isVendorUser
-      ? `<button class="bottom-nav-item bottom-nav-create" onclick="openAddChooser()" aria-label="Add listing"><span class="bn-icon">${lvLineIcon("plus")}</span><span>Add</span></button>`
-      : itemHtml(addTab);
-    nav.innerHTML = [itemHtml(mapTab), itemHtml(messagesTab), addHtml, itemHtml(notificationsTab), itemHtml(accountTab)].join("");
+    nav.classList.remove("has-add", "buyer-no-add", "lv-snap-dock");
+    nav.innerHTML = [homeTab, vendorsTab,
+      { icon: lvLineIcon("shield"), label: "Admin", action: "navigate('adminPanel')", view: "adminPanel", badge: Number(window.__lvPayPending||0) },
+      { icon: lvLineIcon("wallet"), label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }].map(itemHtml).join("");
+    return;
   }
+
+  nav.classList.remove("buyer-no-add", "lv-snap-dock");
+  nav.classList.add("has-add");
+  nav.innerHTML =
+    '<div class="bn-group bn-group-left">' + [homeTab, vendorsTab].map(itemHtml).join("") + '</div>' +
+    '<button class="bottom-nav-add" onclick="' + (isVendorUser ? 'openAddChooser()' : (session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')")) + '" aria-label="Add">' +
+      '<span class="bn-icon">' + lvLineIcon("plus") + '</span><span>Add</span>' +
+    '</button>' +
+    '<div class="bn-group bn-group-right">' + [notificationsTab, ordersTab].map(itemHtml).join("") + '</div>';
 }
 
 const LEVRO_MOTION_KEY="levromart-motion-preference-v1";
