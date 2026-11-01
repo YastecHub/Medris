@@ -357,9 +357,10 @@ function vmpSelect(id, fly, fromRail, expandCard = true) {
     if (buyerLocation) vmpTrace(v); else vmpRouteCardDraw(v);
   } else {
     vmpCollapseSelectedCard();
+    vmpMap.panTo([v.lat, v.lng], { animate: true });
   }
   if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 });
-  else if (!fromRail) vmpMap.panTo([v.lat, v.lng], { animate: true });
+  else if (expandCard && !fromRail && !buyerLocation) vmpMap.panTo([v.lat, v.lng], { animate: true });
   vmpDrawPins();
   vmpRailCards().forEach((c) => c.classList.toggle("on", String(c.dataset.vid) === String(vmpSelected)));
   if (!fromRail) {
