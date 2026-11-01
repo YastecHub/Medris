@@ -3708,3 +3708,43 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 .profile-own-storefront-header:hover{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;}
 .profile-own-storefront-header:active{transform:scale(.99)!important;}
 .profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
+
+
+/* Stable route swaps: prevent the browser from anchoring the viewport to
+   changing content while a legacy route is being replaced or hydrated. */
+html.lv-route-transitioning,
+html.lv-route-transitioning body {
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+#app {
+  overflow-anchor: none;
+}
+
+
+/* Request flow page transition: keep the new screen grounded and avoid a
+   modal/drawer impression. The app shell is translated only during route swap. */
+#app.lv-page-slide-transition {
+  transition: transform 220ms cubic-bezier(.22,.75,.25,1), opacity 180ms ease;
+  transform: translate3d(0,0,0);
+  backface-visibility: hidden;
+}
+#app.lv-page-slide-transition.lv-page-slide-enter {
+  transform: translate3d(18px,0,0);
+  opacity: .86;
+}
+@media (prefers-reduced-motion: reduce) {
+  #app.lv-page-slide-transition,
+  #app.lv-page-slide-transition.lv-page-slide-enter {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+html.lv-route-transitioning,
+html.lv-route-transitioning body,
+html.lv-route-transitioning #app {
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+#app { overflow-anchor: none; }

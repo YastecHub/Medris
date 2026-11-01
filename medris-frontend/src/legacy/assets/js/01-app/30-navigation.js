@@ -194,6 +194,8 @@ function showCommissionPaywall(owedAmount) {
 
 async function navigate(view, params = {}, pushHistory = true) {
   if (await levroCommissionGate(view)) return;
+  const __isSlideRoute = ["requestEquipment", "myEquipmentRequests"].includes(view);
+  const __previousIsSlideRoute = ["requestEquipment", "myEquipmentRequests"].includes(currentView);
   // Leaving the notification surface commits the unread items that were
   // visible during this visit. This covers Back, bottom-nav taps, links, and
   // any other route transition that does not pass through closeAllPanels().
@@ -587,6 +589,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
+  // New route transitions are animated visually, but scroll is never animated.
+  // Disable browser scroll anchoring during the render swap so image/font/content
+  // hydration cannot repeatedly pull the viewport up and down.
+  const routeScrollSnapshot = preserveSameViewScroll ? sameViewScrollY : 0;
+  document.documentElement.classList.add("lv-route-transitioning");
   const preserveActiveFastChat = view === "messages" && !!currentViewParams?.conversationId && !!byId("chatInput") && window.__chatFastPaintDirty === true;
   if (preserveActiveFastChat) {
     // The user has already started typing into the instant-painted chat. Do
@@ -609,7 +616,20 @@ async function navigate(view, params = {}, pushHistory = true) {
       liveStorefrontFollowHtml = liveWrap.innerHTML;
     }
   }
+  if (__isSlideRoute || __previousIsSlideRoute) {
+    app.classList.add("lv-page-slide-transition");
+    app.dataset.routeTransition = "request";
+  } else {
+    app.classList.remove("lv-page-slide-transition");
+    delete app.dataset.routeTransition;
+  }
   app.innerHTML = html;
+  if (__isSlideRoute || __previousIsSlideRoute) {
+    app.classList.add("lv-page-slide-enter");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => app.classList.remove("lv-page-slide-enter"));
+    });
+  }
   // REACT-REGISTRY HOOK (4/4): draw the React screen into the placeholder. If React is late or
   // the screen fails, the registry switches that screen off for the session and the legacy
   // screen is rendered instead, so the page is never left blank.
@@ -678,31 +698,24 @@ async function navigate(view, params = {}, pushHistory = true) {
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
-    requestAnimationFrame(() => window.scrollTo({ top: sameViewScrollY, behavior: "auto" }));
+    requestAnimationFrame(() => window.scrollTo({ top: routeScrollSnapshot, behavior: "auto" }));
   } else if ((view === "buyerProfile" || view === "vendorDashboard") && previousView === view) {
-    // Re-opening the profile you are already on must not throw you back to the top.
     const y0 = window.__levroProfCurrentY ?? 0;
     requestAnimationFrame(() => window.scrollTo({ top: y0, behavior: "auto" }));
-    setTimeout(() => window.scrollTo({ top: y0, behavior: "auto" }), 300);
   } else if ((view === "buyerProfile" || view === "vendorDashboard") && previousView !== view && Number.isFinite(window.__levroProfScroll?.[view])) {
-    // Profile pages keep the spot the user scrolled to instead of jumping back to the top.
     const y = window.__levroProfScroll[view];
     requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
-    setTimeout(() => window.scrollTo({ top: y, behavior: "auto" }), 300);
   } else if (!pushHistory && view === "home" && previousView !== "home" && Number.isFinite(window.__levroHomeScrollY)) {
-    // Landing back on Home via Back (not a fresh tap of the Home tab) --
-    // return to the exact spot the user scrolled to before they left,
-    // instead of snapping back up to the top.
     const y = window.__levroHomeScrollY;
     requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
   } else if (pushHistory || previousView !== view) {
-    // Real in-app navigation starts at the top. A browser/PWA reload is
-    // different: init() calls navigate(..., false), and the persisted route
-    // state below restores the exact viewport position for that page.
-    if(view !== "home" || window.scrollY === homeStartScroll) window.scrollTo(0, 0);
+    if (view !== "home" || window.scrollY === homeStartScroll) {
+      window.scrollTo({ left: 0, top: 0, behavior: "auto" });
+    }
   }
   if (!pushHistory && !preserveSameViewScroll) {
-    try { window.__levromartRestoreScroll?.(view); } catch (err) {console.warn("Scroll restoration failed",err);}
+    try { window.__levromartRestoreScroll?.(view); } catch (err) { console.warn("Scroll restoration failed", err); }
   }
+  requestAnimationFrame(() => document.documentElement.classList.remove("lv-route-transitioning"));
 }
 

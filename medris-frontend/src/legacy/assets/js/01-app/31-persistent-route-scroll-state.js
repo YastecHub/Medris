@@ -47,6 +47,9 @@
   }
 
   window.addEventListener("scroll",()=>{
+    // The legacy DOM can resize several times during hydration. Persist the
+    // stable position after the scroll frame; route changes are handled by
+    // the router and are not repeatedly restored by this listener.
     if(saveRaf)return;
     saveRaf=requestAnimationFrame(saveScroll);
   },{passive:true});
@@ -62,6 +65,9 @@
     if(!saved||String(saved.view||"")!==String(view||""))return false;
     const x=Number.isFinite(Number(saved.x))?Number(saved.x):0;
     const y=Number.isFinite(Number(saved.y))?Number(saved.y):0;
+    // Wait for the next paint so the initial route DOM exists, then restore
+    // once. A delayed second restore after image/font hydration caused visible
+    // page jumps on mobile.
     const restore=()=>window.scrollTo({left:x,top:y,behavior:"auto"});
     requestAnimationFrame(restore);
 
