@@ -81,11 +81,11 @@ async function renderVendorDashboard() {
   let html = `<div class="vendor-profile-header-card">
     <div class="storefront-cover vendor-profile-header-cover ${v.cover_url ? "has-custom-cover" : ""}" ${v.cover_url ? `style="background-image:url('${esc(v.cover_url)}');"` : ""}>
       ${v.cover_url ? "" : '<div class="storefront-cover-empty">No custom header image yet</div>'}
+      ${lvCoverActionsHtml("navigate('vendorEditProfile')", `lvOpenProfileShare('vendor','${v.id}')`)}
     </div>
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}
-        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i></button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(v.business_name)} ${verifiedTick}</h2>
       ${profile?.name ? `<p class="vendor-profile-header-personal">${esc(profile.name)}</p>` : ""}
@@ -229,3 +229,152 @@ async function toggleVendorActive(currentlyActive) {
   navigate("vendorDashboard");
 }
 
+
+// ---------- PROFILE SHARE: a QR card for each storefront ----------
+// The shop's own link as a QR code, coloured from the shop's picture, the shop's picture in the middle of the code,
+// a few of its products and the LevroMart logo. Share the link, copy it, or save the card as a picture.
+// A customer (no storefront) shares an invitation to LevroMart the same way.
+const LV_SHARE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>`;
+const LV_EDIT_PROFILE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 15H7a4 4 0 0 0-4 4v2"/><path d="M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><circle cx="10" cy="7" r="4"/></svg>`;
+// Edit and Share, at the top right of the profile banner.
+function lvCoverActionsHtml(editAction, shareAction) {
+  return `<div class="lv-cover-actions"><button type="button" class="lv-cover-btn" onclick="${editAction}" title="Edit profile" aria-label="Edit profile">${LV_EDIT_PROFILE_ICON}</button><button type="button" class="lv-cover-btn" onclick="${shareAction}" title="Share profile" aria-label="Share profile">${LV_SHARE_ICON}</button></div>`;
+}
+function lvLoadQrLib() {
+  if (window.qrcode) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "/lib/qrcode-generator-1.4.4.js";
+    s.onload = () => (window.qrcode ? resolve() : reject(new Error("QR code could not load")));
+    s.onerror = () => reject(new Error("QR code could not load. Check your connection."));
+    document.head.appendChild(s);
+  });
+}
+function lvLoadImage(src) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+// A dark, readable version of the picture's main colour (the brand green when the picture cannot be read).
+function lvShareColour(img) {
+  const fallback = "#0b7a52";
+  if (!img) return fallback;
+  try {
+    const c = document.createElement("canvas"); c.width = c.height = 12;
+    const x = c.getContext("2d"); x.drawImage(img, 0, 0, 12, 12);
+    const d = x.getImageData(0, 0, 12, 12).data; let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) { const s = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]); const w = 1 + s / 32; r += d[i] * w; g += d[i + 1] * w; b += d[i + 2] * w; n += w; }
+    r /= n; g /= n; b /= n;
+    const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255, l = (max + min) / 2;
+    let h = 0, s = max === min ? 0 : l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
+    if (max !== min) { const R = r / 255, G = g / 255, B = b / 255; h = max === R ? (G - B) / (max - min) + (G < B ? 6 : 0) : max === G ? (B - R) / (max - min) + 2 : (R - G) / (max - min) + 4; h *= 60; }
+    if (s < 0.25) return fallback;   // greys and whites: keep the brand colour
+    return `hsl(${Math.round(h)} ${Math.round(Math.max(s, 0.45) * 100)}% 27%)`;
+  } catch (_) { return fallback; }
+}
+// Draws the QR code: rounded dots, rounded corner eyes, and the picture (or initials) in the middle.
+function lvDrawQr(canvas, text, colour, centreImg, initials) {
+  const qr = window.qrcode(0, "H"); qr.addData(text); qr.make();
+  const n = qr.getModuleCount(), size = canvas.width, pad = Math.round(size * 0.06), cell = (size - pad * 2) / n;
+  const x = canvas.getContext("2d");
+  x.clearRect(0, 0, size, size); x.fillStyle = "#fff"; x.fillRect(0, 0, size, size);
+  const hole = Math.ceil(n * 0.26) | 1, h0 = Math.floor((n - hole) / 2);
+  const inEye = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+  x.fillStyle = colour;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (!qr.isDark(r, c) || inEye(r, c) || (r >= h0 && r < h0 + hole && c >= h0 && c < h0 + hole)) continue;
+    x.beginPath(); x.arc(pad + (c + 0.5) * cell, pad + (r + 0.5) * cell, cell * 0.42, 0, Math.PI * 2); x.fill();
+  }
+  const rr = (X, Y, W, R) => { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + W, R); x.arcTo(X + W, Y + W, X, Y + W, R); x.arcTo(X, Y + W, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); };
+  [[0, 0], [0, n - 7], [n - 7, 0]].forEach(([r, c]) => {
+    const X = pad + c * cell, Y = pad + r * cell;
+    rr(X, Y, cell * 7, cell * 2.2); x.fillStyle = colour; x.fill();
+    rr(X + cell, Y + cell, cell * 5, cell * 1.6); x.fillStyle = "#fff"; x.fill();
+    rr(X + cell * 2, Y + cell * 2, cell * 3, cell * 1.1); x.fillStyle = colour; x.fill();
+  });
+  const cx = size / 2, rad = (hole * cell) / 2 - cell * 0.4;
+  x.beginPath(); x.arc(cx, cx, rad + cell * 0.5, 0, Math.PI * 2); x.fillStyle = "#fff"; x.fill();
+  x.save(); x.beginPath(); x.arc(cx, cx, rad, 0, Math.PI * 2); x.clip();
+  if (centreImg) { const s = Math.min(centreImg.width, centreImg.height); x.drawImage(centreImg, (centreImg.width - s) / 2, (centreImg.height - s) / 2, s, s, cx - rad, cx - rad, rad * 2, rad * 2); }
+  else { x.fillStyle = colour; x.fillRect(cx - rad, cx - rad, rad * 2, rad * 2); x.fillStyle = "#fff"; x.font = `800 ${Math.round(rad * 0.8)}px system-ui,sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(initials, cx, cx + 1); }
+  x.restore();
+}
+async function lvOpenProfileShare(kind, vendorId) {
+  document.getElementById("lvqrSheet")?.remove();
+  const isShop = kind === "vendor" && vendorId;
+  let name = "", link = "", pic = null, cover = null, products = [];
+  if (isShop) {
+    const v = typeof vendor !== "undefined" && vendor && String(vendor.id) === String(vendorId) ? vendor : (await sb.from("vendors").select("id,business_name,logo_url,cover_url").eq("id", vendorId).maybeSingle()).data;
+    if (!v) return showToast("This shop could not be found.", "error");
+    name = v.business_name || "My shop"; link = storefrontPublicUrl(v.id); cover = v.cover_url || null;
+    pic = (typeof profile !== "undefined" && profile?.avatar_url) || lvVendorPic(v);
+    try { const { data } = await sb.from("products").select("photos").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }).limit(3); products = (data || []).map((p) => (Array.isArray(p.photos) ? p.photos[0] : null)).filter(Boolean); } catch (_) {}
+  } else {
+    name = profile?.name || "LevroMart"; link = location.origin + "/"; pic = profile?.avatar_url || null;
+  }
+  const initials = String(name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
+  const m = document.createElement("div");
+  m.id = "lvqrSheet"; m.className = "lvqr-wrap";
+  m.innerHTML = `<div class="lvqr-sheet" role="dialog" aria-modal="true" aria-label="Share ${esc(name)}">
+    <button type="button" class="lvqr-close" aria-label="Close" onclick="document.getElementById('lvqrSheet')?.remove()"><i class="fa-solid fa-xmark"></i></button>
+    <div class="lvqr-card">
+      <div class="lvqr-cover"${cover ? ` style="background-image:url('${esc(cover)}')"` : ""}></div>
+      <div class="lvqr-body">
+        <h3>${esc(name)}</h3>
+        <p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>
+        <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas></div>
+        ${products.length ? `<div class="lvqr-products">${products.map((src) => `<img src="${esc(typeof lvThumb === "function" ? lvThumb(src, 160) : src)}" alt="" loading="lazy">`).join("")}</div>` : ""}
+        <p class="lvqr-hint">${isShop ? "Scan to visit my shop on LevroMart" : "Scan to join me on LevroMart"}</p>
+        <div class="lvqr-brand"><img src="/icon-192.png" alt="" width="22" height="22"> LevroMart</div>
+      </div>
+    </div>
+    <div class="lvqr-actions">
+      <button type="button" class="lvqr-act" data-act="share"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>Share link</span></button>
+      <button type="button" class="lvqr-act" data-act="copy"><i class="fa-regular fa-copy"></i><span>Copy link</span></button>
+      <button type="button" class="lvqr-act" data-act="save"><i class="fa-solid fa-download"></i><span>Save QR</span></button>
+    </div>
+  </div>`;
+  m.addEventListener("click", (e) => { if (e.target === m) m.remove(); });
+  document.body.appendChild(m);
+  const canvas = m.querySelector("canvas");
+  let img = null, colour = "#0b7a52";
+  try {
+    await lvLoadQrLib();
+    img = await lvLoadImage(pic);
+    colour = lvShareColour(img || (await lvLoadImage(cover)));
+    m.querySelector(".lvqr-card").style.setProperty("--lvqr-c", colour);
+    try { lvDrawQr(canvas, link, colour, img, initials); canvas.toDataURL(); }
+    catch (_) { img = null; lvDrawQr(canvas, link, colour, null, initials); }   // a picture the browser may not copy: initials instead
+  } catch (err) { m.querySelector(".lvqr-code").innerHTML = `<p class="muted">${esc(err.message || "QR code unavailable")}</p>`; }
+  const text = isShop ? `Shop ${name} on LevroMart` : "Join me on LevroMart";
+  m.querySelector(".lvqr-actions").addEventListener("click", async (e) => {
+    const b = e.target.closest(".lvqr-act"); if (!b) return;
+    if (b.dataset.act === "share") {
+      if (navigator.share) { try { await navigator.share({ title: name, text, url: link }); } catch (_) {} }
+      else b.dataset.act = "copy";
+    }
+    if (b.dataset.act === "copy") { try { await navigator.clipboard.writeText(link); showToast("Link copied.", "success"); } catch (_) { showToast(link, "info"); } if (!navigator.share) b.dataset.act = "share"; }
+    if (b.dataset.act === "save") {
+      try {
+        const out = document.createElement("canvas"); out.width = 1080; out.height = 1350; const x = out.getContext("2d");
+        x.fillStyle = colour; x.fillRect(0, 0, 1080, 1350);
+        x.fillStyle = "#fff"; x.beginPath(); x.roundRect ? x.roundRect(90, 150, 900, 1050, 56) : x.rect(90, 150, 900, 1050); x.fill();
+        x.fillStyle = "#14201a"; x.textAlign = "center"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 270);
+        x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(link.replace(/^https?:\/\//, ""), 540, 325);
+        x.drawImage(canvas, 240, 370, 600, 600);
+        x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(isShop ? "Scan to visit my shop" : "Scan to join me", 540, 1040);
+        const logo = await lvLoadImage("/icon-192.png"); if (logo) x.drawImage(logo, 400, 1085, 56, 56);
+        x.fillStyle = colour; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("LevroMart", 470, 1127);
+        const blob = await new Promise((r) => out.toBlob(r, "image/png"));
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${String(name).replace(/[^\w-]+/g, "-").toLowerCase()}-levromart-qr.png`; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        showToast("QR saved.", "success");
+      } catch (_) { showToast("Could not save the picture. Take a screenshot instead.", "info"); }
+    }
+  });
+}

@@ -342,18 +342,8 @@ async function renderStorefrontInner(vendorId) {
   const { data: v, error } = await vendorPromise;
   if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
-  // Keep the account profile picture distinct from the business logo.
-  // The account avatar is used consistently across public vendor surfaces.
-  if (v.user_id) {
-    try {
-      const { data: ownerProfile, error: ownerProfileError } = await sb.from("users")
-        .select("avatar_url").eq("id", v.user_id).maybeSingle();
-      if (ownerProfileError) throw ownerProfileError;
-      v.profile_avatar_url = ownerProfile?.avatar_url || null;
-    } catch (avatarError) {
-      console.warn("[Levromart storefront] Profile avatar lookup failed; using vendor logo.", avatarError);
-    }
-  }
+  // The owner's account picture (the one on notifications), kept apart from the business logo.
+  try { v.profile_avatar_url = (await lvAttachOwnerAvatars([v]))[0].profile_avatar_url; } catch (_) {}
   updateStorefrontSocialMeta(v);
 
   // allSettled, not all: these four are independent panels (stats, reviews,

@@ -5087,3 +5087,30 @@ html body #app .vendor-profile-header-card:not(.buyer-profile-card) .lv-vendor-p
 :root:root:root body #app .hscroll.trending-scroll > .product-card-wrap{flex:0 0 min(170px,44vw)!important;width:min(170px,44vw)!important;max-width:min(170px,44vw)!important;min-width:0!important}
 :root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img{height:auto!important;min-height:0!important;max-height:none!important;flex-basis:auto!important;aspect-ratio:10/11!important}
 :root:root:root body #app .hscroll.trending-scroll > .product-card-wrap .product-img img{width:100%!important;height:100%!important;object-fit:cover!important}
+
+/* Profile banner: Edit and Share at the top right (frosted round buttons) */
+html body #app .vendor-profile-header-card .storefront-cover{position:relative!important}
+html body #app .lv-cover-actions{position:absolute;top:.75rem;right:.75rem;z-index:3;display:flex;gap:.5rem}
+html body #app .lv-cover-btn{width:2.6rem;height:2.6rem;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.35);background:rgba(10,20,15,.38);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+html body #app .lv-cover-btn:active{transform:scale(.94)}
+/* Share sheet: the shop's QR card */
+.lvqr-wrap{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,12,9,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+@media(min-width:600px){.lvqr-wrap{align-items:center}}
+.lvqr-sheet{position:relative;width:min(420px,100%);max-height:100dvh;overflow:auto;padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom,0px));border-radius:28px 28px 0 0;background:var(--bg,#f4f6f5)}
+@media(min-width:600px){.lvqr-sheet{border-radius:28px}}
+.lvqr-close{position:absolute;top:1.6rem;right:1.6rem;z-index:2;width:2.3rem;height:2.3rem;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:#fff;display:grid;place-items:center;cursor:pointer}
+.lvqr-card{--lvqr-c:#0b7a52;border-radius:24px;overflow:hidden;background:#fff;color:#14201a;box-shadow:0 12px 34px rgba(0,0,0,.12);text-align:center}
+.lvqr-cover{height:92px;background:linear-gradient(135deg,var(--lvqr-c),color-mix(in srgb,var(--lvqr-c) 55%,#000));background-size:cover;background-position:center}
+.lvqr-body{padding:.9rem 1.1rem 1.1rem}
+.lvqr-body h3{margin:0;font-size:1.25rem;font-weight:850;letter-spacing:-.02em}
+.lvqr-link{margin:.15rem 0 .7rem;font-size:.8rem;color:#5b6b63;word-break:break-all}
+.lvqr-code{width:min(240px,70vw);margin:0 auto;aspect-ratio:1;border-radius:22px;padding:8px;background:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--lvqr-c) 22%,transparent)}
+.lvqr-code canvas{width:100%;height:100%;display:block}
+.lvqr-products{display:flex;justify-content:center;gap:.45rem;margin:.85rem 0 .1rem}
+.lvqr-products img{width:3.4rem;height:3.4rem;border-radius:14px;object-fit:cover;border:2px solid color-mix(in srgb,var(--lvqr-c) 25%,#fff)}
+.lvqr-hint{margin:.65rem 0 .4rem;font-size:.84rem;font-weight:600;color:#3d4b44}
+.lvqr-brand{display:inline-flex;align-items:center;gap:.4rem;font-weight:800;color:var(--lvqr-c);font-size:.95rem}
+.lvqr-brand img{border-radius:6px}
+.lvqr-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-top:.9rem}
+.lvqr-act{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.75rem .3rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--text,#14201a) 10%,transparent);background:var(--card,#fff);color:var(--text,#14201a);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}
+.lvqr-act i{font-size:1.1rem;color:#0b7a52}

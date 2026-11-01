@@ -15,7 +15,7 @@ describe("/api/v1/rpc/{name}", () => {
   afterAll(async () => db?.close());
 
   it("covers every function the app calls in the browser, except those only the server may run", () => {
-    expect(RPC_NAMES.length).toBe(170);
+    expect(RPC_NAMES.length).toBe(171);
     for (const serverOnly of ["increment_chat_usage", "apply_referral_internal", "delete_my_account", "process_listing_billing_reminders"]) {
       expect(RPC_NAMES).not.toContain(serverOnly);
     }
@@ -25,6 +25,18 @@ describe("/api/v1/rpc/{name}", () => {
     const listed = readFileSync(new URL("../../../medris-frontend/src/services/api/rpc-functions.ts", import.meta.url), "utf8");
     const names = [...listed.matchAll(/"([a-z0-9_]+)"/g)].map((m) => m[1]).sort();
     expect(names).toEqual(RPC_NAMES);
+  });
+
+  it("get_vendor_owner_avatars: the owner's account picture for live, verified shops only", async () => {
+    const owner = await seedUser(db, { role: "vendor" });
+    await db.query(`update public.users set avatar_url = 'https://cdn.example/a.webp' where id = $1`, [owner.id]);
+    const shop = await seedVendor(db, owner.id);
+    const pendingOwner = await seedUser(db, { role: "vendor" });
+    await db.query(`update public.users set avatar_url = 'https://cdn.example/p.webp' where id = $1`, [pendingOwner.id]);
+    const pending = await seedVendor(db, pendingOwner.id, { verified: false });
+    const res = await call(app, "POST", "/api/v1/rpc/get_vendor_owner_avatars", { body: { p_vendor_ids: [shop.id, pending.id, "not-a-uuid"] } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ data: [{ vendor_id: shop.id, avatar_url: "https://cdn.example/a.webp" }] });
   });
 
   it("answers with what the original returned: rows, a boolean, null", async () => {

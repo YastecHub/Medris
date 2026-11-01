@@ -749,6 +749,14 @@ window.lvPdPrefetch = function (id) {
 // While a swipe hands the page to the next product, the page keeps its old height for a moment. The new page builds
 // its lower sections (related products, reviews) a little later; without this the page collapses and grows again,
 // which looked like it was bulging in and out.
+// Resolves once a freshly built product page has painted: its gallery pictures decoded (at most 700 ms) and two frames drawn.
+async function lvSettled(root) {
+  try {
+    const imgs = [...(root || document).querySelectorAll(".product-gallery-main img, .product-gallery-carousel img, .product-detail-media img, .product-gallery-varieties img")].slice(0, 6);
+    await Promise.race([Promise.all(imgs.map((i) => (i.complete && i.naturalWidth ? null : i.decode().catch(() => {})))), new Promise((r) => setTimeout(r, 700))]);
+  } catch (_) {}
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
 window.__lvHoldHeight = function (el) {
   try {
     if (!el) return;
@@ -825,7 +833,7 @@ window.__lvHoldHeight = function (el) {
     const el = app(); if (!el) return;
     el.style.transition = "none";
     el.style.transform = `translateX(${dx * 0.85}px)`;
-    el.style.opacity = window.__lvNext?.ready(dx < 0 ? 1 : -1) ? "" : String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+    el.style.opacity = "";   // the page never fades while it follows the finger
     if (!window.__lvSwipeWarm || window.__lvSwipeWarm.dir !== (dx < 0 ? 1 : -1)) { const d = dx < 0 ? 1 : -1; window.__lvSwipeWarm = { dir: d }; dropPeek(); window.__lvNext?.drop(); target(d).then((id) => { if (id) { window.lvPdPrefetch?.(id); window.__lvSwipeWarm.id = id; window.__lvNext?.ensure(d, id); } }).catch(() => {}); }
     // the next product itself rides in beside the finger, so there is never an empty moment
     const wd = dx < 0 ? 1 : -1;
@@ -942,13 +950,13 @@ window.__lvHoldHeight = function (el) {
       // 1. freeze what is on screen exactly where the finger left it
       const snap = snapshotOf(el);
       snap.style.transform = `translateX(${dx * 0.85}px)`;
-      snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+      snap.style.opacity = "";
       el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
       const W = innerWidth, D = 180, E = "cubic-bezier(.22,.9,.3,1)";
       const from = parseFloat(snap.style.transform.replace(/[^0-9.\-]/g, "")) || 0;
       const fromP = pv ? (parseFloat(pv.el.style.transform.replace(/translate3d\(([-0-9.]+)px.*/, "$1")) || dir * W) : 0;
       // 2. the old page and the preview glide together straight away
-      const a1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" }) : null;
+      const a1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${-dir * W}px)` }], { duration: D, easing: E, fill: "forwards" }) : null;
       const a2 = pv && pv.el.animate ? pv.el.animate([{ transform: `translate3d(${fromP}px,0,0)` }, { transform: "translate3d(0,0,0)" }], { duration: D, easing: E, fill: "forwards" }) : null;
       // 3. meanwhile the real page is built behind them
       let ok = true;
@@ -969,14 +977,13 @@ window.__lvHoldHeight = function (el) {
         } catch (_) {}
         now.style.opacity = ""; now.style.transform = "";
         snap.remove();
-        const f = pv.el.animate ? pv.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: "linear", fill: "forwards" }) : null;
-        if (f) { try { await f.finished; } catch (_) {} }
-        pv.el.remove();
+        await lvSettled(now);
+        pv.el.remove();   // no fade: the real page is already painted underneath, in the same place
       } else {
         // no preview yet (very fast swipe on a slow connection): slide the real page in as soon as it exists
         const fromX = dir * W;
         now.style.opacity = "1"; now.style.willChange = "transform";
-        const b1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)`, opacity: snap.style.opacity || 1 }, { transform: `translateX(${-dir * W * 0.35}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" }) : null;
+        const b1 = snap.animate ? snap.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${-dir * W}px)` }], { duration: D, easing: E, fill: "forwards" }) : null;
         const b2 = now.animate ? now.animate([{ transform: `translateX(${fromX}px)` }, { transform: "translateX(0)" }], { duration: D, easing: E }) : null;
         if (b2) { try { await b2.finished; } catch (_) {} }
         snap.remove(); now.style.willChange = ""; now.style.transform = ""; now.style.opacity = "";
@@ -1054,6 +1061,10 @@ window.__lvHoldHeight = function (el) {
     st.el = el;
     try { window.__lvDropPeek && window.__lvDropPeek(); } catch (_) {}
   }
+  async function waitCard(id) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 3000 && !document.querySelector(`#app .product-detail-card[data-product-detail-id="${CSS.escape(String(id))}"]`)) await new Promise((r) => setTimeout(r, 16));
+  }
   function ready(dir) { return !!(st.el && st.el.isConnected && st.dir === dir); }
   async function go(dir) {
     const el = app(), id = st.id, W = innerWidth;
@@ -1066,20 +1077,28 @@ window.__lvHoldHeight = function (el) {
     if (a) { try { await a.finished; } catch (_) {} }
     el.style.transition = "none"; el.style.transform = `translateX(${to}px)`;
     if (a) { try { a.cancel(); } catch (_) {} }
-    let done = false;
-    const finish = () => {
-      if (done) return; done = true;
-      try { mo.disconnect(); } catch (_) {}
-      el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "";
-      try { window.scrollTo(0, 0); } catch (_) {}
-      setTimeout(() => { el.style.transition = ""; }, 60);
-    };
-    const mo = new MutationObserver(() => { if (document.querySelector(`#app .product-detail-card[data-product-detail-id="${CSS.escape(String(id))}"]`)) finish(); });
-    mo.observe(el, { childList: true });
-    const guard = setTimeout(finish, 3000);
+    // A still copy of the page that just slid in stays on top while the real page is built underneath and its
+    // pictures are painted; only then is the copy removed (no fade), so nothing disappears, reappears or jumps.
+    let cover = null;
+    try {
+      if (st.el) {
+        const r = st.el.getBoundingClientRect();
+        cover = st.el.cloneNode(true);
+        cover.className = "lv-pd-cover"; cover.removeAttribute("aria-hidden");
+        cover.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        Object.assign(cover.style, { position: "fixed", left: r.left + "px", top: Math.max(r.top, 0) + "px", width: r.width + "px", height: (innerHeight - Math.max(r.top, 0)) + "px", overflow: "hidden", zIndex: "5", pointerEvents: "none", background: "var(--bg,#fff)", transform: "none", margin: "0" });
+        if (r.top < 0) cover.firstElementChild && (cover.firstElementChild.style.marginTop = r.top + "px");
+        document.body.appendChild(cover);
+      }
+    } catch (_) { cover = null; }
     try { await navigate("productDetail", { productId: id }); } catch (_) {}
-    clearTimeout(guard); finish();
+    await waitCard(id);
+    el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "";
+    try { window.scrollTo(0, 0); } catch (_) {}
     drop();
+    await lvSettled(el);
+    if (cover) cover.remove();
+    setTimeout(() => { el.style.transition = ""; }, 60);
     window.__lvSwipeNav = false;
   }
   window.__lvNext = { ensure, ready, go, drop };

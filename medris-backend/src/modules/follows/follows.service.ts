@@ -19,6 +19,8 @@ export interface FollowPreferencesInput {
 }
 
 /** Shops a user follows. Reads run as the user (RLS); following replaces toggle_vendor_follow(). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class FollowsService {
   constructor(private readonly db: () => DataContext) {}
 
@@ -63,6 +65,13 @@ export class FollowsService {
   }
 
   /** Replaces: public.get_vendor_follower_counts(uuid[]) */
+  /** The owners' account pictures for up to 200 shops (ids that are not uuids are skipped). */
+  ownerAvatars(vendorIds: string[]): Promise<{ vendor_id: string; avatar_url: string }[]> {
+    const valid = [...new Set(vendorIds.filter((id) => UUID.test(id)))].slice(0, 200);
+    if (!valid.length) return Promise.resolve([]);
+    return this.db().asService((tx) => new FollowReadsRepository(tx).ownerAvatars(valid));
+  }
+
   followerCounts(vendorIds: string[]): Promise<FollowerCount[]> {
     return this.db().asService((tx) => new FollowReadsRepository(tx).followerCounts(vendorIds));
   }

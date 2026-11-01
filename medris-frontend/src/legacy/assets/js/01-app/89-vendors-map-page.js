@@ -252,7 +252,7 @@ function vmpCardInitialsHtml(v) {
 }
 function vmpCardHtml(v) {
   const id = String(v.id), km = vmpDistKm(v), sector = vmpSectorOf(v);
-  const media = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" data-n="${esc(v.business_name || "")}" data-k="${esc(id)}" onerror="vdImgFail(this)">` : vmpCardInitialsHtml(v);
+  const media = lvVendorPic(v) ? `<img src="${esc(lvVendorPic(v))}" alt="" loading="lazy" draggable="false" data-n="${esc(v.business_name || "")}" data-k="${esc(id)}" onerror="vdImgFail(this)">` : vmpCardInitialsHtml(v);
   const est = km != null ? `${vmpDistText(km)} · ${vmpMins(VMP_MODES[0].f(km * 1.3, Math.max(1, km * 1.3 / 22 * 60)))} by car` : "";
   const meta = [sector, v.city, est].filter(Boolean).map(esc).join(" · ");
   const dir = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.lat + "," + v.lng)}`;
@@ -266,7 +266,7 @@ function vmpCardHtml(v) {
 function vmpRailItemHtml(v) {
   const id = String(v.id);
   const media = v.logo_url
-    ? '<img src="' + esc(v.logo_url) + '" alt="" loading="lazy" draggable="false" onerror="vdImgFail(this)">'
+    ? '<img src="' + esc(lvVendorPic(v)) + '" alt="" loading="lazy" draggable="false" onerror="vdImgFail(this)">'
     : vmpRailInitialsHtml(v);
   return '<button type="button" class="vmp-rail-item' + (id === String(vmpSelected) ? " on" : "") +
     '" data-vid="' + esc(id) + '" onclick="vmpRailTap(\'' + esc(id) + '\')" aria-label="Show ' +
@@ -443,7 +443,7 @@ function vmpSearch(q, clear) {
   vmpDrawPins(); vmpDrawRail();
   if (!vmpQuery.trim()) { box.classList.add("hidden"); return; }
   const hits = vmpVisible().slice(0, 6);
-  box.innerHTML = hits.length ? hits.map((v) => `<button type="button" onclick="vmpSelect('${esc(String(v.id))}',true)"><span class="vmp-sg-logo">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" onerror="this.remove()">` : vdInitialsHtml(v.business_name || "V", v.id)}</span><span class="vmp-sg-copy"><strong><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(String(v.id))}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><small>${esc([vmpSectorOf(v), v.city].filter(Boolean).join(" · "))}</small></span><i class="fa-solid fa-location-arrow"></i></button>`).join("") : '<div class="vmp-sg-none">No vendor found</div>';
+  box.innerHTML = hits.length ? hits.map((v) => `<button type="button" onclick="vmpSelect('${esc(String(v.id))}',true)"><span class="vmp-sg-logo">${lvVendorPic(v) ? `<img src="${esc(lvVendorPic(v))}" alt="" onerror="this.remove()">` : vdInitialsHtml(v.business_name || "V", v.id)}</span><span class="vmp-sg-copy"><strong><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(String(v.id))}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><small>${esc([vmpSectorOf(v), v.city].filter(Boolean).join(" · "))}</small></span><i class="fa-solid fa-location-arrow"></i></button>`).join("") : '<div class="vmp-sg-none">No vendor found</div>';
   box.classList.remove("hidden");
   if (hits.length > 1) vmpFit(hits);
 }
