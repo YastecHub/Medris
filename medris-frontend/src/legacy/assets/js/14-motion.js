@@ -3213,3 +3213,98 @@ window.lvAskCancel = async function (orderId) {
     });
   }).observe(document.body, { childList: true, subtree: true });
 })();
+
+/* ---- occasional welcome pop-up (lv-promo) ----
+   Now and then, when someone opens the app on the home screen, a short card about one Levromart feature pops up,
+   with a round X underneath to close it. It never shows on the first visit, before onboarding is finished, more
+   than once every two days, or over another open sheet. The cards take turns; the artwork is the onboarding art. */
+(function () {
+  "use strict";
+  var KEY = "lv_promo_v1", GAP_MS = 48 * 60 * 60 * 1000, WAIT_MS = 2500;
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (_) { return {}; } }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {} }
+  var arts = [].slice.call(document.querySelectorAll("#lvOnb img.lv-hero")).map(function (i) { return i.getAttribute("src") || ""; });
+  function isVendor() { try { return typeof profile !== "undefined" && profile && profile.role === "vendor"; } catch (_) { return false; } }
+  function closeAi() { try { var p = document.getElementById("aiChatPanel"); return !p || p.classList.contains("hidden"); } catch (_) { return true; } }
+  var CARDS = [
+    { key: "safe", tone: "green", art: 1, kicker: "Shop with peace of mind", t1: "Pay safe.", t2: "Shop happy.",
+      sub: "Your money stays with Levromart until you confirm you got your order.", cta: "Start shopping", icon: "fa-shield-halved",
+      go: function () { if (typeof navigate === "function") navigate("home"); setTimeout(function () { var b = document.getElementById("browseSection"); if (b) b.scrollIntoView({ behavior: "smooth", block: "start" }); }, 250); } },
+    { key: "levi", tone: "purple", art: 0, kicker: "Meet Levi", t1: "Just ask.", t2: "Levi finds it.",
+      sub: "A gown, the closest vendor, the best price. Ask Levi and get real products in seconds.", cta: "Ask Levi", icon: "fa-wand-magic-sparkles",
+      go: function () { if (typeof toggleAiChat === "function" && closeAi()) toggleAiChat(); } },
+    { key: "near", tone: "blue", art: 1, kicker: "Around you", t1: "Vendors", t2: "near you.",
+      sub: "See who sells close to you, what they sell and how far they are.", cta: "Find vendors", icon: "fa-location-dot",
+      go: function () { if (typeof navigate === "function") navigate("vendors"); } },
+    { key: "sell", tone: "amber", art: 2, kicker: "Got something to sell?", t1: "Open your", t2: "own shop.",
+      sub: "Sell to shoppers around you and get paid safely through Levromart.", cta: "Start selling", icon: "fa-store", forVendors: false,
+      go: function () { if (typeof session === "undefined" || !session) { if (typeof showLogin === "function") showLogin(); return; } if (typeof navigate === "function") navigate("vendorApply"); } }
+  ];
+  function pick(s) {
+    var list = CARDS.filter(function (c) { return !(c.forVendors === false && isVendor()); });
+    if (!list.length) return null;
+    var n = Number(s.n || 0);
+    return list[n % list.length];
+  }
+  function close(m, done) {
+    if (!m || m.__closing) return; m.__closing = true;
+    m.classList.add("lv-promo-out");
+    document.removeEventListener("keydown", m.__key);
+    setTimeout(function () { m.remove(); if (done) done(); }, 220);
+  }
+  function show(card) {
+    if (!card || document.getElementById("lvPromo")) return;
+    var art = arts[card.art] || arts[0] || "";
+    var m = document.createElement("div");
+    m.id = "lvPromo"; m.className = "lv-promo lv-promo-" + card.tone;
+    m.innerHTML =
+      '<div class="lv-promo-wrap" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="lvPromoTitle" aria-describedby="lvPromoSub">' +
+        '<div class="lv-promo-card">' +
+          '<span class="lv-promo-glow" aria-hidden="true"></span>' +
+          '<span class="lv-promo-coin c1" aria-hidden="true">₦</span><span class="lv-promo-coin c2" aria-hidden="true">₦</span>' +
+          '<span class="lv-promo-spark s1" aria-hidden="true"></span><span class="lv-promo-spark s2" aria-hidden="true"></span><span class="lv-promo-spark s3" aria-hidden="true"></span>' +
+          (art ? '<img class="lv-promo-art" src="' + art + '" alt="" decoding="async" />' : '') +
+          '<div class="lv-promo-body">' +
+            '<span class="lv-promo-kicker"><i class="fa-solid ' + card.icon + '" aria-hidden="true"></i>' + card.kicker + '</span>' +
+            '<h2 id="lvPromoTitle" class="lv-promo-title"><span>' + card.t1 + '</span><span class="lv-promo-hl">' + card.t2 + '</span></h2>' +
+            '<p id="lvPromoSub" class="lv-promo-sub">' + card.sub + '</p>' +
+            '<button type="button" class="lv-promo-cta">' + card.cta + '<i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>' +
+          '</div>' +
+        '</div>' +
+        '<button type="button" class="lv-promo-x" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
+      '</div>';
+    m.addEventListener("click", function (e) {
+      if (e.target.closest(".lv-promo-cta")) { close(m, function () { try { card.go(); } catch (_) {} }); return; }
+      if (e.target.closest(".lv-promo-x") || e.target === m) close(m);
+    });
+    m.__key = function (e) { if (e.key === "Escape") close(m); };
+    document.addEventListener("keydown", m.__key);
+    document.body.appendChild(m);
+    try { m.querySelector(".lv-promo-wrap").focus({ preventScroll: true }); } catch (_) {}
+  }
+  function busy() {
+    if (document.querySelector(".modal.open, #lvPayModal, #lvRefundSheet, .lv-ap-sheet")) return true;
+    var mods = document.querySelectorAll(".modal:not(.hidden)");
+    for (var i = 0; i < mods.length; i++) if (mods[i].offsetParent !== null || getComputedStyle(mods[i]).position === "fixed" && getComputedStyle(mods[i]).display !== "none" && getComputedStyle(mods[i]).visibility !== "hidden") return true;
+    var onb = document.getElementById("lvOnb");
+    if (onb && onb.offsetParent !== null && getComputedStyle(onb).display !== "none" && getComputedStyle(onb).visibility !== "hidden") return true;
+    return !closeAi();
+  }
+  function onboarded() { try { return localStorage.getItem("levromart_onboarding_completed") === "true"; } catch (_) { return false; } }
+  // counts app opens; the pop-up never comes on the very first one
+  var s = load(); s.opens = Number(s.opens || 0) + 1; save(s);
+  function maybe() {
+    var st = load();
+    if (/[?&]nopromo\b/.test(location.search)) return;
+    if (st.opens < 2 || !onboarded()) return;
+    if (st.at && Date.now() - Number(st.at) < GAP_MS) return;
+    if (typeof currentView !== "undefined" && currentView !== "home") return;
+    if (document.visibilityState === "hidden" || busy()) return;
+    var card = pick(st); if (!card) return;
+    st.at = Date.now(); st.n = Number(st.n || 0) + 1; save(st);
+    show(card);
+  }
+  setTimeout(maybe, WAIT_MS);
+  // for checking a card on a preview: lvShowPromo("safe" | "levi" | "near" | "sell")
+  window.lvShowPromo = function (key) { show(CARDS.filter(function (c) { return c.key === key; })[0] || CARDS[0]); };
+})();
