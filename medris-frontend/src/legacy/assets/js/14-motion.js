@@ -659,15 +659,24 @@
     // payouts are sent by Paystack on their own; "paid by hand" is only for a payout that failed or came back
     if (["failed", "reversed"].indexOf(p.status) >= 0) acts += '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'manual\',\'' + esc(p.id) + '\')">Paid outside Levromart</button>';
     var onBalance = p.status === "pending" && p.last_error === "Paystack balance too low";
-    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + (onBalance ? '<span class="badge badge-danger">Waiting for Paystack balance</span>' : pill(p.status)) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error && !onBalance ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
+    var pst = p.status === "success" || p.status === "paid_manually" ? "in" : p.status === "failed" || p.status === "reversed" ? "bad" : "wait";
+    var pic = pst === "in" ? "fa-arrow-up-right-from-square" : pst === "bad" ? "fa-triangle-exclamation" : p.status === "on_hold" ? "fa-pause" : "fa-hourglass-half";
+    return '<div class="lv-ap-row ap2-row"><span class="ap2-ico ' + pst + '"><i class="fa-solid ' + pic + '"></i></span><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + (onBalance ? '<span class="badge badge-danger">Waiting for Paystack balance</span>' : pill(p.status)) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error && !onBalance ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
+  var paidOut = {};   // orders whose shop has already been paid: they cannot be refunded from here
   function txRow(t) {
-    var can = t.order_id && (t.status === "success" || t.status === "partially_refunded") && !noRefund[t.order_id];
+    var okStatus = t.status === "success" || t.status === "partially_refunded";
+    var shopPaid = !!(t.order_id && (paidOut[t.order_id] || noRefund[t.order_id]));
+    var can = t.order_id && okStatus && !shopPaid;
     var what = String(t.purpose || "order payment").replace(/_/g, " ");
-    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(t.amount) + "</b> " + payPill(t.status) + "<small>" + esc(what) + (t.business_name ? " · " + esc(t.business_name) : "") + " · " + when(t.paid_at || t.created_at) + '</small></div><div class="lv-ap-acts">' + (can ? '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(t.order_id) + '\')">Refund</button>' : "") + "</div></div>";
+    var good = t.status === "success", bad = t.status === "failed";
+    var ic = good ? "fa-arrow-down" : bad ? "fa-xmark" : t.status === "refunded" || t.status === "partially_refunded" ? "fa-rotate-left" : "fa-hourglass-half";
+    var tail = can ? '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(t.order_id) + '\')">Refund</button>' : (okStatus && shopPaid ? '<span class="ap2-tag"><i class="fa-solid fa-circle-check"></i> Shop paid</span>' : "");
+    return '<div class="lv-ap-row ap2-row"><span class="ap2-ico ' + (good ? "in" : bad ? "bad" : "wait") + '"><i class="fa-solid ' + ic + '"></i></span><div class="lv-ap-main"><b>' + naira(t.amount) + "</b> " + payPill(t.status) + "<small>" + esc(what) + (t.business_name ? " \u00b7 " + esc(t.business_name) : "") + " \u00b7 " + when(t.paid_at || t.created_at) + '</small></div><div class="lv-ap-acts">' + tail + "</div></div>";
   }
 
-  function refundRow(r) { return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(r.amount) + "</b> " + pill(r.status) + "<small>" + esc(r.reason || "") + " · " + when(r.created_at) + (r.last_error ? " · " + esc(r.last_error) : "") + "</small></div></div>"; }
+
+  function refundRow(r) { return '<div class="lv-ap-row ap2-row"><span class="ap2-ico wait"><i class="fa-solid fa-rotate-left"></i></span><div class="lv-ap-main"><b>' + naira(r.amount) + "</b> " + pill(r.status) + "<small>" + esc(r.reason || "") + " · " + when(r.created_at) + (r.last_error ? " · " + esc(r.last_error) : "") + "</small></div></div>"; }
   function reportRow(r) {
     var rep = r.report || {}; var list = (rep.problems || []).map(function (p) { return "<li>" + esc(p.detail) + "</li>"; }).join("");
     return '<div class="lv-ap-row lv-ap-col"><div class="lv-ap-main"><b>' + esc(String(r.window_start).slice(0, 10)) + "</b> " + (r.problems ? '<span class="badge badge-danger">' + r.problems + " to check</span>" : '<span class="badge badge-success">All matched</span>') + "<small>" + (rep.error ? esc(rep.error) : (rep.checked || 0) + " payments checked") + "</small></div>" + (list ? "<ul class=\"lv-ap-list\">" + list + "</ul>" : "") + "</div>";
@@ -726,7 +735,8 @@
         '<div class="lv-ap-list-wrap">' + (f1[c1].length ? f1[c1].map(payoutRow).join("") : '<p class="ap2-empty">Nothing here.</p>') + "</div>";
     } else if (tab === "payments") {
       var c2 = chipOf.payments || "paid";
-      var rs = await Promise.all([a.transactions({ limit: 80 }), c2 === "refunds" ? a.refunds({ limit: 60 }) : Promise.resolve(null)]);
+      var rs = await Promise.all([a.transactions({ limit: 80 }), c2 === "refunds" ? a.refunds({ limit: 60 }) : Promise.resolve(null), a.payouts({ limit: 100, status: "success" }), a.payouts({ limit: 100, status: "processing" })]);
+      paidOut = {}; [rs[2], rs[3]].forEach(function (r) { ((r && r.data) || []).forEach(function (p) { if (p.order_id) paidOut[p.order_id] = 1; }); });
       var tl = (rs[0] && rs[0].data) || [];
       var f2 = { paid: tl.filter(function (x) { return x.status === "success" || x.status === "partially_refunded" || x.status === "refunded"; }), open: tl.filter(function (x) { return x.status === "abandoned" || x.status === "initialized" || x.status === "failed"; }) };
       var rowsHtml = c2 === "refunds" ? (((rs[1] && rs[1].data) || []).map(refundRow)) : (f2[c2] || []).map(txRow);
