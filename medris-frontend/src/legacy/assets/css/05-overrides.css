@@ -5603,3 +5603,47 @@ html body #app .ap2-tag.ap2-tag-ref{background:rgba(245,158,11,.14);color:#a85f0
 html:root body[data-view="buyerProfile"] #app,html:root body[data-view="vendorDashboard"] #app{margin-top:0!important}
 html:root body #app .buyer-profile-card.lv-profile-hero{margin:.55rem .7rem 1.1rem!important;border-radius:28px!important;overflow:hidden!important}
 html:root body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover{border-radius:28px 28px 0 0!important}
+
+/* The Search magnifier: no ripples; its glass is the Levromart arcs and dot, turning once in a while */
+html body .lv-mapfab[data-mode="search"]::before,html body .lv-mapfab[data-mode="search"]::after{display:none!important}
+@keyframes lvLensTurn{0%,78%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+html body .lv-mapfab[data-mode="search"] .mf-lens-ring{transform-box:fill-box;transform-origin:center;animation:lvLensTurn 6s ease-in-out infinite}
+html body .lv-mapfab.mf-drag .mf-lens-ring{animation:none}
+@media(prefers-reduced-motion:reduce){html body .lv-mapfab[data-mode="search"] .mf-lens-ring{animation:none}}
+
+/* Primary green buttons everywhere are one flat, clean green (the Request colour): no gloss, no gradient, no emboss */
+html:root:root:root:root body .btn:not(.btn-outline):not(.btn-danger):not(.btn-secondary):not(.btn-ghost):not(.btn-sm.btn-outline),
+html:root:root:root:root body #lvTourNext,html:root:root:root:root body .lv-cta,html:root:root:root:root body #loginModal.lv-auth #authSubmitBtn,
+html:root:root:root:root body #app #postEquipmentRequestBtn,html:root:root:root:root body .lv-cs-btn,html:root:root:root:root body .lvw-wd-go,html:root:root:root:root body .oe-actions .btn,html:root:root:root:root body .vd-empty .btn:not(.btn-outline){
+  background:#16a06a!important;background-image:none!important;border-color:#16a06a!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root body .btn:not(.btn-outline):not(.btn-danger):not(.btn-secondary):not(.btn-ghost):active,html:root:root:root:root body #lvTourNext:active,html:root:root:root:root body .lv-cta:active{background:#128a5b!important}
+html:root:root:root:root body .btn:not(.btn-outline):not(.btn-danger):not(.btn-secondary):not(.btn-ghost)::before,html:root:root:root:root body .btn:not(.btn-outline):not(.btn-danger):not(.btn-secondary):not(.btn-ghost)::after,html:root:root:root:root body #lvTourNext::before,html:root:root:root:root body #lvTourNext::after{display:none!important}
+html:root:root:root:root body #lvCampus .lvc-foot button.pri,html:root:root:root:root body #lvCampus .lvc-go{background:#16a06a!important;background-image:none!important;box-shadow:none!important;text-shadow:none!important;color:#fff!important}
+
+/* My details: a clean page of rounded cards, plain titles, boxed fields */
+html body #app .ep-page{max-width:560px;margin:0 auto;padding:.4rem .75rem 1.4rem}
+html body #app .ep-page .page-title{display:flex;align-items:center;gap:.5rem;font-size:1.35rem;margin:.2rem 0 .6rem}
+html body #app .ep-page .page-title i.fa-id-card,html body #app .ep-page .ep-card h3 i{display:none!important}
+html body #app .ep-page .ep-card{background:var(--card,#fff);border:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent);border-radius:22px;padding:1rem 1rem 1.1rem;margin:.9rem 0;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+html body #app .ep-page .ep-card h3{margin:0 0 .3rem;font-size:1.05rem}
+html body #app .ep-page .ep-card label{display:block;margin:.75rem 0 .3rem;font-size:.78rem;font-weight:700;color:var(--text-muted,#667085)}
+html body #app .ep-page .ep-card input,html body #app .ep-page .ep-card textarea{width:100%;box-sizing:border-box;border:1.5px solid color-mix(in srgb,var(--text,#111) 12%,transparent)!important;border-bottom-width:1.5px!important;border-radius:14px!important;background:var(--bg,#f6f8f7)!important;padding:.75rem .9rem!important;font-size:1rem}
+html body #app .ep-page .ep-card input:focus,html body #app .ep-page .ep-card textarea:focus{border-color:#16a06a!important;outline:none}
+html body #app .ep-page .ep-card .btn{border-radius:14px!important;min-height:3rem}
+html body #app .ep-page .lvrw-edit{background:var(--card,#fff);border:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent);border-radius:22px;padding:1rem;margin:.9rem 0;display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+html body #app .ep-page .lvrw-edit strong{display:block;font-size:1.05rem;margin-bottom:.15rem}
+html body #app .ep-page .lvrw-edit small{color:var(--text-muted,#667085);line-height:1.35}
+html body #app .ep-page .ep-photo{margin:.4rem 0 .2rem}
+
+/* My account: the profile card is as wide as the wallet card under it */
+html:root body #app .buyer-profile-card.lv-profile-hero{margin:.55rem 0 1.1rem!important}
+
+/* The overall-winner banner's products come up one by one, exactly like the other winner banners */
+html.lv-stag .lv-wv-o .lv-wv-thumbs img{opacity:0}
+html[data-levro-motion].lv-stag .lv-wv-live.lv-wv-o .lv-wv-thumbs img{opacity:1;animation:lvWvRise .62s cubic-bezier(.2,.9,.25,1.1) both!important}
+@media (prefers-reduced-motion:reduce){html.lv-stag .lv-wv-o .lv-wv-thumbs img{opacity:1!important;animation:none!important}}
+html body #app .lv-wv-o .lv-wv-thumbs.lv-wv-swap{animation:none}
+
+/* (stronger copies so older, more specific page rules cannot bring the gloss or the underlines back) */
+html:root:root:root:root:root:root body #app .btn:not(.btn-outline):not(.btn-danger):not(.btn-secondary):not(.btn-ghost),html:root:root:root:root:root:root body #app .ep-page #epSaveBtn,html:root:root:root:root:root:root body #app #postEquipmentRequestBtn{background:#16a06a!important;background-image:none!important;border-color:#16a06a!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root:root:root body #app .ep-page .ep-card input,html:root:root:root:root:root:root body #app .ep-page .ep-card textarea{border:1.5px solid color-mix(in srgb,var(--text,#111) 12%,transparent)!important;border-radius:14px!important;background:var(--bg,#f6f8f7)!important;padding:.75rem .9rem!important;box-shadow:none!important}

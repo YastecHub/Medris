@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { api, handOver, json, newOrder, payOrder, rowOf, runJob, useWorld } from "./harness.js";
 
-// Migration 0017: completed orders leave the money waiting; the shop withdraws it. Money paid 48h+ ago goes at once,
+// Migration 0017: completed orders leave the money waiting; the shop withdraws it. Money paid 24h+ ago goes at once,
 // newer money needs an admin (a rejection needs a reason), an order in dispute is held, the rest is not.
 describe("withdrawals", () => {
   const w = useWorld();
@@ -82,9 +82,19 @@ describe("withdrawals", () => {
     expect(list.status).toBe(200);
   });
 
-  it("a small amount is still asked of an admin, never sent at once", async () => {
+  it("money paid more than 24 hours ago can be withdrawn at will, even a small amount; newer money needs an admin", async () => {
     await clean();
-    const o = await done(500, 60);
+    const aged = await done(500, 30);
+    const fresh = await done(500, 20);
+    const r = await call("request_withdrawal", w.vendor.token);
+    expect(r.status).toBe(200);
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [aged])).toMatchObject({ status: "pending" });
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [fresh])).toMatchObject({ status: "on_hold" });
+  });
+
+  it("an amount under the Paystack minimum (100 naira) is still asked of an admin, never sent at once", async () => {
+    await clean();
+    const o = await done(50, 60);
     const r = await call("request_withdrawal", w.vendor.token);
     expect(r.status).toBe(200);
     expect(r.data).toMatchObject({ sent_kobo: 0 });
@@ -92,14 +102,14 @@ describe("withdrawals", () => {
     expect(await rowOf(w, `select kind from public.withdrawal_requests where status = 'requested'`)).toMatchObject({ kind: "approval" });
   });
 
-  it("amounts under 1,000 naira can be requested only 3 times a day", async () => {
+  it("amounts under 100 naira can be requested only 3 times a day", async () => {
     await clean();
     for (let i = 0; i < 3; i++) {
-      await done(500, 60);
+      await done(50, 60);
       expect((await call("request_withdrawal", w.vendor.token)).status).toBe(200);
       await w.db.query(`update public.withdrawal_requests set status = 'rejected' where status = 'requested'`);
     }
-    await done(500, 60);
+    await done(50, 60);
     const r = await call("request_withdrawal", w.vendor.token);
     expect(r.status).toBe(400);
     expect(JSON.stringify(r.body)).toContain("3 times a day");

@@ -2053,7 +2053,7 @@
   window.lvWalletHow = function () {
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
-      '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 48 hours ago or more goes straight away; newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
+      '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
       '<li><b>On its way.</b> Your money is being sent to your bank. Bank transfers normally arrive the next business day; weekends and public holidays can add a day or two.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
       '</ul>');
@@ -2233,12 +2233,15 @@ window.lvAskCancel = async function (orderId) {
     })().catch(function () { return null; }).finally(function () { loading = null; });
     return loading;
   }
+  var rHide = false; try { rHide = localStorage.getItem("lv-rw-hide") === "1"; } catch (_) {}
+  function mR(k) { return rHide ? "\u20a6 \u2022\u2022\u2022\u2022" : money(k); }
+  window.lvRefundEye = function () { rHide = !rHide; try { localStorage.setItem("lv-rw-hide", rHide ? "1" : "0"); } catch (_) {} paint(); };
   function card(d) {
     var pa = pendingAcct(), has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
-    return '<div class="lvw-card is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span></div>' +
+    return '<div class="lvw-card is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
       '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Your refund account is saved" : "Refunds go here once you add a bank account") + '</div>' +
-      '<div class="lvw-bal">' + (d || failed ? money(bal) : '<span class="lvw-skel"></span>') + '</div>' +
-      (pend ? '<div class="lvrw-note">' + money(pend) + ' on its way to your bank</div>' : "") +
+      '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div>' +
+      (pend ? '<div class="lvrw-note">' + mR(pend) + ' on its way to your bank</div>' : "") +
       '<div class="lvw-actions">' +
         (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change bank account" : "Add bank account") + '</button>') +
         '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvRefundHistory()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
@@ -3006,7 +3009,7 @@ window.lvAskCancel = async function (orderId) {
   var PIN = '<svg class="mf-pin" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   function levi() { return document.getElementById("aiChatFab"); }
   // Levi turns into a pin on the Vendors page and into a magnifying glass (still carrying the Levromart mark) on the Search page
-  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><radialGradient id="lvLensG" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".55" stop-color="#bff3de" stop-opacity=".55"/><stop offset="1" stop-color="#34d399" stop-opacity=".35"/></radialGradient><linearGradient id="lvLensR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19d39a"/><stop offset="1" stop-color="#0b7f5c"/></linearGradient></defs><circle cx="20" cy="20" r="14" fill="url(#lvLensG)" stroke="url(#lvLensR)" stroke-width="4"/><path d="M30.5 30.5 41 41" stroke="url(#lvLensR)" stroke-width="6" stroke-linecap="round"/><path d="M13.6 14.2a8.4 8.4 0 0 0 0 11.6M26.4 14.2a8.4 8.4 0 0 1 0 11.6" stroke="#0b7f5c" stroke-width="2.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.2" fill="#0b7f5c"/></svg>';
+  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><linearGradient id="lvLensR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19d39a"/><stop offset="1" stop-color="#0b7f5c"/></linearGradient></defs><g class="mf-lens-ring"><path d="M13.4 32.4A14 14 0 0 1 13.4 7.6" stroke="url(#lvLensR)" stroke-width="4.6" stroke-linecap="round"/><path d="M26.6 7.6A14 14 0 0 1 26.6 32.4" stroke="url(#lvLensR)" stroke-width="4.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.4" fill="url(#lvLensR)"/></g><path d="M31 31 41.5 41.5" stroke="url(#lvLensR)" stroke-width="6" stroke-linecap="round"/></svg>';
   function modeNow() { try { var v = typeof currentView !== "undefined" ? currentView : ""; return v === "vendors" ? "vendors" : v === "search" ? "search" : ""; } catch (_) { return ""; } }
   function core(mode) { return '<span class="mf-core">' + (mode === "search" ? LENS : PIN) + '<b>' + (mode === "search" ? "Search" : "Map") + '</b></span>'; }
   function tap(mode) { if (mode === "search") { try { var i = document.getElementById("searchPageInput"); window.scrollTo({ top: 0, behavior: "smooth" }); if (i) i.focus(); } catch (_) {} } else { try { navigate("vendorsMap"); } catch (_) {} } }
@@ -3017,7 +3020,7 @@ window.lvAskCancel = async function (orderId) {
   function build(x, y, mode) {
     var b = document.createElement("button");
     b.type = "button"; b.id = "lvMapFab"; b.className = "lv-mapfab"; b.setAttribute("aria-label", mode === "search" ? "Search" : "Open the vendors map"); b.title = mode === "search" ? "Search" : "Vendors map";
-    b.innerHTML = core(mode); b.__mode = mode;
+    b.innerHTML = core(mode); b.__mode = mode; b.setAttribute("data-mode", mode);
     b.style.left = x + "px"; b.style.top = y + "px";
     attachDrag(b);
     return b;
@@ -3074,7 +3077,7 @@ window.lvAskCancel = async function (orderId) {
     if (!fab) { show(); return; }
     if (fab.__mode !== m && fab.classList.contains("mf-in")) {   // Vendors <-> Search: the icon warps into the other one in place
       var f = fab; f.classList.remove("mf-in"); f.classList.add("mf-swap");
-      setTimeout(function () { if (!f.isConnected) return; f.innerHTML = core(m); f.__mode = m; f.setAttribute("aria-label", m === "search" ? "Search" : "Open the vendors map"); f.title = m === "search" ? "Search" : "Vendors map"; f.classList.remove("mf-swap"); f.classList.add("mf-in"); }, 220);
+      setTimeout(function () { if (!f.isConnected) return; f.innerHTML = core(m); f.__mode = m; f.setAttribute("data-mode", m); f.setAttribute("aria-label", m === "search" ? "Search" : "Open the vendors map"); f.title = m === "search" ? "Search" : "Vendors map"; f.classList.remove("mf-swap"); f.classList.add("mf-in"); }, 220);
     }
   }
   var nav = window.navigate;

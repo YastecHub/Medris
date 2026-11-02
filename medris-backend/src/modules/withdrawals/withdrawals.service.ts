@@ -5,10 +5,10 @@ import { WithdrawalsRepository } from "../../database/repositories/withdrawals.r
 import { koboToNaira } from "../../integrations/paystack/index.js";
 import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
 
-/** Below this, money is never sent at once: the shop can still ask, and an admin decides (a bank transfer costs Levromart a few naira). */
-export const MIN_WITHDRAWAL_KOBO = 100_000;
+/** Paystack does not send less than this (₦100). Below it, money is never sent at once: the shop can still ask, and an admin decides. */
+export const MIN_WITHDRAWAL_KOBO = 10_000;
 /** Money paid for at least this long ago is sent the moment the shop asks; newer money waits for an admin. */
-export const INSTANT_AFTER_MS = 48 * 60 * 60 * 1000;
+export const INSTANT_AFTER_MS = 24 * 60 * 60 * 1000;
 /** After the bank account is changed, nothing is sent at once for this long: the request goes to an admin, who sees the change (a stolen login cannot empty the wallet at once). */
 export const BANK_CHANGE_WAIT_HOURS = 24;
 /** A shop can ask for amounts under the minimum this many times in 24 hours (stops spamming). */
@@ -18,7 +18,7 @@ const naira = (kobo: number | string) => "₦" + koboToNaira(Number(kobo)).toLoc
 
 /**
  * Withdrawals (migration 0017). Completed orders leave their money "waiting" (a payout row on hold); the shop asks for it:
- *   - money paid 48 hours ago or more, with no open dispute, is released to the sending queue straight away;
+ *   - money paid 24 hours ago or more, with no open dispute, is released to the sending queue straight away;
  *   - newer money becomes a request that an admin approves or rejects (a rejection always carries a reason);
  *   - an order with an open dispute is never released - the rest of the shop's money is unaffected.
  */
