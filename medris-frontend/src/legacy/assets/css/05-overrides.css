@@ -5380,8 +5380,8 @@ html body #app i.fa-heart,html body #app .fa-heart{filter:none!important;text-sh
 
 
 /* ===== Round 5: Levi's pin / magnifying glass is just the icon (no green block), and every floating button drags on its own layer ===== */
-html body .lv-mapfab{animation:none!important;width:64px;height:64px;will-change:translate}
-html body #aiChatFab,html body #cartFab{will-change:translate}
+html body .lv-mapfab{animation:none!important;width:64px;height:64px;will-change:transform}
+html body #aiChatFab,html body #cartFab{will-change:transform,translate}
 html body .lv-mapfab .mf-ring,html body .lv-mapfab .mf-halo,html body .lv-mapfab .mf-orbit,html body .lv-mapfab .mf-pulse,html body .lv-mapfab .mf-pulse2{display:none!important}
 html body .lv-mapfab .mf-core{background:transparent!important;box-shadow:none!important;color:var(--text,#14201a)!important;filter:drop-shadow(0 2px 0 rgba(255,255,255,.7)) drop-shadow(0 4px 5px rgba(0,0,0,.28))}
 html body .lv-mapfab .mf-core svg{width:40px;height:40px;stroke-width:2.2}
@@ -5465,3 +5465,41 @@ html:root:root:root body #app#app .lv-act-grid .lv-act-services{--lv-act:#ff8f68
 html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-title,html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-desc{color:#fff!important}
 html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-go{background:rgba(255,255,255,.3)!important;color:#fff!important}
 html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-go i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+
+/* ===== Admin Payments: four plain tabs, chips for the details, tidy refund sheet ===== */
+html body .ap2-title{font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667085);margin:0 0 .45rem .1rem}
+html body .ap2-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.2rem 0 .65rem}
+html body .ap2-tabs button{position:relative;display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:46px;padding:.5rem .6rem;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--text,#111) 12%,transparent);background:var(--card,#fff);color:inherit;font:inherit;font-weight:700;font-size:.9rem;cursor:pointer}
+html body .ap2-tabs button.active{background:#0f9d6b;border-color:#0f9d6b;color:#fff}
+html body .ap2-tabs .ap-n{font-style:normal;min-width:1.35rem;height:1.35rem;padding:0 .3rem;border-radius:999px;display:inline-grid;place-items:center;font-size:.72rem;font-weight:800;background:rgba(15,23,42,.12)}
+html body .ap2-tabs .ap-n.red{background:#e5484d;color:#fff}
+html body .ap2-chips{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;padding:.1rem 0 .6rem}
+html body .ap2-chips::-webkit-scrollbar{display:none}
+html body .ap2-chips button{flex:none;display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .85rem;border-radius:999px;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent);background:transparent;color:inherit;font:inherit;font-weight:700;font-size:.82rem;cursor:pointer}
+html body .ap2-chips button.on{background:color-mix(in srgb,#0f9d6b 14%,var(--card,#fff));border-color:#0f9d6b;color:#0b7a52}
+html body .ap2-chips i{font-style:normal;font-size:.7rem;padding:.05rem .4rem;border-radius:999px;background:#e5484d;color:#fff}
+html body .ap2-h{margin:.9rem 0 .4rem;font-size:.95rem}
+html body .ap2-empty{margin:.2rem 0 .6rem;padding:.8rem;border-radius:14px;background:color-mix(in srgb,var(--text,#111) 5%,transparent);color:var(--text-muted,#667085);font-size:.85rem;text-align:center}
+html body .ap2-more{margin:.8rem 0}
+html body .ap2-more summary{cursor:pointer;font-weight:700;font-size:.85rem;color:var(--text-muted,#667085);padding:.3rem 0}
+html body .ap-tiles{grid-template-columns:1fr 1fr}
+html body .ap-tile small{display:block;line-height:1.2}
+/* refund / hold / reject: a tidy sheet that slides up from the bottom */
+html body .modal.lv-ap-sheet{align-items:flex-end!important;justify-content:center!important;padding:0!important}
+html body .modal.lv-ap-sheet .modal-content{width:100%!important;max-width:560px!important;margin:0!important;border-radius:26px 26px 0 0!important;padding:1.1rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom,0px))!important;box-shadow:0 -12px 40px rgba(0,0,0,.25)}
+html body .modal.lv-ap-sheet .modal-content::before{content:"";display:block;width:42px;height:5px;border-radius:999px;background:color-mix(in srgb,var(--text,#111) 22%,transparent);margin:0 auto .8rem}
+html body .modal.lv-ap-sheet h3{margin:0 0 .5rem;font-size:1.15rem}
+html body .modal.lv-ap-sheet label{display:block;margin:.7rem 0 .3rem;font-size:.82rem;font-weight:700;color:var(--text-muted,#667085)}
+html body .modal.lv-ap-sheet input{width:100%;box-sizing:border-box;height:48px;border-radius:14px}
+html body .modal.lv-ap-sheet .lv-pm-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1rem}
+html body .modal.lv-ap-sheet .lv-pm-actions .btn{height:48px;border-radius:14px;justify-content:center;font-weight:800}
+
+/* First-time hint on a product page: swipe sideways for the next product */
+@keyframes lvshL{0%,100%{transform:translateX(0);opacity:.45}50%{transform:translateX(-7px);opacity:1}}
+@keyframes lvshR{0%,100%{transform:translateX(0);opacity:.45}50%{transform:translateX(7px);opacity:1}}
+#lvSwipeHint{position:fixed;left:50%;bottom:calc(5.6rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:7300;display:flex;align-items:center;gap:.7rem;padding:.6rem 1rem;border-radius:999px;background:rgba(15,32,25,.9);color:#fff;font-size:.82rem;font-weight:700;pointer-events:none;box-shadow:0 8px 22px rgba(0,0,0,.28);transition:opacity .3s}
+#lvSwipeHint.out{opacity:0}
+#lvSwipeHint .lvsh-a{display:inline-flex;font-size:.8rem;color:#6ee7b7;letter-spacing:-.3em}
+#lvSwipeHint .lvsh-a.l{animation:lvshL 1.1s ease-in-out infinite}
+#lvSwipeHint .lvsh-a.r{animation:lvshR 1.1s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){#lvSwipeHint .lvsh-a{animation:none}}
