@@ -345,7 +345,7 @@ async function lvOpenProfileShare(kind, targetId) {
         <div class="lvqr-brand"><img src="/icon-192.png" alt="" width="22" height="22"> Levromart</div>
       </div>
     </div>
-    <div class="lvqr-swatches" role="radiogroup" aria-label="QR colours">${LV_GRADIENTS.map((g, i) => `<button type="button" role="radio" class="lvqr-sw" data-i="${i}" aria-label="Colour ${i + 1}" style="${lvGradientVars(g)}"></button>`).join("")}</div>
+    <div class="lvqr-swatches" role="radiogroup" aria-label="QR colours">${LV_GRADIENTS.slice(0, 9).map((g, i) => `<button type="button" role="radio" class="lvqr-sw" data-i="${i}" aria-label="Colour ${i + 1}" style="${lvGradientVars(g)}"></button>`).join("")}</div>
     <div class="lvqr-actions">
       <button type="button" class="lvqr-act" data-act="share"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>Share</span></button>
       <button type="button" class="lvqr-act" data-act="copy"><i class="fa-regular fa-copy"></i><span>Copy link</span></button>

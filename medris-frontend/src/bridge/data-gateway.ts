@@ -78,7 +78,8 @@ async function route<T>(feature: BackendFeature, backend: () => Promise<GatewayR
     return await backend();
   } catch (err) {
     // A read is retried on Supabase whenever the backend is unavailable; a write only when it never left the browser.
-    if (err instanceof V1Error && (canFallBack ? err.isUnavailable : err.notSent)) {
+    // (a read is also retried on Supabase after a server error or a rate limit: reading twice is harmless, and it spares people a "Try again" screen)
+    if (err instanceof V1Error && (canFallBack ? err.isUnavailable || err.status >= 500 || err.status === 429 : err.notSent)) {
       if (!warned.has(feature)) {
         warned.add(feature);
         console.warn(`[levroData] backend unavailable for "${feature}" (${err.status}); using Supabase directly for now.`);

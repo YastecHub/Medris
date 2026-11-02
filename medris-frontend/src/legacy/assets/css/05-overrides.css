@@ -5297,8 +5297,8 @@ html body #app .vmpage .vmp-view-switch button.active{background:#18a875!importa
 @media(prefers-reduced-motion:reduce){#bottomNav .bn-icon[class*="bn-m-"]{animation:none}}
 
 /* While Levi (or the cart button) is being carried: freeze the page's own motion and blurs so the finger is followed at once */
-html.lv-fab-dragging #app *,html.lv-fab-dragging #app *::before,html.lv-fab-dragging #app *::after,html.lv-fab-dragging #aiChatFab *{animation-play-state:paused!important}
-html.lv-fab-dragging #app *,html.lv-fab-dragging header,html.lv-fab-dragging #bottomNav{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.lv-fab-dragging #aiChatFab *{animation-play-state:paused!important}
+html.lv-fab-dragging header,html.lv-fab-dragging #bottomNav{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html.lv-fab-dragging #app .home-promotional-slide::before,html.lv-fab-dragging #app .lv-ring,html.lv-fab-dragging #app .lv-wv *{filter:none!important}
 
 /* Vendors page: the grid / list / map icons at the top right are gone (the floating map button replaces them) */
@@ -5377,3 +5377,39 @@ html body .lvqr-card.is-product .lvqr-code{width:min(190px,56vw)!important}
 /* Lighter scrolling: cards and wish-list hearts no longer carry a live blur / shadow effect that the phone must redo on every frame */
 html body #app .card,html body #app .modal-content,html body #app .levro-square-product-card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html body #app i.fa-heart,html body #app .fa-heart{filter:none!important;text-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+
+/* ===== Round 5: Levi's pin / magnifying glass is just the icon (no green block), and every floating button drags on its own layer ===== */
+html body .lv-mapfab{animation:none!important;width:64px;height:64px;will-change:translate}
+html body #aiChatFab,html body #cartFab{will-change:translate}
+html body .lv-mapfab .mf-ring,html body .lv-mapfab .mf-halo,html body .lv-mapfab .mf-orbit,html body .lv-mapfab .mf-pulse,html body .lv-mapfab .mf-pulse2{display:none!important}
+html body .lv-mapfab .mf-core{background:transparent!important;box-shadow:none!important;color:var(--text,#14201a)!important;filter:drop-shadow(0 2px 0 rgba(255,255,255,.7)) drop-shadow(0 4px 5px rgba(0,0,0,.28))}
+html body .lv-mapfab .mf-core svg{width:40px;height:40px;stroke-width:2.2}
+html body .lv-mapfab .mf-core b{font-size:.68rem;font-weight:800;letter-spacing:.02em;color:inherit;text-shadow:none;margin-top:0}
+:root[data-theme="dark"] body .lv-mapfab .mf-core,:root[data-theme="black"] body .lv-mapfab .mf-core{color:#fff!important;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6))}
+html body .lv-mapfab.mf-swap{scale:.15;rotate:200deg;opacity:0;transition:scale .22s ease-in,rotate .22s ease-in,opacity .2s}
+html body .lv-mapfab.mf-in{transition:scale .35s cubic-bezier(.2,1.4,.4,1),rotate .35s ease-out,opacity .2s}
+
+/* Map card: the View shop / Follow buttons keep their natural round corners (the card's own rounded edge no longer clips them) */
+html body #app .vmpage .vmp-route-merged .vmp-card{overflow:visible!important;border-radius:0!important;padding-bottom:.15rem!important}
+html body #app .vmpage .vmp-card-act{overflow:visible!important}
+html body #app .vmpage .vmp-card-act>*{border-radius:14px!important;min-height:44px}
+
+/* Share card buttons and the store-options list: colourful rounded icon tiles instead of plain black glyphs */
+html body .lvqr-actions .lvqr-act{gap:.45rem;padding:.8rem .3rem .7rem;border-radius:20px;font-weight:700;font-size:.78rem}
+html body .lvqr-actions .lvqr-act i{display:grid;place-items:center;width:2.7rem;height:2.7rem;border-radius:16px;font-size:1.05rem;color:#fff!important;box-shadow:0 6px 12px rgba(0,0,0,.18),inset 0 1.5px 0 rgba(255,255,255,.45)}
+html body .lvqr-actions .lvqr-act[data-act="share"] i{background:linear-gradient(145deg,#60a5fa,#6366f1 60%,#7c3aed)}
+html body .lvqr-actions .lvqr-act[data-act="copy"] i{background:linear-gradient(145deg,#fbbf24,#f97316 60%,#ec4899)}
+html body .lvqr-actions .lvqr-act[data-act="save"] i{background:linear-gradient(145deg,#34d399,#10b981 60%,#0d9488)}
+html:root:root:root:root body #app#app .levro-storefront-sheet-item i[class],html:root:root:root:root body #app#app .levro-storefront-sheet-item svg{width:2.4rem!important;height:2.4rem!important;border-radius:14px!important;display:inline-grid!important;place-items:center;font-size:1rem!important;flex:0 0 auto;background:linear-gradient(145deg,color-mix(in srgb,var(--ic,#7c3aed) 80%,#fff),var(--ic,#7c3aed))!important;color:#fff!important;-webkit-text-fill-color:#fff!important;box-shadow:0 5px 10px color-mix(in srgb,var(--ic,#7c3aed) 40%,transparent)!important}
+html:root[data-theme="dark"]:root:root:root body #app#app .levro-storefront-sheet-item i[class],html:root[data-theme="black"]:root:root:root body #app#app .levro-storefront-sheet-item i[class]{background:linear-gradient(145deg,color-mix(in srgb,var(--ic,#7c3aed) 80%,#fff),var(--ic,#7c3aed))!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root body #app#app .levro-storefront-sheet-item svg{padding:.5rem;box-sizing:border-box}
+
+/* Admin payments: tabs grouped by what you do with them, each with a one-line explanation */
+html body .ap-groups{display:grid;gap:.55rem;margin:.2rem 0 .6rem}
+html body .ap-group small{display:block;font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667085);margin:0 0 .25rem .15rem}
+html body .ap-group .ap-tabs{flex-wrap:wrap;overflow:visible;padding:0;margin:0}
+html body .ap-help{display:flex;gap:.45rem;align-items:flex-start;margin:.2rem 0 .7rem;padding:.55rem .7rem;border-radius:12px;background:color-mix(in srgb,var(--primary,#0b7a52) 8%,transparent);font-size:.8rem;line-height:1.35;color:var(--text,#14201a)}
+html body .ap-help i{margin-top:.12rem;color:var(--primary,#0b7a52)}
+html body .lv-mapfab .mf-core b{text-shadow:0 0 3px #fff,0 0 6px #fff}
+:root[data-theme="dark"] body .lv-mapfab .mf-core b,:root[data-theme="black"] body .lv-mapfab .mf-core b{text-shadow:0 1px 3px #000}

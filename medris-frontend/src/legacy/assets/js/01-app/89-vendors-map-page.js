@@ -226,6 +226,7 @@ function vmpDrawMe() {
   vmpMe = window.L.marker([buyerLocation.lat, buyerLocation.lng], { icon: window.L.divIcon({ className: "vmp-me", html: '<span class="vmp-me-pulse"></span><span class="vmp-me-dot"></span>', iconSize: [24, 24], iconAnchor: [12, 12] }), zIndexOffset: 800, interactive: false }).addTo(vmpMap);
 }
 let vmpPinMarkers = new Map();
+let vmpAskedLoc = false;
 function vmpDrawPins() {
   if (!vmpMap || !vmpLayer) return;
   vmpLayer.clearLayers();
@@ -345,7 +346,7 @@ function vmpRailGo(idx, smooth) {
   const left = c.offsetLeft - (box.clientWidth - c.offsetWidth) / 2;
   box.style.scrollSnapType = "none";
   box.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
-  setTimeout(() => { box.style.scrollSnapType = ""; vmpRailBusy = Math.max(0, vmpRailBusy - 1); }, smooth ? 420 : 40);
+  setTimeout(() => { box.style.scrollSnapType = ""; vmpRailBusy = Math.max(0, vmpRailBusy - 1); }, smooth ? 900 : 60);
 }
 function vmpRailSettled() {
   const box = byId("vmpRail"); if (!box || !box.__n) return;
@@ -442,6 +443,18 @@ function vmpSelect(id, fly, fromRail, expandCard = true) {
     vmpClearRoute();
   }
 
+  // Picking a shop without your location on asks the phone for it (so the route and distances can show), like the location button does
+  if (!buyerLocation && !vmpAskedLoc) {
+    vmpAskedLoc = true;
+    (async () => {
+      try {
+        let loc;
+        try { loc = await requestCustomerLocation(true); }
+        catch (err) { if (/off/i.test(String(err?.message)) && typeof enableAutomaticDistances === "function") { await enableAutomaticDistances(); loc = buyerLocation; } else throw err; }
+        if (loc && vmpMap) { vmpDrawMe(); const cur = vmpAll.find((x) => String(x.id) === String(vmpSelected)); if (cur) { vmpRouteCardDraw(cur); vmpTrace(cur); } }
+      } catch (err) { vmpAskedLoc = false; showToast("Turn on your location to see how far this shop is.", "info"); }
+    })();
+  }
   if (expandCard) {
     vmpDrawSelectedCard(v);
     if (buyerLocation) {

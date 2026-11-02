@@ -543,7 +543,7 @@
    refuses everyone else, this screen is only the window onto it. */
 (function () {
   "use strict";
-  var tab = "payouts", range = "today", picked = false;
+  var tab = "payouts", range = "today", picked = false, reuse = false, shCache = null;
   function naira(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
   function when(t) { try { return new Date(t).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch (_) { return ""; } }
   function api() { return window.levroData && window.levroData.adminPayments; }
@@ -594,7 +594,7 @@
       });
     }
   };
-  window.lvPayTab = function (t) { tab = t; picked = true; navigate("adminPayments", {}, false); };
+  window.lvPayTab = function (t) { tab = t; picked = true; reuse = true; navigate("adminPayments", {}, false); };
   window.lvWithdrawDecide = function (id, how, hasDispute) {
     if (how === "reject") return ask("Reject withdrawal", "Reason (the shop will see this)", false, function (t) { return sb.rpc("admin_decide_withdrawal", { p_request_id: id, p_decision: "reject", p_reason: t }); });
     showConfirmDialog(hasDispute ? "This shop has a disputed order. Only the money of orders without a dispute will be sent. Approve?" : "Approve this withdrawal? The money is sent to the shop's bank within a minute.", { title: "Approve withdrawal", okLabel: "Approve" }).then(async function (yes) {
@@ -630,7 +630,7 @@
     return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(Number(w.amount_kobo) / 100) + "</b> " + chip + '<span class="badge ' + (w.status === "approved" ? "badge-success" : rej ? "badge-danger" : "badge-warning") + '">' + esc({ requested: "Waiting", approved: w.kind === "instant" ? "Sent at once" : "Approved", rejected: "Rejected" }[w.status] || w.status) + "</span> " + chg +
       "<small>" + esc(w.business_name || "") + " · " + when(w.created_at) + (age ? " · shop " + age + " day" + (age === 1 ? "" : "s") + " old" : "") + (w.bank_name ? " · " + esc(w.bank_name) + (w.account_name ? " (" + esc(w.account_name) + ")" : "") : "") + (rej && w.reject_reason ? " · Reason: " + esc(w.reject_reason) : "") + "</small>" + links + '</div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
-  window.lvPayRange = function (r) { range = r; navigate("adminPayments", {}, false); };
+  window.lvPayRange = function (r) { range = r; reuse = true; navigate("adminPayments", {}, false); };
 
   function payoutRow(p) {
     var acts = "";
@@ -651,19 +651,47 @@
     return '<div class="lv-ap-row lv-ap-col"><div class="lv-ap-main"><b>' + esc(String(r.window_start).slice(0, 10)) + "</b> " + (r.problems ? '<span class="badge badge-danger">' + r.problems + " to check</span>" : '<span class="badge badge-success">All matched</span>') + "<small>" + (rep.error ? esc(rep.error) : (rep.checked || 0) + " payments checked") + "</small></div>" + (list ? "<ul class=\"lv-ap-list\">" + list + "</ul>" : "") + "</div>";
   }
 
+  // The tabs are grouped by what you do with them, and each one says in a line what it is for
+  var GROUPS = [["Needs your decision", ["withdrawals", "cancellations"]], ["Money going out", ["payouts", "held", "failed"]], ["Money coming in", ["payments", "refunds"]], ["Safety", ["checks"]]];
+  var HELP = {
+    withdrawals: "Shops asking to take their money to their bank. Approve to send it, or reject and give a reason.",
+    cancellations: "Shops asking to cancel an order that is already paid. Approving refunds the buyer.",
+    payouts: "Every payout to a shop, newest first. Payouts are sent automatically; you only step in when one is stuck.",
+    held: "Payouts you or the system paused. Release one when the problem is sorted.",
+    failed: "Payouts the bank did not accept. Release to try again, or mark as paid outside Levromart.",
+    payments: "Every payment made through Levromart. Open one to refund it.",
+    refunds: "Money sent back to buyers.",
+    checks: "The daily match between Levromart's records and Paystack's. Anything listed here needs a look."
+  };
+  function groupedTabs(tabs, cur) {
+    var byKey = {}; tabs.forEach(function (x) { byKey[x[0]] = x[1]; });
+    return '<div class="ap-groups" role="tablist">' + GROUPS.map(function (g) {
+      return '<div class="ap-group"><small>' + g[0] + '</small><div class="ap-tabs">' + g[1].filter(function (k) { return byKey[k]; }).map(function (k) {
+        var m = /^(.*?)(?: \((\d+)\))?$/.exec(byKey[k]);
+        return '<button role="tab" class="' + (k === cur ? "active" : "") + '" onclick="lvPayTab(\'' + k + '\')">' + esc(m[1]) + (m[2] ? '<i class="ap-n' + (k === "withdrawals" || k === "cancellations" ? " red" : "") + '">' + m[2] + "</i>" : "") + "</button>";
+      }).join("") + "</div></div>";
+    }).join("") + "</div>";
+  }
+  function tabHelp(cur) { return HELP[cur] ? '<p class="ap-help"><i class="fa-solid fa-circle-info"></i> ' + esc(HELP[cur]) + "</p>" : ""; }
+
   window.renderAdminPayments = async function () {
     var a = api();
     var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
     if (!a) return nav + '<div class="empty-state">Payments are not available right now.</div>';
-    var sum = await a.summary();
+    // The four overview requests run together, and switching tab or range reuses them (for 30 seconds) so only the list itself is fetched
+    var base = (reuse && shCache && Date.now() - shCache.at < 30000) ? shCache : null; reuse = false;
+    if (!base) {
+      var got = await Promise.all([a.summary(), sb.rpc("admin_list_withdrawals", { p_status: null }), sb.rpc("get_setup_status"), sb.rpc("admin_list_cancellations", { p_status: null })]);
+      base = { at: Date.now(), sum: got[0], wd: got[1], su: got[2], cr: got[3] };
+      if (!got[0].error) shCache = base;
+    }
+    var sum = base.sum, wd = base.wd, su = base.su, cr = base.cr;
     if (sum.error) return nav + '<div class="empty-state">' + esc(sum.error.message || "Only admins can see payments.") + "</div>";
     var s = sum.data, h = s.health, t = s[range];
     var q = { limit: 40 };
-    var rows, wd = await sb.rpc("admin_list_withdrawals", { p_status: null });
+    var rows;
     var wdRows = (wd && wd.data) || [], wdOpen = wdRows.filter(function (x) { return x.status === "requested"; }).length;
-    var su = await sb.rpc("get_setup_status");
     var missing = (su && su.data && su.data.missing) || [];
-    var cr = await sb.rpc("admin_list_cancellations", { p_status: null });
     var crRows = (cr && cr.data) || [], crOpen = crRows.filter(function (x) { return x.status === "requested"; }).length;
     if (window.lvPayPaint) window.lvPayPaint(wdOpen + crOpen);
     if (!picked && wdOpen) tab = "withdrawals"; else if (!picked && crOpen) tab = "cancellations";
@@ -688,7 +716,7 @@
       (h.needsAttention > stuckOnBalance ? '<div class="ap-note ap-warn" role="status"><i class="fa-solid fa-triangle-exclamation"></i> <span><b>' + (h.needsAttention - stuckOnBalance) + ' thing(s) need attention.</b> Stuck or failed payouts and refunds, or a mismatch in the last daily check.</span></div>' : "") +
       '<div class="ap-card"><div class="ap-range">' + [["today", "Today"], ["week", "7 days"], ["month", "30 days"]].map(function (r) { return '<button class="' + (r[0] === range ? "active" : "") + '" onclick="lvPayRange(\'' + r[0] + '\')">' + r[1] + "</button>"; }).join("") + "</div>" +
       '<div class="ap-tiles">' + tiles.map(function (x) { return '<div class="ap-tile"><small>' + x[0] + "</small><b>" + naira(x[1]) + "</b></div>"; }).join("") + "</div></div>" +
-      '<div class="ap-tabs" role="tablist">' + tabs.map(function (x) { var on = x[0] === tab; var m = /^(.*?)(?: \((\d+)\))?$/.exec(x[1]); return '<button role="tab" class="' + (on ? "active" : "") + '" onclick="lvPayTab(\'' + x[0] + '\')">' + esc(m[1]) + (m[2] ? '<i class="ap-n' + (x[0] === "withdrawals" || x[0] === "cancellations" ? " red" : "") + '">' + m[2] + "</i>" : "") + "</button>"; }).join("") + "</div>" +
+      groupedTabs(tabs, tab) + tabHelp(tab) +
       '<div class="lv-ap-list-wrap">' + list + "</div>";
   };
 })();
@@ -1164,12 +1192,14 @@
     return Promise.resolve(sb.from("products").select("id,name,photos,sale_price,discount_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(40))
       .then(function (r) {
         var rows = ((r && r.data) || []).filter(function (p) { return p.photos && p.photos[0]; }).slice(0, 24);
-        prodCache[vid] = { at: Date.now(), rows: rows }; return rows;
+        prodCache[vid] = { at: Date.now(), rows: rows }; preload(rows); return rows;   // the pictures are fetched up front, so a banner's products show the moment it slides in
       }).catch(function () { return []; });
   }
   function pick3(pool) { var a = pool.slice(), out = []; while (a.length && out.length < 3) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); return out; }
-  function thumbsHtml(rows) { return rows.map(function (p) { return '<img data-pid="' + esc2(p.id) + '" src="' + esc2(p.photos[0]) + '" alt="" decoding="async">'; }).join(""); }
-  function tilesHtml(rows) { return rows.map(function (p) { return '<span class="lv-wv-tile" data-pid="' + esc2(p.id) + '"><img src="' + esc2(p.photos[0]) + '" alt="" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join(""); }
+  function th(u) { try { return typeof lvThumb === "function" ? lvThumb(u, 300) : u; } catch (_) { return u; } }
+  function preload(rows) { try { (rows || []).forEach(function (p) { var i = new Image(); i.decoding = "async"; i.src = th(p.photos[0]); }); } catch (_) {} }
+  function thumbsHtml(rows) { return rows.map(function (p) { return '<img data-pid="' + esc2(p.id) + '" src="' + esc2(th(p.photos[0])) + '" alt="" decoding="async">'; }).join(""); }
+  function tilesHtml(rows) { return rows.map(function (p) { return '<span class="lv-wv-tile" data-pid="' + esc2(p.id) + '"><img src="' + esc2(th(p.photos[0])) + '" alt="" decoding="async"><b>' + esc2(p.name) + "</b><i>" + esc2(naira(p)) + "</i></span>"; }).join(""); }
   function naira(p) { try { var v = typeof effectivePrice === "function" ? effectivePrice(p) : (p.discount_price || p.sale_price); v = Number(v); return v > 0 ? "₦" + v.toLocaleString("en-NG") : ""; } catch (_) { return ""; } }
   function logoHtml(w, cls) {
     var ini = esc2(String(w.business_name || "?").trim().slice(0, 2).toUpperCase());
@@ -1347,12 +1377,18 @@
   // every few seconds: new products on the flyers, new colours on the banners
   function swapProducts() {
     var pool = window.__lvWvPool; if (document.hidden || !pool || pool.length < 4) return;
+    if (window.__lvDragging || document.documentElement.classList.contains("lv-fab-dragging")) return;   // never while a button is being carried
     var rows = pick3(pool);
-    document.querySelectorAll(".lv-wv-thumbs, .lv-wv-tiles").forEach(function (box) {
-      box.classList.remove("lv-wv-swap"); void box.offsetWidth;
-      box.innerHTML = box.classList.contains("lv-wv-thumbs") ? thumbsHtml(rows) : tilesHtml(rows);
-      box.classList.add("lv-wv-swap");
-    });
+    // look first (only banners on screen), then change: no layout is forced in between
+    var boxes = [].filter.call(document.querySelectorAll(".lv-wv-thumbs, .lv-wv-tiles"), function (box) { var r = box.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; });
+    if (!boxes.length) return;
+    boxes.forEach(function (box) { box.classList.remove("lv-wv-swap"); });
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      boxes.forEach(function (box) {
+        box.innerHTML = box.classList.contains("lv-wv-thumbs") ? thumbsHtml(rows) : tilesHtml(rows);
+        box.classList.add("lv-wv-swap");
+      });
+    }); });
   }
   function swapColours() {
     if (document.hidden) return; palStep++;
@@ -1782,7 +1818,7 @@
     } catch (_) {}
   }
   // safety net: if a change is missed (a dropped connection, a table that does not broadcast), the wallet still catches up
-  setInterval(function () { if (!document.hidden && document.querySelector("[data-lv-wallet]") && Date.now() - lastLive > 15000) liveRefresh(); }, 20000);
+  setInterval(function () { if (document.hidden) return; startLive(); if (document.querySelector("[data-lv-wallet]") && Date.now() - lastLive > 10000) liveRefresh(); }, 5000);   // also checks every few seconds, in case the live channel misses a change
   document.addEventListener("visibilitychange", function () { if (!document.hidden && document.querySelector("[data-lv-wallet]")) liveRefresh(); });
   window.addEventListener("online", liveRefresh);
   window.lvWalletToggle = function () { setHidden(!hidden()); paint(); };
@@ -2651,6 +2687,15 @@ window.lvAskCancel = async function (orderId) {
   var STK = ["1f525", "2764-fe0f", "1f60d", "1f602", "1f44f", "1f64f", "1f4af", "1f389", "1f60e", "1f929", "1f973", "1f62d", "1f60a", "1f44d", "1f4aa", "2b50", "1f496", "1f970", "1f64c", "1f618", "1f440", "1f48e", "1f381", "1f680", "1f91d", "1f6cd-fe0f", "1f62e", "1f914", "1f631", "1f921", "1f308", "1f31f", "1f340", "1f354", "1f355", "1f37b", "1f37f", "1f383", "1f388", "1f38a", "1f3af", "1f3b6", "1f3c6", "1f431", "1f44a", "1f44b", "1f44c", "1f451", "1f47b", "1f480", "1f483", "1f48b", "1f493", "1f499", "1f49a", "1f49c", "1f4a1", "1f4a5", "1f4a9", "1f4b8", "1f4e6", "1f604", "1f605", "1f606", "1f607", "1f608", "1f609", "1f60b", "1f61c", "1f621", "1f622", "1f624", "1f62a", "1f634", "1f642", "1f643", "1f69a", "1f6d2", "1f90c", "1f90d", "1f911", "1f913", "1f916", "1f917", "1f919", "1f91e", "1f923", "1f92c", "1f92f", "1f942", "1f972", "1f975", "1f976", "1f979", "1f97a", "1f981", "1f984", "1f98b", "1f9e1", "26a1", "270a", "2728"];
   // "3d/<code>" is the glossy 3D set (/stickers3d); the others are the flat and moving ones
   function stkSrc(id) { return id.indexOf("3d/") === 0 ? "/stickers3d/" + id.slice(3) + ".webp" : "/stickers/" + id + ".webp"; }
+  // a comment that is only a sticker is drawn as the picture straight away (no flash of the sticker's code first)
+  (function () {
+    var om = window.lvMentionHtml;
+    window.lvMentionHtml = function (c) {
+      var m = /^\s*::s:((?:still\/|3d\/)?[0-9a-f-]+)::\s*$/.exec(String(c == null ? "" : c));
+      if (m) return '<img class="lv-stk" src="' + stkSrc(m[1]) + '" alt="sticker" width="96" height="96" decoding="async">';
+      return om ? om.apply(this, arguments) : String(c == null ? "" : c).replace(/[&<>"]/g, function (x) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]; });
+    };
+  })();
   function showStickers() {
     document.querySelectorAll(".product-comment-body:not([data-stk])").forEach(function (b) {
       var m = /^::s:((?:still\/|3d\/)?[0-9a-f-]+)::$/.exec((b.textContent || "").trim());
@@ -2836,15 +2881,19 @@ window.lvAskCancel = async function (orderId) {
   var POS = "lv-mapfab-pos", fab = null, busy = 0;
   var PIN = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   function levi() { return document.getElementById("aiChatFab"); }
-  function onVendors() { try { return typeof currentView !== "undefined" && currentView === "vendors"; } catch (_) { return false; } }
+  // Levi turns into a pin on the Vendors page and into a magnifying glass (still carrying the Levromart mark) on the Search page
+  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><radialGradient id="lvLensG" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".55" stop-color="#bff3de" stop-opacity=".55"/><stop offset="1" stop-color="#34d399" stop-opacity=".35"/></radialGradient><linearGradient id="lvLensR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19d39a"/><stop offset="1" stop-color="#0b7f5c"/></linearGradient></defs><circle cx="20" cy="20" r="14" fill="url(#lvLensG)" stroke="url(#lvLensR)" stroke-width="4"/><path d="M30.5 30.5 41 41" stroke="url(#lvLensR)" stroke-width="6" stroke-linecap="round"/><path d="M13.6 14.2a8.4 8.4 0 0 0 0 11.6M26.4 14.2a8.4 8.4 0 0 1 0 11.6" stroke="#0b7f5c" stroke-width="2.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.2" fill="#0b7f5c"/></svg>';
+  function modeNow() { try { var v = typeof currentView !== "undefined" ? currentView : ""; return v === "vendors" ? "vendors" : v === "search" ? "search" : ""; } catch (_) { return ""; } }
+  function core(mode) { return '<span class="mf-core">' + (mode === "search" ? LENS : PIN) + '<b>' + (mode === "search" ? "Search" : "Map") + '</b></span>'; }
+  function tap(mode) { if (mode === "search") { try { var i = document.getElementById("searchPageInput"); window.scrollTo({ top: 0, behavior: "smooth" }); if (i) i.focus(); } catch (_) {} } else { try { navigate("vendorsMap"); } catch (_) {} } }
   function clampPos(x, y) {
     var w = innerWidth, h = innerHeight;
     return { x: Math.min(Math.max(x, 8), w - 68), y: Math.min(Math.max(y, 70), h - 150) };
   }
-  function build(x, y) {
+  function build(x, y, mode) {
     var b = document.createElement("button");
-    b.type = "button"; b.id = "lvMapFab"; b.className = "lv-mapfab"; b.setAttribute("aria-label", "Open the vendors map"); b.title = "Vendors map";
-    b.innerHTML = '<span class="mf-halo"></span><span class="mf-orbit"><i></i><i></i><i></i><i></i></span><span class="mf-ring"></span><span class="mf-core">' + PIN + '<b>Map</b></span><span class="mf-pulse"></span><span class="mf-pulse mf-pulse2"></span>';
+    b.type = "button"; b.id = "lvMapFab"; b.className = "lv-mapfab"; b.setAttribute("aria-label", mode === "search" ? "Search" : "Open the vendors map"); b.title = mode === "search" ? "Search" : "Vendors map";
+    b.innerHTML = core(mode); b.__mode = mode;
     b.style.left = x + "px"; b.style.top = y + "px";
     attachDrag(b);
     return b;
@@ -2872,7 +2921,7 @@ window.lvAskCancel = async function (orderId) {
       if (moved) {
         b.style.left = lx + "px"; b.style.top = ly + "px"; b.style.translate = "";
         try { localStorage.setItem(POS, JSON.stringify({ x: lx, y: ly })); } catch (_) {}
-      } else { try { navigate("vendorsMap"); } catch (_) {} }
+      } else { tap(b.__mode); }
     }
     b.addEventListener("pointerup", end, { passive: true });
     b.addEventListener("pointercancel", end, { passive: true });
@@ -2883,7 +2932,7 @@ window.lvAskCancel = async function (orderId) {
     var saved = null; try { saved = JSON.parse(localStorage.getItem(POS) || "null"); } catch (_) {}
     var start = saved && Number.isFinite(saved.x) ? { x: saved.x, y: saved.y } : r ? { x: r.left + r.width / 2 - 30, y: r.top + r.height / 2 - 30 } : { x: innerWidth - 78, y: innerHeight - 190 };
     start = clampPos(start.x, start.y);
-    fab = build(start.x, start.y);
+    fab = build(start.x, start.y, modeNow());
     document.body.appendChild(fab);
     requestAnimationFrame(function () { fab.classList.add("mf-in"); });
     if (l) l.classList.add("lv-levi-away");   // Levi shrinks and turns away while the pin grows in his place
@@ -2895,7 +2944,15 @@ window.lvAskCancel = async function (orderId) {
     var l = levi(); if (l) l.classList.remove("lv-levi-away");   // Levi comes back
     setTimeout(function () { try { f.remove(); } catch (_) {} busy = Math.max(0, busy - 1); check(); }, 420);
   }
-  function check() { if (onVendors()) show(); else hide(); }
+  function check() {
+    var m = modeNow();
+    if (!m) { hide(); return; }
+    if (!fab) { show(); return; }
+    if (fab.__mode !== m && fab.classList.contains("mf-in")) {   // Vendors <-> Search: the icon warps into the other one in place
+      var f = fab; f.classList.remove("mf-in"); f.classList.add("mf-swap");
+      setTimeout(function () { if (!f.isConnected) return; f.innerHTML = core(m); f.__mode = m; f.setAttribute("aria-label", m === "search" ? "Search" : "Open the vendors map"); f.title = m === "search" ? "Search" : "Vendors map"; f.classList.remove("mf-swap"); f.classList.add("mf-in"); }, 220);
+    }
+  }
   var nav = window.navigate;
   if (typeof nav === "function") {
     window.navigate = function () { var r = nav.apply(this, arguments); setTimeout(check, 0); try { Promise.resolve(r).then(check, check); } catch (_) {} return r; };
@@ -2925,8 +2982,9 @@ window.lvAskCancel = async function (orderId) {
         var onRail = new Set([].map.call(rail.querySelectorAll("[data-product-id]"), function (e) { return e.getAttribute("data-product-id"); }));
         // every product gets its turn before any shows twice; only when all of them have been on the row does it start a fresh round
         onRail.forEach(function (id) { shown.add(id); });
+        if (!ids.some(function (id) { return !onRail.has(id); })) return;   // every product is already on the row: nothing to add (never the same one twice side by side)
         var fresh = ids.filter(function (id) { return !shown.has(id); });
-        if (!fresh.length) { shown = new Set(onRail); ids = shuffle(ids); fresh = ids.filter(function (id) { return !shown.has(id); }); if (!fresh.length) fresh = ids.slice(); }
+        if (!fresh.length) { shown = new Set(onRail); ids = shuffle(ids); fresh = ids.filter(function (id) { return !onRail.has(id); }); }
         var take = fresh.slice(0, 8);
         if (!take.length) return;
         take.forEach(function (id) { shown.add(id); });
