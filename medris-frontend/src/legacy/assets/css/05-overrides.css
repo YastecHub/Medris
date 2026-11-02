@@ -5660,3 +5660,27 @@ html:root:root:root:root body #app#app .lv-fy-join .lv-fy-cta,html:root:root:roo
 html:root:root:root:root body #app#app .lv-fy-sell .lv-fy-cta,html:root:root:root:root body #app#app .lv-fy-follow .lv-fy-cta{color:#6d28d9!important;-webkit-text-fill-color:#6d28d9!important}
 html:root:root:root:root body #app#app .lv-fy-request .lv-fy-cta{color:#2563c9!important;-webkit-text-fill-color:#2563c9!important}
 html:root:root:root:root body #app#app .lv-fy-win .lv-fy-cta{color:#b45309!important;-webkit-text-fill-color:#b45309!important}
+
+/* Checkout sheet: who you are paying, what for, a clear total and one button */
+html body .lvp .lvp-top{margin-bottom:.6rem}
+html body .lvp .lvp-title{margin:0;font-size:1.25rem;font-weight:800}
+html body .lvp .lvp-shop{display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-radius:16px;border:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent);margin-bottom:.7rem}
+html body .lvp .lvp-shop-pic{width:2.6rem;height:2.6rem;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#e7f6ef;color:#0b7a52;font-weight:800;flex:0 0 auto}
+html body .lvp .lvp-shop-pic img{width:100%;height:100%;object-fit:cover}
+html body .lvp .lvp-shop small{display:block;font-size:.72rem;color:var(--text-muted,#667085)}
+html body .lvp .lvp-shop b{font-size:.98rem}
+html body .lvp .lvp-ref{margin-left:auto;font-size:.74rem;font-weight:700;color:var(--text-muted,#667085);background:color-mix(in srgb,var(--text,#111) 6%,transparent);padding:.2rem .5rem;border-radius:8px}
+html body .lvp .lvp-items{list-style:none;margin:0 0 .7rem;padding:0}
+html body .lvp .lvp-items li{display:flex;align-items:center;gap:.7rem;padding:.45rem 0}
+html body .lvp .lvp-items img,html body .lvp .lvp-ph{width:3rem;height:3rem;border-radius:12px;object-fit:cover;flex:0 0 auto;display:grid;place-items:center;background:color-mix(in srgb,var(--text,#111) 6%,transparent);color:var(--text-muted,#667085)}
+html body .lvp .lvp-items div{flex:1 1 auto;min-width:0}
+html body .lvp .lvp-items b{display:block;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .lvp .lvp-items small{color:var(--text-muted,#667085);font-size:.76rem}
+html body .lvp .lvp-items li>span{font-weight:700;font-size:.92rem}
+html body .lvp .lvp-items .lvp-more{color:var(--text-muted,#667085);font-size:.8rem}
+html body .lvp .lvp-rows .lvp-total{border-top:1.5px dashed color-mix(in srgb,var(--text,#111) 16%,transparent)!important}
+html body .lvp .lvp-rows .lvp-total span{color:var(--text,#111);font-weight:800}
+html body .lvp .lvp-rows .lvp-total b{font-size:1.2rem}
+html body .lvp .lvp-pay{display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:1.05rem;font-weight:800}
+html body .lvp .lvp-foot{margin:.7rem 0 0;text-align:center;font-size:.74rem;color:var(--text-muted,#667085)}
+html body .lvp .lvp-amt,html body .lvp .lvp-amt-label,html body .lvp .lvp-badge{display:none}

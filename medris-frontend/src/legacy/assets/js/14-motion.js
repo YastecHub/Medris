@@ -294,14 +294,26 @@
       return;
     }
     var d = r.data;
+    // what is being paid for: the shop, the items and the delivery, so the buyer sees exactly what the money covers
+    var o = null;
+    try { o = (await sb.from("orders").select("id,total_amount,delivery_fee,delivery_method,vendor:vendors(business_name,logo_url),items:order_items(quantity,unit_price,product:products(name,photos))").eq("id", orderId).maybeSingle()).data; } catch (_) {}
+    var items = (o && o.items) || [], shop = (o && o.vendor) || {}, delivery = Number((o && o.delivery_fee) || 0);
+    var itemsTotal = items.reduce(function (t, it) { return t + Number(it.unit_price || 0) * Number(it.quantity || 1); }, 0);
+    var thumb = function (it) { var ph = it.product && Array.isArray(it.product.photos) ? it.product.photos[0] : ""; return ph ? '<img src="' + esc(typeof lvThumb === "function" ? lvThumb(ph, 120) : ph) + '" alt="">' : '<span class="lvp-ph"><i class="fa-solid fa-box"></i></span>'; };
+    var shopPic = shop.logo_url ? '<img src="' + esc(typeof lvThumb === "function" ? lvThumb(shop.logo_url, 96) : shop.logo_url) + '" alt="">' : '<span>' + esc(String(shop.business_name || "S").trim().slice(0, 1).toUpperCase()) + "</span>";
     openModal(
       '<div class="lvp-grab" aria-hidden="true"></div>' +
-      '<div class="lvp-top"><span class="lvp-badge"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Secure payment</span><button type="button" class="lvp-x" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
-      '<div class="lvp-amt-label" id="lvPmTitle">You pay</div><div class="lvp-amt">' + esc(naira(d.amountNaira)) + '</div>' +
-      '<ul class="lvp-rows"><li><span>Order amount</span><b>' + esc(naira(d.orderAmountNaira)) + '</b></li><li><span>Payment fee</span><b>' + esc(naira(d.feeNaira)) + '</b></li></ul>' +
-      '<p class="lvp-note"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Your money is held safely by Levromart. The vendor is paid only after you confirm you have your order.</span></p>' +
-      '<button type="button" class="lvp-pay" id="lvPmGo">Pay ' + esc(naira(d.amountNaira)) + '</button>' +
-      '<button type="button" class="lvp-cancel" onclick="document.getElementById(\'lvPayModal\')?.remove()">Cancel</button>', "lvp"
+      '<div class="lvp-top"><h3 class="lvp-title" id="lvPmTitle">Checkout</h3><button type="button" class="lvp-x" aria-label="Close" onclick="document.getElementById(\'lvPayModal\')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
+      (shop.business_name ? '<div class="lvp-shop"><span class="lvp-shop-pic">' + shopPic + '</span><div><small>Paying</small><b>' + esc(shop.business_name) + '</b></div><span class="lvp-ref">#' + esc(String(orderId).slice(0, 8).toUpperCase()) + "</span></div>" : "") +
+      (items.length ? '<ul class="lvp-items">' + items.slice(0, 4).map(function (it) { return "<li>" + thumb(it) + '<div><b>' + esc((it.product && it.product.name) || "Item") + "</b><small>Qty " + esc(String(it.quantity || 1)) + "</small></div><span>" + esc(naira(Number(it.unit_price || 0) * Number(it.quantity || 1))) + "</span></li>"; }).join("") + (items.length > 4 ? '<li class="lvp-more">+' + (items.length - 4) + " more</li>" : "") + "</ul>" : "") +
+      '<ul class="lvp-rows">' +
+        (items.length && Math.abs(itemsTotal + delivery - Number(d.orderAmountNaira)) < 0.01 ? "<li><span>Items</span><b>" + esc(naira(itemsTotal)) + "</b></li>" + (delivery ? "<li><span>Delivery</span><b>" + esc(naira(delivery)) + "</b></li>" : "") : "<li><span>Order amount</span><b>" + esc(naira(d.orderAmountNaira)) + "</b></li>") +
+        "<li><span>Payment fee</span><b>" + esc(naira(d.feeNaira)) + "</b></li>" +
+        '<li class="lvp-total"><span>Total</span><b>' + esc(naira(d.amountNaira)) + "</b></li>" +
+      "</ul>" +
+      '<p class="lvp-note"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Levromart holds your money safely. The shop is paid only after you confirm you have your order.</span></p>' +
+      '<button type="button" class="lvp-pay" id="lvPmGo"><i class="fa-solid fa-lock" aria-hidden="true"></i> Pay ' + esc(naira(d.amountNaira)) + "</button>" +
+      '<p class="lvp-foot">Secured by Paystack \u00b7 card, bank transfer or USSD</p>', "lvp"
     );
     var go = document.getElementById("lvPmGo");
     go.addEventListener("click", function () {
@@ -3009,17 +3021,17 @@ window.lvAskCancel = async function (orderId) {
   var PIN = '<svg class="mf-pin" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   function levi() { return document.getElementById("aiChatFab"); }
   // Levi turns into a pin on the Vendors page and into a magnifying glass (still carrying the Levromart mark) on the Search page
-  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><linearGradient id="lvLensA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3b5c"/><stop offset=".2" stop-color="#ff9f1c"/><stop offset=".4" stop-color="#ffd60a"/><stop offset=".6" stop-color="#2ee59d"/><stop offset=".8" stop-color="#2f9bff"/><stop offset="1" stop-color="#a855f7"/></linearGradient><linearGradient id="lvLensB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a855f7"/><stop offset=".35" stop-color="#2f9bff"/><stop offset=".65" stop-color="#2ee59d"/><stop offset="1" stop-color="#ffd60a"/></linearGradient></defs><g class="mf-lens-ring"><path d="M13.7 31.9A13.5 13.5 0 0 1 13.7 8.1" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><path d="M26.3 8.1A13.5 13.5 0 0 1 26.3 31.9" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.6" fill="url(#lvLensB)"/></g><path d="M34.5 34.5 42 42" stroke="url(#lvLensB)" stroke-width="6" stroke-linecap="round"/></svg>';
+  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><linearGradient id="lvLensA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19c486"/><stop offset="1" stop-color="#7c3aed"/></linearGradient><linearGradient id="lvLensB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#19c486"/></linearGradient></defs><g class="mf-lens-ring"><path d="M13.7 31.9A13.5 13.5 0 0 1 13.7 8.1" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><path d="M26.3 8.1A13.5 13.5 0 0 1 26.3 31.9" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.6" fill="url(#lvLensB)"/></g><path d="M34.5 34.5 42 42" stroke="url(#lvLensB)" stroke-width="6" stroke-linecap="round"/></svg>';
   function modeNow() { try { var v = typeof currentView !== "undefined" ? currentView : ""; return v === "vendors" ? "vendors" : v === "search" ? "search" : ""; } catch (_) { return ""; } }
   function core(mode) { return '<span class="mf-core">' + (mode === "search" ? LENS : PIN) + '<b>' + (mode === "search" ? "Search" : "Map") + '</b></span>'; }
-  function tap(mode) { if (mode === "search") { try { var i = document.getElementById("searchPageInput"); window.scrollTo({ top: 0, behavior: "smooth" }); if (i) i.focus(); } catch (_) {} } else { try { navigate("vendorsMap"); } catch (_) {} } }
+  function tap(mode) { if (mode === "search") { try { if (typeof toggleAiChat === "function") { var pnl = document.getElementById("aiChatPanel"); if (!pnl || pnl.classList.contains("hidden")) toggleAiChat(); } } catch (_) {} } else { try { navigate("vendorsMap"); } catch (_) {} } }
   function clampPos(x, y) {
     var w = innerWidth, h = innerHeight;
     return { x: Math.min(Math.max(x, 8), w - 68), y: Math.min(Math.max(y, 70), h - 150) };
   }
   function build(x, y, mode) {
     var b = document.createElement("button");
-    b.type = "button"; b.id = "lvMapFab"; b.className = "lv-mapfab"; b.setAttribute("aria-label", mode === "search" ? "Search" : "Open the vendors map"); b.title = mode === "search" ? "Search" : "Vendors map";
+    b.type = "button"; b.id = "lvMapFab"; b.className = "lv-mapfab"; b.setAttribute("aria-label", mode === "search" ? "Ask Levi" : "Open the vendors map"); b.title = mode === "search" ? "Search" : "Vendors map";
     b.innerHTML = core(mode); b.__mode = mode; b.setAttribute("data-mode", mode);
     b.style.left = x + "px"; b.style.top = y + "px";
     attachDrag(b);
