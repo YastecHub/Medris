@@ -289,9 +289,9 @@ function lvDrawQr(canvas, text, colours, initials, centreImg) {
   const rr = (X, Y, W, R) => { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + W, R); x.arcTo(X + W, Y + W, X, Y + W, R); x.arcTo(X, Y + W, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); };
   [[0, 0], [0, n - 7], [n - 7, 0]].forEach(([r, c]) => {
     const X = pad + c * cell, Y = pad + r * cell;
-    rr(X, Y, cell * 7, cell * 2.2); x.fillStyle = grad; x.fill();
-    rr(X + cell, Y + cell, cell * 5, cell * 1.6); x.fillStyle = "#fff"; x.fill();
-    rr(X + cell * 2, Y + cell * 2, cell * 3, cell * 1.1); x.fillStyle = grad; x.fill();
+    rr(X, Y, cell * 7, cell * 3.1); x.fillStyle = grad; x.fill();
+    rr(X + cell, Y + cell, cell * 5, cell * 2.2); x.fillStyle = "#fff"; x.fill();
+    rr(X + cell * 2, Y + cell * 2, cell * 3, cell * 1.5); x.fillStyle = grad; x.fill();
   });
   const cx = size / 2, rad = (hole * cell) / 2 - cell * 0.4;
   x.beginPath(); x.arc(cx, cx, rad + cell * 0.5, 0, Math.PI * 2); x.fillStyle = "#fff"; x.fill();
@@ -329,6 +329,7 @@ async function lvOpenProfileShare(kind, targetId) {
   }
   pic = lvSharpPic(pic);
   const initials = String(isProduct ? byName : name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
+  let centrePic = isProduct ? "/icon-192.png" : pic;   // a product's code carries the Levromart mark in its middle; a shop's or person's carries their own picture
   const storeKey = "lv-qr-gradient:" + (isProduct ? "p:" + targetId : isMap ? "m:" + targetId : isShop ? targetId : "me");
   let gi = null;
   try { const saved = localStorage.getItem(storeKey); if (saved !== null && LV_GRADIENTS[+saved]) gi = +saved; } catch (_) {}
@@ -342,7 +343,7 @@ async function lvOpenProfileShare(kind, targetId) {
       <div class="lvqr-body">
         ${isMap ? '<span class="lvqr-mapbadge"><i class="fa-solid fa-location-dot"></i> Find me on the map</span>' : ""}<h3>${esc(name)}</h3>
         ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : `<p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>`}
-        <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas>${pic ? `<img class="lvqr-pic" src="${esc(pic)}" alt="">` : ""}</div>
+        <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas>${centrePic ? `<img class="lvqr-pic" src="${esc(centrePic)}" alt="">` : ""}</div>
         ${products.length ? `<div class="lvqr-products">${products.map((src) => `<img src="${esc(typeof lvThumb === "function" ? lvThumb(src, 160) : src)}" alt="" loading="lazy">`).join("")}</div>` : ""}
         <p class="lvqr-hint">${hint}</p>
         <div class="lvqr-brand"><img src="/icon-192.png" alt="" width="22" height="22"> Levromart</div>
@@ -361,12 +362,12 @@ async function lvOpenProfileShare(kind, targetId) {
   let picEl = m.querySelector(".lvqr-code .lvqr-pic");
   let colours = LV_GRADIENTS[0].c;
   // a picture that cannot be shown leaves no hole: the initials are drawn in its place
-  if (picEl) picEl.addEventListener("error", () => { picEl.remove(); picEl = null; pic = null; if (gi !== null) paint(gi); });
+  if (picEl) picEl.addEventListener("error", () => { picEl.remove(); picEl = null; if (centrePic === pic) pic = null; centrePic = null; if (gi !== null) paint(gi); });
   const paint = (i) => {
     gi = i; colours = LV_GRADIENTS[i].c;
     card.setAttribute("style", lvGradientVars(LV_GRADIENTS[i]));
     m.querySelectorAll(".lvqr-sw").forEach((b) => b.setAttribute("aria-checked", String(+b.dataset.i === i)));
-    try { const r = lvDrawQr(canvas, link, colours, pic ? "" : initials, null); if (picEl) { const pct = (r * 200).toFixed(2) + "%"; picEl.style.width = picEl.style.height = pct; } } catch (_) {}
+    try { const r = lvDrawQr(canvas, link, colours, centrePic ? "" : initials, null); if (picEl) { const pct = (r * 200).toFixed(2) + "%"; picEl.style.width = picEl.style.height = pct; } } catch (_) {}
   };
   try {
     await lvLoadQrLib();
@@ -390,7 +391,8 @@ async function lvOpenProfileShare(kind, targetId) {
   const buildCard = async (withPic) => {
     const qrC = document.createElement("canvas"); qrC.width = qrC.height = 640;
     const img = withPic && pic ? await lvLoadReadableImage(pic) : null;
-    lvDrawQr(qrC, link, colours, img ? "" : initials, img);
+    const centreImg = withPic && centrePic ? (isProduct ? await lvLoadImage("/icon-192.png") : img) : null;
+    lvDrawQr(qrC, link, colours, centreImg ? "" : initials, centreImg);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
     const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1160 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;

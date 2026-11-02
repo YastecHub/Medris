@@ -355,7 +355,7 @@ function hideLevromartSplash() {
     const a = byId("app");
     if (elapsed < 4000 && a && a.querySelector("[class*='skel'], .lv-svc-skel")) { setTimeout(() => hideLevromartSplash(), 120); return; }
   } catch (_) {}
-  if (!lvPageStyled() && elapsed < 9000) {
+  if (!lvPageStyled() && elapsed < 90000) {
     setTimeout(() => hideLevromartSplash(), 100);
     return;
   }

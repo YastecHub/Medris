@@ -5542,21 +5542,10 @@ html:root:root:root body #app#app .lv-wv .lv-wv-school-logo{width:5.4cqw!importa
 html:root:root:root body #app#app .lv-wv .lv-wv-badge{max-width:60cqw;overflow:hidden;text-overflow:ellipsis}
 html:root:root:root body #app#app .lv-wv .lv-wv-name{margin-top:3cqw}
 
-/* The overall winner (all campuses): a banner of its own that stays whichever campus is chosen */
-html:root:root:root body #app#app .home-promotional-slide.lv-wv.lv-wv-o{background:radial-gradient(120% 95% at 88% 8%,#6a45d1 0%,#2e1a73 46%,#130b36 100%)!important;color:#fff}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-o-badge{position:absolute;left:5cqw;top:5cqw;display:inline-flex;align-items:center;gap:1.6cqw;padding:1.3cqw 3.2cqw;border-radius:99px;background:linear-gradient(90deg,#fbe08a,#e8a936);color:#3b2400;font-size:2.7cqw;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-o-badge i{color:#7a4a00}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-o-logo{border:1.4cqw solid #f4c95d!important;box-shadow:0 0 0 1.4cqw rgba(244,201,93,.28),0 2cqw 6cqw rgba(0,0,0,.45)!important}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-name{top:17cqw;color:#fff;max-width:52cqw}
+/* The overall winner (all campuses): its own banner, deep purple and plain, same layout as the others (name, three products, one button) */
+html:root:root:root body #app#app .home-promotional-slide.lv-wv.lv-wv-o{background:radial-gradient(120% 95% at 88% 8%,#5b3bb8 0%,#2a1766 50%,#140b3a 100%)!important;color:#fff}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-badge i{color:#ffd54a}
 html:root:root:root body #app#app .lv-wv-o .lv-wv-sub{color:#e6ddff;max-width:54cqw}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-o-cta{background:linear-gradient(90deg,#fbe08a,#e8a936)!important;color:#3b2400!important;-webkit-text-fill-color:#3b2400!important}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-o-cta i{color:#3b2400!important}
-.lv-wv-o-star{position:absolute;color:#f4c95d;font-size:4cqw;line-height:1;pointer-events:none}
-.lv-wv-o-star::before{content:"\2726"}
-.lv-wv-o-star.s1{left:44cqw;top:30cqw;font-size:3cqw;opacity:.8}
-.lv-wv-o-star.s2{right:8cqw;top:46cqw;font-size:4.4cqw;opacity:.9}
-.lv-wv-o-star.s3{left:6cqw;bottom:26cqw;font-size:2.6cqw;opacity:.6}
-html:root:root:root body #app#app .lv-wv-o .lv-wv-o-badge{font-size:2.35cqw;letter-spacing:.04em;padding:1.2cqw 2.8cqw}
 
 /* Product share card: photo on the left, QR code on the right, name / price / shop underneath (close to a square) */
 html body .lvqr-card.is-product{display:grid!important;grid-template-columns:1.1fr 1fr;grid-template-areas:"cover code" "cover hint" "name name" "price price" "by by" "brand brand";column-gap:.8rem;row-gap:.35rem;padding:.9rem .9rem 1rem;align-items:center;text-align:center}
@@ -5568,3 +5557,44 @@ html body .lvqr-card.is-product h3{grid-area:name;margin:.6rem 0 0!important;fon
 html body .lvqr-card.is-product .lvqr-price{grid-area:price;margin:0!important}
 html body .lvqr-card.is-product .lvqr-by{grid-area:by;margin:0!important;justify-content:center}
 html body .lvqr-card.is-product .lvqr-brand{grid-area:brand;margin:.5rem 0 0!important;justify-self:center}
+
+/* Every spinner is the Levromart mark turning (the two arcs and the dot), in whatever colour the text around it has */
+@keyframes lvMarkSpin{to{transform:rotate(360deg)}}
+html body i.fa-spinner,html body i.fa-circle-notch,html body i.fa-spinner-third,html body i.fa-spin,html body .fa-spinner.fa-spin,html body .fa-circle-notch.fa-spin{display:inline-block!important;width:1.15em!important;height:1.15em!important;font-size:inherit!important;vertical-align:-.2em;background:currentColor!important;-webkit-mask:url(/lv-mark.svg) center/contain no-repeat;mask:url(/lv-mark.svg) center/contain no-repeat;animation:lvMarkSpin .9s linear infinite!important;border:0!important;line-height:1}
+html body i.fa-spinner::before,html body i.fa-circle-notch::before,html body i.fa-spinner-third::before,html body i.fa-spin::before{content:""!important}
+html body .spinner,html body .lv-pm-spin{width:2.4rem!important;height:2.4rem!important;border:0!important;border-radius:0!important;background:var(--primary,#16a06a)!important;-webkit-mask:url(/lv-mark.svg) center/contain no-repeat;mask:url(/lv-mark.svg) center/contain no-repeat;animation:lvMarkSpin .9s linear infinite!important}
+html body .brand-spinner-ring{display:none!important}
+html body .brand-spinner-logo{animation:lvMarkSpin 1.6s linear infinite}
+html body .vmp-fab.is-loading i{animation:lvMarkSpin .9s linear infinite}
+
+/* Long-press on a notification: the whole notification as a sheet that slides up from the bottom */
+.nsheet-wrap{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center}
+.nsheet-back{position:absolute;inset:0;background:rgba(10,16,14,.5);opacity:0;transition:opacity .22s}
+.nsheet{position:relative;width:min(560px,100%);box-sizing:border-box;padding:.7rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px));border-radius:26px 26px 0 0;background:var(--card,#fff);color:var(--text,#14201a);box-shadow:0 -14px 40px rgba(0,0,0,.25);transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.nsheet-wrap.in .nsheet-back{opacity:1}
+.nsheet-wrap.in .nsheet{transform:none}
+.nsheet-handle{width:42px;height:5px;border-radius:999px;background:color-mix(in srgb,var(--text,#111) 22%,transparent);margin:0 auto .9rem}
+.nsheet-head{display:flex;align-items:center;gap:.9rem}
+.nsheet-lead{flex:0 0 auto;display:grid;place-items:center;width:3.4rem;height:3.4rem}
+.nsheet-lead>*{width:3.4rem!important;height:3.4rem!important;border-radius:50%!important;font-size:1.3rem}
+.nsheet-lead .notification-system-icon{display:grid;place-items:center}
+.nsheet-titles{min-width:0}
+.nsheet-titles h3{margin:0;font-size:1.08rem;line-height:1.25}
+.nsheet-titles small{display:block;margin-top:.15rem;color:var(--text-muted,#667085);font-size:.78rem}
+.nsheet-body{margin:.9rem 0 0;padding:.8rem .9rem;border-radius:16px;background:color-mix(in srgb,var(--text,#111) 5%,transparent);white-space:pre-wrap;line-height:1.5;font-size:.95rem;max-height:40vh;overflow:auto}
+.nsheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1rem}
+.nsheet-actions button{height:48px;border-radius:14px;font:inherit;font-weight:800;border:1.5px solid #16a06a;cursor:pointer}
+.nsheet-close{background:transparent;color:#16a06a}
+.nsheet-open{background:#16a06a;color:#fff}
+
+/* Refund sheet: who is being refunded, what was paid and what is left */
+html body .rf-card{margin:.2rem 0 .4rem;padding:.7rem .85rem;border-radius:16px;background:color-mix(in srgb,var(--text,#111) 5%,transparent)}
+html body .rf-row{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:.38rem 0;font-size:.88rem}
+html body .rf-row+.rf-row{border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)}
+html body .rf-row span{color:var(--text-muted,#667085)}
+html body .rf-row b{text-align:right;font-weight:700}
+html body .rf-row small{display:block;font-weight:500;color:var(--text-muted,#667085);font-size:.74rem}
+html body .rf-max{color:#0b7a52}
+html body .rf-note{margin:.7rem 0 0;font-size:.8rem;line-height:1.4;color:var(--text-muted,#667085)}
+html body .rf-note i{color:#16a06a;margin-right:.3rem}
+html body #app .ap2-tag.ap2-tag-ref{background:rgba(245,158,11,.14);color:#a85f00;margin-right:.4rem}
