@@ -771,6 +771,7 @@ window.__lvHoldHeight = function (el) {
   }
   // One endless feed: the vendor's own products first, then products from other verified vendors (same category first), then back to the start.
   let feed = null;
+  const visited = new Set();   // products already seen this visit: the swipe feed shows new ones first and only then comes round again
   async function buildFeed(cur, vid) {
     const own = await siblings(String(vid));
     let more = [];
@@ -784,12 +785,16 @@ window.__lvHoldHeight = function (el) {
     const ids = [...own];
     if (!ids.includes(String(cur.id))) ids.unshift(String(cur.id));
     more.forEach((id) => { if (!ids.includes(id)) ids.push(id); });
-    feed = { ids, at: Date.now() };
+    visited.add(String(cur.id));
+    const fresh = ids.filter((id) => id === String(cur.id) || !visited.has(id)), seen = ids.filter((id) => !fresh.includes(id));
+    // if the list of other shops' products could not be loaded, try again soon instead of cycling through a few products for ten minutes
+    feed = { ids: [...fresh, ...seen], at: more.length ? Date.now() : Date.now() - 590000 };
     return feed;
   }
   async function getFeed() {
     const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
     if (!cur?.id || !vid || currentView !== "productDetail") return null;
+    visited.add(String(cur.id));
     if (!feed || Date.now() - feed.at > 600000 || !feed.ids.includes(String(cur.id))) await buildFeed(cur, vid);
     return feed;
   }
