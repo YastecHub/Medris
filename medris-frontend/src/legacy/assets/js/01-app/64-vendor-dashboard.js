@@ -111,7 +111,7 @@ async function renderVendorDashboard() {
       ${lvStatTile("1f6d2", `${totalOrders}`, "Total orders", "navigate('vendorOrders')")}
       ${lvStatTile("1f48e", naira(revenue), "Revenue", "navigate('vendorEarnings')")}
       ${lvStatTile("1f4e6", `${totalListings}`, "Listings", "navigate('vendorProducts')")}
-      ${lvStatTile("1f451", `${totalFollowers}`, "Followers", "navigate('vendorFollowers')")}
+      ${lvStatTile("1f465", `${totalFollowers}`, "Followers", "navigate('vendorFollowers')")}
       ${lvStatTile("1f4c8", `${totalViews}`, "Product views", "")}
       ${lvStatTile("1f381", `${totalFavorites}`, "Wishlist saves", "")}
     </div>
@@ -301,42 +301,53 @@ function lvDrawQr(canvas, text, colours, initials, centreImg) {
   x.restore();
   return rad / size;   // the picture's radius as a share of the code's width
 }
-async function lvOpenProfileShare(kind, vendorId) {
+async function lvOpenProfileShare(kind, targetId) {
   document.getElementById("lvqrSheet")?.remove();
-  const isShop = kind === "vendor" && vendorId;
-  let name = "", link = "", pic = null, cover = null, products = [];
-  if (isShop) {
-    const v = typeof vendor !== "undefined" && vendor && String(vendor.id) === String(vendorId) ? vendor : (await sb.from("vendors").select("id,business_name,logo_url,cover_url").eq("id", vendorId).maybeSingle()).data;
+  const isProduct = kind === "product" && targetId;
+  const isShop = kind === "vendor" && targetId;
+  let name = "", link = "", pic = null, cover = null, products = [], priceText = "", byName = "", shopId = isShop ? targetId : null;
+  if (isProduct) {
+    const { data: pr } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor:vendors!inner(id,user_id,business_name,logo_url)").eq("id", targetId).maybeSingle();
+    if (!pr) return showToast("This product could not be found.", "error");
+    name = pr.name || "Product"; link = productPublicUrl(pr.id); cover = (Array.isArray(pr.photos) && pr.photos[0]) || null;
+    byName = pr.vendor?.business_name || "";
+    try { const [v2] = await lvAttachOwnerAvatars([pr.vendor]); pic = lvVendorPic(v2); } catch (_) { pic = pr.vendor?.logo_url || null; }
+    try { priceText = pr.is_service ? `${naira(effectivePrice(pr))}${servicePriceSuffix(pr)}` : pr.sale_price != null ? naira(effectivePrice(pr)) : pr.rental_rate != null ? `${naira(pr.rental_rate)}/${pr.rental_rate_unit}` : ""; } catch (_) {}
+    shopId = pr.vendor?.id;
+  } else if (isShop) {
+    const v = typeof vendor !== "undefined" && vendor && String(vendor.id) === String(targetId) ? vendor : (await sb.from("vendors").select("id,user_id,business_name,logo_url,cover_url").eq("id", targetId).maybeSingle()).data;
     if (!v) return showToast("This shop could not be found.", "error");
     name = v.business_name || "My shop"; link = storefrontPublicUrl(v.id); cover = v.cover_url || null;
-    pic = lvVendorPic(v) || (typeof vendor !== "undefined" && vendor && String(vendor.id) === String(vendorId) ? profile?.avatar_url : null);
-    try { const { data } = await sb.from("products").select("photos").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }).limit(3); products = (data || []).map((p) => (Array.isArray(p.photos) ? p.photos[0] : null)).filter(Boolean); } catch (_) {}
+    pic = lvVendorPic(v) || (typeof vendor !== "undefined" && vendor && String(vendor.id) === String(targetId) ? profile?.avatar_url : null);
+    if (!pic && v.user_id) { try { const [v2] = await lvAttachOwnerAvatars([v]); pic = lvVendorPic(v2); } catch (_) {} }
+    try { const { data } = await sb.from("products").select("photos").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }).limit(9); products = (data || []).map((p) => (Array.isArray(p.photos) ? p.photos[0] : null)).filter(Boolean); products = products.sort(() => Math.random() - 0.5).slice(0, 3); } catch (_) {}   // three of the shop's products
   } else {
     name = profile?.name || "Levromart"; link = location.origin + "/"; pic = profile?.avatar_url || null;
   }
   pic = lvSharpPic(pic);
-  const initials = String(name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
-  const storeKey = "lv-qr-gradient:" + (isShop ? vendorId : "me");
+  const initials = String(isProduct ? byName : name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
+  const storeKey = "lv-qr-gradient:" + (isProduct ? "p:" + targetId : isShop ? targetId : "me");
   let gi = null;
   try { const saved = localStorage.getItem(storeKey); if (saved !== null && LV_GRADIENTS[+saved]) gi = +saved; } catch (_) {}
   const m = document.createElement("div");
   m.id = "lvqrSheet"; m.className = "lvqr-wrap";
+  const hint = isProduct ? "Scan to see this product on Levromart" : isShop ? "Scan to visit my shop on Levromart" : "Scan to join me on Levromart";
   m.innerHTML = `<div class="lvqr-sheet" role="dialog" aria-modal="true" aria-label="Share ${esc(name)}">
     <button type="button" class="lvqr-close" aria-label="Close" onclick="document.getElementById('lvqrSheet')?.remove()"><i class="fa-solid fa-xmark"></i></button>
-    <div class="lvqr-card">
+    <div class="lvqr-card${isProduct ? " is-product" : ""}">
       <div class="lvqr-cover"${cover ? ` style="background-image:url('${esc(cover)}')"` : ""}></div>
       <div class="lvqr-body">
         <h3>${esc(name)}</h3>
-        <p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>
+        ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : `<p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>`}
         <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas>${pic ? `<img class="lvqr-pic" src="${esc(pic)}" alt="">` : ""}</div>
         ${products.length ? `<div class="lvqr-products">${products.map((src) => `<img src="${esc(typeof lvThumb === "function" ? lvThumb(src, 160) : src)}" alt="" loading="lazy">`).join("")}</div>` : ""}
-        <p class="lvqr-hint">${isShop ? "Scan to visit my shop on Levromart" : "Scan to join me on Levromart"}</p>
+        <p class="lvqr-hint">${hint}</p>
         <div class="lvqr-brand"><img src="/icon-192.png" alt="" width="22" height="22"> Levromart</div>
       </div>
     </div>
     <div class="lvqr-swatches" role="radiogroup" aria-label="QR colours">${LV_GRADIENTS.map((g, i) => `<button type="button" role="radio" class="lvqr-sw" data-i="${i}" aria-label="Colour ${i + 1}" style="${lvGradientVars(g)}"></button>`).join("")}</div>
     <div class="lvqr-actions">
-      <button type="button" class="lvqr-act" data-act="share"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>Share link</span></button>
+      <button type="button" class="lvqr-act" data-act="share"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>Share</span></button>
       <button type="button" class="lvqr-act" data-act="copy"><i class="fa-regular fa-copy"></i><span>Copy link</span></button>
       <button type="button" class="lvqr-act" data-act="save"><i class="fa-solid fa-download"></i><span>Save QR</span></button>
     </div>
@@ -344,7 +355,7 @@ async function lvOpenProfileShare(kind, vendorId) {
   m.addEventListener("click", (e) => { if (e.target === m) m.remove(); });
   document.body.appendChild(m);
   const canvas = m.querySelector("canvas"), card = m.querySelector(".lvqr-card");
-  let picEl = m.querySelector(".lvqr-pic");
+  let picEl = m.querySelector(".lvqr-code .lvqr-pic");
   let colours = LV_GRADIENTS[0].c;
   // a picture that cannot be shown leaves no hole: the initials are drawn in its place
   if (picEl) picEl.addEventListener("error", () => { picEl.remove(); picEl = null; pic = null; if (gi !== null) paint(gi); });
@@ -357,11 +368,10 @@ async function lvOpenProfileShare(kind, vendorId) {
   try {
     await lvLoadQrLib();
     if (gi === null) {
-      // the colours of the shop's picture pick the starting gradient (a fixed one per shop when the picture cannot be read)
       // the same gradient as this shop's banner on its storefront (matched to its picture when it can be read)
-      const img = cover ? null : await lvLoadReadableImage(pic);
+      const img = cover && isShop ? null : await lvLoadReadableImage(pic);
       const hue = img ? lvImageHue(img) : null;
-      gi = LV_GRADIENTS.indexOf(lvGradientFor(isShop ? vendorId : (profile?.name || profile?.email), hue));
+      gi = LV_GRADIENTS.indexOf(lvGradientFor(isProduct ? shopId : isShop ? targetId : (profile?.name || profile?.email), hue));
     }
     paint(gi);
   } catch (err) { m.querySelector(".lvqr-code").innerHTML = `<p class="muted">${esc(err.message || "QR code unavailable")}</p>`; }
@@ -370,27 +380,50 @@ async function lvOpenProfileShare(kind, vendorId) {
     paint(+b.dataset.i);
     try { localStorage.setItem(storeKey, String(gi)); } catch (_) {}
   });
-  const text = isShop ? `Shop ${name} on Levromart` : "Join me on Levromart";
-  // The QR card as a picture (1080x1350): the gradient, the shop's name and link, the code and the Levromart logo.
+  const text = isProduct ? `${name} on Levromart` : isShop ? `Shop ${name} on Levromart` : "Join me on Levromart";
+  const rrect = (x, X, Y, W, H, R) => { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); };
+  const cover2 = (x, img, X, Y, W, H, R) => { x.save(); rrect(x, X, Y, W, H, R); x.clip(); const sc = Math.max(W / img.width, H / img.height); const w = img.width * sc, h = img.height * sc; x.drawImage(img, X + (W - w) / 2, Y + (H - h) / 2, w, h); x.restore(); };
+  // The card as one picture: gradient, the shop's three products (or the product, its price and its seller), the code and the logo.
   const buildCard = async (withPic) => {
     const qrC = document.createElement("canvas"); qrC.width = qrC.height = 640;
     const img = withPic && pic ? await lvLoadReadableImage(pic) : null;
     lvDrawQr(qrC, link, colours, img ? "" : initials, img);
-    const out = document.createElement("canvas"); out.width = 1080; out.height = 1350; const x = out.getContext("2d");
-    const bg = x.createLinearGradient(0, 0, 1080, 1350); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
-    x.fillStyle = bg; x.fillRect(0, 0, 1080, 1350);
-    x.fillStyle = "#fff"; x.beginPath(); x.roundRect ? x.roundRect(90, 150, 900, 1050, 56) : x.rect(90, 150, 900, 1050); x.fill();
-    x.fillStyle = "#14201a"; x.textAlign = "center"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 270);
-    x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(link.replace(/^https?:\/\//, "").slice(0, 44), 540, 325);
-    x.drawImage(qrC, 240, 370, 600, 600);
-    x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(isShop ? "Scan to visit my shop" : "Scan to join me", 540, 1040);
-    const logo = await lvLoadImage("/icon-192.png"); if (logo) x.drawImage(logo, 400, 1085, 56, 56);
-    x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 470, 1127);
+    const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
+    const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
+    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1700 : prodImgs.length ? 1500 : 1360;
+    const x = out.getContext("2d");
+    const bg = x.createLinearGradient(0, 0, 1080, out.height); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
+    x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
+    x.fillStyle = "#fff"; rrect(x, 90, 130, 900, out.height - 260, 56); x.fill();
+    x.textAlign = "center";
+    let y = 130;
+    if (isProduct) {
+      if (heroImg) cover2(x, heroImg, 120, 160, 840, 560, 40); y = 160 + 560;
+      x.fillStyle = "#14201a"; x.font = "800 56px system-ui,sans-serif"; x.fillText(String(name).slice(0, 30), 540, y + 85);
+      if (priceText) { x.fillStyle = colours[1]; x.font = "800 64px system-ui,sans-serif"; x.fillText(priceText, 540, y + 165); }
+      x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif";
+      const sold = "Sold by " + String(byName).slice(0, 26);
+      const tw = x.measureText(sold).width, avatarImg = img;
+      if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, y + 215, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, y + 187, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, y + 227); x.textAlign = "center"; } else x.fillText(sold, 540, y + 227);
+      x.drawImage(qrC, 240, y + 270, 600, 600); y = y + 270 + 600;
+    } else {
+      x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240);
+      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(link.replace(/^https?:\/\//, "").slice(0, 44), 540, 295);
+      x.drawImage(qrC, 240, 340, 600, 600); y = 940;
+      if (prodImgs.length) {
+        const sz = 150, gap = 26, total = prodImgs.length * sz + (prodImgs.length - 1) * gap; let px = 540 - total / 2;
+        prodImgs.forEach((im) => { cover2(x, im, px, y + 30, sz, sz, 28); px += sz + gap; }); y += 30 + sz;
+      }
+    }
+    x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(hint.replace("Scan to ", "Scan to ").replace(" on Levromart", ""), 540, y + 70);
+    const logo = await lvLoadImage("/icon-192.png"); if (logo) x.drawImage(logo, 395, y + 105, 56, 56);
+    x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 465, y + 147);
     return new Promise((r, j) => { try { out.toBlob((bl) => (bl ? r(bl) : j(new Error("empty"))), "image/png"); } catch (err) { j(err); } });
-      };
+  };
   m.querySelector(".lvqr-actions").addEventListener("click", async (e) => {
     const b = e.target.closest(".lvqr-act"); if (!b) return;
-    if (b.dataset.act === "share") {
+    const act = b.dataset.act;
+    if (act === "share") {
       if (navigator.share) {
         // the QR card picture and the link go out together (WhatsApp, Telegram...); just the link where pictures cannot be shared
         let files = null;
@@ -398,13 +431,11 @@ async function lvOpenProfileShare(kind, vendorId) {
         try { await navigator.share(files ? { files, title: name, text: `${text}: ${link}` } : { title: name, text, url: link }); } catch (_) {}
         return;
       }
-      b.dataset.act = "copy";
     }
-    if (b.dataset.act === "copy") { try { await navigator.clipboard.writeText(link); showToast("Link copied.", "success"); } catch (_) { showToast(link, "info"); } if (!navigator.share) b.dataset.act = "share"; return; }
-    if (b.dataset.act === "save") {
-      const build = buildCard;
+    if (act === "copy" || (act === "share" && !navigator.share)) { try { await navigator.clipboard.writeText(link); showToast("Link copied.", "success"); } catch (_) { showToast(link, "info"); } return; }
+    if (act === "save") {
       try {
-        let blob; try { blob = await build(true); } catch (_) { blob = await build(false); }   // a picture the browser may not copy: initials instead
+        let blob; try { blob = await buildCard(true); } catch (_) { blob = await buildCard(false); }   // a picture the browser may not copy: initials instead
         const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${String(name).replace(/[^\w-]+/g, "-").toLowerCase()}-levromart-qr.png`; a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 4000);
         showToast("QR saved.", "success");

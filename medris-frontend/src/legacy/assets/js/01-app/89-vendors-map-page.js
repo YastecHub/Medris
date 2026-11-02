@@ -62,6 +62,31 @@ function renderVendorsMapPage() {
 }
 
 
+// Follow / Unfollow right on the map card (instead of getting directions)
+function vmpIsFollowing(id) { try { return !!window.followedVendorSet?.().has(String(id)); } catch (_) { return false; } }
+function vmpFollowBtnHtml(id) {
+  const on = vmpIsFollowing(id);
+  return `<button type="button" class="vmp-follow${on ? " on" : ""}" data-vid="${esc(String(id))}" aria-pressed="${on}" onclick="event.stopPropagation();vmpToggleFollow('${esc(String(id))}',this)"><i class="fa-solid ${on ? "fa-user-check" : "fa-user-plus"}"></i> <span>${on ? "Unfollow" : "Follow"}</span></button>`;
+}
+function vmpPaintFollow(btn, on) {
+  btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", String(on));
+  btn.innerHTML = `<i class="fa-solid ${on ? "fa-user-check" : "fa-user-plus"}"></i> <span>${on ? "Unfollow" : "Follow"}</span>`;
+}
+async function vmpToggleFollow(id, btn) {
+  if (!session) { try { requireLoginThen("vendorsMap"); } catch (_) { showToast("Sign in to follow shops.", "info"); } return; }
+  if (btn.__busy) return; btn.__busy = true;
+  const next = !vmpIsFollowing(id);
+  vmpPaintFollow(btn, next);   // instant; put back only if the server says no
+  try {
+    const r = await sb.rpc("toggle_vendor_follow", { p_vendor_id: id, p_following: next });
+    if (r.error) throw r.error;
+    try { window.rememberVendorFollow?.(id, next); } catch (_) {}
+    document.querySelectorAll(`.vmp-follow[data-vid="${CSS.escape(String(id))}"]`).forEach((b) => vmpPaintFollow(b, next));
+  } catch (err) {
+    vmpPaintFollow(btn, !next);
+    showToast(err?.message || "Could not update. Try again.", "error");
+  } finally { btn.__busy = false; }
+}
 function vmpBack() {
   const previous = window.__vmpReturnRoute;
   if (previous?.view && previous.view !== "vendorsMap") { window.__vmpReturnRoute = null; navigate(previous.view, previous.params || {}); return; }
@@ -76,15 +101,8 @@ function vmpSetDisplay(mode) {
 }
 
 function vmpShowReturnMapButton() {
+  // the floating map button now lives on the Vendors page itself (lvMapFab in 14-motion.js)
   document.getElementById("vmpReturnMapBtn")?.remove();
-  const btn = document.createElement("button");
-  btn.id = "vmpReturnMapBtn";
-  btn.type = "button";
-  btn.className = "vmp-return-map";
-  btn.innerHTML = '<i class="fa-solid fa-map-location-dot"></i><span>Map</span>';
-  btn.setAttribute("aria-label", "Return to vendor map");
-  btn.addEventListener("click", () => { btn.remove(); navigate("vendorsMap"); });
-  document.body.appendChild(btn);
 }
 function vmpOpenPlacePicker() {
   const current = window.__vmpPlaceName || buyerLocation?.label || profile?.city || "Choose location";
@@ -259,7 +277,7 @@ function vmpCardHtml(v) {
   return `<div class="vmp-card${id === vmpSelected ? " on" : ""}" data-vid="${esc(id)}" onclick="vmpSelect('${esc(id)}',true)">
     <div class="vmp-card-top"><div class="vmp-card-logo">${media}</div>
       <div class="vmp-card-copy"><strong class="vmp-card-name"><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><span>${meta}</span><em><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} <small>(${Number(v.review_count || 0)})</small></em></div></div>
-    <div class="vmp-card-act"><button type="button" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${esc(id)}'})"><i class="fa-solid fa-store"></i> View shop</button><a href="${dir}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fa-solid fa-diamond-turn-right"></i> Directions</a></div>
+    <div class="vmp-card-act"><button type="button" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${esc(id)}'})"><i class="fa-solid fa-store"></i> View shop</button>${typeof isOwnVendorId === "function" && isOwnVendorId(id) ? "" : vmpFollowBtnHtml(id)}</div>
   </div>`;
 }
 // The vendor cards: one endless row. Swiping it moves the map to the vendor in the middle; reaching the end carries on from the first.
@@ -306,7 +324,7 @@ function vmpDrawRail(keepSel) {
   const list = vmpRailList();
   if (!list.length) { box.innerHTML = '<div class="vmp-empty"><i class="fa-solid fa-map-pin"></i> No vendors match that. Try another search.</div>'; box.__n = 0; return; }
   const one = list.map(vmpRailItemHtml).join("");
-  const loop = list.length > 1;
+  const loop = list.length >= 8;   // only a long list wraps around; a few vendors just stay where they are
   box.innerHTML = loop ? one + one + one : one;
   box.__n = list.length; box.__loop = loop;
   box.classList.toggle("vmp-rail-loop", loop);

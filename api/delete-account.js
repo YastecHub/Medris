@@ -171,8 +171,10 @@ async function ogCard(req, res) {
       }
     }
     if (svg) layers.push({ input: Buffer.from(`<svg width="${W}" height="${H}">${svg}</svg>`), left: 0, top: 0 });
-    const out = await sharp(path.join(root, "og-frame.png")).composite(layers).png({ compressionLevel: 8 }).toBuffer();
-    res.setHeader("Content-Type", "image/png");
+    // A JPEG of about 50 KB (the PNG was over 700 KB): WhatsApp skips preview pictures larger than roughly 300 KB, and a phone
+    // fetching a 700 KB picture on mobile data often gives up first, so the card never showed on some phones.
+    const out = await sharp(path.join(root, "og-frame.png")).composite(layers).flatten({ background: "#0b3d2a" }).jpeg({ quality: 82, mozjpeg: true, progressive: true }).toBuffer();
+    res.setHeader("Content-Type", "image/jpeg");
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
     res.status(200).send(out);
   } catch (err) {
@@ -242,6 +244,8 @@ async function shareMetaPreview(req, res) {
       if (image) {
         const img = escAttr(image);
         html = html.replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${img}">`);
+        html = html.replace(/<meta property="og:image:type" content="[^"]*">/, "");
+        html = html.replace(/<meta property="og:image" content="/, `<meta property="og:image:type" content="image/jpeg"><meta property="og:image" content="`);
         html = html.replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${img}">`);
       }
     }

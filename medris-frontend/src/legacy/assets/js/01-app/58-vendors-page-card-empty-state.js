@@ -152,7 +152,7 @@ function vendorPageCardHtml(v, feat) {
   const uniq = []; tags.forEach((t) => { if (!uniq.some((u) => u.toLowerCase() === String(t).toLowerCase())) uniq.push(t); });
   let tag = String(uniq[0] || "").trim();
   { const first = tag.split(/[.!?;\n]/)[0].trim() || tag; tag = first.length > 22 ? first.slice(0, 21).trimEnd() + "…" : (first.length < tag.length ? first + "…" : first); }
-  const menuBtn = feat ? "" : `<button type="button" class="vc2-more" aria-label="More options" aria-haspopup="menu" onclick="event.stopPropagation();vc2OpenMenu(this,'${esc(id)}')"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>`;
+  const menuBtn = feat ? "" : `<button type="button" class="vc2-more" aria-label="Share this shop" title="Share" onclick="event.stopPropagation();lvOpenProfileShare('vendor','${esc(id)}')">${LV_SHARE_ICON}</button>`;
   return `<div class="vc2 vc2-feat" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vc2-banner" ${tint}>${banner}</div>
     ${menuBtn}
