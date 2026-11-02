@@ -918,6 +918,8 @@
       var heldBody = false;
       if (pushHistory === false) {
         try { var hk = keyOf(false), hh = hk != null ? heights[hk] : 0; if (hh > 0) { document.body.style.minHeight = hh + "px"; heldBody = true; } } catch (_) {}
+        // go straight to the saved spot: the page is held at its old height, so there is nothing to wait for
+        try { var k1 = keyOf(false), y1 = k1 != null ? scrolls[k1] : undefined; if (heldBody && Number.isFinite(y1) && y1 > 0) { document.documentElement.classList.add("lv-restoring"); window.scrollTo({ top: y1, behavior: "instant" }); setTimeout(function () { document.documentElement.classList.remove("lv-restoring"); }, 1800); } } catch (_) {}
       }
       if (pushHistory === false && view === "vendors" && vendorsSnap && view0() !== "vendors") {
         try { document.getElementById("app").innerHTML = vendorsSnap; } catch (_) {}
@@ -2759,19 +2761,29 @@ window.lvAskCancel = async function (orderId) {
   addEventListener("scroll", function () { if (cur) place(); }, { passive: true, capture: true });
 })();
 
-/* ===== Wallet colours: a small palette button on each wallet card; the choice is remembered on this phone ===== */
+/* ===== Wallet colours: a small palette button next to the "Wallet" label; the choice is remembered on this phone ===== */
 (function () {
   "use strict";
   var THEMES = ["", "violet", "ocean", "sunset", "rose", "midnight"];
   var KEY = "lv-wallet-theme";
+  function read() {
+    try { var v = localStorage.getItem(KEY); if (v !== null) return v; } catch (_) {}
+    try { var m = /(?:^|; )lv-wallet-theme=([^;]*)/.exec(document.cookie); return m ? decodeURIComponent(m[1]) : ""; } catch (_) { return ""; }
+  }
+  function save(t) {
+    try { localStorage.setItem(KEY, t); } catch (_) {}
+    try { document.cookie = KEY + "=" + encodeURIComponent(t) + "; max-age=31536000; path=/; samesite=lax"; } catch (_) {}
+  }
   function apply(t) { if (t) document.documentElement.setAttribute("data-lvw-theme", t); else document.documentElement.removeAttribute("data-lvw-theme"); }
-  try { apply(localStorage.getItem(KEY) || ""); } catch (_) {}
+  apply(read());
+  // an installed app can be woken from the background: put the saved colour back whenever it comes forward
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) apply(read()); });
+  window.addEventListener("pageshow", function () { apply(read()); });
   window.lvWalletTheme = function (e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     var cur = document.documentElement.getAttribute("data-lvw-theme") || "";
     var next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
-    apply(next);
-    try { localStorage.setItem(KEY, next); } catch (_) {}
+    apply(next); save(next);
   };
   function addButtons() {
     document.querySelectorAll(".lvw-card .lvw-top").forEach(function (top) {
@@ -2780,10 +2792,138 @@ window.lvAskCancel = async function (orderId) {
       b.type = "button"; b.className = "lvw-theme-btn"; b.title = "Change wallet colour"; b.setAttribute("aria-label", "Change wallet colour");
       b.innerHTML = '<i class="fa-solid fa-palette" aria-hidden="true"></i>';
       b.onclick = window.lvWalletTheme;
-      top.appendChild(b);
+      var label = top.querySelector(".lvw-label");
+      if (label && label.nextSibling) top.insertBefore(b, label.nextSibling); else top.appendChild(b);   // beside the label, the eye stays at the far right
     });
+    apply(read());
   }
   var raf = 0;
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; addButtons(); }); }).observe(document.body, { childList: true, subtree: true });
   addButtons();
+})();
+
+/* ===== Bottom bar: each icon has its own little motion when tapped (home hops, the pin drops, Request twirls, the bell rings, the receipt slides) ===== */
+(function () {
+  "use strict";
+  var MAP = { home: "hop", vendors: "drop", request: "twirl", add: "twirl", notifications: "ring", orders: "slide" };
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("#bottomNav .bottom-nav-item, #bottomNav .bottom-nav-add");
+    if (!b) return;
+    var label = (b.textContent || "").trim().toLowerCase().replace(/\s+/g, " ");
+    var kind = MAP[label]; if (!kind) return;
+    var ic = b.querySelector(".bn-icon"); if (!ic) return;
+    ic.classList.remove("bn-m-hop", "bn-m-drop", "bn-m-twirl", "bn-m-ring", "bn-m-slide");
+    void ic.offsetWidth;   // restart the motion even on a quick second tap
+    ic.classList.add("bn-m-" + kind);
+    setTimeout(function () { ic.classList.remove("bn-m-" + kind); }, 700);
+  }, true);
+})();
+
+/* ===== Vendors page: Levi morphs into a floating map pin (draggable, sparkling); tapping it opens the map ===== */
+(function () {
+  "use strict";
+  var POS = "lv-mapfab-pos", fab = null, busy = 0;
+  var PIN = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+  function levi() { return document.getElementById("aiChatFab"); }
+  function onVendors() { try { return typeof currentView !== "undefined" && currentView === "vendors"; } catch (_) { return false; } }
+  function clampPos(x, y) {
+    var w = innerWidth, h = innerHeight;
+    return { x: Math.min(Math.max(x, 8), w - 68), y: Math.min(Math.max(y, 70), h - 150) };
+  }
+  function build(x, y) {
+    var b = document.createElement("button");
+    b.type = "button"; b.id = "lvMapFab"; b.className = "lv-mapfab"; b.setAttribute("aria-label", "Open the vendors map"); b.title = "Vendors map";
+    b.innerHTML = '<span class="mf-halo"></span><span class="mf-orbit"><i></i><i></i><i></i><i></i></span><span class="mf-ring"></span><span class="mf-core">' + PIN + '<b>Map</b></span><span class="mf-pulse"></span><span class="mf-pulse mf-pulse2"></span>';
+    b.style.left = x + "px"; b.style.top = y + "px";
+    attachDrag(b);
+    return b;
+  }
+  function attachDrag(b) {
+    var sx = 0, sy = 0, bl = 0, bt = 0, moved = false, id = null, raf = 0, lx = 0, ly = 0;
+    b.addEventListener("pointerdown", function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      id = e.pointerId; moved = false; sx = e.clientX; sy = e.clientY;
+      var r = b.getBoundingClientRect(); bl = r.left; bt = r.top; lx = bl; ly = bt;
+      try { b.setPointerCapture(id); } catch (_) {}
+    }, { passive: true });
+    b.addEventListener("pointermove", function (e) {
+      if (id === null || e.pointerId !== id) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) > 6) { moved = true; b.classList.add("mf-drag"); document.documentElement.classList.add("lv-fab-dragging"); }
+      if (!moved) return;
+      var p = clampPos(bl + dx, bt + dy); lx = p.x; ly = p.y;
+      if (!raf) raf = requestAnimationFrame(function () { raf = 0; b.style.translate = (lx - bl) + "px " + (ly - bt) + "px"; });
+    }, { passive: true });
+    function end(e) {
+      if (id === null || (e && e.pointerId !== id)) return;
+      id = null; if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      b.classList.remove("mf-drag"); document.documentElement.classList.remove("lv-fab-dragging");
+      if (moved) {
+        b.style.left = lx + "px"; b.style.top = ly + "px"; b.style.translate = "";
+        try { localStorage.setItem(POS, JSON.stringify({ x: lx, y: ly })); } catch (_) {}
+      } else { try { navigate("vendorsMap"); } catch (_) {} }
+    }
+    b.addEventListener("pointerup", end, { passive: true });
+    b.addEventListener("pointercancel", end, { passive: true });
+  }
+  function show() {
+    if (fab || busy) return;
+    var l = levi(), r = l && l.offsetWidth ? l.getBoundingClientRect() : null;
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(POS) || "null"); } catch (_) {}
+    var start = saved && Number.isFinite(saved.x) ? { x: saved.x, y: saved.y } : r ? { x: r.left + r.width / 2 - 30, y: r.top + r.height / 2 - 30 } : { x: innerWidth - 78, y: innerHeight - 190 };
+    start = clampPos(start.x, start.y);
+    fab = build(start.x, start.y);
+    document.body.appendChild(fab);
+    requestAnimationFrame(function () { fab.classList.add("mf-in"); });
+    if (l) l.classList.add("lv-levi-away");   // Levi shrinks and turns away while the pin grows in his place
+  }
+  function hide() {
+    if (!fab) return;
+    var f = fab; fab = null; busy++;
+    f.classList.remove("mf-in"); f.classList.add("mf-out");
+    var l = levi(); if (l) l.classList.remove("lv-levi-away");   // Levi comes back
+    setTimeout(function () { try { f.remove(); } catch (_) {} busy = Math.max(0, busy - 1); check(); }, 420);
+  }
+  function check() { if (onVendors()) show(); else hide(); }
+  var nav = window.navigate;
+  if (typeof nav === "function") {
+    window.navigate = function () { var r = nav.apply(this, arguments); setTimeout(check, 0); try { Promise.resolve(r).then(check, check); } catch (_) {} return r; };
+  }
+  setInterval(check, 600);
+  window.addEventListener("popstate", function () { setTimeout(check, 50); });
+  setTimeout(check, 800);
+})();
+
+/* ===== Trending rails never run out: near the end of a sideways row, more products (or services) from the whole app are added,
+   in a shuffled order; after all of them have been shown the order is reshuffled ===== */
+(function () {
+  "use strict";
+  var CAP = 150;
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function attach(rail) {
+    if (rail.__lvEndless) return; rail.__lvEndless = true;
+    var isSvc = rail.classList.contains("service-trending-scroll");
+    var ids = null, pos = 0, busy = false;
+    function pool() { var idx = window.__homeBrowseIndex; return Array.isArray(idx) ? idx.filter(function (x) { return !!x.is_service === isSvc; }).map(function (x) { return String(x.id); }) : []; }
+    async function more() {
+      if (busy || typeof fetchProductsByIds !== "function" || typeof productCardHtml !== "function") return;
+      if (rail.querySelectorAll(".product-card-wrap").length >= CAP) return;
+      busy = true;
+      try {
+        if (!ids) { ids = shuffle(pool()); pos = 0; }
+        if (ids.length < 16) return;
+        if (pos >= ids.length) { ids = shuffle(ids); pos = 0; }
+        var onRail = new Set([].map.call(rail.querySelectorAll("[data-product-id]"), function (e) { return e.getAttribute("data-product-id"); }));
+        var take = [];
+        while (take.length < 8 && pos < ids.length) { var id = ids[pos++]; if (!onRail.has(id)) take.push(id); }
+        if (!take.length) return;
+        var rows = await fetchProductsByIds(take);
+        if (!rail.isConnected || !rows || !rows.length) return;
+        rail.insertAdjacentHTML("beforeend", rows.map(productCardHtml).join(""));
+      } catch (_) {} finally { busy = false; }
+    }
+    rail.addEventListener("scroll", function () { if (rail.scrollWidth - rail.scrollLeft - rail.clientWidth < 700) more(); }, { passive: true });
+  }
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; document.querySelectorAll("#app .hscroll.trending-scroll").forEach(attach); }); }).observe(document.body, { childList: true, subtree: true });
 })();

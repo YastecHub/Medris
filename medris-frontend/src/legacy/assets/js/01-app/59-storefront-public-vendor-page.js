@@ -92,54 +92,14 @@ function lvSfBell(e) {
   if (!b || b.disabled) { showToast("Follow this shop to choose its notifications.", "info"); return; }
   b.click();
 }
-async function openStorefrontShare(vendorId) {
-  try {
-    const v = await fetchVendorForShare(vendorId);
-    const url = storefrontPublicUrl(v.id);
-    const name = v.business_name || "this store";
-    const box = byId("storefrontShareModal");
-    if (!box) return;
-    byId("storefrontShareTitle").textContent = `Share ${name}`;
-    byId("storefrontShareText").textContent = `Share ${name}'s storefront on Levromart.`;
-    box.dataset.vendorId = v.id;
-    box.dataset.url = url;
-    box.dataset.name = name;
-    box.dataset.whatsapp = v.whatsapp_visible && v.whatsapp_number ? v.whatsapp_number : "";
-    delete box.dataset.packageId;
-    delete box.dataset.productId;
-    box.dataset.kind = "store"; box.dataset.thumb = v.logo_url || "";
-    lvRenderShareSheet(box);
-    box.classList.remove("hidden");
-    trackModalOpened("storefrontShareModal");
-  } catch (err) {
-    showToast(err.message || "Couldn't prepare storefront sharing.", "error");
-  }
-}
+// Every share button opens the shop's own QR card (colours, picture, link, products).
+async function openStorefrontShare(vendorId) { return lvOpenProfileShare("vendor", vendorId); }
 async function shareStorefrontFromProduct(evt, vendorId) {
   evt?.stopPropagation();
   await openStorefrontShare(vendorId);
 }
-async function openProductShare(productId) {
-  try {
-    const { data: product, error } = await sb.from("products").select("id,name,photos,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", productId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
-    if (error || !product) throw new Error("This product is no longer available.");
-    const box = byId("storefrontShareModal");
-    if (!box) return;
-    const name = product.name || "this product";
-    byId("storefrontShareTitle").textContent = `Share ${name}`;
-    byId("storefrontShareText").textContent = "Share this product on Levromart.";
-    box.dataset.vendorId = product.vendor?.id || "";
-    box.dataset.url = productPublicUrl(product.id);
-    box.dataset.name = name;
-    box.dataset.whatsapp = "";
-    box.dataset.productId = product.id;
-    delete box.dataset.packageId;
-    box.dataset.kind = "product"; box.dataset.thumb = (Array.isArray(product.photos) && product.photos[0]) || "";
-    lvRenderShareSheet(box);
-    box.classList.remove("hidden");
-    trackModalOpened("storefrontShareModal");
-  } catch (err) { showToast(err?.message || "Couldn't prepare product sharing.", "error"); }
-}
+// Sharing a product opens its QR card: the product, its price, who sells it, and a code that opens it.
+async function openProductShare(productId) { return lvOpenProfileShare("product", productId); }
 
 function lvRenderShareSheet(box){
   try{
@@ -403,8 +363,8 @@ async function renderStorefrontInner(vendorId) {
   if (!isOwnStorefront) sb.rpc("increment_vendor_profile_view", { p_vendor_id: v.id }).then(()=>{}).catch(()=>{});
   const profileImage = v.profile_avatar_url || v.logo_url || null;
   const logo = profileImage
-    ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(profileImage)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(profileImage)}" alt="" data-lvimg onload="this.classList.add('lv-ld')" loading="eager" draggable="false" /></button>`
-    : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor", v.id)}</button>`;
+    ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${escJs(profileImage)}','${escJs(v.business_name || "Vendor")}',event)"><img src="${esc(profileImage)}" alt="" data-lvimg onload="this.classList.add('lv-ld')" loading="eager" draggable="false" /></button>`
+    : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${escJs(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor", v.id)}</button>`;
   const location = [v.address, v.city].filter(Boolean).map(esc).join(", ") || "Online business";
 
   const storefrontMoreItems = [
@@ -413,7 +373,7 @@ async function renderStorefrontInner(vendorId) {
     yearsSince(v.created_at) ? `<div class="ms-item"><i class="fa-solid fa-calendar-check"></i> ${esc(yearsSince(v.created_at))}</div>` : "",
     v.opening_hours ? `<div class="ms-item"><i class='fa-solid fa-clock'></i> ${esc(v.opening_hours)}</div>` : "",
     profile?.role !== "admin" ? `<button type="button" class="ms-item" onclick="showSuggestionModal('vendor','${v.id}')"><i class='fa-solid fa-lightbulb'></i> Suggest something</button>` : "",
-    `<button type="button" class="ms-item" onclick="openStorefrontShare('${v.id}');closeStorefrontMoreSheet()"><i class='fa-solid fa-share-nodes'></i> Share storefront</button>`,
+    `<button type="button" class="ms-item" onclick="openStorefrontShare('${v.id}');closeStorefrontMoreSheet()"><i class='fa-solid fa-arrow-turn-up' style='transform:scaleX(-1) rotate(90deg)'></i> Share storefront</button>`,
   ].filter(Boolean).join("");
 
   // Snapchat-style header: a tall banner (the shop's own image, or one generated in its colour) with the bell, share and
@@ -436,12 +396,10 @@ async function renderStorefrontInner(vendorId) {
         <div class="storefront-avatar-row">
           ${logo}
         </div>
-        <div class="sf-id-main">
-          <div class="storefront-name-row sf-name">
-            <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
-          </div>
-          ${!isOwnStorefront ? `<div class="storefront-profile-actions storefront-public-actions"><div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div></div>` : ""}
-        </div>
+        ${!isOwnStorefront ? `<div class="storefront-profile-actions storefront-public-actions"><div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div></div>` : ""}
+      </div>
+      <div class="storefront-name-row sf-name">
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
       </div>
       ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>

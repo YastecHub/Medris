@@ -607,6 +607,8 @@ async function showProductModal() {
     byId("prodCondition").value = "new";
     byId("prodListingType").value = "sale";
     if (byId("prodBillingModel")) byId("prodBillingModel").value = "commission";
+    // a new listing always starts as "Sale only" and "Commission based"; tell the custom dropdowns so they show it
+    ["prodListingType", "prodBillingModel"].forEach((id) => { try { byId(id)?.dispatchEvent(new Event("change", { bubbles: true })); } catch (_) {} });
     byId("prodLikeVisibility").value="everyone";byId("prodAllowComments").checked=true;byId("prodCommentAudience").value="everyone";
     byId("prodIsService").checked = false;
     byId("prodServiceUnit").value = "flat";

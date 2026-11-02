@@ -536,14 +536,14 @@ function scrollToBrowse(listingType) {
 // as one shared function so the two places Home can render from (the live
 // path and the offline-cache fast-repaint path) can never drift apart.
 function homeQuickActionsHtml() {
-  // Four image cards (2 x 2). All Vendors and Chat Directly are still reachable elsewhere in the app.
-  const actions = [
-    { key: "products", img: "shop-products", title: "Shop Products", desc: "Local vendors", w: 480, h: 440 },
-    { key: "services", img: "book-services", title: "Book Services", desc: "Trusted providers", w: 480, h: 573 },
-    { key: "rent", img: "rent-items", title: "Rent Items", desc: "No need to buy", w: 480, h: 383 },
-    { key: "request", img: "request-item", title: "Request Item", desc: "Vendors find it", w: 480, h: 385 },
-  ];
-  return `<section class="lv-act-grid" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="lv-act-card lv-act-${a.key}" onclick="openHomeQuickAction('${a.key}')"><span class="lv-act-copy"><strong class="lv-act-title">${a.title}</strong><span class="lv-act-desc">${a.desc}</span><span class="lv-act-go" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></span><img class="lv-act-img" src="/action-cards/${a.img}.webp" width="${a.w}" height="${a.h}" alt="" decoding="async"></button>`).join("")}</section>`;
+  // Three cards: one tall "Shop & Rent Items" card (top half shops, bottom half rents) beside Book Services and Request Item.
+  const small = (key, img, title, desc, w, h) => `<button type="button" class="lv-act-card lv-act-${key}" onclick="openHomeQuickAction('${key}')"><span class="lv-act-copy"><strong class="lv-act-title">${title}</strong><span class="lv-act-desc">${desc}</span><span class="lv-act-go" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></span><img class="lv-act-img" src="/action-cards/${img}.webp" width="${w}" height="${h}" alt="" decoding="async"></button>`;
+  const half = (key, img, title, desc, w, h) => `<button type="button" class="lv-act-half lv-act-${key}" onclick="openHomeQuickAction('${key}')" aria-label="${title}: ${desc}"><span class="lv-act-copy"><strong class="lv-act-title">${title}</strong><span class="lv-act-desc">${desc}</span><span class="lv-act-go" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></span><img class="lv-act-img" src="/action-cards/${img}.webp" width="${w}" height="${h}" alt="" decoding="async"></button>`;
+  return `<section class="lv-act-grid lv-act-grid3" aria-label="Quick actions">
+    <div class="lv-act-merged" role="group" aria-label="Shop and rent items">${half("products", "shop-products", "Shop Products", "Local vendors", 480, 440)}<span class="lv-act-divider" aria-hidden="true"><i class="fa-solid fa-arrows-up-down"></i></span>${half("rent", "rent-items", "Rent Items", "No need to buy", 480, 383)}</div>
+    ${small("services", "book-services", "Book Services", "Trusted providers", 480, 573)}
+    ${small("request", "request-item", "Request Item", "Vendors find it", 480, 385)}
+  </section>`;
 }
 // Icon comes from the sector's own database row. Rows saved with the generic
 // placeholder (or none) fall back to a keyword match on the name, then to a

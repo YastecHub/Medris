@@ -1666,6 +1666,7 @@ function setupDraggableFab(fab, storageKey, onTap, onLongPress) {
       window.__lvDragging = true;                                  // sideways auto-scrolling rows pause while a button is dragged
       try { homeCarouselPause?.(4000); } catch (_) {}
       fab.classList.add("dragging");
+      document.documentElement.classList.add("lv-fab-dragging");   // the page stops animating and blurring while the button is carried
     }
     if (!moved) return;
     if (!bounds) bounds = clamp(0, 0) && { minX: 10, maxX: Math.max(10, window.innerWidth - fab.offsetWidth - 10), minY: (function () { const h = document.querySelector("header"); const hh = h ? Math.max(h.offsetHeight || 0, h.getBoundingClientRect().bottom || 0) : 0; return Math.max(10, hh + 10); })(), maxY: (function () { const n = document.getElementById("bottomNav"); let t = window.innerHeight; if (n && n.offsetHeight > 0) t = window.innerHeight - n.offsetHeight - (parseFloat(getComputedStyle(n).bottom) || 0); return Math.max(10, Math.min(window.innerHeight, t) - fab.offsetHeight - 10); })() };
@@ -1694,6 +1695,7 @@ function setupDraggableFab(fab, storageKey, onTap, onLongPress) {
       fab.style.translate = ""; fab.style.willChange = "";
     }
     fab.classList.remove("dragging");
+    document.documentElement.classList.remove("lv-fab-dragging");
     if (moved) { try { localStorage.setItem(storageKey, JSON.stringify({ x: lastX, y: lastY, explicit: true })); } catch (_) {} }
     if (!moved && !longFired) onTap?.();
     longFired = false;

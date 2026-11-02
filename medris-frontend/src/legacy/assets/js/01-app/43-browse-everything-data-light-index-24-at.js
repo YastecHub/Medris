@@ -150,11 +150,14 @@ async function filterHomeProducts() {
   if (plain && index) {
     const order = index.filter((x) => !!x.is_service === wantService).map((x) => x.id);
     let offset = 0;
-    const loadMore = async () => { const ids = order.slice(offset, offset + BROWSE_GRID_PAGE); offset += ids.length; return fetchProductsByIds(ids); };
+    // Never a dead end: once every product has been shown, the order is reshuffled and it carries on from the top.
+    const endless = order.length >= BROWSE_GRID_PAGE * 2;
+    const reshuffle = () => { for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } };
+    const loadMore = async () => { if (endless && offset >= order.length) { reshuffle(); offset = 0; } const ids = order.slice(offset, offset + BROWSE_GRID_PAGE); offset += ids.length; return fetchProductsByIds(ids); };
     const first = await loadMore();
     if (generation !== homeFilterGeneration || !byId("productGrid")) return;
     if (!first.length) { grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`; return; }
-    paintBrowsePaged(grid, first, loadMore, () => offset < order.length, generation);
+    paintBrowsePaged(grid, first, loadMore, () => endless || offset < order.length, generation);
     return;
   }
 
@@ -374,7 +377,7 @@ function productCardHtml(p) {
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
       </div>
-      <div class="product-card-meta">${commissionService ? `<span class="card-svc-tag"><i class="fa-solid fa-handshake"></i> Negotiable</span>` : (distHtml || "<span></span>")}${actionHtml}</div>
+      <div class="product-card-meta">${distHtml || "<span></span>"}${actionHtml}</div>
       ${totalHtml}
     </div>
   </div>`;

@@ -180,6 +180,9 @@ function stableAvatarHue(value) {
   for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
   return Math.abs(hash) % 360;
 }
+// Text that goes INSIDE a quoted piece of JavaScript in an onclick="..." attribute: a name like Jarvis's Atelier must not
+// end the quote (that stopped the profile picture from opening).
+function escJs(v) { return esc(String(v ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/[\r\n]+/g, " ")); }
 function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "", stableKey = "") {
   const safeName = String(name || "User").trim() || "User";
   const title = label || safeName;
@@ -190,7 +193,7 @@ function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "", 
 function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
   if (url) {
-    const clickable = opts.lightbox ? ` role="button" tabindex="0" onclick="event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)}"` : "";
+    const clickable = opts.lightbox ? ` role="button" tabindex="0" onclick="event.stopPropagation();openProfileImageLightbox('${escJs(url)}','${escJs(safeName)}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileImageLightbox('${escJs(url)}','${escJs(safeName)}',event)}"` : "";
     return `<img src="${esc(url)}" class="avatar-circle ${opts.extraClass || ""}" style="width:${size};height:${size};object-fit:cover;" alt="${esc(safeName)}" data-lvimg onload="this.classList.add('lv-ld')" draggable="false" loading="lazy" decoding="async"${clickable} onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(safeName)}','${esc(size)}','${esc(opts.extraClass || "")}','${esc(safeName)}')))" />`;
   }
   return avatarFallbackHtml(safeName, size, opts.extraClass || "", safeName, opts.stableKey || safeName);
