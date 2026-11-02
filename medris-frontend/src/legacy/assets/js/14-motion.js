@@ -1483,7 +1483,7 @@
       var key = (w ? w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0) + "|" + scopeId() : "none") + "|ov:" + (ow ? ow.vendor_id : "");
       if (car.getAttribute("data-wv-key") === key) return;
       if (w) { extra.push(slide("a", w, rows, h)); if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h)); }
-      if (ow) { var orows = pick3(await products(ow.vendor_id)); extra.push(slide("o", ow, orows, null)); }
+      if (ow) { var opool = await products(ow.vendor_id); window.__lvOvPool = opool; extra.push(slide("o", ow, pick3(opool), null)); } else window.__lvOvPool = [];
       car.setAttribute("data-wv-key", key);
       if (w) { try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), scope: scopeId(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {} }
       rebuild(car, extra);
@@ -1496,19 +1496,24 @@
   document.addEventListener("lv-spot-changed", function () { window.__lvCarTouchedAt = 0; if (busy) { again = true; return; } setTimeout(inject, 0); });
   // every few seconds: new products on the flyers, new colours on the banners
   function swapProducts() {
-    var pool = window.__lvWvPool; if (document.hidden || !pool || pool.length < 4) return;
+    if (document.hidden) return;
     if (window.__lvDragging || document.documentElement.classList.contains("lv-fab-dragging")) return;   // never while a button is being carried
-    var rows = pick3(pool);
-    // look first (only banners on screen), then change: no layout is forced in between
-    var boxes = [].filter.call(document.querySelectorAll(".lv-wv-thumbs:not(.lv-wv-o-thumbs), .lv-wv-tiles"), function (box) { var r = box.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; });
-    if (!boxes.length) return;
-    boxes.forEach(function (box) { box.classList.remove("lv-wv-swap"); });
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      boxes.forEach(function (box) {
-        box.innerHTML = box.classList.contains("lv-wv-thumbs") ? thumbsHtml(rows) : tilesHtml(rows);
-        box.classList.add("lv-wv-swap");
-      });
-    }); });
+    var onScreen = function (box) { var r = box.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
+    // each winner's banners draw from that winner's own products: the campus winner's, and (separately) the overall winner's
+    [[window.__lvWvPool, ".lv-wv-thumbs:not(.lv-wv-o-thumbs), .lv-wv-tiles"], [window.__lvOvPool, ".lv-wv-o-thumbs"]].forEach(function (g) {
+      var pool = g[0]; if (!pool || pool.length < 4) return;
+      var rows = pick3(pool);
+      // look first (only banners on screen), then change: no layout is forced in between
+      var boxes = [].filter.call(document.querySelectorAll(g[1]), onScreen);
+      if (!boxes.length) return;
+      boxes.forEach(function (box) { box.classList.remove("lv-wv-swap"); });
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        boxes.forEach(function (box) {
+          box.innerHTML = box.classList.contains("lv-wv-tiles") ? tilesHtml(rows) : thumbsHtml(rows);
+          box.classList.add("lv-wv-swap");
+        });
+      }); });
+    });
   }
   function swapColours() {
     if (document.hidden || window.__lvDragging) return; palStep++;
