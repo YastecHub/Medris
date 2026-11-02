@@ -825,6 +825,24 @@ function hideLeviFromPanel() {
   function campusOnly() { const v = viewCampus(); return v && v !== "all" && v !== "none" ? v : null; }
   // Winners of the chosen campus (its own Vendor of the Week) come from their own database function. If it is not available yet,
   // the whole-app winners are shown, trimmed to that campus, exactly as before.
+  // Until the campus database functions exist, a campus's winner is worked out from the whole-app boards: last week's points
+  // (the winner) and this week's points (the leaders), keeping only the shops whose home campus is that campus.
+  async function campusFromBoards(c) {
+    try {
+      const home = window.lvVendorHomeCampus; if (!home) return null;
+      const [lw, cw] = await Promise.all([sb.rpc("get_points_leaderboard", { p_period: "last_week", p_limit: 300 }), sb.rpc("get_points_leaderboard", { p_period: "week", p_limit: 300 })]);
+      if (lw.error || cw.error) return null;
+      const mine = (r) => r.points > 0 && home(r.vendor_id) === c;
+      const lastRows = (lw.data || []).filter(mine), nowRows = (cw.data || []).filter(mine);
+      const wk = new Date(nextWeekEndMs() - 14 * 864e5 + 3600e3).toISOString().slice(0, 10);
+      const w = lastRows[0];
+      const top = (rows) => rows.slice(0, 3).map((r, i) => ({ rank: i + 1, user_id: r.user_id, vendor_id: r.vendor_id, business_name: r.business_name, points: r.points }));
+      const winner = w ? { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, city: w.city, avg_rating: w.avg_rating, review_count: w.review_count, points: w.points, week_start: wk } : null;
+      const spot = { winner, leaders: nowRows.slice(0, 3).map((r, i) => ({ rank: i + 1, vendor_id: r.vendor_id, business_name: r.business_name, logo_url: r.logo_url, points: r.points })), week_ends_at: new Date(nextWeekEndMs()).toISOString() };
+      const winners = w ? [{ week_start: wk, vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points, top3: top(lastRows) }] : [];
+      return { spot, winners };
+    } catch (_) { return null; }
+  }
   async function loadWinners() {
     const c = campusOnly();
     try {
@@ -836,6 +854,10 @@ function hideLeviFromPanel() {
           LB.winners = w.data || []; LB.spot = s.data || null; LB.winnersFor = c; LB.spotFor = c; spotAt = Date.now();
           return;
         }
+      }
+      if (c && LB.cwFailed) {
+        const fb = await campusFromBoards(c);
+        if (fb) { if (campusOnly() !== c) return; LB.winners = fb.winners; LB.spot = fb.spot; LB.winnersFor = c; LB.spotFor = c; spotAt = Date.now(); return; }
       }
       const [w, s] = await Promise.all([sb.rpc("get_past_week_winners", { p_limit: 12 }), sb.rpc("get_vendor_spotlight")]);
       LB.winners = w.data || []; LB.spot = s.data || null; LB.winnersFor = null; LB.spotFor = null; spotAt = Date.now();
@@ -913,10 +935,10 @@ function hideLeviFromPanel() {
   }
   window.lbRerender = function () {
     // the campus changed: fetch that campus's Vendor of the Week (or the whole app's) and tell the Home banners
-    const cc = campusOnly(), want = cc && !LB.cwFailed ? cc : null;
+    const cc = campusOnly(), want = cc || null;
     try { document.dispatchEvent(new Event("lv-spot-changed")); } catch (_) {}
-    if ((LB.winnersFor ?? null) !== want && !LB.winnersBusy && LB.winners) {
-      LB.winnersBusy = true;
+    if ((LB.winnersFor ?? null) !== want && LB.winnersTried !== want && !LB.winnersBusy && LB.winners) {
+      LB.winnersBusy = true; LB.winnersTried = want;
       loadWinners().finally(() => { LB.winnersBusy = false; if ($("lbBody")) window.lbRerender(); });
     }
     if (!$("lbBody")) return; paintScopeSeg(); paintScope(); renderBody(false); paintHeroWinner();
@@ -1154,7 +1176,7 @@ function hideLeviFromPanel() {
   function winnersHtml() {
     if (!LB.winners) return skeleton(5);
     const cc = campusOnly();
-    if (cc && !LB.cwFailed && LB.winnersFor !== cc) return skeleton(5);
+    if (cc && LB.winnersFor !== cc && LB.winnersBusy) return skeleton(5);
     const scoped = !!cc && LB.winnersFor === cc, keep = (id) => scoped || inView(id);
     const w = LB.spot?.winner && keep(LB.spot.winner.vendor_id) ? LB.spot.winner : null;
     let html = "";
@@ -1365,16 +1387,17 @@ function hideLeviFromPanel() {
   // ---------- home card ----------
   let spotAt = 0, spotBusy = false;
   async function homeSpot() {
-    const cc = campusOnly(), want = cc && !LB.cwFailed ? cc : null;
+    const cc = campusOnly(), want = cc || null;
     if (LB.spot && (LB.spotFor || null) === want && Date.now() - spotAt < 90000) return LB.spot;
     if (spotBusy) return LB.spot;
     spotBusy = true;
     try {
       let data = null, usedCampus = null;
       if (want) {
-        const r = await sb.rpc("get_campus_vendor_spotlight", { p_campus: want });
+        const r = LB.cwFailed ? { error: true } : await sb.rpc("get_campus_vendor_spotlight", { p_campus: want });
         if (r.error) { LB.cwFailed = true; } else { data = r.data; usedCampus = want; }
       }
+      if (!data && want && LB.cwFailed) { const fb = await campusFromBoards(want); if (fb) { data = fb.spot; usedCampus = want; } }
       if (!data) { const r = await sb.rpc("get_vendor_spotlight"); data = r.data; usedCampus = null; }
       if (data) { LB.spot = data; LB.spotFor = usedCampus; spotAt = Date.now(); }
     } catch (_) {} finally { spotBusy = false; }

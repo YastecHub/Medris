@@ -53,7 +53,13 @@ function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
 
-  const isVendorUser = session && profile?.role !== "admin" && !!vendor;
+  // The account type is remembered, so the bar never starts as "Request" for a vendor (or as a shopper's bar for an admin) while the profile is still loading
+  let navRole = profile?.role || null;
+  try {
+    if (!navRole && session) navRole = localStorage.getItem("lv-nav-role") || null;
+    if (profile?.role && session) localStorage.setItem("lv-nav-role", profile.role === "admin" ? "admin" : (profile.role === "vendor" || vendor) ? "vendor" : "buyer");
+  } catch (_) {}
+  const isVendorUser = session && navRole !== "admin" && (!!vendor || navRole === "vendor");
   const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
   const vendorsTab = { icon: lvLineIcon("map"), label: "Vendors", action: "navigate('vendorsMap')", view: "vendorsMap" };
   const addTab = isVendorUser
@@ -66,7 +72,7 @@ function renderBottomNav() {
 
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}${it.view === "notifications" && it.badge ? " ringing" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"${it.view && it.view === currentView ? ' aria-current="page"' : ""}><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
 
-  if (session && profile?.role === "admin") {
+  if (session && navRole === "admin") {
     nav.classList.remove("has-add", "buyer-no-add", "lv-snap-dock");
     nav.innerHTML = [homeTab, vendorsTab,
       { icon: lvLineIcon("shield"), label: "Admin", action: "navigate('adminPanel')", view: "adminPanel", badge: Number(window.__lvPayPending||0) },
