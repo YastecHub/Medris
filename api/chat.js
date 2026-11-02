@@ -26,7 +26,9 @@ let catalogCache = { expires: 0, value: null };
 // the model that answered last time is tried first, so a retired or unavailable model costs one wasted call, not one per message
 let goodModel = null;
 // Fast Flash models go before the slow Pro one: a chat answer in a few seconds matters more than the extra depth.
-function modelChain(primary) { return [...new Set([goodModel, process.env.GEMINI_MODEL && primary, FALLBACK_MODEL, "gemini-2.5-flash", primary].filter(Boolean))]; }
+// "-latest" names are Google's own aliases that always point at a current model, so Levi keeps working when a fixed model
+// name is retired or was never available on this key.
+function modelChain(primary) { return [...new Set([goodModel, process.env.GEMINI_MODEL && primary, "gemini-flash-latest", FALLBACK_MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite", primary, "gemini-pro-latest"].filter(Boolean))]; }
 
 function jsonSafe(value) {
   try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
@@ -894,6 +896,38 @@ async function quickFind(messages, ctx) {
   return `${head}\n${lines.join("\n")}${tail} [[PRODUCTS:${ids.join(",")}]]`;
 }
 
+// When the AI model cannot be reached, Levi still answers what it can from the live catalogue: products, the shops that sell
+// them (closest first when the location is known), and shops by name.
+async function liveDataAnswer(latest, messages, ctx) {
+  const low = normalize(latest);
+  const term = productTerm(latest) || termFromConversation(messages.slice(0, -1));
+  const hasLoc = ctx.lat != null && ctx.lng != null;
+  const wantsVendors = /\b(vendors?|shops?|stores?|sellers?|who sells|closest|nearest|near|far|distance)\b/.test(low);
+  if (term) {
+    const everything = await searchEverything({ query: term, nearest: hasLoc }, ctx);
+    const products = (everything.products || []).filter((p) => p.vendor);
+    const vendors = everything.vendors || [];
+    if (products.length) {
+      const lines = products.slice(0, 6).map((p, i) => {
+        const d = hasLoc && Number.isFinite(p.vendor.distance_km) ? `, ${distLabel(p.vendor.distance_km)}` : "";
+        return `${i + 1}. ${p.name} ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)} from ${p.vendor.business_name}${d}`;
+      });
+      return `Here is what I found for "${term}" on Levromart${hasLoc ? ", closest first" : ""}:\n${lines.join("\n")} [[PRODUCTS:${products.slice(0, 5).map((p) => p.id).join(",")}]]`;
+    }
+    if (vendors.length) {
+      const lines = vendors.slice(0, 6).map((v, i) => `${i + 1}. ${v.business_name}${v.city ? ` (${v.city})` : ""}${hasLoc && Number.isFinite(v.distance_km) ? `, ${distLabel(v.distance_km)}` : ""}`);
+      return `These shops match "${term}":\n${lines.join("\n")}`;
+    }
+    return `I could not find "${term}" on Levromart right now. Try another word for it, or post a request and vendors will come to you with offers.`;
+  }
+  if (wantsVendors && hasLoc) {
+    const near = await searchVendors({ nearest: true, limit: 6 }, ctx);
+    const lines = (near.results || []).map((v, i) => `${i + 1}. ${v.business_name}${v.city ? ` (${v.city})` : ""}${Number.isFinite(v.distance_km) ? `, ${distLabel(v.distance_km)}` : ""}`);
+    if (lines.length) return `The shops closest to you:\n${lines.join("\n")}`;
+  }
+  return null;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
   try {
@@ -998,7 +1032,15 @@ module.exports = async function handler(req, res) {
     let currentContents = contents;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const apiRes = await callGemini(GEMINI_API_KEY, MODEL, currentContents, toolSystemPrompt(), true);
+      let apiRes;
+      try { apiRes = await callGemini(GEMINI_API_KEY, MODEL, currentContents, toolSystemPrompt(), true); }
+      catch (modelErr) {
+        // every AI model failed (busy, retired or out of quota): answer from the live catalogue instead of a generic line
+        console.error("[levi] all models failed, answering from live data:", String(modelErr && modelErr.message || modelErr).slice(0, 200));
+        const live = await liveDataAnswer(latest, messages, ctx).catch(() => null);
+        if (live) { res.status(200).json({ reply: live }); return; }
+        throw modelErr;
+      }
       const candidate = apiRes?.candidates?.[0];
       const calls = extractFunctionCalls(candidate);
       if (!calls.length) {
