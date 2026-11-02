@@ -465,7 +465,7 @@
   let idleTimer = null;
   function leviIdleNudge() {
     const fab = byId("aiChatFab");
-    if (!fab || fab.classList.contains("hidden") || byId("aiChatPanel") && !byId("aiChatPanel").classList.contains("hidden")) return;
+    if (window.__lvDragging || !fab || fab.classList.contains("hidden") || byId("aiChatPanel") && !byId("aiChatPanel").classList.contains("hidden")) return;
     fab.classList.remove("levi-idle-nudge");
     void fab.offsetWidth;
     fab.classList.add("levi-idle-nudge");

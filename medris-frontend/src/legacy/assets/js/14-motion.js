@@ -24,7 +24,7 @@
       homeCarouselPause(HOME_CAROUSEL_INTERVAL_MS);
       homeCarouselTimer=setInterval(function(){
         if(!vp.isConnected){ clearInterval(homeCarouselTimer); homeCarouselTimer=null; return; }
-        if(document.hidden||Date.now()<homeCarouselResumeAt) return;
+        if(document.hidden||window.__lvDragging||Date.now()<homeCarouselResumeAt) return;
         var r=vp.getBoundingClientRect(); if(r.bottom<0||r.top>window.innerHeight) return;
         var step=homeCarouselStep(vp); if(!step) return;
         homeCarouselGoTo(vp,Math.round(vp.scrollLeft/step)+1);
@@ -1205,13 +1205,20 @@
     var ini = esc2(String(w.business_name || "?").trim().slice(0, 2).toUpperCase());
     return '<span class="lv-wv-logo ' + (cls || "") + '">' + (w.logo_url ? '<img src="' + esc2(w.logo_url) + '" alt="" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement(\'b\'),{textContent:\'' + ini + '\'}))">' : "<b>" + ini + "</b>") + "</span>";
   }
+  // When the winner is the one for the chosen campus, that school's logo sits in front of the badge
+  function scopeId() { try { return (window.__lb && window.__lb.spotFor) || ""; } catch (_) { return ""; } }
+  function schoolChip() {
+    var id = scopeId(); if (!id || typeof window.lvCampusLogoHtml !== "function") return "";
+    var nm = ""; try { nm = window.lvCampusShort ? window.lvCampusShort(id) : ""; } catch (_) {}
+    return '<span class="lv-wv-school" title="' + esc2(nm) + '"><span class="lv-wv-school-logo">' + window.lvCampusLogoHtml(id) + "</span>" + (nm ? "<b>" + esc2(nm) + "</b>" : "") + "</span>";
+  }
   function slide(kind, w, rows, hue) {
     var id = esc2(w.vendor_id), nm = esc2(w.business_name);
     var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette({ a: 0, b: 1, c: 2 }[kind]) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
     var thumbs = thumbsHtml(rows);
     if (kind === "a") {
       return "<button type=\"button\"" + open + "Vendor of the week: " + nm + '"><span class="lv-wv-in">' +
-        '<span class="lv-wv-badge"><i class="fa-solid fa-award"></i> Vendor of the week</span>' +
+        '<span class="lv-wv-badge">' + schoolChip() + '<i class="fa-solid fa-award"></i> Vendor of the week</span>' +
         logoHtml(w, "lv-wv-logo-big") +
         '<span class="lv-wv-name">' + nm + "</span>" +
         '<span class="lv-wv-sub">' + (Number(w.points) ? "Won last week with " + Number(w.points).toLocaleString("en-NG") + " points" : "Last week\u2019s winner") + "</span>" +
@@ -1221,14 +1228,14 @@
     if (kind === "b") {
       var tiles = tilesHtml(rows);
       return "<button type=\"button\"" + open + "Shop " + nm + '"><span class="lv-wv-in">' +
-        '<span class="lv-wv-badge"><i class="fa-solid fa-fire"></i> Fresh from the winner</span>' +
+        '<span class="lv-wv-badge">' + schoolChip() + '<i class="fa-solid fa-fire"></i> Fresh from the winner</span>' +
         logoHtml(w, "lv-wv-logo-sm") +
         '<span class="lv-wv-name lv-wv-name-sm">' + nm + "</span>" +
         '<span class="lv-wv-tiles">' + tiles + "</span>" +
         '<span class="lv-wv-more">Tap to shop all <i class="fa-solid fa-arrow-right"></i></span></span></button>';
     }
     return "<button type=\"button\"" + open + "Follow " + nm + '"><span class="lv-wv-in">' +
-      '<span class="lv-wv-badge"><i class="fa-solid fa-heart"></i> Don\'t miss a drop</span>' +
+      '<span class="lv-wv-badge">' + schoolChip() + '<i class="fa-solid fa-heart"></i> Don\'t miss a drop</span>' +
       logoHtml(w, "lv-wv-logo-big") +
       '<span class="lv-wv-name">Follow ' + nm + "</span>" +
       '<span class="lv-wv-sub">Be first to see new products, deals and updates.</span>' +
@@ -1338,7 +1345,7 @@
         box.querySelectorAll(".home-promotional-slide").forEach(function (b) { var d = map[Number(b.getAttribute("data-carousel-index"))]; if (d) flyerize(b, d); });
         var car = box.querySelector("#homePromotionalCarousel"), c = null;
         try { c = JSON.parse(localStorage.getItem("lv-wv-cache") || "null"); } catch (_) {}
-        if (car && c && c.w && c.w.vendor_id && Date.now() - c.at < 43200000) {
+        if (car && c && c.w && c.w.vendor_id && Date.now() - c.at < 43200000 && !c.scope && (function () { try { return (window.lvViewCampus ? window.lvViewCampus() : "all") === "all"; } catch (_) { return true; } })()) {
           logoPal = c.pal || null; var pool = c.pool || []; window.__lvWvPool = pool;
           var rows = pick3(pool), extra = [slide("a", c.w, rows, 0)]; if (rows.length) extra.push(slide("b", c.w, rows, 0)); extra.push(slide("c", c.w, rows, 0));
           car.setAttribute("data-wv-key", c.w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0));
@@ -1348,6 +1355,7 @@
       } catch (_) { return html; }
     };
   }
+  var again = false;
   async function inject() {
     if (busy || Date.now() - (window.__lvCarTouchedAt || 0) < 15000) return;
     var car = document.getElementById("homePromotionalCarousel"); if (!car || typeof window.lvVendorSpot !== "function") return;
@@ -1361,19 +1369,19 @@
       var h = await logoHue(w.logo_url);
       logoPal = (h != null && (h < 70 || h > 170)) ? [rgbHex(h), rgbHex(h + 40)] : null;
       car = document.getElementById("homePromotionalCarousel"); if (!car) return;
-      var key = w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0);
+      var key = w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0) + "|" + scopeId();
       if (car.getAttribute("data-wv-key") === key) return;
       var extra = [slide("a", w, rows, h)]; if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h));
       car.setAttribute("data-wv-key", key);
-      try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {}
+      try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), scope: scopeId(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {}
       rebuild(car, extra);
-    } catch (_) {} finally { busy = false; }
+    } catch (_) {} finally { busy = false; if (again) { again = false; setTimeout(inject, 0); } }
   }
   function removeAll(car) { car.removeAttribute("data-wv-key"); rebuild(car, []); }
   var t = 0;
   new MutationObserver(function () { if (t || busy) return; if (!document.getElementById("homePromotionalCarousel")) return; t = setTimeout(function () { t = 0; inject(); }, 120); }).observe(document.body, { childList: true, subtree: true });
   setInterval(function () { if (!document.hidden) inject(); }, 120000);
-  document.addEventListener("lv-spot-changed", function () { setTimeout(inject, 50); });
+  document.addEventListener("lv-spot-changed", function () { window.__lvCarTouchedAt = 0; if (busy) { again = true; return; } setTimeout(inject, 0); });
   // every few seconds: new products on the flyers, new colours on the banners
   function swapProducts() {
     var pool = window.__lvWvPool; if (document.hidden || !pool || pool.length < 4) return;
@@ -1391,7 +1399,7 @@
     }); });
   }
   function swapColours() {
-    if (document.hidden) return; palStep++;
+    if (document.hidden || window.__lvDragging) return; palStep++;
     document.querySelectorAll(".lv-wv").forEach(function (sl) {
       var c = pickPal(sl.hasAttribute("data-pal") ? Number(sl.getAttribute("data-pal")) : ({ a: 0, b: 1, c: 2 }[sl.getAttribute("data-wv-kind")] || 0));
       sl.style.setProperty("--wv-a", c[0]); sl.style.setProperty("--wv-b", c[1]); sl.style.setProperty("--wv-ink", c[0]);
@@ -1416,7 +1424,7 @@
     });
   }
   new MutationObserver(function () { if (document.querySelector(".lv-b3-slide:not([style*='--b3-a'])")) paint(); }).observe(document.body, { childList: true, subtree: true });
-  setInterval(function () { if (!document.hidden) { step++; paint(); } }, 9000);
+  setInterval(function () { if (!document.hidden && !window.__lvDragging) { step++; paint(); } }, 9000);
   paint();
 })();
 
@@ -1494,7 +1502,7 @@
     document.querySelectorAll("#app .trending-scroll").forEach(function (row) {
       if (row.scrollWidth <= row.clientWidth + 8) return;                       // everything already fits
       var r = row.getBoundingClientRect(); if (r.bottom < 0 || r.top > window.innerHeight) return;   // off screen
-      if (Date.now() - (touched.get(row) || 0) < 30000) return;
+      if (window.__lvDragging || Date.now() - (touched.get(row) || 0) < 30000) return;
       var first = row.firstElementChild, gap = parseFloat(getComputedStyle(row).columnGap) || 12;
       var step = first ? first.getBoundingClientRect().width + gap : row.clientWidth * 0.8;
       var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 6;
@@ -2908,7 +2916,7 @@ window.lvAskCancel = async function (orderId) {
     b.addEventListener("pointermove", function (e) {
       if (id === null || e.pointerId !== id) return;
       var dx = e.clientX - sx, dy = e.clientY - sy;
-      if (!moved && Math.hypot(dx, dy) > 6) { moved = true; b.classList.add("mf-drag"); document.documentElement.classList.add("lv-fab-dragging"); }
+      if (!moved && Math.hypot(dx, dy) > 6) { moved = true; window.__lvDragging = true; b.classList.add("mf-drag"); document.documentElement.classList.add("lv-fab-dragging"); }
       if (!moved) return;
       var p = clampPos(bl + dx, bt + dy); lx = p.x; ly = p.y;
       if (!raf) raf = requestAnimationFrame(function () { raf = 0; b.style.translate = (lx - bl) + "px " + (ly - bt) + "px"; });
@@ -2916,7 +2924,7 @@ window.lvAskCancel = async function (orderId) {
     function end(e) {
       if (id === null || (e && e.pointerId !== id)) return;
       id = null; if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      b.classList.remove("mf-drag"); document.documentElement.classList.remove("lv-fab-dragging");
+      window.__lvDragging = false; b.classList.remove("mf-drag"); document.documentElement.classList.remove("lv-fab-dragging");
       if (moved) {
         b.style.left = lx + "px"; b.style.top = ly + "px"; b.style.translate = "";
         try { localStorage.setItem(POS, JSON.stringify({ x: lx, y: ly })); } catch (_) {}
@@ -2961,41 +2969,39 @@ window.lvAskCancel = async function (orderId) {
   setTimeout(check, 800);
 })();
 
-/* ===== Trending rails never run out: near the end of a sideways row, more products (or services) from the whole app are added,
-   in a shuffled order; after all of them have been shown the order is reshuffled ===== */
+/* ===== Trending rails: every product in the app, once each, then the row simply ends (no looping) =====
+   Near the end of a sideways row, the next products are added in one fixed (shuffled once) order. A product already on the row
+   is never added again, and when all of them have been shown nothing more is added. ===== */
 (function () {
   "use strict";
-  var KEEP_MAX = 120, TRIM = 40;   // cards far behind the reader are dropped so the row stays light however far it goes
+  var BATCH = 12;
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  window.__lvTrendOrder = window.__lvTrendOrder || {};
   function attach(rail) {
     if (rail.__lvEndless) return; rail.__lvEndless = true;
-    var isSvc = rail.classList.contains("service-trending-scroll");
-    var ids = null, pos = 0, busy = false, shown = new Set();
-    function pool() { var idx = window.__homeBrowseIndex; return Array.isArray(idx) ? idx.filter(function (x) { return !!x.is_service === isSvc; }).map(function (x) { return String(x.id); }) : []; }
+    var isSvc = rail.classList.contains("service-trending-scroll"), key = isSvc ? "svc" : "prod";
+    var busy = false;
+    function order() {
+      var cur = window.__lvTrendOrder[key];
+      if (cur && cur.length) return cur;
+      var idx = window.__homeBrowseIndex;
+      if (!Array.isArray(idx)) return [];
+      cur = shuffle(idx.filter(function (x) { return !!x.is_service === isSvc; }).map(function (x) { return String(x.id); }));
+      window.__lvTrendOrder[key] = cur; return cur;
+    }
     async function more() {
       if (busy || typeof fetchProductsByIds !== "function" || typeof productCardHtml !== "function") return;
       busy = true;
       try {
-        if (!ids || !ids.length) { ids = shuffle(pool()); pos = 0; }
-        if (!ids.length) return;
+        var ids = order(); if (!ids.length) return;
         var onRail = new Set([].map.call(rail.querySelectorAll("[data-product-id]"), function (e) { return e.getAttribute("data-product-id"); }));
-        // every product gets its turn before any shows twice; only when all of them have been on the row does it start a fresh round
-        onRail.forEach(function (id) { shown.add(id); });
-        if (!ids.some(function (id) { return !onRail.has(id); })) return;   // every product is already on the row: nothing to add (never the same one twice side by side)
-        var fresh = ids.filter(function (id) { return !shown.has(id); });
-        if (!fresh.length) { shown = new Set(onRail); ids = shuffle(ids); fresh = ids.filter(function (id) { return !onRail.has(id); }); }
-        var take = fresh.slice(0, 8);
-        if (!take.length) return;
-        take.forEach(function (id) { shown.add(id); });
+        var take = ids.filter(function (id) { return !onRail.has(id); }).slice(0, BATCH);
+        if (!take.length) return;                       // everything has been shown: the row ends here
         var rows = await fetchProductsByIds(take);
         if (!rail.isConnected || !rows || !rows.length) return;
-        rail.insertAdjacentHTML("beforeend", rows.map(productCardHtml).join(""));
-        var cards = rail.querySelectorAll(":scope > .product-card-wrap");
-        if (cards.length > KEEP_MAX) {
-          var drop = [].slice.call(cards, 0, TRIM), w = drop[drop.length - 1].getBoundingClientRect().right - drop[0].getBoundingClientRect().left + (parseFloat(getComputedStyle(rail).columnGap) || 0);
-          drop.forEach(function (c) { c.remove(); });
-          rail.scrollLeft = Math.max(0, rail.scrollLeft - w);
-        }
+        var have = new Set([].map.call(rail.querySelectorAll("[data-product-id]"), function (e) { return e.getAttribute("data-product-id"); }));
+        var fresh = rows.filter(function (r) { return r && !have.has(String(r.id)); });
+        if (fresh.length) rail.insertAdjacentHTML("beforeend", fresh.map(productCardHtml).join(""));
       } catch (_) {} finally { busy = false; }
     }
     rail.addEventListener("scroll", function () { if (rail.scrollWidth - rail.scrollLeft - rail.clientWidth < 900) more(); }, { passive: true });
