@@ -5452,3 +5452,16 @@ html body #app .lv-wv .lv-wv-school-logo{display:inline-grid;place-items:center;
 html body #app .lv-wv .lv-wv-school-logo img{width:100%;height:100%;object-fit:contain}
 html body #app .lv-wv .lv-wv-school-logo .lvc-ini{width:100%;height:100%;display:grid;place-items:center;font-size:.55rem;font-weight:800;color:#fff;border-radius:50%}
 html body #app .lv-wv .lv-wv-school b{font-weight:800}
+
+/* Lighter scrolling: the top bar is a solid colour (a live 24px blur over the moving page, redone every frame, was too heavy for phones) */
+html body header{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background-color:color-mix(in srgb,var(--card,#fff) 97%,transparent)!important}
+
+/* Store options: round icon tiles (not ovals) */
+html:root:root:root:root body #app#app .levro-storefront-sheet-item i[class],html:root:root:root:root body #app#app .levro-storefront-sheet-item svg{border-radius:50%!important;width:2.5rem!important;height:2.5rem!important;min-width:2.5rem!important;max-width:2.5rem!important;flex:0 0 2.5rem!important;aspect-ratio:1/1;padding:0;box-sizing:border-box}
+html:root:root:root:root body #app#app .levro-storefront-sheet-item svg{padding:.58rem}
+
+/* Book Services card: white arrow and text on a soft peach-coral that sits well with the purple, blue and green cards */
+html:root:root:root body #app#app .lv-act-grid .lv-act-services{--lv-act:#ff8f68;--lv-act-ink:#fff;background:linear-gradient(150deg,#ffa985,#ff7d5c)!important;color:#fff!important}
+html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-title,html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-desc{color:#fff!important}
+html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-go{background:rgba(255,255,255,.3)!important;color:#fff!important}
+html:root:root:root body #app#app .lv-act-grid .lv-act-services .lv-act-go i{color:#fff!important;-webkit-text-fill-color:#fff!important}

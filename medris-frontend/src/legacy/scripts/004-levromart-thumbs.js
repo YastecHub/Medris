@@ -1,14 +1,14 @@
 
 (function(){
   "use strict";
-  /* Small, cached copies of product photos for cards, search and cart (the full photo is still used on the product page).
+  /* Small, cached copies of product photos, profile pictures and shop logos for cards, search and cart (the full photo is still used on the product page).
      Any thumbnail that fails to load falls back to the original photo; after 3 failures thumbnails switch off for the visit.
      Switch off manually: localStorage.setItem("lv-no-thumbs","1") */
   var BASE="https://wsrv.nl/", fails=0, off=false;
   try{ off=localStorage.getItem("lv-no-thumbs")==="1"; }catch(e){}
   window.lvThumb=function(u,w){
     try{
-      if(off||typeof u!=="string"||!/^https?:\/\//i.test(u)||u.indexOf("/product-photos/")<0||/\.(svg|gif)(\?|$)/i.test(u)) return u;
+      if(off||typeof u!=="string"||!/^https?:\/\//i.test(u)||(u.indexOf("/product-photos/")<0&&!/\/(avatars|vendor-logos)\//.test(u))||/\.(svg|gif)(\?|$)/i.test(u)||u.indexOf("wsrv.nl")>=0) return u;
       var d=Math.min(window.devicePixelRatio||1,2), px=Math.max(80,Math.round((w||300)*d));
       return BASE+"?url="+encodeURIComponent(u.replace(/^https?:\/\//i,""))+"&w="+px+"&q=75&output=webp&we=1";
     }catch(e){ return u; }
