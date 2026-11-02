@@ -565,12 +565,23 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
       reason=await showTextPromptDialog("Why is it being suspended?","The shop will see this.",{placeholder:"Write a short reason…",okLabel:"Suspend",chips:["Prohibited item","Misleading listing","Wrong category","Copied photos"],icon:"fa-ban",danger:true});
       if(reason===null) return;
     } else if(!(await showConfirmDialog(`Make "${productName}" visible again?`,{title:"Restore this product?",okLabel:"Yes, restore",cancelLabel:"Go back"}))) return;
-    const {error}=await sb.rpc("admin_set_product_suspended",{p_product_id:productId,p_suspended:suspending,p_reason:reason});
+    let {error}=await sb.rpc("admin_set_product_suspended",{p_product_id:productId,p_suspended:suspending,p_reason:reason});
+    let usedPause=false;
+    if(error && /being set up|not ready|enum|suspended/i.test(String(error.message||""))){
+      // Suspending needs database change 0021, which has not been applied yet. Until it is, the product can still be taken off the
+      // marketplace (paused) and put back, so an admin is never stuck.
+      const go=await showConfirmDialog(suspending?`Full suspension is not switched on yet (it needs a database update by your engineer). Hide "${productName}" from everyone for now instead? The shop can switch it back on.`:`Make "${productName}" visible again?`,{title:suspending?"Hide this product for now?":"Restore this product?",okLabel:suspending?"Hide it":"Yes, restore",cancelLabel:"Go back"});
+      if(!go) return;
+      const r=await sb.from("products").update({status:suspending?"paused":"active"}).eq("id",productId);
+      if(r.error){showToast(r.error.message||"Could not change this product.","error");return;}
+      error=null; usedPause=true;
+    }
     if(error){showToast(error.message||"Could not change this product.","error");return;}
     const upd=(list)=>(list||[]).forEach(p=>{if(String(p.id)===String(productId))p.status=suspending?"suspended":"active";});
-    upd(window.__adminInventoryAll); upd(window.__adminInventoryCache?.products);
+    if(usedPause){const upd2=(list)=>(list||[]).forEach(p=>{if(String(p.id)===String(productId))p.status=suspending?"paused":"active";});upd2(window.__adminInventoryAll); upd2(window.__adminInventoryCache?.products);}
+    else {upd(window.__adminInventoryAll); upd(window.__adminInventoryCache?.products);}
     filterAdminInventory();
-    showToast(suspending?"Product suspended.":"Product restored.","success");
+    showToast(suspending?(usedPause?"Product hidden for now.":"Product suspended."):"Product restored.","success");
   };
 
   window.adminDeleteInventoryProduct=async function(productId,productName,event){

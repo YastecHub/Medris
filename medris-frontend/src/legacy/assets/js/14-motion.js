@@ -7,6 +7,22 @@
   var TABS={home:1,vendors:1,search:1,notifications:1,vendorOrders:1,buyerOrders:1,buyerProfile:1,vendorDashboard:1,requestEquipment:1,vendorRequests:1,cart:1,wishlist:1,messages:1};
   var NAVPOS={home:0,vendors:1,vendorsMap:1,requestEquipment:2,vendorRequests:2,notifications:3,buyerOrders:4,vendorOrders:4};
   var last={html:null,gen:-1,view:null}, goingBack=false, animTimer=null;
+  // Small pictures are shown at 50-170 px, but profile pictures and shop logos are stored as 800 px originals (about 40 million
+  // pixels on Home alone, which is what makes scrolling and dragging heavy on a phone). Cards, rows and lists get right-sized copies;
+  // the full photo is still used on the product page and the profile picture viewer.
+  var FULLSIZE = { productDetail: 1, packageDetail: 1, orderDetail: 1, adminPanel: 1, adminPeople: 1 };
+  window.lvSlimImgs = function (html, vw) {
+    try {
+      if (typeof lvThumb !== "function" || html.indexOf("<img") < 0) return html;
+      return html.replace(/(<img\b[^>]*?\ssrc=")(https?:\/\/[^"]+)(")/g, function (m, a, u, z) {
+        if (u.indexOf("wsrv.nl") >= 0) return m;
+        var w = u.indexOf("/avatars/") >= 0 ? 160 : u.indexOf("/vendor-logos/") >= 0 ? 240 : (u.indexOf("/product-photos/") >= 0 && !FULLSIZE[vw]) ? 360 : 0;
+        if (!w) return m;
+        var t = lvThumb(u.replace(/&amp;/g, "&"), w);
+        return t === u ? m : a + t.replace(/&/g, "&amp;") + z;
+      });
+    } catch (_) { return html; }
+  };
   window.addEventListener("popstate",function(){ goingBack=true; });
   function gen(){ try{ return navigationGeneration; }catch(_){ return -1; } }
   function view(){ try{ return currentView; }catch(_){ return ""; } }
@@ -61,7 +77,7 @@
       Object.defineProperty(el,"innerHTML",{configurable:true,
         get:function(){ return inner.get.call(this); },
         set:function(v){
-          var html=String(v);
+          var html=window.lvSlimImgs(String(v), view());
           if(el.__lvLast===html) return;
           el.__lvLast=html;
           var t=document.createElement("template"); t.innerHTML=html;
@@ -85,7 +101,7 @@
   Object.defineProperty(app,"innerHTML",{configurable:true,
     get:function(){ return desc.get.call(this); },
     set:function(v){
-      var g=gen(), vw=view(), html=String(v);
+      var g=gen(), vw=view(), html=window.lvSlimImgs(String(v), vw); v=html;
       var sameNav=(g===last.gen&&vw===last.view);
       // the cached page and the freshly loaded page are identical: leave the screen exactly as it is
       if(sameNav&&html===last.html) return;
@@ -907,6 +923,7 @@
   try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
   function view0() { try { return currentView; } catch (_) { return ""; } }
   var pageSnaps = {};
+  window.lvDropPageSnaps = function () { pageSnaps = {}; vendorsSnap = null; };
   var vendorsSnap = null;   // the Vendors page as it looked when we left it (grid/list only), so Back can show it at once
   function remember() {
     try {
@@ -3009,4 +3026,45 @@ window.lvAskCancel = async function (orderId) {
   }
   var raf = 0;
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; document.querySelectorAll("#app .hscroll.trending-scroll").forEach(attach); }); }).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* ===== Profile picture: choosing a photo never leaves the page, and a new picture shows everywhere at once ===== */
+(function () {
+  "use strict";
+  // The hidden file picker sits inside clickable areas (like the panel header that opens "my profile"). Opening it from code sends a
+  // click that bubbled up to them and took the person away from the page before the photo was even chosen.
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.matches && t.matches('input[type="file"]')) e.stopPropagation();
+  }, true);
+
+  function rawOf(src) {
+    if (!src) return "";
+    if (src.indexOf("wsrv.nl") >= 0) { var m = /[?&]url=([^&]+)/.exec(src); try { return m ? "https://" + decodeURIComponent(m[1]) : src; } catch (_) { return src; } }
+    return src;
+  }
+  // every small picture of this account (top right, side panel, My account, vendor cards) is swapped for the new one in place
+  function refreshEverywhere() {
+    try {
+      var uid = session && session.user && session.user.id, url = profile && profile.avatar_url;
+      if (!uid) return;
+      var key = "/avatars/" + uid + "/";
+      var imgs = document.querySelectorAll("img");
+      for (var i = 0; i < imgs.length; i++) {
+        var im = imgs[i], raw = rawOf(im.getAttribute("src") || "");
+        if (raw.indexOf(key) < 0) continue;
+        if (!url) { im.style.visibility = "hidden"; continue; }
+        var w = im.getBoundingClientRect().width || 120;
+        im.src = (typeof lvThumb === "function" ? lvThumb(url, Math.max(160, Math.min(400, Math.round(w)))) : url) || url;
+        im.style.visibility = "";
+      }
+      if (window.lvDropPageSnaps) window.lvDropPageSnaps();   // the saved copies of Home and shop pages (for a quick Back) still show the old one
+    } catch (_) {}
+  }
+  var prev = window.lvAvatarChanged;
+  window.lvAvatarChanged = function () {
+    try { if (typeof prev === "function") prev.apply(this, arguments); } catch (_) {}
+    refreshEverywhere();
+    [150, 700].forEach(function (ms) { setTimeout(refreshEverywhere, ms); });   // after the header and panel have redrawn
+  };
 })();
