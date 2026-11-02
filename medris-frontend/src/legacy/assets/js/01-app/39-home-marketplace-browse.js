@@ -9,7 +9,7 @@ function homeStartupShellHtml({ offline = false } = {}) {
   return `<section class="levro-home-startup" aria-label="Levromart marketplace">
     <div class="hero levro-home-hero">${typeof renderHomepageCarouselHtml === "function" ? renderHomepageCarouselHtml(INITIAL_HOME_CAROUSEL_SLIDES) : ""}</div>
     ${typeof homeQuickActionsHtml === "function" ? homeQuickActionsHtml() : ""}
-    <h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3>
+    <h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending products</h3>
     <p class="muted" role="status">${message}</p>
     <h3 class="section-title" id="browseSection"><i class="fa-solid fa-table-cells-large"></i> Browse everything</h3>
     <div class="browse-filter-toolbar"><input type="search" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search marketplace" /></div>
@@ -291,10 +291,10 @@ async function renderHome() {
   try { if (!activeCategory && svcRows.length) writeOfflineHomeCache({ ...(getOfflineHomeCache() || {}), services: svcRows }); } catch (_) {}
   html += homeQuickActionsHtml();
 
-  if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
+  if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending products</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
     const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service),"trending-products");
-    if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.slice(0,24).map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+    if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending products${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.slice(0,24).map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   }
 

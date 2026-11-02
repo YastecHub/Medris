@@ -821,10 +821,24 @@ function hideLeviFromPanel() {
     if (LB.rules) return;
     try { const { data, error } = await sb.from("points_rules").select("*").eq("active", true).order("sort_order"); if (error) throw error; LB.rules = data || []; } catch (e) { console.warn("[Levromart] points rules", e); }
   }
+  // The campus being looked at, or null for "All campuses"
+  function campusOnly() { const v = viewCampus(); return v && v !== "all" && v !== "none" ? v : null; }
+  // Winners of the chosen campus (its own Vendor of the Week) come from their own database function. If it is not available yet,
+  // the whole-app winners are shown, trimmed to that campus, exactly as before.
   async function loadWinners() {
+    const c = campusOnly();
     try {
+      if (c && !LB.cwFailed) {
+        const [w, s] = await Promise.all([sb.rpc("get_campus_week_winners", { p_campus: c, p_limit: 12 }), sb.rpc("get_campus_vendor_spotlight", { p_campus: c })]);
+        if (w.error || s.error) { LB.cwFailed = true; console.warn("[Levromart] campus winners", w.error || s.error); }
+        else {
+          if (campusOnly() !== c) return;
+          LB.winners = w.data || []; LB.spot = s.data || null; LB.winnersFor = c; LB.spotFor = c; spotAt = Date.now();
+          return;
+        }
+      }
       const [w, s] = await Promise.all([sb.rpc("get_past_week_winners", { p_limit: 12 }), sb.rpc("get_vendor_spotlight")]);
-      LB.winners = w.data || []; LB.spot = s.data || null;
+      LB.winners = w.data || []; LB.spot = s.data || null; LB.winnersFor = null; LB.spotFor = null; spotAt = Date.now();
     } catch (e) { LB.winners = LB.winners || []; }
   }
   async function loadActivity(more) {
@@ -897,10 +911,20 @@ function hideLeviFromPanel() {
     const v = viewCampus();
     el.textContent = v === "all" ? "" : " \u00b7 " + ((window.lvCampusShort && window.lvCampusShort(v)) || "");
   }
-  window.lbRerender = function () { if (!$("lbBody")) return; paintScopeSeg(); paintScope(); renderBody(false); paintHeroWinner(); };
+  window.lbRerender = function () {
+    // the campus changed: fetch that campus's Vendor of the Week (or the whole app's) and tell the Home banners
+    const cc = campusOnly(), want = cc && !LB.cwFailed ? cc : null;
+    try { document.dispatchEvent(new Event("lv-spot-changed")); } catch (_) {}
+    if ((LB.winnersFor ?? null) !== want && !LB.winnersBusy && LB.winners) {
+      LB.winnersBusy = true;
+      loadWinners().finally(() => { LB.winnersBusy = false; if ($("lbBody")) window.lbRerender(); });
+    }
+    if (!$("lbBody")) return; paintScopeSeg(); paintScope(); renderBody(false); paintHeroWinner();
+  };
   function paintHeroWinner() {
     const el = $("lbHeroWinner"); if (!el) return;
-    const w = LB.spot?.winner; if (!w || !inView(w.vendor_id)) { el.hidden = true; return; }
+    const w = LB.spot?.winner, cc = campusOnly(), scoped = !!cc && LB.spotFor === cc;
+    if (!w || (!scoped && !inView(w.vendor_id))) { el.hidden = true; return; }
     const d0 = new Date(w.week_start + "T00:00:00"), start = new Date(d0.getTime() + 7 * 864e5), end = new Date(start.getTime() + 6 * 864e5);
     const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     el.hidden = false;
@@ -1129,14 +1153,17 @@ function hideLeviFromPanel() {
 
   function winnersHtml() {
     if (!LB.winners) return skeleton(5);
-    const w = LB.spot?.winner && inView(LB.spot.winner.vendor_id) ? LB.spot.winner : null;
+    const cc = campusOnly();
+    if (cc && !LB.cwFailed && LB.winnersFor !== cc) return skeleton(5);
+    const scoped = !!cc && LB.winnersFor === cc, keep = (id) => scoped || inView(id);
+    const w = LB.spot?.winner && keep(LB.spot.winner.vendor_id) ? LB.spot.winner : null;
     let html = "";
     if (w) {
       html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-award"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-award"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
     }
     html += `<div class="lb-card"><h3>Hall of fame</h3><p class="lb-sub" style="margin:0">A new Vendor of the Week is crowned every Monday, based on the previous week's points.</p></div>`;
-    if (!LB.winners.filter((x) => inView(x.vendor_id)).length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-award"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
-    html += LB.winners.filter((x) => inView(x.vendor_id)).map((x) => {
+    if (!LB.winners.filter((x) => keep(x.vendor_id)).length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-award"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
+    html += LB.winners.filter((x) => keep(x.vendor_id)).map((x) => {
       const d = new Date(x.week_start + "T00:00:00"), e = new Date(d.getTime() + 6 * 864e5);
       const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       const others = (x.top3 || []).slice(1).map((o) => esc(o.business_name)).join(", ");
@@ -1338,10 +1365,19 @@ function hideLeviFromPanel() {
   // ---------- home card ----------
   let spotAt = 0, spotBusy = false;
   async function homeSpot() {
-    if (LB.spot && Date.now() - spotAt < 90000) return LB.spot;
+    const cc = campusOnly(), want = cc && !LB.cwFailed ? cc : null;
+    if (LB.spot && (LB.spotFor || null) === want && Date.now() - spotAt < 90000) return LB.spot;
     if (spotBusy) return LB.spot;
     spotBusy = true;
-    try { const { data } = await sb.rpc("get_vendor_spotlight"); if (data) { LB.spot = data; spotAt = Date.now(); } } catch (_) {} finally { spotBusy = false; }
+    try {
+      let data = null, usedCampus = null;
+      if (want) {
+        const r = await sb.rpc("get_campus_vendor_spotlight", { p_campus: want });
+        if (r.error) { LB.cwFailed = true; } else { data = r.data; usedCampus = want; }
+      }
+      if (!data) { const r = await sb.rpc("get_vendor_spotlight"); data = r.data; usedCampus = null; }
+      if (data) { LB.spot = data; LB.spotFor = usedCampus; spotAt = Date.now(); }
+    } catch (_) {} finally { spotBusy = false; }
     return LB.spot;
   }
   function homeCardHtml(spot) {

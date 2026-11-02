@@ -390,22 +390,23 @@ async function lvOpenProfileShare(kind, targetId) {
     lvDrawQr(qrC, link, colours, img ? "" : initials, img);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
-    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1700 : prodImgs.length ? 1500 : 1360;
+    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1400 : prodImgs.length ? 1500 : 1360;
     const x = out.getContext("2d");
     const bg = x.createLinearGradient(0, 0, 1080, out.height); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
     x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
-    x.fillStyle = "#fff"; rrect(x, 90, 130, 900, out.height - 260, 56); x.fill();
+    const mt = isProduct ? 60 : 130;
+    x.fillStyle = "#fff"; rrect(x, 90, mt, 900, out.height - 2 * mt, 56); x.fill();
     x.textAlign = "center";
     let y = 130;
     if (isProduct) {
-      if (heroImg) cover2(x, heroImg, 120, 160, 840, 560, 40); y = 160 + 560;
-      x.fillStyle = "#14201a"; x.font = "800 56px system-ui,sans-serif"; x.fillText(String(name).slice(0, 30), 540, y + 85);
-      if (priceText) { x.fillStyle = colours[1]; x.font = "800 64px system-ui,sans-serif"; x.fillText(priceText, 540, y + 165); }
+      if (heroImg) cover2(x, heroImg, 120, 90, 840, 330, 40); y = 90 + 330;
+      x.fillStyle = "#14201a"; x.font = "800 56px system-ui,sans-serif"; x.fillText(String(name).slice(0, 30), 540, y + 80);
+      if (priceText) { x.fillStyle = colours[1]; x.font = "800 64px system-ui,sans-serif"; x.fillText(priceText, 540, y + 152); }
       x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif";
       const sold = "Sold by " + String(byName).slice(0, 26);
       const tw = x.measureText(sold).width, avatarImg = img;
-      if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, y + 215, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, y + 187, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, y + 227); x.textAlign = "center"; } else x.fillText(sold, 540, y + 227);
-      x.drawImage(qrC, 240, y + 270, 600, 600); y = y + 270 + 600;
+      if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, y + 205, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, y + 177, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, y + 217); x.textAlign = "center"; } else x.fillText(sold, 540, y + 217);
+      x.drawImage(qrC, 315, y + 250, 450, 450); y = y + 250 + 450;
     } else {
       x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240);
       x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(link.replace(/^https?:\/\//, "").slice(0, 44), 540, 295);

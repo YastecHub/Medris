@@ -9,7 +9,7 @@ const HOME_TOUR_STEPS = [
   { icon: "fa-graduation-cap", title: "Your campus", body: "Switch between your campus and all campuses. The crown shows this week's Vendor of the Week.", selector: "#lvCampusBar" },
   { icon: "fa-images", title: "Offers and news", body: "Swipe the banners, or just wait, they move on their own. They include the Vendor of the Week and who to follow.", selector: ".home-promotional-carousel" },
   { icon: "fa-bolt", title: "Quick actions", body: "Shortcuts to shopping, services, rentals and item requests.", selector: ".lv-act-grid" },
-  { icon: "fa-fire", title: "Trending now", body: "Products people are looking at right now. Slide sideways to see more, or tap See all.", selector: ".trending-scroll:not(.service-trending)" },
+  { icon: "fa-fire", title: "Trending products", body: "Products people are looking at right now. Slide sideways to see more, or tap See all.", selector: ".trending-scroll:not(.service-trending)" },
   { icon: "fa-star", title: "Featured vendors", body: "Top-rated verified vendors. Tap one to open their storefront and follow them.", selector: ".top-rated-vendors-scroll" },
   { icon: "fa-table-cells-large", title: "Browse everything", body: "Switch between products, services and more, then filter and sort the whole marketplace.", selector: ".home-catalog-type-tabs" },
   { icon: "fa-store", title: "Find vendors near you", body: "Open Vendors to see every verified vendor, on a map or a list, closest first.", selector: `#bottomNav .bottom-nav-item[onclick*="'vendors'"]` },
