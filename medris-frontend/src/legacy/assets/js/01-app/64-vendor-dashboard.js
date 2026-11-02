@@ -301,10 +301,13 @@ function lvDrawQr(canvas, text, colours, initials, centreImg) {
   x.restore();
   return rad / size;   // the picture's radius as a share of the code's width
 }
+// The small map picture at the top of a "find it on the map" share card
+const LV_MAPQR_BANNER = '<svg class="lvqr-mapart" viewBox="0 0 300 92" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="300" height="92" fill="#e7f1ec"/><ellipse cx="248" cy="82" rx="62" ry="24" fill="#cfe7f5"/><g stroke="#fff" stroke-linecap="round" fill="none"><path d="M0 62 L300 30" stroke-width="9"/><path d="M96 0 L128 92" stroke-width="7"/><path d="M200 0 L176 92" stroke-width="6"/><path d="M0 18 L210 70" stroke-width="5"/></g><path d="M150 14c-11 0-19 8-19 18 0 14 19 34 19 34s19-20 19-34c0-10-8-18-19-18Z" fill="var(--g2,#7c3aed)"/><circle cx="150" cy="32" r="7" fill="#fff"/></svg>';
 async function lvOpenProfileShare(kind, targetId) {
   document.getElementById("lvqrSheet")?.remove();
   const isProduct = kind === "product" && targetId;
-  const isShop = kind === "vendor" && targetId;
+  const isMap = kind === "map" && targetId;      // a link and code that open the Vendors map on this shop
+  const isShop = (kind === "vendor" || isMap) && targetId;
   let name = "", link = "", pic = null, cover = null, products = [], priceText = "", byName = "", shopId = isShop ? targetId : null;
   if (isProduct) {
     const { data: pr } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor:vendors!inner(id,user_id,business_name,logo_url)").eq("id", targetId).maybeSingle();
@@ -317,27 +320,27 @@ async function lvOpenProfileShare(kind, targetId) {
   } else if (isShop) {
     const v = typeof vendor !== "undefined" && vendor && String(vendor.id) === String(targetId) ? vendor : (await sb.from("vendors").select("id,user_id,business_name,logo_url,cover_url").eq("id", targetId).maybeSingle()).data;
     if (!v) return showToast("This shop could not be found.", "error");
-    name = v.business_name || "My shop"; link = storefrontPublicUrl(v.id); cover = v.cover_url || null;
+    name = v.business_name || "My shop"; link = isMap ? `${location.origin}/?mapv=${encodeURIComponent(String(v.id))}` : storefrontPublicUrl(v.id); cover = v.cover_url || null;
     pic = lvVendorPic(v) || (typeof vendor !== "undefined" && vendor && String(vendor.id) === String(targetId) ? profile?.avatar_url : null);
     if (!pic && v.user_id) { try { const [v2] = await lvAttachOwnerAvatars([v]); pic = lvVendorPic(v2); } catch (_) {} }
-    try { const { data } = await sb.from("products").select("photos").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }).limit(9); products = (data || []).map((p) => (Array.isArray(p.photos) ? p.photos[0] : null)).filter(Boolean); products = products.sort(() => Math.random() - 0.5).slice(0, 3); } catch (_) {}   // three of the shop's products
+    if (!isMap) try { const { data } = await sb.from("products").select("photos").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }).limit(9); products = (data || []).map((p) => (Array.isArray(p.photos) ? p.photos[0] : null)).filter(Boolean); products = products.sort(() => Math.random() - 0.5).slice(0, 3); } catch (_) {}   // three of the shop's products
   } else {
     name = profile?.name || "Levromart"; link = location.origin + "/"; pic = profile?.avatar_url || null;
   }
   pic = lvSharpPic(pic);
   const initials = String(isProduct ? byName : name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
-  const storeKey = "lv-qr-gradient:" + (isProduct ? "p:" + targetId : isShop ? targetId : "me");
+  const storeKey = "lv-qr-gradient:" + (isProduct ? "p:" + targetId : isMap ? "m:" + targetId : isShop ? targetId : "me");
   let gi = null;
   try { const saved = localStorage.getItem(storeKey); if (saved !== null && LV_GRADIENTS[+saved]) gi = +saved; } catch (_) {}
   const m = document.createElement("div");
   m.id = "lvqrSheet"; m.className = "lvqr-wrap";
-  const hint = isProduct ? "Scan to see this product on Levromart" : isShop ? "Scan to visit my shop on Levromart" : "Scan to join me on Levromart";
+  const hint = isProduct ? "Scan to see this product on Levromart" : isMap ? "Scan to find this shop on the map on Levromart" : isShop ? "Scan to visit my shop on Levromart" : "Scan to join me on Levromart";
   m.innerHTML = `<div class="lvqr-sheet" role="dialog" aria-modal="true" aria-label="Share ${esc(name)}">
     <button type="button" class="lvqr-close" aria-label="Close" onclick="document.getElementById('lvqrSheet')?.remove()"><i class="fa-solid fa-xmark"></i></button>
-    <div class="lvqr-card${isProduct ? " is-product" : ""}">
-      <div class="lvqr-cover"${cover ? ` style="background-image:url('${esc(cover)}')"` : ""}></div>
+    <div class="lvqr-card${isProduct ? " is-product" : ""}${isMap ? " is-map" : ""}">
+      <div class="lvqr-cover"${cover && !isMap ? ` style="background-image:url('${esc(cover)}')"` : ""}>${isMap ? LV_MAPQR_BANNER : ""}</div>
       <div class="lvqr-body">
-        <h3>${esc(name)}</h3>
+        ${isMap ? '<span class="lvqr-mapbadge"><i class="fa-solid fa-location-dot"></i> Find me on the map</span>' : ""}<h3>${esc(name)}</h3>
         ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : `<p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>`}
         <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas>${pic ? `<img class="lvqr-pic" src="${esc(pic)}" alt="">` : ""}</div>
         ${products.length ? `<div class="lvqr-products">${products.map((src) => `<img src="${esc(typeof lvThumb === "function" ? lvThumb(src, 160) : src)}" alt="" loading="lazy">`).join("")}</div>` : ""}
@@ -380,7 +383,7 @@ async function lvOpenProfileShare(kind, targetId) {
     paint(+b.dataset.i);
     try { localStorage.setItem(storeKey, String(gi)); } catch (_) {}
   });
-  const text = isProduct ? `${name} on Levromart` : isShop ? `Shop ${name} on Levromart` : "Join me on Levromart";
+  const text = isProduct ? `${name} on Levromart` : isMap ? `Find ${name} on the Levromart map` : isShop ? `Shop ${name} on Levromart` : "Join me on Levromart";
   const rrect = (x, X, Y, W, H, R) => { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); };
   const cover2 = (x, img, X, Y, W, H, R) => { x.save(); rrect(x, X, Y, W, H, R); x.clip(); const sc = Math.max(W / img.width, H / img.height); const w = img.width * sc, h = img.height * sc; x.drawImage(img, X + (W - w) / 2, Y + (H - h) / 2, w, h); x.restore(); };
   // The card as one picture: gradient, the shop's three products (or the product, its price and its seller), the code and the logo.
@@ -390,7 +393,7 @@ async function lvOpenProfileShare(kind, targetId) {
     lvDrawQr(qrC, link, colours, img ? "" : initials, img);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
-    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1400 : prodImgs.length ? 1500 : 1360;
+    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1400 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;
     const x = out.getContext("2d");
     const bg = x.createLinearGradient(0, 0, 1080, out.height); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
     x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
@@ -408,9 +411,21 @@ async function lvOpenProfileShare(kind, targetId) {
       if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, y + 205, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, y + 177, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, y + 217); x.textAlign = "center"; } else x.fillText(sold, 540, y + 217);
       x.drawImage(qrC, 315, y + 250, 450, 450); y = y + 250 + 450;
     } else {
-      x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240);
-      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(link.replace(/^https?:\/\//, "").slice(0, 44), 540, 295);
-      x.drawImage(qrC, 240, 340, 600, 600); y = 940;
+      const mo = isMap ? 230 : 0;
+      if (isMap) {
+        // a little map with a pin on top, so this card is clearly the "find it on the map" one
+        x.save(); rrect(x, 120, 160, 840, 200, 40); x.clip();
+        x.fillStyle = "#e7f1ec"; x.fillRect(120, 160, 840, 200);
+        x.fillStyle = "#cfe7f5"; x.beginPath(); x.ellipse(820, 330, 190, 70, -0.2, 0, Math.PI * 2); x.fill();
+        x.strokeStyle = "#ffffff"; x.lineCap = "round";
+        [[0, 250, 840, 200, 26], [300, 160, 360, 360, 22], [560, 160, 500, 360, 18], [120, 190, 600, 330, 14]].forEach(([x1, y1, x2, y2, w]) => { x.lineWidth = w; x.beginPath(); x.moveTo(x1 + (x1 < 120 ? 120 : 0), y1); x.lineTo(x2 + (x2 < 120 ? 120 : 0), y2); x.stroke(); });
+        x.restore();
+        x.fillStyle = colours[1]; x.beginPath(); x.arc(540, 232, 52, Math.PI * 0.85, Math.PI * 2.15); x.lineTo(540, 330); x.closePath(); x.fill();
+        x.fillStyle = "#fff"; x.beginPath(); x.arc(540, 232, 20, 0, Math.PI * 2); x.fill();
+      }
+      x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240 + mo);
+      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(isMap ? "Find me on the map" : link.replace(/^https?:\/\//, "").slice(0, 44), 540, 295 + mo);
+      x.drawImage(qrC, 240, 340 + mo, 600, 600); y = 940 + mo;
       if (prodImgs.length) {
         const sz = 150, gap = 26, total = prodImgs.length * sz + (prodImgs.length - 1) * gap; let px = 540 - total / 2;
         prodImgs.forEach((im) => { cover2(x, im, px, y + 30, sz, sz, 28); px += sz + gap; }); y += 30 + sz;

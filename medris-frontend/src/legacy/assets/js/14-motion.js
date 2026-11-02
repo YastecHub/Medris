@@ -2497,8 +2497,7 @@ window.lvAskCancel = async function (orderId) {
       pendingAvatarFile = new File([blob], "current-avatar.jpg", { type: blob.type || "image/jpeg" });
       openAvatarCropModal(pendingAvatarFile);
     } catch (e) {
-      showToast("Couldn't open your current photo. Choose a new one instead.", "error");
-      var inp = document.getElementById("avatarFileInput"); if (inp) inp.click();
+      showToast("Couldn't open your current photo. Tap Replace to choose a new one.", "error");
     }
   };
   window.editCurrentVendorCover = async function () {
@@ -2509,8 +2508,7 @@ window.lvAskCancel = async function (orderId) {
       pendingVendorCoverFile = new File([blob], "current-cover.jpg", { type: blob.type || "image/jpeg" });
       openVendorCoverCropModal(pendingVendorCoverFile);
     } catch (e) {
-      showToast("Couldn't open your current header. Choose a new one instead.", "error");
-      var inp = document.getElementById("vendorCoverInput"); if (inp) inp.click();
+      showToast("Couldn't open your current header. Tap Replace to choose a new one.", "error");
     }
   };
 
@@ -2539,6 +2537,7 @@ window.lvAskCancel = async function (orderId) {
   };
   window.openAvatarCropModal = function (file) {
     var reader = new FileReader();
+    reader.onerror = reader.onabort = function () { try { showToast("Couldn't open that photo. Try another one.", "error"); } catch (_) {} };
     reader.onload = function () {
       var old = document.getElementById("avatarCropModal"); if (old) old.remove();
       var D = dia();
@@ -2879,7 +2878,7 @@ window.lvAskCancel = async function (orderId) {
 (function () {
   "use strict";
   var POS = "lv-mapfab-pos", fab = null, busy = 0;
-  var PIN = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+  var PIN = '<svg class="mf-pin" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   function levi() { return document.getElementById("aiChatFab"); }
   // Levi turns into a pin on the Vendors page and into a magnifying glass (still carrying the Levromart mark) on the Search page
   var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><radialGradient id="lvLensG" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".55" stop-color="#bff3de" stop-opacity=".55"/><stop offset="1" stop-color="#34d399" stop-opacity=".35"/></radialGradient><linearGradient id="lvLensR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19d39a"/><stop offset="1" stop-color="#0b7f5c"/></linearGradient></defs><circle cx="20" cy="20" r="14" fill="url(#lvLensG)" stroke="url(#lvLensR)" stroke-width="4"/><path d="M30.5 30.5 41 41" stroke="url(#lvLensR)" stroke-width="6" stroke-linecap="round"/><path d="M13.6 14.2a8.4 8.4 0 0 0 0 11.6M26.4 14.2a8.4 8.4 0 0 1 0 11.6" stroke="#0b7f5c" stroke-width="2.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.2" fill="#0b7f5c"/></svg>';

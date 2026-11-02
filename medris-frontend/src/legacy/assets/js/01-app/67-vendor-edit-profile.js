@@ -547,12 +547,15 @@ async function submitVendorEditProfile() {
 }
 
 async function uploadVendorCover(event) {
-  const file = event.target.files?.[0];
-  event.target.value = "";
-  if (!file || !vendor) return;
-  if (!file.type.startsWith("image/")) { showToast("Please choose an image file.", "error"); return; }
+  const input = event.target, file = input.files?.[0];
+  const clear = () => setTimeout(() => { try { input.value = ""; } catch (_) {} }, 6000);   // cleared late: some phones lose the file if it is cleared at once
+  if (!file || !vendor) { try { input.value = ""; } catch (_) {} return; }
+  const isImage = String(file.type || "").startsWith("image/") || (!file.type && /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name || ""));
+  if (!isImage) { try { input.value = ""; } catch (_) {} showToast("Please choose an image file.", "error"); return; }
+  showToast("Opening your photo…", "info");
   try { const small = await lvPrepareImageFile(file, 2000); pendingVendorCoverFile = small; openVendorCoverCropModal(small); }
   catch (e) { showToast("Couldn't open that photo. Try another one.", "error"); }
+  finally { clear(); }
 }
 // Phone photos are huge (12MP+, sometimes HEIC). Reading them whole into the crop screen can crash a phone's browser and
 // bounce the person back to the home page, so the picked photo is shrunk to a sensible size first (orientation fixed too).

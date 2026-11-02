@@ -5413,3 +5413,29 @@ html body .ap-help{display:flex;gap:.45rem;align-items:flex-start;margin:.2rem 0
 html body .ap-help i{margin-top:.12rem;color:var(--primary,#0b7a52)}
 html body .lv-mapfab .mf-core b{text-shadow:0 0 3px #fff,0 0 6px #fff}
 :root[data-theme="dark"] body .lv-mapfab .mf-core b,:root[data-theme="black"] body .lv-mapfab .mf-core b{text-shadow:0 1px 3px #000}
+
+/* Levi's pin: bright green with a soft ripple that spreads from it (movement uses only scale and fade, so it stays light) */
+@keyframes mfRipple{0%{transform:scale(.55);opacity:.55}100%{transform:scale(1.55);opacity:0}}
+html body .lv-mapfab .mf-core{color:#10b981!important;filter:drop-shadow(0 3px 4px rgba(5,100,70,.35))}
+html body .lv-mapfab .mf-core svg.mf-pin{fill:rgba(16,185,129,.22);stroke:#0ea371}
+html body .lv-mapfab .mf-core svg.mf-pin circle{fill:#fff;stroke:#0ea371}
+html body .lv-mapfab .mf-core b{color:#0b7a52!important}
+:root[data-theme="dark"] body .lv-mapfab .mf-core,:root[data-theme="black"] body .lv-mapfab .mf-core{color:#34d399!important}
+:root[data-theme="dark"] body .lv-mapfab .mf-core svg.mf-pin,:root[data-theme="black"] body .lv-mapfab .mf-core svg.mf-pin{stroke:#34d399;fill:rgba(52,211,153,.25)}
+:root[data-theme="dark"] body .lv-mapfab .mf-core b,:root[data-theme="black"] body .lv-mapfab .mf-core b{color:#a7f3d0!important}
+html body .lv-mapfab::before,html body .lv-mapfab::after{content:"";position:absolute;left:50%;top:44%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:2px solid rgba(16,185,129,.55);pointer-events:none;z-index:-1;animation:mfRipple 2.6s ease-out infinite}
+html body .lv-mapfab::after{animation-delay:1.3s;border-color:rgba(56,189,248,.5)}
+html body .lv-mapfab.mf-drag::before,html body .lv-mapfab.mf-drag::after,html body .lv-mapfab.mf-out::before,html body .lv-mapfab.mf-out::after{animation:none;opacity:0}
+@media(prefers-reduced-motion:reduce){html body .lv-mapfab::before,html body .lv-mapfab::after{animation:none;opacity:0}}
+
+/* "Find it on the map" share card: its own look (a little map on top and a badge), so it is not mistaken for the shop link card */
+html body .lvqr-card.is-map .lvqr-cover{height:96px!important;background:none!important;position:relative;overflow:hidden}
+html body .lvqr-card .lvqr-mapart{width:100%;height:100%;display:block}
+html body .lvqr-card .lvqr-mapbadge{display:inline-flex;gap:.3rem;align-items:center;padding:.22rem .65rem;border-radius:999px;background:color-mix(in srgb,var(--g2,#7c3aed) 14%,#fff);color:var(--g2,#7c3aed);font-size:.7rem;font-weight:800;margin:0 0 .35rem}
+html body .lvqr-card.is-map .lvqr-code{box-shadow:0 0 0 3px color-mix(in srgb,var(--g2,#7c3aed) 40%,transparent),0 0 0 8px color-mix(in srgb,var(--g2,#7c3aed) 12%,transparent)}
+html body #app .vmpage .vmp-card-share{flex:0 0 auto;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent);background:var(--card,#fff);color:var(--primary,#0b7a52);cursor:pointer;padding:0}
+html body #app .vmpage .vmp-card-share svg{width:20px;height:20px}
+html body .lvqr-card.is-map .lvqr-link{display:none}
+
+/* The initials square in the map card: centred, in the shop's own tint */
+html body #app .vmpage .vmp-card-logo .vmp-card-ini{position:absolute;inset:0;display:grid;place-items:center;background:var(--vmp-bg,#e6f4ec);color:var(--vmp-fg,#1b5e3c);font-size:1.15rem;font-weight:850;letter-spacing:.02em;line-height:1}
