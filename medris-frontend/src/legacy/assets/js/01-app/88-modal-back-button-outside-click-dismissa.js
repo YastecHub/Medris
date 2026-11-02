@@ -163,6 +163,14 @@ window.addEventListener("popstate", (e) => {
       return;
     }
   }
+  // A shared "find this shop on the map" link: open the Vendors map with that shop picked
+  if (urlParams.get("mapv")) {
+    const mapVendorId = urlParams.get("mapv");
+    history.replaceState({ view: "home", params: {} }, "", location.pathname);
+    window.__pendingVendorMapFocusId = mapVendorId;
+    await navigate("vendorsMap", {}, false);
+    return;
+  }
   if (urlParams.get("share")) {
     const token = urlParams.get("share");
     history.replaceState({ view: "sharedAiChat", params: { token } }, "", location.pathname);

@@ -639,11 +639,13 @@ async function saveVendorCoverCrop(){
   },"image/jpeg",0.9);
 }
 function uploadAvatar(event) {
-  const file = event.target.files?.[0];
-  event.target.value = "";
-  if (!file || !session) return;
-  if (!String(file.type || '').startsWith('image/')) { showToast('Please choose an image.', 'error'); return; }
-  lvPrepareImageFile(file, 1600).then((small) => { pendingAvatarFile = small; openAvatarCropModal(small); }).catch(() => showToast("Couldn't open that photo. Try another one.", "error"));
+  const input = event.target, file = input.files?.[0];
+  const clear = () => setTimeout(() => { try { input.value = ""; } catch (_) {} }, 6000);   // cleared late: some phones lose the file if it is cleared at once
+  if (!file || !session) { try { input.value = ""; } catch (_) {} return; }
+  const isImage = String(file.type || "").startsWith("image/") || (!file.type && /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name || ""));
+  if (!isImage) { try { input.value = ""; } catch (_) {} showToast("Please choose an image.", "error"); return; }
+  showToast("Opening your photo…", "info");
+  lvPrepareImageFile(file, 1600).then((small) => { pendingAvatarFile = small; openAvatarCropModal(small); }).catch(() => showToast("Couldn't open that photo. Try another one.", "error")).finally(clear);
 }
 // Keep the account photo and public vendor avatar in sync.
 // Notifications snapshot users.avatar_url; storefronts and vendor cards read

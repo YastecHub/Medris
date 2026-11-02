@@ -280,7 +280,7 @@ function vmpCardHtml(v) {
   const dir = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.lat + "," + v.lng)}`;
   return `<div class="vmp-card${id === vmpSelected ? " on" : ""}" data-vid="${esc(id)}" onclick="vmpSelect('${esc(id)}',true)">
     <div class="vmp-card-top"><div class="vmp-card-logo">${media}</div>
-      <div class="vmp-card-copy"><strong class="vmp-card-name"><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><span>${meta}</span><em><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} <small>(${Number(v.review_count || 0)})</small></em></div></div>
+      <div class="vmp-card-copy"><strong class="vmp-card-name"><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><span>${meta}</span><em><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} <small>(${Number(v.review_count || 0)})</small></em></div><button type="button" class="vmp-card-share" aria-label="Share this shop on the map" title="Share" onclick="event.stopPropagation();lvOpenProfileShare('map','${esc(id)}')">${typeof LV_SHARE_ICON !== "undefined" ? LV_SHARE_ICON : '<i class="fa-solid fa-share-nodes"></i>'}</button></div>
     <div class="vmp-card-act"><button type="button" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${esc(id)}'})"><i class="fa-solid fa-store"></i> View shop</button>${typeof isOwnVendorId === "function" && isOwnVendorId(id) ? "" : vmpFollowBtnHtml(id)}</div>
   </div>`;
 }
