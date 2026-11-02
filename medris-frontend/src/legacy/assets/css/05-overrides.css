@@ -5550,7 +5550,7 @@ html:root:root:root body #app#app .lv-wv-o .lv-wv-sub{color:#e6ddff;max-width:54
 /* Product share card: photo on the left, QR code on the right, name / price / shop underneath (close to a square) */
 html body .lvqr-card.is-product{display:grid!important;grid-template-columns:1.1fr 1fr;grid-template-areas:"cover code" "cover hint" "name name" "price price" "by by" "brand brand";column-gap:.8rem;row-gap:.35rem;padding:.9rem .9rem 1rem;align-items:center;text-align:center}
 html body .lvqr-card.is-product .lvqr-body{display:contents!important}
-html body .lvqr-card.is-product .lvqr-cover{grid-area:cover;align-self:stretch;height:auto!important;aspect-ratio:auto!important;min-height:210px;border-radius:18px;background-size:contain!important;background-repeat:no-repeat!important;background-position:center!important;background-color:#eef3f1!important}
+html body .lvqr-card.is-product .lvqr-cover{grid-area:cover;align-self:stretch;height:auto!important;aspect-ratio:auto!important;min-height:210px;border-radius:18px;background-size:cover!important;background-repeat:no-repeat!important;background-position:center!important;background-color:#eef3f1!important}
 html body .lvqr-card.is-product .lvqr-code{grid-area:code;width:100%!important;margin:0!important;padding:5px!important;border-radius:16px!important;align-self:end}
 html body .lvqr-card.is-product .lvqr-hint{grid-area:hint;margin:0!important;font-size:.72rem!important;line-height:1.25;align-self:start}
 html body .lvqr-card.is-product h3{grid-area:name;margin:.6rem 0 0!important;font-size:1.15rem}
@@ -5598,3 +5598,8 @@ html body .rf-max{color:#0b7a52}
 html body .rf-note{margin:.7rem 0 0;font-size:.8rem;line-height:1.4;color:var(--text-muted,#667085)}
 html body .rf-note i{color:#16a06a;margin-right:.3rem}
 html body #app .ap2-tag.ap2-tag-ref{background:rgba(245,158,11,.14);color:#a85f00;margin-right:.4rem}
+
+/* My account (buyer) and vendor profile: no empty strip under the search bar; the profile is a rounded card with its banner inside */
+html:root body[data-view="buyerProfile"] #app,html:root body[data-view="vendorDashboard"] #app{margin-top:0!important}
+html:root body #app .buyer-profile-card.lv-profile-hero{margin:.55rem .7rem 1.1rem!important;border-radius:28px!important;overflow:hidden!important}
+html:root body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover{border-radius:28px 28px 0 0!important}

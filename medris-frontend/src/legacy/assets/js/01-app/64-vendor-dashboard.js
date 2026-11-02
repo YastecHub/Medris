@@ -329,7 +329,7 @@ async function lvOpenProfileShare(kind, targetId) {
   }
   pic = lvSharpPic(pic);
   const initials = String(isProduct ? byName : name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
-  let centrePic = isProduct ? "/icon-192.png" : pic;   // a product's code carries the Levromart mark in its middle; a shop's or person's carries their own picture
+  let centrePic = pic;   // the code carries the shop's (or the person's) own picture in its middle
   const storeKey = "lv-qr-gradient:" + (isProduct ? "p:" + targetId : isMap ? "m:" + targetId : isShop ? targetId : "me");
   let gi = null;
   try { const saved = localStorage.getItem(storeKey); if (saved !== null && LV_GRADIENTS[+saved]) gi = +saved; } catch (_) {}
@@ -391,7 +391,7 @@ async function lvOpenProfileShare(kind, targetId) {
   const buildCard = async (withPic) => {
     const qrC = document.createElement("canvas"); qrC.width = qrC.height = 640;
     const img = withPic && pic ? await lvLoadReadableImage(pic) : null;
-    const centreImg = withPic && centrePic ? (isProduct ? await lvLoadImage("/icon-192.png") : img) : null;
+    const centreImg = withPic && centrePic ? img : null;
     lvDrawQr(qrC, link, colours, centreImg ? "" : initials, centreImg);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
@@ -407,10 +407,7 @@ async function lvOpenProfileShare(kind, targetId) {
       // the photo on the left, the code on the right, then the name, price and shop underneath: a nearly square card
       const PX = 120, PY = 100, PW = 480, PH = 520;
       if (heroImg) {
-        cover2(x, heroImg, PX, PY, PW, PH, 40);
-        x.save(); rrect(x, PX, PY, PW, PH, 40); x.clip(); x.fillStyle = "rgba(255,255,255,0.62)"; x.fillRect(PX, PY, PW, PH);
-        const sc = Math.min((PW - 20) / heroImg.width, (PH - 20) / heroImg.height), hw = heroImg.width * sc, hh = heroImg.height * sc;
-        x.drawImage(heroImg, PX + (PW - hw) / 2, PY + (PH - hh) / 2, hw, hh); x.restore();
+        cover2(x, heroImg, PX, PY, PW, PH, 40);   // the photo fills its whole box
       } else { x.fillStyle = "#eef3f1"; rrect(x, PX, PY, PW, PH, 40); x.fill(); }
       x.drawImage(qrC, 630, 150, 330, 330);
       x.fillStyle = "#5b6b63"; x.font = "600 30px system-ui,sans-serif"; x.fillText("Scan to see", 795, 535); x.fillText("this product", 795, 573);

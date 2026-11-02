@@ -1315,7 +1315,7 @@
         '<span class="lv-wv-badge"><i class="fa-solid fa-crown"></i> Overall winner</span>' +
         logoHtml(w, "lv-wv-logo-big") +
         '<span class="lv-wv-name">' + nm + "</span>" +
-        '<span class="lv-wv-sub">Best vendor on every campus last week' + pts + "</span>" +
+        '<span class="lv-wv-sub">Last week\u2019s overall winner across all campuses' + pts + "</span>" +
         (othumbs ? '<span class="lv-wv-thumbs lv-wv-o-thumbs">' + othumbs + "</span>" : "") +
         '<span class="lv-wv-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
     }
