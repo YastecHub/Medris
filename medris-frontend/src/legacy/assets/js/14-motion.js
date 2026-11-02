@@ -1462,7 +1462,8 @@
       var first = row.firstElementChild, gap = parseFloat(getComputedStyle(row).columnGap) || 12;
       var step = first ? first.getBoundingClientRect().width + gap : row.clientWidth * 0.8;
       var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 6;
-      try { row.scrollTo({ left: atEnd ? 0 : row.scrollLeft + step, behavior: "smooth" }); } catch (_) {}
+      if (atEnd) return;   // never jumps back to the first card: the row keeps filling with more products instead
+      try { row.scrollTo({ left: row.scrollLeft + step, behavior: "smooth" }); } catch (_) {}
     });
   }, 10000);
 })();
@@ -2648,11 +2649,13 @@ window.lvAskCancel = async function (orderId) {
 (function () {
   var CHIPS = ["❤️❤️❤️", "🔥🔥🔥", "⭐⭐⭐", "👏👏👏", "😍😍😍"];
   var STK = ["1f525", "2764-fe0f", "1f60d", "1f602", "1f44f", "1f64f", "1f4af", "1f389", "1f60e", "1f929", "1f973", "1f62d", "1f60a", "1f44d", "1f4aa", "2b50", "1f496", "1f970", "1f64c", "1f618", "1f440", "1f48e", "1f381", "1f680", "1f91d", "1f6cd-fe0f", "1f62e", "1f914", "1f631", "1f921", "1f308", "1f31f", "1f340", "1f354", "1f355", "1f37b", "1f37f", "1f383", "1f388", "1f38a", "1f3af", "1f3b6", "1f3c6", "1f431", "1f44a", "1f44b", "1f44c", "1f451", "1f47b", "1f480", "1f483", "1f48b", "1f493", "1f499", "1f49a", "1f49c", "1f4a1", "1f4a5", "1f4a9", "1f4b8", "1f4e6", "1f604", "1f605", "1f606", "1f607", "1f608", "1f609", "1f60b", "1f61c", "1f621", "1f622", "1f624", "1f62a", "1f634", "1f642", "1f643", "1f69a", "1f6d2", "1f90c", "1f90d", "1f911", "1f913", "1f916", "1f917", "1f919", "1f91e", "1f923", "1f92c", "1f92f", "1f942", "1f972", "1f975", "1f976", "1f979", "1f97a", "1f981", "1f984", "1f98b", "1f9e1", "26a1", "270a", "2728"];
+  // "3d/<code>" is the glossy 3D set (/stickers3d); the others are the flat and moving ones
+  function stkSrc(id) { return id.indexOf("3d/") === 0 ? "/stickers3d/" + id.slice(3) + ".webp" : "/stickers/" + id + ".webp"; }
   function showStickers() {
     document.querySelectorAll(".product-comment-body:not([data-stk])").forEach(function (b) {
-      var m = /^::s:((?:still\/)?[0-9a-f-]+)::$/.exec((b.textContent || "").trim());
+      var m = /^::s:((?:still\/|3d\/)?[0-9a-f-]+)::$/.exec((b.textContent || "").trim());
       b.dataset.stk = "1";
-      if (m) b.innerHTML = '<img class="lv-stk" src="/stickers/' + m[1] + '.webp" alt="sticker" width="96" height="96" loading="lazy" decoding="async">';
+      if (m) b.innerHTML = '<img class="lv-stk" src="' + stkSrc(m[1]) + '" alt="sticker" width="96" height="96" loading="lazy" decoding="async">';
     });
   }
   function syncCount() {
@@ -2684,7 +2687,7 @@ window.lvAskCancel = async function (orderId) {
       var panel = document.createElement("div"); panel.className = "lv-stk-panel hidden";
       var tabs = document.createElement("div"); tabs.className = "lv-stk-tabs"; panel.appendChild(tabs);
       var grids = {};
-      [["still", "Stickers"], ["", "Moving"]].forEach(function (set, i) {
+      [["3d", "3D"], ["still", "Flat"], ["", "Moving"]].forEach(function (set, i) {
         var tb = document.createElement("button"); tb.type = "button"; tb.textContent = set[1]; tb.className = i === 0 ? "on" : "";
         var grid = document.createElement("div"); grid.className = "lv-stk-grid" + (i === 0 ? "" : " hidden"); grids[set[0]] = grid;
         tb.onclick = function () { tabs.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === tb); }); Object.keys(grids).forEach(function (k) { grids[k].classList.toggle("hidden", k !== set[0]); }); };
@@ -2692,7 +2695,7 @@ window.lvAskCancel = async function (orderId) {
         STK.forEach(function (code) {
           var id = (set[0] ? set[0] + "/" : "") + code;
           var sb2 = document.createElement("button"); sb2.type = "button"; sb2.setAttribute("aria-label", "Send sticker");
-          sb2.innerHTML = '<img src="/stickers/' + id + '.webp" alt="" width="48" height="48" loading="lazy" decoding="async">';
+          sb2.innerHTML = '<img src="' + stkSrc(id) + '" alt="" width="48" height="48" loading="lazy" decoding="async">';
           sb2.onclick = function () { if (!session) { try { showLogin(); } catch (_) {} return; } panel.classList.add("hidden"); ta.value = "::s:" + id + "::"; ta.dispatchEvent(new Event("input", { bubbles: true })); send.click(); };
           grid.appendChild(sb2);
         });
@@ -2906,31 +2909,40 @@ window.lvAskCancel = async function (orderId) {
    in a shuffled order; after all of them have been shown the order is reshuffled ===== */
 (function () {
   "use strict";
-  var CAP = 150;
+  var KEEP_MAX = 120, TRIM = 40;   // cards far behind the reader are dropped so the row stays light however far it goes
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function attach(rail) {
     if (rail.__lvEndless) return; rail.__lvEndless = true;
     var isSvc = rail.classList.contains("service-trending-scroll");
-    var ids = null, pos = 0, busy = false;
+    var ids = null, pos = 0, busy = false, shown = new Set();
     function pool() { var idx = window.__homeBrowseIndex; return Array.isArray(idx) ? idx.filter(function (x) { return !!x.is_service === isSvc; }).map(function (x) { return String(x.id); }) : []; }
     async function more() {
       if (busy || typeof fetchProductsByIds !== "function" || typeof productCardHtml !== "function") return;
-      if (rail.querySelectorAll(".product-card-wrap").length >= CAP) return;
       busy = true;
       try {
-        if (!ids) { ids = shuffle(pool()); pos = 0; }
-        if (ids.length < 16) return;
-        if (pos >= ids.length) { ids = shuffle(ids); pos = 0; }
+        if (!ids || !ids.length) { ids = shuffle(pool()); pos = 0; }
+        if (!ids.length) return;
         var onRail = new Set([].map.call(rail.querySelectorAll("[data-product-id]"), function (e) { return e.getAttribute("data-product-id"); }));
-        var take = [];
-        while (take.length < 8 && pos < ids.length) { var id = ids[pos++]; if (!onRail.has(id)) take.push(id); }
+        // every product gets its turn before any shows twice; only when all of them have been on the row does it start a fresh round
+        onRail.forEach(function (id) { shown.add(id); });
+        var fresh = ids.filter(function (id) { return !shown.has(id); });
+        if (!fresh.length) { shown = new Set(onRail); ids = shuffle(ids); fresh = ids.filter(function (id) { return !shown.has(id); }); if (!fresh.length) fresh = ids.slice(); }
+        var take = fresh.slice(0, 8);
         if (!take.length) return;
+        take.forEach(function (id) { shown.add(id); });
         var rows = await fetchProductsByIds(take);
         if (!rail.isConnected || !rows || !rows.length) return;
         rail.insertAdjacentHTML("beforeend", rows.map(productCardHtml).join(""));
+        var cards = rail.querySelectorAll(":scope > .product-card-wrap");
+        if (cards.length > KEEP_MAX) {
+          var drop = [].slice.call(cards, 0, TRIM), w = drop[drop.length - 1].getBoundingClientRect().right - drop[0].getBoundingClientRect().left + (parseFloat(getComputedStyle(rail).columnGap) || 0);
+          drop.forEach(function (c) { c.remove(); });
+          rail.scrollLeft = Math.max(0, rail.scrollLeft - w);
+        }
       } catch (_) {} finally { busy = false; }
     }
-    rail.addEventListener("scroll", function () { if (rail.scrollWidth - rail.scrollLeft - rail.clientWidth < 700) more(); }, { passive: true });
+    rail.addEventListener("scroll", function () { if (rail.scrollWidth - rail.scrollLeft - rail.clientWidth < 900) more(); }, { passive: true });
+    setTimeout(function () { if (rail.isConnected && rail.scrollWidth - rail.clientWidth < 900) more(); }, 1500);
   }
   var raf = 0;
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; document.querySelectorAll("#app .hscroll.trending-scroll").forEach(attach); }); }).observe(document.body, { childList: true, subtree: true });

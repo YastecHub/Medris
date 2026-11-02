@@ -66,6 +66,16 @@ window.lvBand3Start = function () {
   const current = () => Math.round(track.scrollLeft / slideW());
   const mark = () => { const i = current(); dots.forEach((d, k) => d.classList.toggle("on", k === i)); };
   track.addEventListener("scroll", () => { requestAnimationFrame(mark); }, { passive: true });
+  // swiping forward on the last slide carries on to the first (and back from the first to the last), so it never feels stuck
+  let sx = null;
+  track.addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  track.addEventListener("touchend", (e) => {
+    if (sx == null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? sx) - sx; sx = null;
+    const n = dots.length, i = current(), max = track.scrollWidth - track.clientWidth;
+    if (dx < -40 && track.scrollLeft >= max - 4) setTimeout(() => track.scrollTo({ left: 0, behavior: "smooth" }), 60);
+    else if (dx > 40 && i === 0 && track.scrollLeft <= 4) setTimeout(() => track.scrollTo({ left: (n - 1) * slideW(), behavior: "smooth" }), 60);
+  }, { passive: true });
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   let pausedUntil = 0;
   const pause = () => { pausedUntil = Date.now() + 8000; };

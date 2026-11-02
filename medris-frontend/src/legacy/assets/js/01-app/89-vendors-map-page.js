@@ -194,8 +194,8 @@ function vmpSetStyle(key, remember = true) {
   if (remember) { try { localStorage.setItem("levromart-vmp-style-v3", key); } catch (_) {} }
   if (vmpTiles) vmpMap.removeLayer(vmpTiles);
   if (window.vmpRefTiles) { vmpMap.removeLayer(window.vmpRefTiles); window.vmpRefTiles = null; }
-  vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: window.innerWidth >= 1024 ? 1 : 4 }).addTo(vmpMap);
-  if (s.ref) window.vmpRefTiles = window.L.tileLayer(s.ref, { maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, keepBuffer: window.innerWidth >= 1024 ? 1 : 4 }).addTo(vmpMap);
+  vmpTiles = window.L.tileLayer(s.url, { attribution: s.attr, maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, updateInterval: 220, keepBuffer: window.innerWidth >= 1024 ? 1 : 2 }).addTo(vmpMap);
+  if (s.ref) window.vmpRefTiles = window.L.tileLayer(s.ref, { maxZoom: s.max, maxNativeZoom: s.native, updateWhenIdle: false, updateInterval: 220, keepBuffer: window.innerWidth >= 1024 ? 1 : 2 }).addTo(vmpMap);
   byId("vmPage")?.setAttribute("data-style", key);
   vmpDrawSheet();
 }
@@ -225,9 +225,11 @@ function vmpDrawMe() {
   if (vmpMe) vmpMap.removeLayer(vmpMe);
   vmpMe = window.L.marker([buyerLocation.lat, buyerLocation.lng], { icon: window.L.divIcon({ className: "vmp-me", html: '<span class="vmp-me-pulse"></span><span class="vmp-me-dot"></span>', iconSize: [24, 24], iconAnchor: [12, 12] }), zIndexOffset: 800, interactive: false }).addTo(vmpMap);
 }
+let vmpPinMarkers = new Map();
 function vmpDrawPins() {
   if (!vmpMap || !vmpLayer) return;
   vmpLayer.clearLayers();
+  vmpPinMarkers = new Map();
   const list = vmpVisible(), z = vmpMap.getZoom(), cell = 62, grid = new Map();
   list.forEach((v) => {
     if (z >= 16 || v.id === vmpSelected) { grid.set("v" + v.id, [v]); return; }
@@ -238,6 +240,7 @@ function vmpDrawPins() {
     if (vs.length === 1) {
       const v = vs[0];
       const m = window.L.marker([v.lat, v.lng], { icon: vendorDirectoryMapIcon(v), riseOnHover: true, zIndexOffset: v.id === vmpSelected ? 700 : 0 }).addTo(vmpLayer);
+      vmpPinMarkers.set(String(v.id), m);
       m.on("click", (e) => { window.L.DomEvent.stopPropagation(e); vmpSelect(v.id, false, true); });
       if (v.id === vmpSelected) m.getElement()?.classList.add("vmp-sel");
       if (vmpDetails.names || v.id === vmpSelected) m.bindTooltip(esc(v.business_name || "Vendor"), { permanent: true, direction: "bottom", offset: [0, 4], className: "vmp-tip", interactive: false });
@@ -373,8 +376,11 @@ function vmpRouteCardDraw(v) {
   if (!v) { box.classList.add("hidden"); return; }
   const info = vmpRouteInfo, km = info ? info.km : (vmpDistKm(v) || 0) * 1.3, drive = info ? info.drive : Math.max(1, km / 22 * 60);
   const tabs = VMP_MODES.map((m) => `<button type="button" class="${m.k === vmpMode ? "on" : ""}" onclick="vmpSetMode('${m.k}')" aria-label="${m.label}"><i class="fa-solid ${m.icon}"></i><b>${vmpMins(m.f(km, drive))}</b></button>`).join("");
-  box.innerHTML = `<div class="vmp-route-top"><strong>${esc(v.business_name || "Vendor")}</strong><span>${info ? "" : "~"}${km < 1 ? Math.round(km * 1000) + " m" : km.toFixed(1) + " km"} by road</span></div><div class="vmp-modes">${tabs}</div><small>Estimates for typical Lagos traffic.</small>`;
+  // one neat card: the shop (picture, name, View shop, Follow) with the travel times underneath
+  box.innerHTML = vmpCardHtml(v) + `<div class="vmp-route-top"><strong>Distance</strong><span>${info ? "" : "~"}${km < 1 ? Math.round(km * 1000) + " m" : km.toFixed(1) + " km"} by road</span></div><div class="vmp-modes">${tabs}</div><small>Estimates for typical Lagos traffic.</small>`;
+  box.classList.add("vmp-route-merged");
   box.classList.remove("hidden");
+  byId("vmpExpandedCard")?.classList.add("hidden");
 }
 function vmpSetMode(k) { vmpMode = k; const v = vmpAll.find((x) => String(x.id) === String(vmpSelected)); vmpRouteCardDraw(v); }
 async function vmpTrace(v) {
@@ -405,6 +411,14 @@ async function vmpTrace(v) {
   vmpRoute = { edge, core, a: null, b };
   try { vmpMap.fitBounds(L.latLngBounds(coords).pad(0.25), { animate: true, maxZoom: 16, paddingTopLeft: [0, 120], paddingBottomRight: [0, 230] }); } catch (_) {}
 }
+// Picking a vendor only changes which pin is highlighted: redraw every pin only when the picked shop is hidden inside a cluster.
+function vmpRefreshSelectedPin(prev) {
+  const now = vmpPinMarkers.get(String(vmpSelected));
+  if (!now) { vmpDrawPins(); return; }
+  const mark = (m, on) => { const el = m && m.getElement && m.getElement(); if (el) el.classList.toggle("vmp-sel", on); if (m) m.setZIndexOffset(on ? 700 : 0); };
+  if (prev && String(prev) !== String(vmpSelected)) mark(vmpPinMarkers.get(String(prev)), false);
+  mark(now, true);
+}
 function vmpSelect(id, fly, fromRail, expandCard = true) {
   const v = vmpAll.find((x) => String(x.id) === String(id));
   if (!v || !vmpMap) return;
@@ -417,6 +431,7 @@ function vmpSelect(id, fly, fromRail, expandCard = true) {
   }
 
   const changedVendor = !wasSelected;
+  const prevSelected = vmpSelected;
   vmpSelected = v.id;
   vmpHideSugg();
   const target = vmpMap.getZoom() < 14 ? 14 : vmpMap.getZoom();
@@ -438,14 +453,13 @@ function vmpSelect(id, fly, fromRail, expandCard = true) {
   } else if (changedVendor) {
     vmpCollapseSelectedCard();
     vmpMap.panTo([v.lat, v.lng], { animate: true });
-    if (buyerLocation) vmpTrace(v);
   } else {
     vmpCollapseSelectedCard();
   }
 
   if (fly) vmpMap.flyTo([v.lat, v.lng], target, { duration: 0.7 });
   else if (expandCard && !fromRail && !buyerLocation) vmpMap.panTo([v.lat, v.lng], { animate: true });
-  vmpDrawPins();
+  vmpRefreshSelectedPin(prevSelected);
   vmpRailCards().forEach((c) => c.classList.toggle("on", String(c.dataset.vid) === String(vmpSelected)));
   if (!fromRail) {
     const box = byId("vmpRail"), list = vmpRailList(), i = list.findIndex((x) => String(x.id) === String(v.id));

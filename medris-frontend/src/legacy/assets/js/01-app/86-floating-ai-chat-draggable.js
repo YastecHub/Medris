@@ -1018,11 +1018,10 @@ async function reactToAiMessage(evt, msgId, emoji) {
       setTimeout(once, 3200 + Math.random() * 2200);
     })();
   }
-  // A slow, gentle hover so Levi looks like it is floating on the spot (the badge moves; the button's own position and dragging are untouched).
   function float(b) {
     if (!b.animate) return;
     try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (_) {}
-    try { b.animate([{ transform: "translateY(0) rotate(-1deg)" }, { transform: "translateY(-5px) rotate(1deg)" }, { transform: "translateY(0) rotate(-1deg)" }], { duration: 3400, iterations: Infinity, easing: "ease-in-out" }); } catch (_) {}
+    // (no endless hover any more: a layer that never stops moving keeps the phone busy and makes scrolling heavier)
   }
   var tries = 0;
   (function tick() { if (!put() && tries++ < 40) setTimeout(tick, 250); })();
