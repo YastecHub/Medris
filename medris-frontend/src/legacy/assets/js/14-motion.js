@@ -1317,7 +1317,7 @@
         '<span class="lv-wv-name">' + nm + "</span>" +
         '<span class="lv-wv-sub">Last week\u2019s overall winner across all campuses' + pts + "</span>" +
         (othumbs ? '<span class="lv-wv-thumbs lv-wv-o-thumbs">' + othumbs + "</span>" : "") +
-        '<span class="lv-wv-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
+        '<span class="lv-wv-cta">Open storefront</span></span></button>';
     }
     var thumbs = thumbsHtml(rows);
     if (kind === "a") {
@@ -1327,7 +1327,7 @@
         '<span class="lv-wv-name">' + nm + "</span>" +
         '<span class="lv-wv-sub">' + (Number(w.points) ? "Won last week with " + Number(w.points).toLocaleString("en-NG") + " points" : "Last week\u2019s winner") + "</span>" +
         (thumbs ? '<span class="lv-wv-thumbs">' + thumbs + "</span>" : "") +
-        '<span class="lv-wv-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
+        '<span class="lv-wv-cta">Open storefront</span></span></button>';
     }
     if (kind === "b") {
       var tiles = tilesHtml(rows);
@@ -1344,7 +1344,7 @@
       '<span class="lv-wv-name">Follow ' + nm + "</span>" +
       '<span class="lv-wv-sub">Be first to see new products, deals and updates.</span>' +
       (thumbs ? '<span class="lv-wv-thumbs lv-wv-thumbs-r">' + thumbs + "</span>" : "") +
-      '<span class="lv-wv-cta lv-wv-cta-follow"><i class="fa-solid fa-user-plus"></i> Follow</span></span></button>';
+      '<span class="lv-wv-cta lv-wv-cta-follow">Follow</span></span></button>';
   }
   window.lvWvTap = function (e, kind, vid) {
     var s = e.currentTarget, vp = document.getElementById("homePromotionalViewport");
@@ -1410,10 +1410,10 @@
   // A banner whose picture an admin uploaded or edited after this release (CUT) keeps its picture, so replacing one still works.
   var CUT = Date.parse("2026-10-26T00:00:00Z");
   var FY = [
-    { k: "join", act: "join", link: "https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", label: "Join the community", h1: "Join the", h2: "community.", sub: "Be first to hear new vendors, offers and campus updates on WhatsApp.", cta: "Tap to join the group", ph: "join", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star"] },
+    { k: "join", act: "join", link: "https://chat.whatsapp.com/DVCSNKkZ6AIHtKYyMPWxHs", label: "Join the community", h1: "Join the", h2: "community.", sub: "Be first to hear new vendors, offers and campus updates on WhatsApp.", cta: "Join the group", ph: "join", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star"] },
     { k: "sell", act: "vendorApply", link: "?levro=vendorApply", label: "Sell to your whole campus", h1: "Sell to your", h2: "whole campus.", sub: "Open your shop in minutes. List products, get orders, grow.", cta: "Become a vendor", ph: "sell", tiles: ["fa-box", "star", "fa-tag", "fa-cart-shopping"] },
-    { k: "store", act: "vendors", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Buy \u00b7 Sell \u00b7 Rent", ph: "follow", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
-    { k: "follow", act: "links", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "", ph: "store", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true, foot: "Tap our link in bio \u00b7 levromart.com/links" },
+    { k: "store", act: "vendors", link: "?levro=vendors", label: "Your campus online store", h1: "Your campus", h2: "online store.", sub: "Shop products, book services and rent items from vendors on your campus.", cta: "Open the store", ph: "follow", tiles: ["fa-cart-shopping", "fa-box", "fa-bag-shopping", "fa-tag", "star"] },
+    { k: "follow", act: "links", link: "/links", label: "Follow us everywhere", h1: "Follow us", h2: "everywhere.", sub: 'Same name on every platform: <b>@levromart</b>', cta: "Click to follow", ph: "store", tiles: ["star", "fa-bag-shopping", "fa-cart-shopping"], social: true },
     { k: "win", act: "leaderboard", link: "?levro=leaderboard", label: "Win a full week of promotion", h1: "Win a full week", h2: "of promotion.", sub: "Be seen by more customers. Be Vendor of the Week.", cta: "", ph: "win", tiles: ["fa-cart-shopping", "star", "fa-tag", "fa-bag-shopping"], soon: true },
     { k: "request", act: "requestEquipment", link: "?levro=requestEquipment", label: "Can't find it? Request it.", h1: "Can't find it?", h2: "Request it.", sub: "Tell vendors what you need. They come to you with offers.", cta: "Request an item", ph: "request", tiles: ["fa-cart-shopping", "fa-bag-shopping", "star", "fa-box"] }
   ];
@@ -1427,7 +1427,7 @@
       (d.soon ? '<span class="lv-fy-soon">COMING SOON</span>' : "") +
       '<span class="lv-fy-h"><em>' + d.h1 + "</em><strong>" + d.h2 + "</strong></span>" +
       '<span class="lv-fy-sub">' + d.sub + "</span>" + soc +
-      (d.cta ? '<span class="lv-fy-cta">' + d.cta + (d.cta.indexOf("\u00b7") < 0 ? ' <i class="fa-solid fa-arrow-right"></i>' : "") + "</span>" : "") +
+      (d.cta ? '<span class="lv-fy-cta">' + d.cta + "" + "</span>" : "") +
       (d.foot ? '<span class="lv-fy-foot">' + d.foot + "</span>" : "") +
       '<span class="lv-fy-photo"><img src="/lb/flyer-' + d.ph + '.webp" alt="" decoding="async"></span>' + tiles + "</span>";
   }
@@ -3009,7 +3009,7 @@ window.lvAskCancel = async function (orderId) {
   var PIN = '<svg class="mf-pin" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   function levi() { return document.getElementById("aiChatFab"); }
   // Levi turns into a pin on the Vendors page and into a magnifying glass (still carrying the Levromart mark) on the Search page
-  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><linearGradient id="lvLensR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19d39a"/><stop offset="1" stop-color="#0b7f5c"/></linearGradient></defs><g class="mf-lens-ring"><path d="M13.4 32.4A14 14 0 0 1 13.4 7.6" stroke="url(#lvLensR)" stroke-width="4.6" stroke-linecap="round"/><path d="M26.6 7.6A14 14 0 0 1 26.6 32.4" stroke="url(#lvLensR)" stroke-width="4.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.4" fill="url(#lvLensR)"/></g><path d="M31 31 41.5 41.5" stroke="url(#lvLensR)" stroke-width="6" stroke-linecap="round"/></svg>';
+  var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><linearGradient id="lvLensA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset=".55" stop-color="#38bdf8"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient><linearGradient id="lvLensB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#f43f5e"/></linearGradient></defs><g class="mf-lens-ring"><path d="M13.7 31.9A13.5 13.5 0 0 1 13.7 8.1" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><path d="M26.3 8.1A13.5 13.5 0 0 1 26.3 31.9" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.6" fill="url(#lvLensB)"/></g><path d="M34.5 34.5 42 42" stroke="url(#lvLensB)" stroke-width="6" stroke-linecap="round"/></svg>';
   function modeNow() { try { var v = typeof currentView !== "undefined" ? currentView : ""; return v === "vendors" ? "vendors" : v === "search" ? "search" : ""; } catch (_) { return ""; } }
   function core(mode) { return '<span class="mf-core">' + (mode === "search" ? LENS : PIN) + '<b>' + (mode === "search" ? "Search" : "Map") + '</b></span>'; }
   function tap(mode) { if (mode === "search") { try { var i = document.getElementById("searchPageInput"); window.scrollTo({ top: 0, behavior: "smooth" }); if (i) i.focus(); } catch (_) {} } else { try { navigate("vendorsMap"); } catch (_) {} } }
