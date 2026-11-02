@@ -1253,7 +1253,17 @@
   }
   function slide(kind, w, rows, hue) {
     var id = esc2(w.vendor_id), nm = esc2(w.business_name);
-    var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette({ a: 0, b: 1, c: 2 }[kind]) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
+    var open = ' class="home-promotional-slide lv-wv lv-wv-' + kind + '" data-wv="' + id + '" data-wv-kind="' + kind + '" style="' + palette({ a: 0, b: 1, c: 2, o: 0 }[kind]) + '" onclick="lvWvTap(event,\'' + kind + '\',\'' + id + '\')" aria-label="';
+    if (kind === "o") {
+      var pts = Number(w.points) ? " with " + Number(w.points).toLocaleString("en-NG") + " points" : "";
+      return '<button type="button" class="home-promotional-slide lv-wv lv-wv-o" data-wv="' + id + '" data-wv-kind="o" onclick="lvWvTap(event,\'o\',\'' + id + '\')" aria-label="Overall vendor of the week on every campus: ' + nm + '"><span class="lv-wv-in">' +
+        '<span class="lv-wv-o-star s1"></span><span class="lv-wv-o-star s2"></span><span class="lv-wv-o-star s3"></span>' +
+        '<span class="lv-wv-o-badge"><i class="fa-solid fa-crown"></i> Overall winner \u00b7 all campuses</span>' +
+        logoHtml(w, "lv-wv-logo-big lv-wv-o-logo") +
+        '<span class="lv-wv-name">' + nm + "</span>" +
+        '<span class="lv-wv-sub">The best vendor on every campus last week' + pts + "</span>" +
+        '<span class="lv-wv-cta lv-wv-o-cta">View storefront <i class="fa-solid fa-arrow-right"></i></span></span></button>';
+    }
     var thumbs = thumbsHtml(rows);
     if (kind === "a") {
       return "<button type=\"button\"" + open + "Vendor of the week: " + nm + '"><span class="lv-wv-in">' +
@@ -1402,19 +1412,27 @@
     try {
       var spot = await window.lvVendorSpot();
       var w = spot && spot.winner;   // the vendor who WON last week keeps the banners for this whole week (not whoever is leading right now)
+      if (w && (!w.vendor_id || !w.business_name)) w = null;
+      // the overall winner (all campuses) has a banner of its own that stays whichever campus view is chosen
+      var ov = null; try { ov = typeof window.lvOverallSpot === "function" ? await window.lvOverallSpot() : null; } catch (_) {}
+      var ow = ov && ov.winner && ov.winner.vendor_id && ov.winner.business_name ? ov.winner : null;
       car = document.getElementById("homePromotionalCarousel"); if (!car) return;
-      if (!w || !w.vendor_id || !w.business_name) { try { localStorage.removeItem("lv-wv-cache"); } catch (_) {} car.querySelectorAll("[data-wv]").length && removeAll(car); return; }
-      var pool = await products(w.vendor_id), rows = pick3(pool); window.__lvWvPool = pool;
-      var h = await logoHue(w.logo_url);
-      logoPal = (h != null && (h < 70 || h > 170)) ? [rgbHex(h), rgbHex(h + 40)] : null;
+      if (!w && !ow) { try { localStorage.removeItem("lv-wv-cache"); } catch (_) {} car.querySelectorAll("[data-wv]").length && removeAll(car); return; }
+      var extra = [], pool = [], rows = [], h = null;
+      if (w) {
+        pool = await products(w.vendor_id); rows = pick3(pool); window.__lvWvPool = pool;
+        h = await logoHue(w.logo_url);
+        logoPal = (h != null && (h < 70 || h > 170)) ? [rgbHex(h), rgbHex(h + 40)] : null;
+      } else { logoPal = null; window.__lvWvPool = []; }
       car = document.getElementById("homePromotionalCarousel"); if (!car) return;
-      var key = w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0) + "|" + scopeId();
+      var key = (w ? w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0) + "|" + scopeId() : "none") + "|ov:" + (ow ? ow.vendor_id : "");
       if (car.getAttribute("data-wv-key") === key) return;
-      var extra = [slide("a", w, rows, h)]; if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h));
+      if (w) { extra.push(slide("a", w, rows, h)); if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h)); }
+      if (ow) extra.push(slide("o", ow, [], null));
       car.setAttribute("data-wv-key", key);
-      try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), scope: scopeId(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {}
+      if (w) { try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), scope: scopeId(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {} }
       rebuild(car, extra);
-    } catch (_) {} finally { busy = false; if (again) { again = false; setTimeout(inject, 0); } }
+    } catch (err) { console.warn("[Levromart] winner banners", err); } finally { busy = false; if (again) { again = false; setTimeout(inject, 0); } }
   }
   function removeAll(car) { car.removeAttribute("data-wv-key"); rebuild(car, []); }
   var t = 0;

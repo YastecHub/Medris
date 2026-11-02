@@ -393,7 +393,7 @@ async function lvOpenProfileShare(kind, targetId) {
     lvDrawQr(qrC, link, colours, img ? "" : initials, img);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
-    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1520 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;
+    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1160 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;
     const x = out.getContext("2d");
     const bg = x.createLinearGradient(0, 0, 1080, out.height); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
     x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
@@ -402,21 +402,32 @@ async function lvOpenProfileShare(kind, targetId) {
     x.textAlign = "center";
     let y = 130;
     if (isProduct) {
+      // the photo on the left, the code on the right, then the name, price and shop underneath: a nearly square card
+      const PX = 120, PY = 100, PW = 480, PH = 520;
       if (heroImg) {
-        // the whole product is shown (not cropped): the photo, blurred and faded, fills the box and the sharp photo sits inside it
-        cover2(x, heroImg, 120, 90, 840, 520, 40);
-        x.save(); rrect(x, 120, 90, 840, 520, 40); x.clip(); x.fillStyle = "rgba(255,255,255,0.62)"; x.fillRect(120, 90, 840, 520);
-        const sc = Math.min(820 / heroImg.width, 500 / heroImg.height), hw = heroImg.width * sc, hh = heroImg.height * sc;
-        x.drawImage(heroImg, 120 + (840 - hw) / 2, 90 + (520 - hh) / 2, hw, hh); x.restore();
-      }
-      y = 90 + 520;
-      x.fillStyle = "#14201a"; x.font = "800 56px system-ui,sans-serif"; x.fillText(String(name).slice(0, 30), 540, y + 80);
-      if (priceText) { x.fillStyle = colours[1]; x.font = "800 64px system-ui,sans-serif"; x.fillText(priceText, 540, y + 152); }
+        cover2(x, heroImg, PX, PY, PW, PH, 40);
+        x.save(); rrect(x, PX, PY, PW, PH, 40); x.clip(); x.fillStyle = "rgba(255,255,255,0.62)"; x.fillRect(PX, PY, PW, PH);
+        const sc = Math.min((PW - 20) / heroImg.width, (PH - 20) / heroImg.height), hw = heroImg.width * sc, hh = heroImg.height * sc;
+        x.drawImage(heroImg, PX + (PW - hw) / 2, PY + (PH - hh) / 2, hw, hh); x.restore();
+      } else { x.fillStyle = "#eef3f1"; rrect(x, PX, PY, PW, PH, 40); x.fill(); }
+      x.drawImage(qrC, 630, 150, 330, 330);
+      x.fillStyle = "#5b6b63"; x.font = "600 30px system-ui,sans-serif"; x.fillText("Scan to see", 795, 535); x.fillText("this product", 795, 573);
+      // name over at most two lines
+      x.fillStyle = "#14201a"; x.font = "800 54px system-ui,sans-serif";
+      const words = String(name).split(/\s+/), lines = []; let cur = "";
+      words.forEach((wd) => { const t = cur ? cur + " " + wd : wd; if (x.measureText(t).width > 840 && cur) { lines.push(cur); cur = wd; } else cur = t; });
+      if (cur) lines.push(cur);
+      let ny = 705; const shown = lines.slice(0, 2);
+      if (lines.length > 2) shown[1] = shown[1].replace(/\s*\S*$/, "") + "…";
+      shown.forEach((ln) => { x.fillText(ln, 540, ny); ny += 62; });
+      ny -= 62;
+      if (priceText) { x.fillStyle = colours[1]; x.font = "800 64px system-ui,sans-serif"; x.fillText(priceText, 540, ny + 82); ny += 82; }
       x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif";
-      const sold = "Sold by " + String(byName).slice(0, 26);
+      const sold = "Sold by " + String(byName).slice(0, 26), sy = ny + 68;
       const tw = x.measureText(sold).width, avatarImg = img;
-      if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, y + 205, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, y + 177, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, y + 217); x.textAlign = "center"; } else x.fillText(sold, 540, y + 217);
-      x.drawImage(qrC, 330, y + 245, 420, 420); y = y + 245 + 420;
+      if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, sy - 12, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, sy - 40, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, sy); x.textAlign = "center"; } else x.fillText(sold, 540, sy);
+      const plogo = await lvLoadImage("/icon-192.png"); if (plogo) x.drawImage(plogo, 395, 995, 56, 56);
+      x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 465, 1037);
     } else {
       const mo = isMap ? 230 : 0;
       if (isMap) {
@@ -438,9 +449,11 @@ async function lvOpenProfileShare(kind, targetId) {
         prodImgs.forEach((im) => { cover2(x, im, px, y + 30, sz, sz, 28); px += sz + gap; }); y += 30 + sz;
       }
     }
-    x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(hint.replace("Scan to ", "Scan to ").replace(" on Levromart", ""), 540, y + 70);
-    const logo = await lvLoadImage("/icon-192.png"); if (logo) x.drawImage(logo, 395, y + 105, 56, 56);
-    x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 465, y + 147);
+    if (!isProduct) {
+      x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(hint.replace("Scan to ", "Scan to ").replace(" on Levromart", ""), 540, y + 70);
+      const logo = await lvLoadImage("/icon-192.png"); if (logo) x.drawImage(logo, 395, y + 105, 56, 56);
+      x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 465, y + 147);
+    }
     return new Promise((r, j) => { try { out.toBlob((bl) => (bl ? r(bl) : j(new Error("empty"))), "image/png"); } catch (err) { j(err); } });
   };
   m.querySelector(".lvqr-actions").addEventListener("click", async (e) => {

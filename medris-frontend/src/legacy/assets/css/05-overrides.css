@@ -5535,3 +5535,36 @@ html:root:root:root:root:root body #app .lv-ap-row.ap2-row{display:flex!importan
 html:root:root:root:root:root body #app .lv-ap-row.ap2-row .lv-ap-acts{display:flex!important;width:auto!important;margin:0!important;grid-auto-flow:row}
 html:root:root:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-row.ap2-row{flex-direction:row!important;align-items:center!important}
 html:root:root:root:root:root:root:root:root:root:root body[data-view^="admin"] #app .lv-ap-row.ap2-row .lv-ap-acts{width:auto!important;display:flex!important;margin:0!important}
+
+/* Winner banners: the school logo is small and sits in the badge row; the name starts below it */
+html:root:root:root body #app#app .lv-wv .lv-wv-school{padding:.1rem!important;margin-right:1.4cqw!important}
+html:root:root:root body #app#app .lv-wv .lv-wv-school-logo{width:5.4cqw!important;height:5.4cqw!important;min-width:0}
+html:root:root:root body #app#app .lv-wv .lv-wv-badge{max-width:60cqw;overflow:hidden;text-overflow:ellipsis}
+html:root:root:root body #app#app .lv-wv .lv-wv-name{margin-top:3cqw}
+
+/* The overall winner (all campuses): a banner of its own that stays whichever campus is chosen */
+html:root:root:root body #app#app .home-promotional-slide.lv-wv.lv-wv-o{background:radial-gradient(120% 95% at 88% 8%,#6a45d1 0%,#2e1a73 46%,#130b36 100%)!important;color:#fff}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-o-badge{position:absolute;left:5cqw;top:5cqw;display:inline-flex;align-items:center;gap:1.6cqw;padding:1.3cqw 3.2cqw;border-radius:99px;background:linear-gradient(90deg,#fbe08a,#e8a936);color:#3b2400;font-size:2.7cqw;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-o-badge i{color:#7a4a00}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-o-logo{border:1.4cqw solid #f4c95d!important;box-shadow:0 0 0 1.4cqw rgba(244,201,93,.28),0 2cqw 6cqw rgba(0,0,0,.45)!important}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-name{top:17cqw;color:#fff;max-width:52cqw}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-sub{color:#e6ddff;max-width:54cqw}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-o-cta{background:linear-gradient(90deg,#fbe08a,#e8a936)!important;color:#3b2400!important;-webkit-text-fill-color:#3b2400!important}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-o-cta i{color:#3b2400!important}
+.lv-wv-o-star{position:absolute;color:#f4c95d;font-size:4cqw;line-height:1;pointer-events:none}
+.lv-wv-o-star::before{content:"\2726"}
+.lv-wv-o-star.s1{left:44cqw;top:30cqw;font-size:3cqw;opacity:.8}
+.lv-wv-o-star.s2{right:8cqw;top:46cqw;font-size:4.4cqw;opacity:.9}
+.lv-wv-o-star.s3{left:6cqw;bottom:26cqw;font-size:2.6cqw;opacity:.6}
+html:root:root:root body #app#app .lv-wv-o .lv-wv-o-badge{font-size:2.35cqw;letter-spacing:.04em;padding:1.2cqw 2.8cqw}
+
+/* Product share card: photo on the left, QR code on the right, name / price / shop underneath (close to a square) */
+html body .lvqr-card.is-product{display:grid!important;grid-template-columns:1.1fr 1fr;grid-template-areas:"cover code" "cover hint" "name name" "price price" "by by" "brand brand";column-gap:.8rem;row-gap:.35rem;padding:.9rem .9rem 1rem;align-items:center;text-align:center}
+html body .lvqr-card.is-product .lvqr-body{display:contents!important}
+html body .lvqr-card.is-product .lvqr-cover{grid-area:cover;align-self:stretch;height:auto!important;aspect-ratio:auto!important;min-height:210px;border-radius:18px;background-size:contain!important;background-repeat:no-repeat!important;background-position:center!important;background-color:#eef3f1!important}
+html body .lvqr-card.is-product .lvqr-code{grid-area:code;width:100%!important;margin:0!important;padding:5px!important;border-radius:16px!important;align-self:end}
+html body .lvqr-card.is-product .lvqr-hint{grid-area:hint;margin:0!important;font-size:.72rem!important;line-height:1.25;align-self:start}
+html body .lvqr-card.is-product h3{grid-area:name;margin:.6rem 0 0!important;font-size:1.15rem}
+html body .lvqr-card.is-product .lvqr-price{grid-area:price;margin:0!important}
+html body .lvqr-card.is-product .lvqr-by{grid-area:by;margin:0!important;justify-content:center}
+html body .lvqr-card.is-product .lvqr-brand{grid-area:brand;margin:.5rem 0 0!important;justify-self:center}

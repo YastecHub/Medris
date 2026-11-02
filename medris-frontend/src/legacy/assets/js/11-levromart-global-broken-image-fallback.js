@@ -1413,6 +1413,12 @@ function hideLeviFromPanel() {
     return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-award" : "fa-award"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
   }
   window.lvVendorSpot = () => homeSpot();
+  // the whole-app winner of last week, whichever campus is chosen
+  window.lvOverallSpot = async () => {
+    if (LB.overall && Date.now() - (LB.overallAt || 0) < 90000) return LB.overall;
+    try { const { data } = await sb.rpc("get_vendor_spotlight"); if (data) { LB.overall = data; LB.overallAt = Date.now(); } } catch (_) {}
+    return LB.overall || null;
+  };
   async function mountHomeCard() {
     // The Vendor of the Week now lives as a trophy button in the campus bar (see lv-campus-js); no big card on Home.
     try { $("homeLbCard")?.remove(); } catch (_) {}
