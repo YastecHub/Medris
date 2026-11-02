@@ -15,15 +15,13 @@ function renderTerms() {
 
     <h3>3. Orders, rentals &amp; payments</h3>
     <ul>
-      <li>Online payments are processed through Paystack. Levromart never stores your card details. Many orders are instead paid directly to the vendor by bank transfer: you report the payment in the app and the vendor confirms it. An order is only treated as paid once the payment has been confirmed (by Paystack or by the vendor).</li>
-      <li>Orders are paid in full through Levromart before delivery, and the money is held until the order is done. Once the payment is confirmed and the vendor marks the order out for delivery or handed over, you have 48 hours to confirm receipt or raise a dispute; if you do neither, the order completes automatically and the vendor is paid.</li>
+      <li>Every order on Levromart is paid through Levromart's secure checkout, powered by Paystack (card, bank transfer or USSD). Levromart never sees or stores your card details. Please do not pay a vendor outside the app: a payment made outside Levromart's checkout (cash, or a transfer straight to the vendor) is not held or protected by Levromart, and Levromart cannot refund it or decide a dispute about it. An order is only treated as paid once Paystack confirms the payment.</li>
+      <li>Orders are paid in full before delivery. The money you pay is collected by Paystack and kept in Levromart's Paystack balance (Levromart's single account for collecting, paying out and refunding money); it is not sent to the vendor until the order is done. Once the payment is confirmed and the vendor marks the order out for delivery or handed over, you have 48 hours to confirm receipt or raise a dispute; if you do neither, the order completes automatically and the vendor's share is added to the vendor's wallet.</li>
       <li>Vendors add their payout bank account in the app so they can be paid. Every customer must add a bank account in their own name for refunds; the app asks until one is saved. Whoever adds an account (vendor or customer) is responsible for making sure the details are correct and that the account is their own. Levromart is not responsible for any payout, withdrawal or refund sent to an account that was entered wrongly or does not belong to the person it was meant for, and such money may not be recoverable.</li>
-      <li>Money from orders paid through Levromart is held in the vendor's wallet once the order is complete. A vendor withdraws it by tapping Withdraw: money paid for 24 hours or more with no open dispute is sent to the vendor's bank account straight away, and newer money is sent after Levromart approves the request. Levromart may decline a withdrawal request and will give the reason. Money from an order with an open dispute is held until the dispute is settled. Amounts under ₦1,000, and withdrawals within 24 hours of a bank account change, are always checked by Levromart first and may be declined or delayed for safety. Levromart's commission is deducted from each payout.</li>
-      <li>Vendors are paid automatically once a sale is confirmed. Funds typically reach their bank account the next business day.</li>
+      <li>Once an order is complete, the vendor's share (the order amount minus Levromart's commission) shows in the vendor's Levromart wallet; the money itself stays in Levromart's Paystack balance until it is withdrawn. A vendor withdraws it by tapping Withdraw, and Levromart sends it from its Paystack balance to the vendor's payout bank account by Paystack transfer: money paid for 24 hours or more with no open dispute is sent straight away, and newer money is sent after Levromart approves the request. Levromart may decline a withdrawal request and will give the reason. Money from an order with an open dispute is held until the dispute is settled. Amounts under ₦100 (the smallest amount Paystack can send), and withdrawals within 24 hours of a bank account change, are always checked by Levromart first and may be declined or delayed for safety. Transfers usually arrive within minutes, but can take longer when a bank or Paystack is slow.</li>
       <li>Rentals may require a refundable deposit. If there's a dispute over damage or non-return, Levromart's dispute resolution process decides how it's handled, including a refund from Levromart where warranted.</li>
       <li>Vendors set their own prices. Eligible listings may use commission-based billing or a monthly listing fee; monthly listings require a ₦999 activation payment before they go live and the fee covers one month.</li>
-      <li>Some vendors accept offline payment (cash/transfer) on handover. Levromart still tracks any commission owed on commission-based listings.</li>
-      <li><strong>Commission payment window:</strong> when the customer paid through Levromart's checkout (Paystack), the commission is taken from that sale's payout and you never pay it separately. Commission on any other completed sale is due within a 7-day payment window. Your dashboard shows the amount owed and the time left, and we send reminders 5, 3, 2 and 1 days before the deadline. If the balance is still unpaid after the deadline, Levromart may pause the vendor's storefront until it is settled.</li>
+      <li><strong>Commission:</strong> Levromart's commission is taken from each sale's payout, so you never pay it separately. If commission is still owed from an earlier sale that was not paid through Levromart's checkout, it is due within a 7-day payment window. Your dashboard shows the amount owed and the time left, and we send reminders 5, 3, 2 and 1 days before the deadline. If the balance is still unpaid after the deadline, Levromart may pause the vendor's storefront until it is settled.</li>
     </ul>
 
     <h3>4. Messaging, calls &amp; chat history</h3>
@@ -71,13 +69,13 @@ function renderTerms() {
 function renderPrivacy() {
   return `<div class="legal-page">
     <h2>Privacy Policy</h2>
-    <p class="muted">Last updated: 28 October 2026</p>
+    <p class="muted">Last updated: 2 November 2026</p>
     <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
     <h3>1. What we collect</h3>
     <ul>
       <li><strong>Account data:</strong> name, email, phone, city, the school or campus you choose, and (for vendors) business details and verification documents such as a student ID card, biodata page, CAC document or, for sellers who are not students, another valid ID card.</li>
-      <li><strong>Payout details (vendors):</strong> the bank name, account number and account name you add so we can pay you.</li>
+      <li><strong>Payout details (vendors):</strong> the bank name, account number and account name you add so we can pay you. Paystack also keeps them as a transfer recipient so withdrawals can be sent from Levromart's Paystack balance.</li>
       <li><strong>Refund account (customers):</strong> the bank name, the account name and the last four digits of the account you add so we can pay refunds to you. We do not keep the full account number; the payment provider holds it as a transfer recipient. If the account cannot be saved straight away, the number is kept with your own login only until it can be saved, and is then removed.</li>
       <li><strong>Withdrawal records (vendors):</strong> when you withdraw money from your wallet we keep the amount, the time, the orders it covers and the decision, including the reason if Levromart declined a request.</li>
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
@@ -96,7 +94,7 @@ function renderPrivacy() {
 
     <h3>3. Who it's shared with</h3>
     <ul>
-      <li><strong>Paystack:</strong> to process payments (we send the order amount and your contact details needed for the payment).</li>
+      <li><strong>Paystack:</strong> to take payments, hold the money in Levromart's Paystack balance, and send withdrawals and refunds by bank transfer (we send the amount, your contact details, and the bank account details needed for the transfer).</li>
       <li><strong>Hosting and email providers:</strong> Vercel and Heroku run the app and its servers, and an email provider sends account and order emails.</li>
       <li><strong>Supabase:</strong> our database and file storage provider, which hosts the data described above.</li>
       <li><strong>Google Gemini:</strong> powers the in-app AI assistant; only the text of your chat messages is sent, never your account or order data.</li>
@@ -112,7 +110,7 @@ function renderPrivacy() {
     <p>Levromart saves some choices on your own phone or browser, such as your theme, product-card pattern, saved searches, and a saved copy of the app so it opens fast and works partly offline. You can clear these in your browser or phone settings; some features then reset to their defaults.</p>
 
     <h3>4. Your choices and rights</h3>
-    <p>You can edit your profile information from your account settings. If you want to close your Levromart account, contact Levromart Support; you can also hide the Levi assistant, switch off location sharing and manage notifications in Settings. Closure is subject to necessary legal, transaction, dispute, payment, fraud-prevention, and audit retention requirements. Operational records are not necessarily erased simply because an account is closed.</p>
+    <p>You can edit your profile information from your account settings. You can delete your account yourself from your account settings (you confirm with your password). A vendor can only delete their account once every order is completed or cancelled and no commission is owed. Deleting your account permanently removes your profile, shop, listings, orders, messages and Levi chats from Levromart, and it cannot be undone; please withdraw any money left in your wallet or refunds wallet first. Paystack keeps its own records of payments and transfers as the law requires it to. You can also hide the Levi assistant, switch off location sharing and manage notifications in Settings.</p>
     <p>Under the Nigeria Data Protection Act 2023 you may ask to see, correct or delete your personal data, object to some uses of it, and complain to the Nigeria Data Protection Commission. Contact us through a support request and we will respond within a reasonable time. Levromart is meant for people aged 18 and over.</p>
 
     <h3>5. Security</h3>
@@ -127,10 +125,10 @@ function renderPrivacy() {
 function renderRefundPolicy() {
   return `<div class="legal-page">
     <h2>Refund &amp; Cancellation Policy</h2>
-    <p class="muted">Last updated: 25 October 2026</p>
+    <p class="muted">Last updated: 2 November 2026</p>
 
     <h3>1. Before a vendor confirms your order</h3>
-    <p>You can cancel freely from your Orders page. Any payment already made online is refunded in full to your original payment method via Paystack (refunds typically reflect within 5 - 10 business days, per Paystack's processing time).</p>
+    <p>You can cancel freely from your Orders page. Anything you already paid for the order is refunded as described in section 8 (Paystack's payment fee is not refunded).</p>
 
     <h3>2. After a vendor confirms your order</h3>
     <p>If you haven't paid yet, you can still cancel freely from your Orders page any time before the vendor marks your order as handed over. If you have paid, you can still cancel yourself any time before the vendor marks the order out for delivery or handed over, and you get back what you paid for the order. Paystack's payment fee is not refunded. Once the order is out for delivery or handed over it can no longer be cancelled, and any problem goes through Levromart's dispute process instead. A vendor cannot cancel an order you have paid for: the vendor asks Levromart, and an admin decides; if it is approved you are refunded in the same way. Refunds are put in your Levromart refunds wallet when you have added a bank account for refunds, and you can withdraw them to that account whenever you like (withdrawals open 24 hours after you add or change the account). If you have not added an account, the refund goes back to the card you paid with. Please enter your account details carefully: Levromart is not responsible for a refund sent to an account number you entered wrongly. For rentals, once equipment has been handed over, the rental fee is non-refundable; only the refundable deposit (if any) is returned, and only after the equipment is returned in its original condition.</p>
@@ -139,7 +137,7 @@ function renderRefundPolicy() {
     <p>Rental deposits are meant to cover damage or non-return. If equipment is returned in its original condition, there's nothing further for you to do. If there's a disagreement about the equipment's condition or the deposit isn't returned, either side can raise a dispute for a Levromart admin to review, including a refund from Levromart where warranted.</p>
 
     <h3>4. Damaged, wrong, or misrepresented equipment</h3>
-    <p>If what arrives doesn't match the listing, or is faulty on arrival, raise a dispute from the order page within 48 hours of handover. Admins will review evidence from both sides and can direct a full or partial refund from the vendor's proceeds. While a dispute is open, the vendor cannot withdraw the money from that order; it stays held until the dispute is settled.</p>
+    <p>If what arrives doesn't match the listing, or is faulty on arrival, raise a dispute from the order page within 48 hours of handover. Admins will review evidence from both sides and can direct a full or partial refund from the money Levromart is holding for that order. While a dispute is open, the vendor cannot withdraw the money from that order; it stays held until the dispute is settled.</p>
 
     <h3>5. Vendor no-shows or non-delivery</h3>
     <p>If a vendor fails to deliver/hand over confirmed equipment, the customer is entitled to a full refund of any amount paid online through Levromart.</p>
@@ -151,7 +149,7 @@ function renderRefundPolicy() {
     <p>Sometimes a payment goes through but the order does not update straight away. Levromart checks with Paystack automatically and matches the payment to your order; this normally takes a few minutes. If it is still not updated after an hour, send a support request with your payment receipt. If a payment cannot be matched to an order, it is refunded to you.</p>
 
     <h3>8. How refunds are paid</h3>
-    <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
+    <p>Every order is paid through Levromart's checkout (Paystack), and the money stays in Levromart's Paystack balance until it goes to the vendor or back to you. A refund covers what you paid for the order; Paystack's payment fee is not refunded. If you have added a bank account for refunds, the refund goes into your Levromart refunds wallet and you withdraw it to that account whenever you like: Levromart sends it from its Paystack balance by bank transfer (the smallest amount that can be sent is ₦100, and withdrawals open 24 hours after you add or change the account). If you have not added an account, the refund goes back to the card or account you paid with through Paystack, which usually takes 5 - 10 business days. Once the vendor has been paid for an order, that money can no longer be refunded from Levromart's balance, so raise any problem within the time limit in section 4. Money paid outside Levromart's checkout (cash, or a transfer straight to the vendor) is not held by Levromart and cannot be refunded by Levromart.</p>
   </div>`;
 }
 
