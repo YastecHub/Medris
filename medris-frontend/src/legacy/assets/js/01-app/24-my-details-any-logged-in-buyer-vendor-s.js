@@ -100,10 +100,11 @@ window.lvAvatarChanged = function () {
 function renderEditProfile() {
   if (!session || !profile) return '<div class="empty-state">Please log in.</div>';
   return `<div class="ep-page lv-flat">
-  <h2 class="page-title"><i class="fa-solid fa-id-card"></i> My details ${infoPopoverHtml("editProfileInfo", "Keep this up to date. It's what fills in automatically at checkout, so a typo here won't follow you into every future order.")}</h2>
+  <h2 class="page-title">My details ${infoPopoverHtml("editProfileInfo", "Keep this up to date. It's what fills in automatically at checkout, so a typo here won't follow you into every future order.")}</h2>
   ${epPhotoBlockHtml(false)}
   ${epBannerBlockHtml()}
   <div id="editProfileError" class="error-text hidden"></div>
+  <section class="ep-card">
   <label>Full name</label>
   <input type="text" id="epName" value="${esc(profile.name || "")}" />
   <label>Phone number *</label>
@@ -112,11 +113,12 @@ function renderEditProfile() {
   <input type="text" id="epCity" value="${esc(profile.city || "")}" />
   <label>Delivery address</label>
   <textarea id="epAddress" rows="2" placeholder="e.g. Elkanemi Hostel, Block A, Room A12">${esc(profile.address || "")}</textarea>
-  <button class="btn" id="epSaveBtn" style="margin-top:1.1rem;width:100%;" onclick="submitEditProfile()"><i class="fa-solid fa-check"></i> Save changes</button>
-  ${vendor ? `<div class="ep-section"><h3><i class="fa-solid fa-store"></i> Your shop</h3>
+  <button class="btn" id="epSaveBtn" style="margin-top:1.1rem;width:100%;" onclick="submitEditProfile()">Save changes</button>
+  </section>
+  ${vendor ? `<div class="ep-section ep-card"><h3>Your shop</h3>
     <p class="muted">Business name, sector, opening hours, location and delivery settings.</p>
     <button class="btn btn-outline" style="width:100%;" onclick="navigate('vendorEditProfile')">Edit business profile</button></div>` : ""}
-  ${!vendor && profile.role !== "admin" ? `<div class="ep-section"><h3><i class="fa-solid fa-store"></i> Want to sell on Levromart?</h3>
+  ${!vendor && profile.role !== "admin" ? `<div class="ep-section ep-card"><h3>Want to sell on Levromart?</h3>
     <p class="muted">Open your own storefront and start listing products or services.</p>
     <button class="btn btn-outline" onclick="navigate('vendorApply')">Apply to become a vendor</button></div>` : ""}
   </div>`;

@@ -123,6 +123,7 @@
   }
 
   window.switchVendorsView = function (mode) {
+    if (mode === "map") { try { navigate("vendorsMap"); } catch (_) {} return; }   // the full-screen map is the only map
     vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "map";
     try { localStorage.setItem("levromart_vendors_view", vendorDirectoryMode); } catch (_) {}
     renderVendorDirectoryCards();
@@ -161,8 +162,9 @@
     // refreshes and revisits instead of snapping back to the map.
     try {
       const savedView = localStorage.getItem("levromart_vendors_view");
-      vendorDirectoryMode = ["grid", "list", "map"].includes(savedView) ? savedView : "map";
-    } catch (_) { vendorDirectoryMode = "map"; }
+      // the Vendors page opens as the grid (or the list if that was picked); the old inline map with its sideways row is no longer shown
+      vendorDirectoryMode = savedView === "list" ? "list" : "grid";
+    } catch (_) { vendorDirectoryMode = "grid"; }
     vendorDirectorySort = "shuffled";
     // The "Rent Items" quick action sets this to 'rent' before navigating
     // here -- but nothing ever reset it back, so it silently stayed 'rent'
