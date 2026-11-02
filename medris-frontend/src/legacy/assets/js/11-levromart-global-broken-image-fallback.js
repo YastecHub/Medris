@@ -36,28 +36,36 @@
   let pressTimer = null, longPressed = false, startX = 0, startY = 0;
   const HOLD_MS = 480, MOVE_TOLERANCE = 10;
 
+  function closeNotifSheet() {
+    const w = document.getElementById("notifSheetWrap"); if (!w) return;
+    w.classList.remove("in"); setTimeout(() => w.remove(), 260);
+  }
+  window.lvCloseNotifSheet = closeNotifSheet;
+  // The full notification as a sheet that slides up from the bottom: its picture or icon, title, the whole text, when it came, and a button to open it
   function showFullNotifText(item) {
     const title = item.querySelector("strong")?.textContent?.trim() || "Notification";
-    const body = item.querySelector(".muted")?.textContent?.trim() || "";
-    if (!body) return; // nothing hidden beyond what's already visible
-    let modal = document.getElementById("notifFullTextModal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "notifFullTextModal";
-      modal.className = "modal hidden";
-      modal.innerHTML =
-        '<div class="modal-content" style="max-width:420px;">' +
-        '<div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;">' +
-        '<h3 style="margin:0;" id="notifFullTextTitle"></h3>' +
-        '<button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'notifFullTextModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button>' +
-        "</div>" +
-        '<p id="notifFullTextBody" style="margin:.7rem 0 0;white-space:pre-wrap;line-height:1.45;"></p>' +
-        "</div>";
-      document.body.appendChild(modal);
-    }
-    modal.querySelector("#notifFullTextTitle").textContent = title;
-    modal.querySelector("#notifFullTextBody").textContent = body;
-    modal.classList.remove("hidden");
+    const muted = [...item.querySelectorAll(".muted")];
+    const body = muted[0]?.textContent?.trim() || "";
+    const when = muted.length > 1 ? muted[muted.length - 1]?.textContent?.trim() : "";
+    const lead = item.querySelector(".notification-system-icon, img.avatar-circle, .notification-avatar-fallback, .avatar-circle, .avatar-fallback");
+    document.getElementById("notifSheetWrap")?.remove();
+    const w = document.createElement("div");
+    w.id = "notifSheetWrap"; w.className = "nsheet-wrap";
+    w.innerHTML = '<div class="nsheet-back"></div><section class="nsheet" role="dialog" aria-modal="true"><div class="nsheet-handle"></div>' +
+      '<div class="nsheet-head"><span class="nsheet-lead"></span><div class="nsheet-titles"><h3></h3><small></small></div></div>' +
+      '<p class="nsheet-body"></p>' +
+      '<div class="nsheet-actions"><button type="button" class="nsheet-close">Close</button><button type="button" class="nsheet-open">Open</button></div></section>';
+    w.querySelector("h3").textContent = title;
+    w.querySelector("small").textContent = when;
+    const bodyEl = w.querySelector(".nsheet-body");
+    if (body) bodyEl.textContent = body; else bodyEl.remove();
+    if (lead) w.querySelector(".nsheet-lead").appendChild(lead.cloneNode(true));
+    else w.querySelector(".nsheet-lead").innerHTML = '<span class="notification-system-icon notif-type-icon" style="--nti:#64748b"><i class="fa-solid fa-bell"></i></span>';
+    w.querySelector(".nsheet-back").addEventListener("click", closeNotifSheet);
+    w.querySelector(".nsheet-close").addEventListener("click", closeNotifSheet);
+    w.querySelector(".nsheet-open").addEventListener("click", () => { closeNotifSheet(); try { item.click(); } catch (_) {} });
+    document.body.appendChild(w);
+    requestAnimationFrame(() => requestAnimationFrame(() => w.classList.add("in")));
   }
   function clearPressTimer() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
 
