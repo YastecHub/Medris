@@ -1,11 +1,12 @@
 // ---------- THEME ----------
 function syncSystemBarColorForTheme(theme) {
-  const meta = document.querySelector('meta[name="theme-color"]');
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
   const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
   const rootStyles = getComputedStyle(document.documentElement);
   const liveBg = (rootStyles.getPropertyValue("--bg") || "").trim();
   const fallback = { light: "#f5f7fa", dark: "#1b1f23", black: "#000000" };
-  if (meta) meta.setAttribute("content", liveBg || fallback[theme] || fallback.light);
+  // both tags (the light-phone one and the dark-phone one) follow the app's own theme, so the top of the phone always matches the app
+  metas.forEach((m) => m.setAttribute("content", liveBg || fallback[theme] || fallback.light));
   if (apple) apple.setAttribute("content", theme === "light" ? "default" : "black-translucent");
 }
 

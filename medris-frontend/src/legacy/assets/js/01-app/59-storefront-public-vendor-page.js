@@ -335,7 +335,8 @@ async function renderStorefrontInner(vendorId) {
   if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
   // The owner's account picture (the one on notifications), kept apart from the business logo.
-  try { v.profile_avatar_url = (await lvAttachOwnerAvatars([v]))[0].profile_avatar_url; } catch (_) {}
+  // Fetched alongside the products below (not before them) so opening a shop costs one wait, not two.
+  const ownerAvatarPromise = lvAttachOwnerAvatars([v]).then((r) => r[0].profile_avatar_url).catch(() => null);
   updateStorefrontSocialMeta(v);
 
   // allSettled, not all: these four are independent panels (stats, reviews,
@@ -351,7 +352,8 @@ async function renderStorefrontInner(vendorId) {
     sb.rpc("get_vendor_follow_state", { p_vendor_id: v.id }),
   ]);
 
-  const { data: products } = await productsPromise;
+  const [{ data: products }, ownerAvatar] = await Promise.all([productsPromise, Promise.race([ownerAvatarPromise, new Promise((r) => setTimeout(() => r(null), 1500))])]);
+  if (ownerAvatar) v.profile_avatar_url = ownerAvatar;
   // Cards need the shop's location and logo to work out delivery totals and fallbacks, so each product carries them.
   const allProducts = (products || []).map((pr) => ({ ...pr, vendor: pr.vendor || { id: v.id, business_name: v.business_name, logo_url: v.logo_url, lat: v.lat, lng: v.lng, delivery_fee: v.delivery_fee, delivery_fee_mode: v.delivery_fee_mode, delivery_fee_per_km: v.delivery_fee_per_km, verification_status: v.verification_status } }));
   window.__storefrontProducts = allProducts;

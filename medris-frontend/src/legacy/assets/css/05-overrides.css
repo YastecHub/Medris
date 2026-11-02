@@ -5254,9 +5254,8 @@ html:root:root body #app#app .lv-act-grid3 .lv-act-half .lv-act-desc{font-size:.
 html:root:root body #app#app .lv-act-grid3 .lv-act-half .lv-act-go{margin-top:auto;display:grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;background:rgba(255,255,255,.22);font-size:.68rem}
 html:root:root body #app#app .lv-act-grid3 .lv-act-half .lv-act-img{position:absolute;right:0;bottom:0;max-height:92%;max-width:50%;width:auto;height:auto;object-fit:contain;pointer-events:none}
 html:root:root body #app#app .lv-act-grid3 .lv-act-divider{position:absolute;left:0;right:0;top:50%;height:0;z-index:3;border-top:2px dashed rgba(255,255,255,.7);pointer-events:none}
-html:root:root body #app#app .lv-act-grid3 .lv-act-divider i{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:#fff;color:#5b4ee0;font-size:.7rem;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+html:root:root body #app#app .lv-act-grid3 .lv-act-divider i{display:none!important;position:absolute;left:50%;top:0;transform:translate(-50%,-50%);display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:#fff;color:#5b4ee0;font-size:.7rem;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 html:root:root body #app#app .lv-act-grid3 .lv-act-services,html:root:root body #app#app .lv-act-grid3 .lv-act-request{height:auto!important;min-height:108px!important}
-html:root:root body #app#app .lv-act-grid3 .lv-act-request{--lv-act:#2563eb}
 @media(min-width:720px){html:root:root body #app#app .lv-act-grid3{grid-template-columns:1.1fr 1fr 1fr!important;grid-template-rows:auto!important;max-width:none!important}html:root:root body #app#app .lv-act-grid3 .lv-act-merged{grid-row:auto;grid-column:auto;min-height:150px}html:root:root body #app#app .lv-act-grid3 .lv-act-services,html:root:root body #app#app .lv-act-grid3 .lv-act-request{min-height:150px!important}}
 
 /* Wallet header: label, palette button beside it, the eye at the far right (so the eye is easy to tap) */
@@ -5273,7 +5272,7 @@ html:root:root body #toastStack .toast-info i{color:#3b82f6!important}
 
 /* Home headings: no icon in front, and a plain arrow instead of "See all" */
 html:root:root body #app .section-title > i,html:root:root body #app .section-title > span > i,html:root:root body #app .section-title > img.lv3d,html:root:root body #app .section-title > span > img.lv3d{display:none!important}
-html:root:root body #app .section-title .section-title-link{font-size:0!important;line-height:0;display:inline-grid;place-items:center;width:2rem;height:2rem;border-radius:50%;background:color-mix(in srgb,var(--text) 6%,transparent)}
+html:root:root body #app .section-title .section-title-link{font-size:0!important;line-height:0;display:inline-grid;place-items:center;width:2rem;height:2rem;border-radius:50%;background:transparent!important}
 html:root:root body #app .section-title .section-title-link i{font-size:.9rem!important;line-height:1;margin:0!important}
 
 /* The home carousel banners: no polka dots */
@@ -5345,3 +5344,9 @@ html.lv-restoring,html.lv-restoring body{scroll-behavior:auto!important}
 /* "Follow us everywhere" banner: the social icons sit midway between "@levromart" and the link line at the bottom */
 html:root:root body #app#app .lv-fy-follow .lv-fy-soc{top:46cqw}
 html:root:root:root:root:root:root:root body #app#app#app#app .vd-views,html:root:root:root:root:root:root:root body #app#app#app#app .vd-toprow .vd-views{display:none!important}
+
+/* Round 3: divider arrow gone; "See all" arrows follow the theme (dark in light mode, white in dark); Request card green again */
+html:root:root:root body #app#app .lv-act-grid3 .lv-act-divider i{display:none!important}
+html:root:root:root body #app#app .section-title .section-title-link,html:root:root:root body #app#app .section-title .section-title-link i{color:#111827!important;-webkit-text-fill-color:#111827!important;background:transparent!important;box-shadow:none!important;border:0!important}
+html:root[data-theme="dark"]:root:root body #app#app .section-title .section-title-link,html:root[data-theme="dark"]:root:root body #app#app .section-title .section-title-link i,html:root[data-theme="black"]:root:root body #app#app .section-title .section-title-link,html:root[data-theme="black"]:root:root body #app#app .section-title .section-title-link i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root body #app#app .lv-act-grid3 .lv-act-request{--lv-act:#16b982!important;background:#16b982!important}

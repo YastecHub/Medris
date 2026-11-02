@@ -878,11 +878,15 @@
   var heights = {};
   try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
   function view0() { try { return currentView; } catch (_) { return ""; } }
+  var pageSnaps = {};
   var vendorsSnap = null;   // the Vendors page as it looked when we left it (grid/list only), so Back can show it at once
   function remember() {
     try {
       var a = document.getElementById("app"), m = null; try { m = localStorage.getItem("levromart_vendors_view"); } catch (_) {}
       if (a && view0() === "vendors" && m !== "map" && a.querySelector("#vendorsGrid .vd-card, #vendorsGrid > *:not(.vd-skel)")) vendorsSnap = a.innerHTML;
+      // Home and a shop's page are remembered the same way, so Back shows them at once instead of rebuilding them
+      if (a && view0() === "home" && a.querySelector(".lv-act-grid")) pageSnaps.home = a.innerHTML;
+      else if (a && view0() === "storefront" && a.querySelector(".storefront-profile-name")) { var sp = history.state && history.state.params; if (sp && sp.vendorId) pageSnaps["storefront|" + sp.vendorId] = a.innerHTML; }
     } catch (_) {}
     var k = keyOf(true);
     if (!k) return;
@@ -923,6 +927,9 @@
       }
       if (pushHistory === false && view === "vendors" && vendorsSnap && view0() !== "vendors") {
         try { document.getElementById("app").innerHTML = vendorsSnap; } catch (_) {}
+      }
+      if (pushHistory === false && view0() !== view && (view === "home" || view === "storefront")) {
+        try { var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId); if (pageSnaps[sk]) document.getElementById("app").innerHTML = pageSnaps[sk]; } catch (_) {}
       }
       var r = await orig.apply(this, arguments);
       if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
@@ -1336,6 +1343,7 @@
   var t = 0;
   new MutationObserver(function () { if (t || busy) return; if (!document.getElementById("homePromotionalCarousel")) return; t = setTimeout(function () { t = 0; inject(); }, 120); }).observe(document.body, { childList: true, subtree: true });
   setInterval(function () { if (!document.hidden) inject(); }, 120000);
+  document.addEventListener("lv-spot-changed", function () { setTimeout(inject, 50); });
   // every few seconds: new products on the flyers, new colours on the banners
   function swapProducts() {
     var pool = window.__lvWvPool; if (document.hidden || !pool || pool.length < 4) return;
