@@ -5439,3 +5439,16 @@ html body .lvqr-card.is-map .lvqr-link{display:none}
 
 /* The initials square in the map card: centred, in the shop's own tint */
 html body #app .vmpage .vmp-card-logo .vmp-card-ini{position:absolute;inset:0;display:grid;place-items:center;background:var(--vmp-bg,#e6f4ec);color:var(--vmp-fg,#1b5e3c);font-size:1.15rem;font-weight:850;letter-spacing:.02em;line-height:1}
+
+/* Dragging: the pin, Levi and the cart button must own their touch (a global "buttons may be tapped or scrolled" rule was winning
+   over the pin's own setting, so the phone cancelled the drag after a few pixels) */
+html body button.lv-mapfab,html body #aiChatFab,html body #cartFab{touch-action:none!important;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+
+
+/* Map: no small green dot on the picked vendor's picture in the row; the school badge on the winner banner */
+html body #app .vmpage .vmp-rail-active-dot,html body #app .vmpage .vmp-rail-item.on .vmp-rail-active-dot{display:none!important}
+html body #app .lv-wv .lv-wv-school{display:inline-flex;align-items:center;gap:.3rem;margin-right:.45rem;padding:.12rem .5rem .12rem .15rem;border-radius:999px;background:rgba(255,255,255,.92);color:#14201a;font-size:.68rem;font-weight:800;vertical-align:middle}
+html body #app .lv-wv .lv-wv-school-logo{display:inline-grid;place-items:center;width:1.35rem;height:1.35rem;border-radius:50%;overflow:hidden;background:#fff}
+html body #app .lv-wv .lv-wv-school-logo img{width:100%;height:100%;object-fit:contain}
+html body #app .lv-wv .lv-wv-school-logo .lvc-ini{width:100%;height:100%;display:grid;place-items:center;font-size:.55rem;font-weight:800;color:#fff;border-radius:50%}
+html body #app .lv-wv .lv-wv-school b{font-weight:800}

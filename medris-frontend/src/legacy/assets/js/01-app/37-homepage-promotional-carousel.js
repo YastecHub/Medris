@@ -294,7 +294,7 @@ function initHomepageCarousel() {
   homeCarouselPause(HOME_CAROUSEL_INTERVAL_MS);
   homeCarouselTimer = setInterval(() => {
     if (!viewport.isConnected) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; return; }
-    if (document.hidden || !visible || Date.now() < homeCarouselResumeAt) return;
+    if (document.hidden || window.__lvDragging || !visible || Date.now() < homeCarouselResumeAt) return;
     const step = homeCarouselStep(viewport);
     if (!step) return;
     const idx = Math.round(viewport.scrollLeft / step);

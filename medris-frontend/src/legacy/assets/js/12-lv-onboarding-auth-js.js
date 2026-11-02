@@ -392,27 +392,8 @@
 })();
 
 /* ---- lm-b3-js ---- */
-/* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
-(function(){
-  function setup(row){
-    if(row.__lmLoop||row.children.length<4) return;
-    row.__lmLoop=true;
-    var orig=[].slice.call(row.children);
-    [0,1].forEach(function(){orig.forEach(function(n){var c=n.cloneNode(true);c.setAttribute("aria-hidden","true");row.appendChild(c);});});
-    var snap=row.style.scrollSnapType; row.style.scrollSnapType="none";
-    requestAnimationFrame(function(){
-      var w=row.scrollWidth/3; if(!w){return;}
-      row.scrollLeft=w; row.style.scrollSnapType=snap;
-      row.addEventListener("scroll",function(){
-        var w=row.scrollWidth/3, x=row.scrollLeft;
-        if(x<w*0.4) row.scrollLeft=x+w; else if(x>w*1.6) row.scrollLeft=x-w;
-      },{passive:true});
-    });
-  }
-  var t=0;
-  function scan(){ t=0; document.querySelectorAll("#app .hscroll.trending-scroll:not(.service-trending-scroll), #app .hscroll.top-rated-vendors-scroll").forEach(setup); }
-  new MutationObserver(function(){ if(!t) t=setTimeout(scan,150); }).observe(document.documentElement,{childList:true,subtree:true});
-})();
+/* (removed) The Trending and Featured rows used to be copied three times and silently jumped back to the middle, so the same cards
+   kept coming round. They are now plain rows: Trending adds every product once (see 14-motion.js), then ends. */
 /* 30-second in-app reminders (while the app is open): unread chats, unfinished orders */
 (function(){
   function run(){
@@ -1253,6 +1234,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     return '<span class="lvc-ini" style="background:linear-gradient(135deg,hsl('+h+',58%,46%),hsl('+((h+40)%360)+',62%,34%))">'+esc2(inits(r))+'</span>';
   }
   window.lvCampusIni=function(id){return iniHtml(rec(id));};
+  window.lvCampusLogoHtml=function(id){return logoHtml(rec(id));};
   window.lvCampuses=load;
   window.lvCampusById=function(id){return rec(id);};
   window.lvMyCampusId=function(){
@@ -1485,7 +1467,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   }
   // change the campus view from anywhere without leaving the page (Home repaints its own grid, other pages just re-filter)
   window.lvSetViewCampus=function(id){
-    if(document.getElementById("productGrid")) return setView(id);
+    if(document.getElementById("productGrid")){ var rv=setView(id); try{ document.dispatchEvent(new Event("lv-spot-changed")); }catch(_){} return rv; }   // the winner banner and "Who's winning?" change at once
     try{localStorage.setItem("lv-view-campus",id);}catch(_){}
     var bar=document.getElementById("lvCampusBar"); if(bar){ var h0=barHtml(); bar.innerHTML=h0; bar.__lvH=h0; spotIcon(bar); }
     try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}

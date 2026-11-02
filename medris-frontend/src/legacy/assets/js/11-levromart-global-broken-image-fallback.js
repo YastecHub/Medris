@@ -1389,7 +1389,8 @@ function hideLeviFromPanel() {
   async function homeSpot() {
     const cc = campusOnly(), want = cc || null;
     if (LB.spot && (LB.spotFor || null) === want && Date.now() - spotAt < 90000) return LB.spot;
-    if (spotBusy) return LB.spot;
+    for (let waited = 0; spotBusy && waited < 4000; waited += 100) await new Promise((r) => setTimeout(r, 100));   // a request for another campus is still running: wait for it, then ask again
+    if (LB.spot && (LB.spotFor || null) === want && Date.now() - spotAt < 90000) return LB.spot;
     spotBusy = true;
     try {
       let data = null, usedCampus = null;

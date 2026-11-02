@@ -96,7 +96,7 @@ window.lvBand3Winner = async function () {
     if (!slot || typeof window.lvVendorSpot !== "function") return;
     const spot = await window.lvVendorSpot();
     const w = (spot && spot.leaders && spot.leaders[0]) || (spot && spot.winner);
-    if (!w || !w.business_name) return;
+    if (!w || !w.business_name) { slot.innerHTML = ""; slot.classList.remove("on"); slot.parentNode.querySelector(".lv-b3-trophy")?.classList.remove("hidden"); return; }
     slot.innerHTML = profileAvatarHtml(w.logo_url, w.business_name, "100%", { extraClass: "lv-band-logo-img" });
     slot.classList.add("on");
     // fixed circle, whatever the stylesheet says: the logo must never grow over the whole slide
@@ -722,3 +722,10 @@ async function buyPackage(packageId) {
   }, { passive: true });
 })();
 
+
+// Choosing Mine or All campuses changes "Who's winning?" at once
+document.addEventListener("lv-spot-changed", () => {
+  try { document.querySelectorAll(".lv-band-b[data-lbw]").forEach((b) => b.removeAttribute("data-lbw-done")); } catch (_) {}
+  try { window.lvBand3Winner && window.lvBand3Winner(); } catch (_) {}
+  try { window.lvBandWinner && window.lvBandWinner(); } catch (_) {}
+});
