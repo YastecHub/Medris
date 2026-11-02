@@ -1239,7 +1239,7 @@
   function schoolChip() {
     var id = scopeId(); if (!id || typeof window.lvCampusLogoHtml !== "function") return "";
     var nm = ""; try { nm = window.lvCampusShort ? window.lvCampusShort(id) : ""; } catch (_) {}
-    return '<span class="lv-wv-school" title="' + esc2(nm) + '"><span class="lv-wv-school-logo">' + window.lvCampusLogoHtml(id) + "</span>" + (nm ? "<b>" + esc2(nm) + "</b>" : "") + "</span>";
+    return '<span class="lv-wv-school" title="' + esc2(nm) + '"><span class="lv-wv-school-logo">' + window.lvCampusLogoHtml(id) + "</span></span>";
   }
   function slide(kind, w, rows, hue) {
     var id = esc2(w.vendor_id), nm = esc2(w.business_name);

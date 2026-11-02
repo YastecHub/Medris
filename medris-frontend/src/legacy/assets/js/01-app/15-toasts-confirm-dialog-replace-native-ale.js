@@ -39,6 +39,9 @@ function notificationSystemIconHtml(n) {
     stock_alert: ["fa-box-open", A], product_wishlisted: ["fa-heart", R], product_comment: ["fa-comment", B],
     comment_liked: ["fa-thumbs-up", B], comment_reply: ["fa-reply", B], vendor_follow: ["fa-user-plus", B],
     vendor_follow_update: ["fa-bullhorn", G], points: ["fa-trophy", A], points_winner: ["fa-crown", A],
+    payout_sent: ["fa-money-bill-transfer", "#059669"], payout_on_hold: ["fa-pause-circle", A], payout_failed: ["fa-triangle-exclamation", R],
+    payout_account_changed: ["fa-building-columns", B], withdrawal_approved: ["fa-circle-check", "#059669"], withdrawal_rejected: ["fa-circle-xmark", R],
+    withdrawal_requested: ["fa-hand-holding-dollar", V], refund_sent: ["fa-rotate-left", A],
   };
   let hit = map[T];
   if (T === "order_status_changed") {
@@ -46,6 +49,8 @@ function notificationSystemIconHtml(n) {
       : /confirm/i.test(title) ? ["fa-clipboard-check", "#16a34a"] : /hand|deliver/i.test(title) ? ["fa-truck-fast", B]
       : /return/i.test(title) ? ["fa-rotate-left", A] : /unresolved/i.test(title) ? ["fa-hourglass-half", V] : /dispute/i.test(title) ? ["fa-scale-balanced", R] : ["fa-arrows-rotate", B];
   }
+  if (!hit && /^payout|^withdraw/.test(T)) hit = ["fa-money-bill-transfer", "#059669"];
+  if (!hit && /^refund/.test(T)) hit = ["fa-rotate-left", A];
   if (!hit) hit = ["fa-bell", GR];
   return `<span class="notification-system-icon notif-type-icon" style="--nti:${hit[1]}"><i class="fa-solid ${hit[0]}"></i></span>`;
 }

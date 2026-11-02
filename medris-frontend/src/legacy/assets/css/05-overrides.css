@@ -5371,8 +5371,8 @@ html body .lv-mapfab .mf-halo,html body .lv-mapfab .mf-orbit,html body .lv-mapfa
 :root:root:root:root:root body #app .hscroll.trending-scroll .product-card-wrap .product-card-total-line{padding-top:.8rem!important;padding-bottom:.2rem!important;margin-bottom:-.7rem!important}
 
 /* Product share card on screen: shorter picture and a smaller code, so the whole card is closer to a square */
-html body .lvqr-card.is-product .lvqr-cover{height:130px!important}
-html body .lvqr-card.is-product .lvqr-code{width:min(190px,56vw)!important}
+html body .lvqr-card.is-product .lvqr-cover{height:auto!important;aspect-ratio:4/3;background-size:contain!important;background-repeat:no-repeat!important;background-position:center!important;background-color:#eef3f1!important}
+html body .lvqr-card.is-product .lvqr-code{width:min(170px,50vw)!important}
 
 /* Lighter scrolling: cards and wish-list hearts no longer carry a live blur / shadow effect that the phone must redo on every frame */
 html body #app .card,html body #app .modal-content,html body #app .levro-square-product-card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
@@ -5503,3 +5503,18 @@ html body .modal.lv-ap-sheet .lv-pm-actions .btn{height:48px;border-radius:14px;
 #lvSwipeHint .lvsh-a.l{animation:lvshL 1.1s ease-in-out infinite}
 #lvSwipeHint .lvsh-a.r{animation:lvshR 1.1s ease-in-out infinite}
 @media(prefers-reduced-motion:reduce){#lvSwipeHint .lvsh-a{animation:none}}
+
+/* Admin Payments buttons: the same flat, rounded look as "Approve" on a vendor (no pill, no glow, no full-width bars) */
+html:root:root:root:root:root:root:root:root:root body #app .lv-ap-row .lv-ap-acts{display:flex!important;flex-wrap:wrap;justify-content:flex-end;gap:.45rem!important;width:auto!important;margin-top:.5rem!important}
+html:root:root:root:root:root:root:root:root:root body #app .lv-ap-row .lv-ap-acts .btn{background-image:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;min-height:2.4rem!important;padding:.45rem .95rem!important;border-radius:12px!important;font-size:.84rem!important;font-weight:700!important;border:1.5px solid #16a06a!important;background:#16a06a!important;color:#fff!important;-webkit-text-fill-color:#fff!important;width:auto!important;flex:0 0 auto}
+html:root:root:root:root:root:root:root:root:root body #app .lv-ap-row .lv-ap-acts .btn.btn-outline{background:transparent!important;border-color:color-mix(in srgb,var(--text,#111) 25%,transparent)!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+html:root:root:root:root:root:root:root:root:root body #app .lv-ap-row .lv-ap-acts .btn.btn-danger{background:rgba(224,70,63,.1)!important;border-color:rgba(224,70,63,.5)!important;color:#d1343a!important;-webkit-text-fill-color:#d1343a!important}
+
+/* Product page buttons (Place order / Book now): plain and flat, no gloss, no emboss */
+html:root:root:root:root:root:root body #app .pd-buy-actions .btn:not(.btn-outline){background:#16a06a!important;background-image:none!important;border:1.5px solid #16a06a!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-radius:14px!important;font-weight:700!important}
+html:root:root:root:root:root:root body #app .pd-buy-actions .btn:not(.btn-outline):active{background:#128a5b!important}
+html:root:root:root:root:root:root body #app .pd-buy-actions .btn.btn-outline{box-shadow:none!important;background-image:none!important;border-radius:14px!important}
+
+/* The school badge on the winner banner is just the school's logo (round, a little larger) */
+html body #app .lv-wv .lv-wv-school{padding:.12rem;margin-right:.4rem}
+html body #app .lv-wv .lv-wv-school-logo{width:1.7rem;height:1.7rem}

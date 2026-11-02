@@ -393,7 +393,7 @@ async function lvOpenProfileShare(kind, targetId) {
     lvDrawQr(qrC, link, colours, img ? "" : initials, img);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
-    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1400 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;
+    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1520 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;
     const x = out.getContext("2d");
     const bg = x.createLinearGradient(0, 0, 1080, out.height); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
     x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
@@ -402,14 +402,21 @@ async function lvOpenProfileShare(kind, targetId) {
     x.textAlign = "center";
     let y = 130;
     if (isProduct) {
-      if (heroImg) cover2(x, heroImg, 120, 90, 840, 330, 40); y = 90 + 330;
+      if (heroImg) {
+        // the whole product is shown (not cropped): the photo, blurred and faded, fills the box and the sharp photo sits inside it
+        cover2(x, heroImg, 120, 90, 840, 520, 40);
+        x.save(); rrect(x, 120, 90, 840, 520, 40); x.clip(); x.fillStyle = "rgba(255,255,255,0.62)"; x.fillRect(120, 90, 840, 520);
+        const sc = Math.min(820 / heroImg.width, 500 / heroImg.height), hw = heroImg.width * sc, hh = heroImg.height * sc;
+        x.drawImage(heroImg, 120 + (840 - hw) / 2, 90 + (520 - hh) / 2, hw, hh); x.restore();
+      }
+      y = 90 + 520;
       x.fillStyle = "#14201a"; x.font = "800 56px system-ui,sans-serif"; x.fillText(String(name).slice(0, 30), 540, y + 80);
       if (priceText) { x.fillStyle = colours[1]; x.font = "800 64px system-ui,sans-serif"; x.fillText(priceText, 540, y + 152); }
       x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif";
       const sold = "Sold by " + String(byName).slice(0, 26);
       const tw = x.measureText(sold).width, avatarImg = img;
       if (avatarImg) { const cx = 540 - (tw + 72) / 2 + 28; x.save(); x.beginPath(); x.arc(cx, y + 205, 28, 0, Math.PI * 2); x.clip(); const sq = Math.min(avatarImg.width, avatarImg.height); x.drawImage(avatarImg, (avatarImg.width - sq) / 2, (avatarImg.height - sq) / 2, sq, sq, cx - 28, y + 177, 56, 56); x.restore(); x.textAlign = "left"; x.fillText(sold, cx + 44, y + 217); x.textAlign = "center"; } else x.fillText(sold, 540, y + 217);
-      x.drawImage(qrC, 315, y + 250, 450, 450); y = y + 250 + 450;
+      x.drawImage(qrC, 330, y + 245, 420, 420); y = y + 245 + 420;
     } else {
       const mo = isMap ? 230 : 0;
       if (isMap) {
