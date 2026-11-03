@@ -1891,7 +1891,7 @@
     var notes = "";
     if (d && d.held > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-scale-balanced"></i> <b>' + money(d.held) + '</b> on hold' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>';
     if (d && d.asked > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-hourglass-half"></i> <b>' + money(d.asked) + '</b> waiting for Levromart to approve</div>';
-    if (d && d.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-calendar-day"></i> <span><b>' + money(d.delayed) + '</b> will be sent to your bank on the next business day. Card payments reach Levromart\'s Paystack account a business day after the buyer pays, and your payout goes out automatically as soon as they land.</span></div>';
+    if (d && d.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-calendar-day"></i> <span><b>' + money(d.delayed) + '</b> arrives in your bank next business day.</span></div>';
     var ICO = { paid: "fa-arrow-down-long", onway: "fa-paper-plane", ready: "fa-wallet", asked: "fa-user-clock", held: "fa-scale-balanced", pending: "fa-hourglass-half" };
     return '<div class="lvw-card lvw2' + (compact ? " is-compact" : "") + '">' +
       '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
@@ -2072,7 +2072,7 @@
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
-      '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes. Money from a recent card payment is sent on the next business day, because Paystack passes card payments to Levromart a business day after the buyer pays; it goes out automatically, you do not need to do anything.</li>' +
+      '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes. Money from a very recent card payment goes out automatically the next business day.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
       '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
