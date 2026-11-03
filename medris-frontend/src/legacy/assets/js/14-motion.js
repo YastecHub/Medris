@@ -1895,9 +1895,9 @@
     var ICO = { paid: "fa-arrow-down-long", onway: "fa-paper-plane", ready: "fa-wallet", asked: "fa-user-clock", held: "fa-scale-balanced", pending: "fa-hourglass-half" };
     return '<div class="lvw-card lvw2' + (compact ? " is-compact" : "") + '">' +
       '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
-      '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button>' +
+      '<button type="button" class="lvw-help" onclick="lvWalletHow()" aria-label="How your wallet works and wallet colour"><i class="fa-solid fa-circle-question"></i></button>' +
       '<span class="lvw-top-sp"></span>' +
-      '<button type="button" class="lvw-help" onclick="lvWalletHow()" aria-label="How your wallet works"><i class="fa-solid fa-circle-question"></i></button></div>' +
+      '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
       '<div class="lvw-row"><div class="lvw-row-l"><div class="lvw-bal-label">Not yet in your bank</div>' +
       '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div></div>' +
       '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button></div>' +
@@ -2075,7 +2075,7 @@
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
       '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes, but can take longer when a bank or Paystack is slow.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
-      '</ul>');
+      '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
 
   function wrapRenderers() {
@@ -2257,7 +2257,7 @@ window.lvAskCancel = async function (orderId) {
   window.lvRefundEye = function () { rHide = !rHide; try { localStorage.setItem("lv-rw-hide", rHide ? "1" : "0"); } catch (_) {} paint(); };
   function card(d) {
     var pa = pendingAcct(), has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
-    return '<div class="lvw-card lvw2 is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button><span class="lvw-top-sp"></span></div>' +
+    return '<div class="lvw-card lvw2 is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-help" onclick="lvRefundHow()" aria-label="How refunds work and wallet colour"><i class="fa-solid fa-circle-question"></i></button><span class="lvw-top-sp"></span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
       '<div class="lvw-row"><div class="lvw-row-l"><div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Refund account saved" : "Add a bank account for refunds") + '</div>' +
       '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div></div>' +
       (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change" : "Add bank") + '</button>') + '</div>' +
@@ -2281,6 +2281,13 @@ window.lvAskCancel = async function (orderId) {
   }
   function say(el, msg, bad) { if (el) { el.textContent = msg; el.className = "lvw-sheet-msg" + (bad ? " lvw-sheet-warn" : ""); el.hidden = !msg; } }
 
+  window.lvRefundHow = function () {
+    sheet("Your refunds wallet",
+      '<ul class="lvw-how"><li><b>Refunds land here.</b> If an order you paid for is cancelled, or a problem is settled in your favour, the money is put in this wallet.</li>' +
+      '<li><b>Withdraw any time.</b> Tap <b>Withdraw</b> to send it to your refund bank account (from \u20a6100). Withdrawals open 24 hours after you add or change the account.</li>' +
+      '<li><b>No account yet?</b> Add one so refunds can reach you. It must be an account in your own name.</li></ul>' +
+      (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
+  };
   window.lvRefundAccount = async function (fromPopup) {
     var m = sheet(fromPopup ? "Where should we send your refunds?" : "Refund bank account",
       '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">If an order is cancelled or a problem is settled in your favour, the money is put in your refunds wallet. You can withdraw it to this account any time. It must be an account in your own name. Check the details carefully: Levromart is not responsible for money sent to an account that was entered wrongly.</p>' +
@@ -2979,6 +2986,19 @@ window.lvAskCancel = async function (orderId) {
   // an installed app can be woken from the background: put the saved colour back whenever it comes forward
   document.addEventListener("visibilitychange", function () { if (!document.hidden) apply(read()); });
   window.addEventListener("pageshow", function () { apply(read()); });
+  // the colour choice lives in the wallet's help sheet (the "?" beside the wallet's name)
+  var NAMES = { "": "Green", violet: "Violet", ocean: "Ocean", sunset: "Sunset", rose: "Rose", midnight: "Midnight" };
+  window.lvWalletColoursHtml = function () {
+    var cur = document.documentElement.getAttribute("data-lvw-theme") || "";
+    return '<div class="lvw-colours"><div class="lvw-colours-h">Wallet colour</div><div class="lvw-swatches" role="radiogroup" aria-label="Wallet colour">' +
+      THEMES.map(function (t) { return '<button type="button" role="radio" aria-checked="' + (t === cur) + '" class="lvw-sw lvw-sw-' + (t || "green") + (t === cur ? " on" : "") + '" onclick="lvWalletSetTheme(\'' + t + '\')"><span class="lvw-sw-dot">' + (t === cur ? '<i class="fa-solid fa-check"></i>' : "") + '</span><small>' + NAMES[t] + '</small></button>'; }).join("") +
+      '</div></div>';
+  };
+  window.lvWalletSetTheme = function (t) {
+    if (THEMES.indexOf(t) < 0) t = "";
+    apply(t); save(t);
+    document.querySelectorAll(".lvw-colours").forEach(function (box) { var tmp = document.createElement("div"); tmp.innerHTML = window.lvWalletColoursHtml(); box.replaceWith(tmp.firstChild); });
+  };
   window.lvWalletTheme = function (e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     var cur = document.documentElement.getAttribute("data-lvw-theme") || "";
@@ -2986,7 +3006,7 @@ window.lvAskCancel = async function (orderId) {
     apply(next); save(next);
   };
   function addButtons() {
-    document.querySelectorAll(".lvw-card .lvw-top").forEach(function (top) {
+    document.querySelectorAll(".lvw-card:not(.lvw2) .lvw-top").forEach(function (top) {
       if (top.querySelector(".lvw-theme-btn")) return;
       var b = document.createElement("button");
       b.type = "button"; b.className = "lvw-theme-btn"; b.title = "Change wallet colour"; b.setAttribute("aria-label", "Change wallet colour");
