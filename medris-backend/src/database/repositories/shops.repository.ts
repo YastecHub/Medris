@@ -298,6 +298,12 @@ export class ShopsRepository {
     return jsonRow(this.db, sql`select matric_pending, matric_number, not_student from public.vendor_student_verification where vendor_id = ${vendorId}`);
   }
 
+  /** The user who owns a shop (null when there is no such shop). */
+  async ownerOf(vendorId: string): Promise<string | null> {
+    const r = await jsonRow<{ user_id: string }>(this.db, sql`select user_id from public.vendors where id = ${vendorId}`);
+    return r?.user_id ?? null;
+  }
+
   /** The admin's decision; the shop's "Verified student" badge follows it. Returns the shop owner. */
   async decideStudentVerification(vendorId: string, status: string, note: string | null, adminId: string): Promise<string | null> {
     await this.db.execute(sql`

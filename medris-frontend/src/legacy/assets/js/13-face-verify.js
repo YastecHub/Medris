@@ -280,7 +280,7 @@
      +'<div class="lvsr-grid"><div><small>Matric</small><b>'+(sv.matric_pending?'Not yet available':esc(sv.matric_number))+'</b></div><div><small>Level</small><b>'+esc(sv.level)+'</b></div><div><small>Faculty</small><b>'+esc(sv.faculty)+'</b></div><div><small>Department</small><b>'+esc(sv.department)+'</b></div></div>'
      +'<div class="lvsr-ai">'+(window.lvFaceStatusHtml(sv)||'<span class="lvf-chip bad"><i class="fa-solid fa-camera"></i> No selfie yet</span>')+'</div>'
      +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x){ if(/\.pdf(\?|$)/i.test(x[1])) return '<a class="req-ph-thumb lvsr-pdf" href="'+esc(x[1])+'" target="_blank" rel="noopener"><i class="fa-regular fa-file-pdf"></i><span>'+esc(x[0])+' (PDF)</span></a>'; var n=imgIdx++; return '<button type="button" class="req-ph-thumb" data-i="'+n+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
-     +(sv.status==="approved"?'':'<textarea id="lvsrNote" placeholder="Note to the vendor (shown if rejected)"></textarea>')
+     +'<textarea id="lvsrNote" placeholder="Write to the vendor, for example: please add your matric number"></textarea><button type="button" class="lvsr-send" data-a="message"><i class="fa-regular fa-paper-plane"></i> Send message (does not approve or reject)</button>'
      +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+""+'>'+(sv.not_student?'Verify seller':'Verify student')+'</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>'
      +appActs;
     card.addEventListener("click",async function(e){
@@ -288,6 +288,16 @@
       var b=e.target.closest("[data-a]"); if(!b) return; var a=b.dataset.a;
       if(a==="store"){ close(); try{navigate("storefront",{vendorId:vendorId});}catch(_){} return; }
       if(a==="app-ok"||a==="app-no"){ appAction(a,b); return; }
+      if(a==="message"){
+        var txt=((card.querySelector("#lvsrNote")||{}).value||"").trim();
+        if(txt.length<2){ showToast("Write your message first.","error"); return; }
+        b.disabled=true;
+        var sent=await sb.rpc("admin_review_student_verification",{p_vendor_id:vendorId,p_status:"message",p_note:txt});
+        b.disabled=false;
+        if(sent.error){ showToast(sent.error.message||"Couldn't send the message.","error"); return; }
+        var box=card.querySelector("#lvsrNote"); if(box) box.value="";
+        showToast("Message sent. The vendor's status is unchanged.","success"); return;
+      }
       if(a==="approved"&&sv.matric_pending&&!sv.not_student){
         var sure=await showConfirmDialog("This student has no matric number yet. Do you want to verify them anyway? Only continue if you have checked their ID card and other documents.",{title:"Verify without a matric number?",okLabel:"Yes, verify them",cancelLabel:"Go back",icon:"fa-user-check"});
         if(!sure) return;
