@@ -1887,23 +1887,30 @@
   function card(d, compact) {
     var eye = hidden();
     var balance = d ? d.pending + d.onWay + (d.ready || 0) + (d.held || 0) + (d.asked || 0) : 0;
-    return '<div class="lvw-card' + (compact ? " is-compact" : "") + '">' +
+    var last = d && d.tx && d.tx[0];
+    var notes = "";
+    if (d && d.held > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-scale-balanced"></i> <b>' + money(d.held) + '</b> on hold' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>';
+    if (d && d.asked > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-hourglass-half"></i> <b>' + money(d.asked) + '</b> waiting for Levromart to approve</div>';
+    if (d && d.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-clock"></i> <b>' + money(d.delayed) + '</b> is taking longer than usual. It will be sent automatically.</div>';
+    var ICO = { paid: "fa-arrow-down-long", onway: "fa-paper-plane", ready: "fa-wallet", asked: "fa-user-clock", held: "fa-scale-balanced", pending: "fa-hourglass-half" };
+    return '<div class="lvw-card lvw2' + (compact ? " is-compact" : "") + '">' +
       '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
-      '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
-      '<div class="lvw-bal-label">Balance not yet in your bank</div>' +
-      '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div>' +
-      '<div class="lvw-split">' +
-        '<div><span>Pending</span><b>' + (d ? money(d.pending) : "—") + '</b><small>until the buyer confirms</small></div>' +
-        '<div><span>Ready</span><b>' + (d ? money(d.ready) : "—") + '</b><small>you can withdraw</small></div>' +
-        '<div><span>On its way</span><b>' + (d ? money(d.onWay) : "—") + '</b><small>to your bank</small></div>' +
-      '</div>' +
-      (d && d.held > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-circle-exclamation"></i> On hold <b>' + money(d.held) + '</b>' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>' : '') +
-      (d && d.asked > 0 ? '<div class="lvw-paidline lvw-asked"><i class="fa-solid fa-hourglass-half"></i> Waiting for Levromart to approve your withdrawal <b>' + money(d.asked) + '</b></div>' : '') +
-      (d && d.delayed > 0 ? '<div class="lvw-paidline lvw-delayed"><i class="fa-solid fa-clock"></i> <b>' + money(d.delayed) + '</b> is taking a little longer than usual to reach your bank. It will be sent automatically; you do not need to do anything.</div>' : '') +
-      '<div class="lvw-paidline">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
-      '<div class="lvw-actions"><button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' +
-      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="navigate(\'vendorWallet\')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
-      '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvWalletHow()"><i class="fa-solid fa-circle-question"></i> Help</button>' +
+      '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button>' +
+      '<span class="lvw-top-sp"></span>' +
+      '<button type="button" class="lvw-help" onclick="lvWalletHow()" aria-label="How your wallet works"><i class="fa-solid fa-circle-question"></i></button></div>' +
+      '<div class="lvw-row"><div class="lvw-row-l"><div class="lvw-bal-label">Not yet in your bank</div>' +
+      '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div></div>' +
+      '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button></div>' +
+      '<div class="lvw-mini">' +
+        '<span><i class="lvw-dot pending"></i>Pending <b>' + (d ? money(d.pending) : "—") + '</b></span>' +
+        '<span><i class="lvw-dot ready"></i>Ready <b>' + (d ? money(d.ready) : "—") + '</b></span>' +
+        '<span><i class="lvw-dot onway"></i>On its way <b>' + (d ? money(d.onWay) : "—") + '</b></span>' +
+      '</div>' + notes +
+      (compact ? "" : '<div class="lvw-note lvw-note-plain">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>') +
+      '<div class="lvw-hist">' +
+        '<button type="button" class="lvw-hist-head" onclick="lvWalletOpen(\'tx\')"><span>Transaction history</span><i class="fa-solid fa-chevron-right"></i></button>' +
+        (last ? '<button type="button" class="lvw-last" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(last.id) + '\'})"><span class="lvw-ico ' + last.state + '"><i class="fa-solid ' + (ICO[last.state] || "fa-receipt") + '"></i></span><span class="lvw-last-m"><strong>' + esc(last.title) + '</strong><small>' + esc(LABEL[last.state] || "") + " · " + esc(when(last.date)) + '</small></span><b class="lvw-amt ' + last.state + '">' + money(last.amount) + '</b></button>'
+          : '<div class="lvw-last lvw-last-empty">' + (d ? "No transactions yet. Payments made through Levromart show here." : '<span class="lvw-skel"></span>') + '</div>') +
       '</div>' +
       (d && !d.hasPayout ? '<button type="button" class="lvw-warn" onclick="lvGoToPayout()"><i class="fa-solid fa-triangle-exclamation"></i> Add your bank account so we can pay you <i class="fa-solid fa-chevron-right"></i></button>' : "") +
     '</div>';
@@ -2037,8 +2044,8 @@
     if (!canInst) { appr = askAmt; inst = 0; }
     var h = '<div class="lvw-wd">';
     if (s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> ' + esc(s.blocked) + "</p>";
-    h += '<div class="lvw-wd-row"><span>Sent to your bank right now</span><b>' + NOW(inst) + '</b></div><small>Money paid for 48 hours ago or more.</small>' +
-      '<div class="lvw-wd-row"><span>Needs Levromart\'s approval</span><b>' + NOW(appr) + '</b></div><small>Paid less than 48 hours ago. We check and reply, you will get a message.</small>';
+    h += '<div class="lvw-wd-row"><span>Sent to your bank right now</span><b>' + NOW(inst) + '</b></div><small>Money paid 24 hours ago or more.</small>' +
+      '<div class="lvw-wd-row"><span>Needs Levromart\'s approval</span><b>' + NOW(appr) + '</b></div><small>Paid less than 24 hours ago. We check and reply, you will get a message.</small>';
     if (held > 0) h += '<div class="lvw-wd-row lvw-wd-held"><span>On hold (disputed order)</span><b>' + NOW(held) + '</b></div><small>This stays held until the dispute is settled. The rest of your money is not affected.</small>';
     if (s.open_request) h += '<p class="lvw-sheet-msg"><i class="fa-solid fa-user-clock"></i> You already have a request of ' + NOW(Number(s.open_request.amount_kobo)) + ' waiting for approval.</p>';
     if (s.recent_bank_change != null && !s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> You changed your bank account recently, so Levromart checks every withdrawal first. It can still be approved.</p>';
@@ -2066,7 +2073,7 @@
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
-      '<li><b>On its way.</b> Your money is being sent to your bank. Bank transfers normally arrive the next business day; weekends and public holidays can add a day or two.</li>' +
+      '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes, but can take longer when a bank or Paystack is slow.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
       '</ul>');
   };
@@ -2250,15 +2257,13 @@ window.lvAskCancel = async function (orderId) {
   window.lvRefundEye = function () { rHide = !rHide; try { localStorage.setItem("lv-rw-hide", rHide ? "1" : "0"); } catch (_) {} paint(); };
   function card(d) {
     var pa = pendingAcct(), has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
-    return '<div class="lvw-card is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
-      '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Your refund account is saved" : "Refunds go here once you add a bank account") + '</div>' +
-      '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div>' +
-      (pend ? '<div class="lvrw-note">' + mR(pend) + ' on its way to your bank</div>' : "") +
-      '<div class="lvw-actions">' +
-        (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change bank account" : "Add bank account") + '</button>') +
-        '<button type="button" class="lvw-btn lvw-btn-ghost" onclick="lvRefundHistory()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>' +
-      '</div>' +
-      (has ? '<div class="lvrw-acct"><i class="fa-solid fa-building-columns"></i> ' + esc(d.account.bank_name) + " · ···" + esc(d.account.last4) + ' <button type="button" onclick="lvRefundAccount()">Change</button></div>' : "") +
+    return '<div class="lvw-card lvw2 is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button><span class="lvw-top-sp"></span></div>' +
+      '<div class="lvw-row"><div class="lvw-row-l"><div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Refund account saved" : "Add a bank account for refunds") + '</div>' +
+      '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div></div>' +
+      (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change" : "Add bank") + '</button>') + '</div>' +
+      (pend ? '<div class="lvw-note"><i class="fa-solid fa-paper-plane"></i> <b>' + mR(pend) + '</b> on its way to your bank</div>' : "") +
+      (has ? '<div class="lvw-note lvw-note-plain"><i class="fa-solid fa-building-columns"></i> ' + esc(d.account.bank_name) + " · ···" + esc(d.account.last4) + ' <button type="button" class="lvw-inline" onclick="lvRefundAccount()">Change</button></div>' : "") +
+      '<div class="lvw-hist"><button type="button" class="lvw-hist-head" onclick="lvRefundHistory()"><span>Refund history</span><i class="fa-solid fa-chevron-right"></i></button></div>' +
     '</div>';
   }
   function paint() {
@@ -3307,4 +3312,151 @@ window.lvAskCancel = async function (orderId) {
   setTimeout(maybe, WAIT_MS);
   // for checking a card on a preview: lvShowPromo("safe" | "levi" | "near" | "sell")
   window.lvShowPromo = function (key) { show(CARDS.filter(function (c) { return c.key === key; })[0] || CARDS[0]); };
+})();
+
+/* ---- Orders page, tidied (lvo-): a title row with Stats and History, no "Payment unresolved" tab (Paystack confirms
+   payments itself now), short clean order cards and a small empty state. Shared by the shop's and the buyer's pages. ---- */
+(function () {
+  "use strict";
+  // the status tabs: "Payment unresolved" only appears while it is the chosen filter (still in the Filter list for old orders)
+  var origPills = window.orderStatusPillsHtml;
+  if (typeof origPills === "function") {
+    window.orderStatusPillsHtml = function (view, status) {
+      var html = origPills.apply(this, arguments);
+      if (status === "payment_unresolved") return html;
+      return String(html).replace(/<button type="button" data-status="payment_unresolved"[\s\S]*?<\/button>/, "");
+    };
+  }
+  window.lvToggleOrderStats = function (btn) {
+    var sec = document.getElementById("orderStatsAccordion"); if (!sec) return;
+    var open = !sec.classList.contains("open");
+    sec.classList.toggle("open", open);
+    if (btn) { btn.classList.toggle("on", open); btn.setAttribute("aria-expanded", String(open)); }
+    if (open && typeof renderOrderStatsBody === "function") renderOrderStatsBody();
+  };
+  var HIST = 'aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>';
+  function tidy(html, isVendor) {
+    html = String(html == null ? "" : html);
+    if (html.indexOf("orders-title-row") < 0 || html.indexOf("lvo-ready") >= 0) return html;
+    var stats = isVendor && html.indexOf("orderStatsAccordion") >= 0 ? '<button type="button" class="orders-icon-btn lvo-pill" onclick="lvToggleOrderStats(this)" aria-expanded="false" aria-label="Order stats"><i class="fa-solid fa-chart-simple"></i><span>Stats</span></button>' : "";
+    var i = html.indexOf(HIST);
+    if (i >= 0) {
+      var b = html.lastIndexOf("<button", i);
+      html = html.slice(0, b) + stats + html.slice(b, i).replace('class="orders-icon-btn', 'class="orders-icon-btn lvo-pill') + 'aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></button>' + html.slice(i + HIST.length);
+    }
+    return html.replace('class="orders-title-row"', 'class="orders-title-row lvo-ready"');
+  }
+  function wrap(name, isVendor) {
+    var f = window[name]; if (typeof f !== "function" || f.__lvo) return;
+    var w = async function () { return tidy(await f.apply(this, arguments), isVendor && arguments[5] !== "purchases"); };
+    w.__lvo = true; w.__lvw = f.__lvw; w.__lvrw = f.__lvrw; window[name] = w;
+  }
+  function wrapAll() { wrap("renderVendorOrders", true); wrap("renderCustomerOrders", false); }
+  wrapAll(); setTimeout(wrapAll, 1300); setTimeout(wrapAll, 4200);
+
+  // order cards
+  var origList = window.orderListHtml;
+  var STATUS = { pending: "Pending", confirmed: "Confirmed", handed_over: "Handed over", returned: "Returned", payment_unresolved: "Payment check", disputed: "Disputed", completed: "Completed", cancelled: "Cancelled" };
+  function shortDate(iso) { try { var d = new Date(iso), t = new Date(); var same = d.toDateString() === t.toDateString(); return same ? "Today, " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); } catch (_) { return ""; } }
+  window.orderListHtml = function (orders, isCustomerView, sourcePerspective) {
+    if (typeof orderListViewMode !== "undefined" && orderListViewMode === "table" && origList) return origList.apply(this, arguments);
+    var src = sourcePerspective ? ",source:'" + sourcePerspective + "'" : "";
+    if (!orders || !orders.length) {
+      var onlyHistory = window.__orderHistoryEmpty === false;
+      var acts = isCustomerView
+        ? '<button type="button" class="btn lvo-btn" onclick="navigate(\'home\')"><i class="fa-solid fa-bag-shopping"></i> Start shopping</button>'
+        : (typeof vendor !== "undefined" && vendor && vendor.id ? '<button type="button" class="btn lvo-btn" onclick="navigate(\'storefront\',{vendorId:\'' + esc(vendor.id) + '\'})"><i class="fa-solid fa-share-nodes"></i> View and share your shop</button>' : "");
+      return '<div class="lvo-empty"><span class="lvo-empty-ico">' + (typeof lvIllus === "function" ? lvIllus("box", 64) : '<i class="fa-solid fa-box-open"></i>') + '</span>' +
+        '<strong>' + (onlyHistory ? "No active orders" : "No orders yet") + '</strong>' +
+        '<span>' + (onlyHistory ? "Finished orders are in History." : isCustomerView ? "Orders you place will show up here." : "When a customer orders from you, it shows up here and you get a notification.") + '</span>' + acts + '</div>';
+    }
+    var expanded = typeof orderListExpanded !== "undefined" && orderListExpanded;
+    var size = typeof ORDER_LIST_PAGE_SIZE !== "undefined" ? ORDER_LIST_PAGE_SIZE : 5;
+    var shown = expanded ? orders : orders.slice(0, size);
+    var more = orders.length > size ? '<button type="button" class="lvo-more" onclick="toggleOrderListExpanded()">' + (expanded ? 'Show less <i class="fa-solid fa-chevron-up"></i>' : 'Show all ' + orders.length + ' orders <i class="fa-solid fa-chevron-down"></i>') + '</button>' : "";
+    return '<div class="lvo-list">' + shown.map(function (o) {
+      var items = o.items || [], first = items[0], prod = first && first.product;
+      var title = prod && prod.name ? prod.name + (items.length > 1 ? " +" + (items.length - 1) + " more" : "") : "Order";
+      var qty = first && Number(first.quantity) > 1 && items.length === 1 ? " ×" + first.quantity : "";
+      var photo = (prod && prod.photos && prod.photos[0]) || (isCustomerView && o.vendor && o.vendor.logo_url) || "";
+      var party = isCustomerView ? (o.vendor && o.vendor.business_name) || "Vendor" : (o.buyer && o.buyer.name) || (o.status === "pending" ? "New customer" : "Customer");
+      var stage = typeof lvOrderStageLabel === "function" ? lvOrderStageLabel(o) : "";
+      var label = stage || STATUS[o.status] || String(o.status || "").replace(/_/g, " ");
+      var cls = stage ? "paid" : (o.status || "");
+      var iso = typeof orderActivityIso === "function" ? orderActivityIso(o) : o.created_at;
+      return '<button type="button" class="order-list-card lvo-card" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(o.id) + "'" + src + '})">' +
+        '<span class="lvo-media">' + (photo ? '<img src="' + esc(photo) + '" alt="" loading="lazy" decoding="async" draggable="false">' : '<i class="fa-solid ' + (prod && prod.is_service ? "fa-hand-holding-heart" : "fa-box") + '"></i>') + '</span>' +
+        '<span class="lvo-main">' +
+          '<span class="lvo-l1"><strong>' + esc(title) + esc(qty) + '</strong><b>' + (typeof naira === "function" ? naira(o.total_amount) : "₦" + o.total_amount) + '</b></span>' +
+          '<span class="lvo-l2"><i class="fa-solid ' + (isCustomerView ? "fa-store" : "fa-user") + '"></i> ' + esc(party) + '</span>' +
+          '<span class="lvo-l3"><small>#' + esc(String(o.id || "").slice(0, 8).toUpperCase()) + (iso ? " · " + esc(shortDate(iso)) : "") + '</small><span class="lvo-st lvo-st-' + esc(cls) + '">' + esc(label) + '</span></span>' +
+        '</span></button>';
+    }).join("") + '</div>' + more;
+  };
+})();
+
+/* ---- vendors map, tidied (lvm-): opens on a vendor (nearest first) with its card showing, a Google-Maps-style
+   "my location" button, and a neat map-type sheet (picture previews + a switch for vendor names). ---- */
+(function () {
+  "use strict";
+  var LOC_SVG = '<svg class="lvm-loc" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="2"/><circle class="lvm-loc-dot" cx="12" cy="12" r="3.4" fill="currentColor"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  var LAYER_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 8.2 12 13.4l9.5-5.2L12 3Z" fill="currentColor" opacity=".9"/><path d="m4.3 11.6-1.8 1L12 17.8l9.5-5.2-1.8-1L12 15.8l-7.7-4.2Z" fill="currentColor" opacity=".6"/><path d="m4.3 15.4-1.8 1L12 21.6l9.5-5.2-1.8-1L12 19.6l-7.7-4.2Z" fill="currentColor" opacity=".4"/></svg>';
+  function swapIcons() {
+    var loc = document.getElementById("vmpLocate");
+    if (loc && !loc.querySelector(".lvm-loc")) loc.innerHTML = LOC_SVG;
+    var lay = document.querySelector(".vmpage .vmp-fabs .vmp-fab");
+    if (lay && !lay.querySelector("svg")) { lay.innerHTML = LAYER_SVG; lay.classList.add("lvm-layers"); }
+    try { if (loc) loc.classList.toggle("on", !!(typeof buyerLocation !== "undefined" && buyerLocation)); } catch (_) {}
+  }
+  window.vmpDrawSheet = function () {
+    var box = document.getElementById("vmpStyles"); if (!box) return;
+    var styles = typeof VMP_STYLES !== "undefined" ? VMP_STYLES : {};
+    var cur = typeof vmpStyle !== "undefined" ? vmpStyle : "streets";
+    var names = typeof vmpDetails !== "undefined" && vmpDetails && vmpDetails.names;
+    box.innerHTML = '<div class="vmp-sheet-back" onclick="vmpToggleStyles()"></div><div class="vmp-sheet lvm-sheet" role="dialog" aria-label="Map type">' +
+      '<div class="lvm-grab" aria-hidden="true"></div>' +
+      '<div class="vmp-sheet-head"><strong>Map type</strong><button type="button" aria-label="Close" onclick="vmpToggleStyles()"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<div class="lvm-types">' + Object.keys(styles).map(function (k) {
+        return '<button type="button" class="lvm-type' + (k === cur ? " on" : "") + '" onclick="vmpSetStyle(\'' + k + '\')" aria-pressed="' + (k === cur) + '"><span class="lvm-prev lvm-prev-' + k + '"><i class="lvm-road r1"></i><i class="lvm-road r2"></i><i class="lvm-road r3"></i><i class="lvm-pin"></i>' + (k === cur ? '<span class="lvm-check"><i class="fa-solid fa-check"></i></span>' : "") + '</span><small>' + esc(styles[k].label) + '</small></button>';
+      }).join("") + '</div>' +
+      '<div class="lvm-sec">Map details</div>' +
+      '<button type="button" class="lvm-row" role="switch" aria-checked="' + !!names + '" onclick="vmpDetails.names=!vmpDetails.names;vmpDrawSheet();vmpDrawPins()"><span class="lvm-row-ico"><i class="fa-solid fa-tag"></i></span><span class="lvm-row-t"><strong>Vendor names</strong><small>Show every shop\'s name under its pin</small></span><span class="lvm-switch' + (names ? " on" : "") + '"><i></i></span></button>' +
+    '</div>';
+  };
+  // open on a vendor: once the pins are drawn and nothing is picked yet, pick the nearest (or the first) and show its card
+  function lockOn(tries) {
+    try {
+      if (typeof vmpMap === "undefined" || !vmpMap || !document.getElementById("vmpRail")) { if (tries < 40) setTimeout(function () { lockOn(tries + 1); }, 150); return; }
+      if (vmpSelected) return;
+      var list = typeof vmpRailList === "function" ? vmpRailList() : [];
+      if (!list.length) { if (tries < 40) setTimeout(function () { lockOn(tries + 1); }, 150); return; }
+      var asked = vmpAskedLoc; vmpAskedLoc = true;   // opening the map must not pop up a location request by itself
+      vmpSelect(list[0].id, true, false, true);
+      vmpAskedLoc = asked;
+    } catch (_) {}
+  }
+  var origInit = window.initVendorsMapPage;
+  if (typeof origInit === "function" && !origInit.__lvm) {
+    var w = async function () {
+      var out = await origInit.apply(this, arguments);
+      swapIcons();
+      if (!window.__lvmLocked) { window.__lvmLocked = true; setTimeout(function () { window.__lvmLocked = false; lockOn(0); }, 450); }
+      return out;
+    };
+    w.__lvm = true; window.initVendorsMapPage = w;
+  }
+  // without the person's location there is no real distance: show the shop and a button to turn location on (not "~0 m")
+  var origRouteCard = window.vmpRouteCardDraw;
+  if (typeof origRouteCard === "function") window.vmpRouteCardDraw = function (v) {
+    var hasLoc = false; try { hasLoc = !!(typeof buyerLocation !== "undefined" && buyerLocation) || !!vmpRouteInfo; } catch (_) {}
+    if (!v || hasLoc) return origRouteCard.apply(this, arguments);
+    var box = document.getElementById("vmpRouteCard"); if (!box) return;
+    box.innerHTML = vmpCardHtml(v) + '<button type="button" class="lvm-dist" onclick="vmpLocate()"><span class="lvm-dist-ico">' + LOC_SVG + '</span><span><strong>See how far this shop is</strong><small>Turn on your location for distance and travel times</small></span><i class="fa-solid fa-chevron-right"></i></button>';
+    box.classList.add("vmp-route-merged"); box.classList.remove("hidden");
+    var ex = document.getElementById("vmpExpandedCard"); if (ex) ex.classList.add("hidden");
+  };
+  var origLocate = window.vmpLocate;
+  if (typeof origLocate === "function") window.vmpLocate = async function () { var r = await origLocate.apply(this, arguments); swapIcons(); return r; };
+  var lvmRaf = 0;
+  new MutationObserver(function () { if (lvmRaf) return; lvmRaf = requestAnimationFrame(function () { lvmRaf = 0; if (document.getElementById("vmPage")) swapIcons(); }); }).observe(document.getElementById("app") || document.body, { childList: true, subtree: true });
 })();
