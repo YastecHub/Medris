@@ -5913,3 +5913,19 @@ html:root:root body .lvw-card.lvw2 .lvw-hist+.lvw-warn{margin:12px 0}
 .lvw-sw-sunset .lvw-sw-dot{background:linear-gradient(135deg,#c2410c,#facc15)}
 .lvw-sw-rose .lvw-sw-dot{background:linear-gradient(135deg,#9f1239,#fb923c)}
 .lvw-sw-midnight .lvw-sw-dot{background:linear-gradient(135deg,#0f172a,#334155)}
+
+/* ---- wallet: Withdraw at the bottom right of the top part, and a slim one-line history strip (like Opay) ---- */
+html:root:root body .lvw-card.lvw2 .lvw-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:12px 0 12px}
+html:root:root body .lvw-card.lvw2 .lvw-foot-l{min-width:0;display:flex;flex-direction:column;gap:1px}
+html:root:root body .lvw-card.lvw2 .lvw-foot-l small{font-size:.68rem;opacity:.75}
+html:root:root body .lvw-card.lvw2 .lvw-foot-l b{font-size:.86rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html:root:root body .lvw-card.lvw2 .lvw-foot .lvw-btn-withdraw{min-height:36px;padding:0 16px}
+html:root:root body .lvw-card.lvw2 .lvw-strip{position:relative;z-index:1;display:flex;align-items:center;gap:8px;width:calc(100% + 32px);margin:0 -16px;padding:0 16px;height:40px;border:0;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.26);color:#fff;font-size:.76rem;text-align:left;cursor:pointer;border-radius:0}
+html:root:root body .lvw-card.lvw2 .lvw-strip-ic{font-size:.72rem;opacity:.85}
+html:root:root body .lvw-card.lvw2 .lvw-strip-t{font-weight:700;white-space:nowrap}
+html:root:root body .lvw-card.lvw2 .lvw-strip-last{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:6px;opacity:.85}
+html:root:root body .lvw-card.lvw2 .lvw-strip-nm{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html:root:root body .lvw-card.lvw2 .lvw-strip-last b{font-weight:800;white-space:nowrap}
+html:root:root body .lvw-card.lvw2 .lvw-strip-t+.lvw-strip-go{margin-left:auto}
+html:root:root body .lvw-card.lvw2 .lvw-strip-go{font-size:.66rem;opacity:.75}
+html:root:root body .lvw-card.lvw2 .lvw-strip+.lvw-warn{margin:10px 0 12px}

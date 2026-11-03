@@ -1891,27 +1891,26 @@
     var notes = "";
     if (d && d.held > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-scale-balanced"></i> <b>' + money(d.held) + '</b> on hold' + (d.heldReason ? ' · ' + esc(d.heldReason) : ' · dispute') + '</div>';
     if (d && d.asked > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-hourglass-half"></i> <b>' + money(d.asked) + '</b> waiting for Levromart to approve</div>';
-    if (d && d.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-clock"></i> <b>' + money(d.delayed) + '</b> is taking longer than usual. It will be sent automatically.</div>';
+    if (d && d.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-calendar-day"></i> <span><b>' + money(d.delayed) + '</b> will be sent to your bank on the next business day. Card payments reach Levromart\'s Paystack account a business day after the buyer pays, and your payout goes out automatically as soon as they land.</span></div>';
     var ICO = { paid: "fa-arrow-down-long", onway: "fa-paper-plane", ready: "fa-wallet", asked: "fa-user-clock", held: "fa-scale-balanced", pending: "fa-hourglass-half" };
     return '<div class="lvw-card lvw2' + (compact ? " is-compact" : "") + '">' +
       '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
       '<button type="button" class="lvw-help" onclick="lvWalletHow()" aria-label="How your wallet works and wallet colour"><i class="fa-solid fa-circle-question"></i></button>' +
       '<span class="lvw-top-sp"></span>' +
       '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
-      '<div class="lvw-row"><div class="lvw-row-l"><div class="lvw-bal-label">Not yet in your bank</div>' +
-      '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div></div>' +
-      '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button></div>' +
+      '<div class="lvw-bal-label">Not yet in your bank</div>' +
+      '<div class="lvw-bal">' + (d ? money(balance) : '<span class="lvw-skel"></span>') + '</div>' +
       '<div class="lvw-mini">' +
         '<span><i class="lvw-dot pending"></i>Pending <b>' + (d ? money(d.pending) : "—") + '</b></span>' +
         '<span><i class="lvw-dot ready"></i>Ready <b>' + (d ? money(d.ready) : "—") + '</b></span>' +
         '<span><i class="lvw-dot onway"></i>On its way <b>' + (d ? money(d.onWay) : "—") + '</b></span>' +
       '</div>' + notes +
-      (compact ? "" : '<div class="lvw-note lvw-note-plain">Paid out so far <b>' + (d ? money(d.paidOut) : "—") + '</b></div>') +
-      '<div class="lvw-hist">' +
-        '<button type="button" class="lvw-hist-head" onclick="lvWalletOpen(\'tx\')"><span>Transaction history</span><i class="fa-solid fa-chevron-right"></i></button>' +
-        (last ? '<button type="button" class="lvw-last" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(last.id) + '\'})"><span class="lvw-ico ' + last.state + '"><i class="fa-solid ' + (ICO[last.state] || "fa-receipt") + '"></i></span><span class="lvw-last-m"><strong>' + esc(last.title) + '</strong><small>' + esc(LABEL[last.state] || "") + " · " + esc(when(last.date)) + '</small></span><b class="lvw-amt ' + last.state + '">' + money(last.amount) + '</b></button>'
-          : '<div class="lvw-last lvw-last-empty">' + (d ? "No transactions yet. Payments made through Levromart show here." : '<span class="lvw-skel"></span>') + '</div>') +
-      '</div>' +
+      '<div class="lvw-foot"><div class="lvw-foot-l"><small>Paid out so far</small><b>' + (d ? money(d.paidOut) : "—") + '</b></div>' +
+      '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvWalletWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button></div>' +
+      // one slim strip, like Opay: "Transaction history", the latest one in short, and an arrow
+      '<button type="button" class="lvw-strip" onclick="lvWalletOpen(\'tx\')"><i class="fa-solid fa-clock-rotate-left lvw-strip-ic"></i><span class="lvw-strip-t">Transaction history</span>' +
+        (last ? '<span class="lvw-strip-last"><span class="lvw-strip-nm">' + esc(last.title) + '</span><b>' + money(last.amount) + '</b></span>' : "") +
+        '<i class="fa-solid fa-chevron-right lvw-strip-go"></i></button>' +
       (d && !d.hasPayout ? '<button type="button" class="lvw-warn" onclick="lvGoToPayout()"><i class="fa-solid fa-triangle-exclamation"></i> Add your bank account so we can pay you <i class="fa-solid fa-chevron-right"></i></button>' : "") +
     '</div>';
   }
@@ -2073,7 +2072,7 @@
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
-      '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes, but can take longer when a bank or Paystack is slow.</li>' +
+      '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes. Money from a recent card payment is sent on the next business day, because Paystack passes card payments to Levromart a business day after the buyer pays; it goes out automatically, you do not need to do anything.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
       '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
@@ -2258,12 +2257,12 @@ window.lvAskCancel = async function (orderId) {
   function card(d) {
     var pa = pendingAcct(), has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
     return '<div class="lvw-card lvw2 is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-help" onclick="lvRefundHow()" aria-label="How refunds work and wallet colour"><i class="fa-solid fa-circle-question"></i></button><span class="lvw-top-sp"></span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
-      '<div class="lvw-row"><div class="lvw-row-l"><div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Refund account saved" : "Add a bank account for refunds") + '</div>' +
-      '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div></div>' +
-      (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change" : "Add bank") + '</button>') + '</div>' +
+      '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Refund account saved" : "Refunds you are owed land here") + '</div>' +
+      '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div>' +
       (pend ? '<div class="lvw-note"><i class="fa-solid fa-paper-plane"></i> <b>' + mR(pend) + '</b> on its way to your bank</div>' : "") +
-      (has ? '<div class="lvw-note lvw-note-plain"><i class="fa-solid fa-building-columns"></i> ' + esc(d.account.bank_name) + " · ···" + esc(d.account.last4) + ' <button type="button" class="lvw-inline" onclick="lvRefundAccount()">Change</button></div>' : "") +
-      '<div class="lvw-hist"><button type="button" class="lvw-hist-head" onclick="lvRefundHistory()"><span>Refund history</span><i class="fa-solid fa-chevron-right"></i></button></div>' +
+      '<div class="lvw-foot"><div class="lvw-foot-l">' + (has ? '<small>Refund account</small><b>' + esc(d.account.bank_name) + " ···" + esc(d.account.last4) + ' <button type="button" class="lvw-inline" onclick="lvRefundAccount()">Change</button></b>' : '<small>Refund account</small><b>Not added yet</b>') + '</div>' +
+      (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change bank" : "Add bank") + '</button>') + '</div>' +
+      '<button type="button" class="lvw-strip" onclick="lvRefundHistory()"><i class="fa-solid fa-clock-rotate-left lvw-strip-ic"></i><span class="lvw-strip-t">Refund history</span><i class="fa-solid fa-chevron-right lvw-strip-go"></i></button>' +
     '</div>';
   }
   function paint() {
