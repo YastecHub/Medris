@@ -954,7 +954,8 @@ function hideLeviFromPanel() {
   function paintHeroWinner() {
     const el = $("lbHeroWinner"); if (!el) return;
     const w = LB.spot?.winner, cc = campusOnly(), scoped = !!cc && LB.spotFor === cc;
-    if (!w || (!scoped && !inView(w.vendor_id))) { el.hidden = true; return; }
+    // no Vendor of the Week for the chosen campus (yet): the floating products come from that campus's own shops, never another campus's winner
+    if (!w || (!scoped && !inView(w.vendor_id))) { el.hidden = true; paintHeroProducts(cc ? "campus:" + cc : ""); return; }
     const d0 = new Date(w.week_start + "T00:00:00"), start = new Date(d0.getTime() + 7 * 864e5), end = new Date(start.getTime() + 6 * 864e5);
     const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     el.hidden = false;
@@ -968,8 +969,22 @@ function hideLeviFromPanel() {
   async function paintHeroProducts(vid) {
     const box = $("lbHeroProds"); if (!box || box.dataset.v === String(vid)) return;
     box.dataset.v = String(vid);
+    clearInterval(window.__lbProdTimer);
+    if (!vid) { box.innerHTML = ""; return; }
+    box.innerHTML = "";   // the old products leave at once, so another campus's never linger while the new ones load
     try {
-      const r = await sb.from("products").select("id,name,photos").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(30);
+      let r;
+      const campus = String(vid).indexOf("campus:") === 0 ? String(vid).slice(7) : "";
+      if (campus) {
+        // this week's campus leaders first, then any shop whose home campus it is
+        const lead = ((LB.spotFor === campus && LB.spot && LB.spot.leaders) || []).map((x) => x.vendor_id).filter(Boolean);
+        const vs = await sb.from("vendors").select("id").eq("campus_id", campus).is("deleted_at", null).limit(80);
+        const ids = [...new Set(lead.concat(((vs && vs.data) || []).map((x) => x.id)))];
+        if (!ids.length) { const b0 = $("lbHeroProds"); if (b0 && b0.dataset.v === String(vid)) b0.innerHTML = ""; return; }
+        r = await sb.from("products").select("id,name,photos").in("vendor_id", ids).eq("status", "active").order("created_at", { ascending: false }).limit(40);
+      } else {
+        r = await sb.from("products").select("id,name,photos").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(30);
+      }
       const pool = ((r && r.data) || []).filter((p) => p.photos && p.photos[0]);
       // a different mix every time the page opens, not always the newest three
       for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
