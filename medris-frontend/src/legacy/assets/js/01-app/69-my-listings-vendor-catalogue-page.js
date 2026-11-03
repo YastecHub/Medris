@@ -268,6 +268,7 @@ async function renderVendorProducts() {
       // warning) and made a grid of listings unreadable. It's still all
       // here -- just moved behind a tap on the card into a details popup,
       // so the surface only shows the photo, name and the action buttons.
+      (window.__vlDetailsRaw = window.__vlDetailsRaw || {})[p.id] = { p, favCount, revenue: revenueByProduct[p.id] || 0, topRegion, hasPendingOrder };
       vendorProductDetailsMap[p.id] = { name: p.name, html: `
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.track_quantity === false ? "always available" : `${p.quantity_available}/${p.quantity_total} available`}`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? listingExpiryMarkup(p) : ""}</p>
         ${p.billing_model === "monthly" && pendingMonthlyProductIds.has(String(p.id)) ? `<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>` : p.billing_model === "monthly" && p.billing_status === "cancelled" ? `<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦999 receipt to restore it.</p>` : ""}

@@ -8,7 +8,7 @@ import { sameAccountName } from "../payout-accounts/payout-accounts.service.js";
 
 /** Paystack does not send less than this. */
 export const MIN_REFUND_WITHDRAWAL_KOBO = 10_000;
-/** After the refund account is changed, withdrawing waits this long (a stolen login cannot empty the wallet at once). */
+/** After the refund account is changed, withdrawing is still allowed, but the admins are told about the recent change (it is shown as "recent" for this long). */
 export const ACCOUNT_CHANGE_WAIT_HOURS = 24;
 const naira = (kobo: number | string) => "₦" + koboToNaira(Number(kobo)).toLocaleString("en-NG", { maximumFractionDigits: 2 });
 export const REFUND_TRANSFER_PREFIX = "lvm_bw_";
@@ -49,7 +49,8 @@ export class BuyerWalletService {
         account: account ? { bank_name: account.bank_name, account_name: account.account_name, last4: account.account_last4 } : null,
         available_kobo: totals.available,
         processing_kobo: totals.processing,
-        blocked: this.blocked(account),
+        blocked: null,   // withdrawing is allowed even right after the account was changed; admins are told instead
+        recent_account_change_hours: this.recentChange(account),
         min_kobo: MIN_REFUND_WITHDRAWAL_KOBO,
         credits,
         withdrawals: await repo.recentWithdrawals(me.userId),
@@ -109,8 +110,6 @@ export class BuyerWalletService {
       const repo = new BuyerWalletRepository(tx);
       const account = await repo.account(me.userId);
       if (!account) throw badRequest("Add your bank account for refunds first.");
-      const blocked = this.blocked(account);
-      if (blocked) throw badRequest(blocked);
       const credits = await repo.availableCredits(me.userId);
       const total = credits.reduce((s, c) => s + Number(c.amount_kobo), 0);
       if (total < MIN_REFUND_WITHDRAWAL_KOBO) throw badRequest(total > 0 ? `The smallest withdrawal is ${naira(MIN_REFUND_WITHDRAWAL_KOBO)}. You have ${naira(total)}.` : "You have no refund money to withdraw.");
@@ -118,7 +117,14 @@ export class BuyerWalletService {
       const id = await repo.insertWithdrawal(me.userId, total, reference);
       await repo.attach(id, credits.map((c) => c.id));
       // admins are told of every refund withdrawal (it is sent automatically, no approval step)
-      await new NotificationWriter(tx).notifyAdmins("Refund withdrawal", `A buyer is withdrawing ${naira(total)} of refund money to their bank account. It is sent automatically; nothing to approve.`, null, null, me.userId);
+      const changed = this.recentChange(account);
+      await new NotificationWriter(tx).notifyAdmins(
+        changed != null ? "Refund withdrawal (bank account changed recently)" : "Refund withdrawal",
+        `A buyer is withdrawing ${naira(total)} of refund money to their bank account${changed != null ? `, which they changed ${changed === 0 ? "less than an hour" : `${changed} hour${changed === 1 ? "" : "s"}`} ago` : ""}. It is sent automatically; nothing to approve.`,
+        null,
+        null,
+        me.userId,
+      );
       return { id, reference, total, recipient: account.transfer_recipient_code };
     }));
     // the Paystack call is made after that transaction has ended, with the withdrawal's own stable reference
@@ -157,10 +163,9 @@ export class BuyerWalletService {
     }
   }
 
-  private blocked(account: { verified_age_hours: number } | null): string | null {
-    if (!account) return null;
-    const wait = ACCOUNT_CHANGE_WAIT_HOURS - account.verified_age_hours;
-    return wait > 0 ? `You changed your bank account recently. For your safety, withdrawals open again in ${Math.ceil(wait)} hour${Math.ceil(wait) === 1 ? "" : "s"}.` : null;
+  /** Whole hours since the refund account was last changed, while that is recent (otherwise null). */
+  private recentChange(account: { verified_age_hours: number } | null): number | null {
+    return account && account.verified_age_hours < ACCOUNT_CHANGE_WAIT_HOURS ? Math.max(0, Math.floor(account.verified_age_hours)) : null;
   }
 
   private userError(err: unknown, rejected: string): Error {

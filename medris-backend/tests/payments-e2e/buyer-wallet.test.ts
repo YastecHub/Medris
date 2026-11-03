@@ -39,13 +39,11 @@ describe("the buyer's refunds wallet", () => {
     await runJob(w, "paystack-refunds"); // a second run credits nothing twice
     expect((await call("get_refund_wallet", w.buyer.token)).data.available_kobo).toBe("500000");
 
-    // a freshly saved account waits a day
-    const early = await call("withdraw_refunds", w.buyer.token);
-    expect(early.status).toBe(400);
-    await w.db.query(`update public.buyer_payout_accounts set verified_at = now() - interval '2 days' where user_id = $1`, [w.buyer.id]);
+    // a freshly saved account can still withdraw; the admins are told that the account was changed recently
     expect((await call("withdraw_refunds", w.buyer2.token)).status).toBe(400); // no account
     const ok = await call("withdraw_refunds", w.buyer.token);
     expect(ok.status).toBe(200);
+    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and title = 'Refund withdrawal (bank account changed recently)'`, [w.admin.id])).toBeTruthy();
     expect(w.paystack.callsTo("POST", "/transfer")).toHaveLength(1);
     expect((await call("withdraw_refunds", w.buyer.token)).status).toBe(400); // nothing left
     const wd = await rowOf<any>(w, `select transfer_reference as ref, status from public.refund_withdrawals where buyer_id = $1`, [w.buyer.id]);

@@ -221,9 +221,18 @@ export class AdminVendorsService {
   /** Replaces: public.admin_review_student_verification(uuid, text, text) - an admin may approve even without a matric number yet; the vendor is told. */
   async reviewStudent(me: Identity | null, vendorId: string, status: string, note: string | null): Promise<{ success: true; status: string }> {
     return this.asAdmin(me, "Only admins can review student verification.", async ({ shops, notify, adminId }) => {
-      if (!["approved", "rejected", "pending"].includes(status)) throw badRequest("Invalid status.");
+      if (!["approved", "rejected", "pending", "message"].includes(status)) throw badRequest("Invalid status.");
       const row = await shops.studentVerification(vendorId);
       if (!row) throw notFound("No verification submitted for this vendor.");
+      // "message": the admin only writes to the vendor (for example "please add your matric number"); the status does not change
+      if (status === "message") {
+        const text = (note ?? "").trim();
+        if (text.length < 2) throw badRequest("Write the message first.");
+        const owner = await shops.ownerOf(vendorId);
+        if (!owner) throw notFound("Shop not found.");
+        await notify.createQuietly({ userId: owner, type: "student_verification", title: "A message about your verification", body: text.slice(0, 500), targetView: "vendorEditProfile", targetParams: {}, actorId: null });
+        return { success: true, status: "message" };
+      }
       // (0020) a student without a matric number yet can be verified by an admin who has checked the other documents
       const owner = await shops.decideStudentVerification(vendorId, status, note, adminId);
       await notify.createQuietly({

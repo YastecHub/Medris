@@ -607,6 +607,14 @@
   // Refund: first see who is being refunded and what is left, then decide how much
   async function refundSheet(orderId) {
     var a = api(); if (!a) return;
+    // opened from another page (the disputes page): look up what this order paid and what was already refunded
+    if (!txByOrder[orderId]) {
+      try {
+        var look = await Promise.all([a.transactions({ limit: 200 }), a.refunds({ limit: 200 })]);
+        ((look[0] && look[0].data) || []).forEach(function (x) { if (x.order_id) txByOrder[x.order_id] = x; });
+        refundedBy = {}; ((look[1] && look[1].data) || []).forEach(function (r) { if (r.order_id && r.status !== "failed" && r.status !== "abandoned") refundedBy[r.order_id] = (refundedBy[r.order_id] || 0) + Number(r.amount || 0); });
+      } catch (_) {}
+    }
     var t = txByOrder[orderId] || {}, paid = Number(t.amount || 0), done = Number(refundedBy[orderId] || 0), left = Math.max(0, Math.round((paid - done) * 100) / 100);
     var o = null, bu = null, ve = null;
     try {
@@ -649,7 +657,7 @@
         if (/already been paid|done by hand/i.test(String(res.error.message || ""))) { noRefund[orderId] = 1; try { localStorage.setItem("lv-no-refund", JSON.stringify(noRefund)); } catch (_) {} m.remove(); showToast("This shop has already been paid for this order, so it cannot be refunded from here. Ask the shop to return the money.", "info"); navigate("adminPayments", {}, false); return; }
         return show(res.error.message || "Something went wrong.");
       }
-      m.remove(); showToast(naira(amt) + " refund sent for " + who + ". It shows in their refund wallet, or goes back to their card.", "success"); navigate("adminPayments", {}, false);
+      m.remove(); showToast(naira(amt) + " refund sent for " + who + ". It shows in their refund wallet, or goes back to their card.", "success"); navigate(typeof currentView !== "undefined" && currentView === "adminDisputes" ? "adminDisputes" : "adminPayments", {}, false);
     });
     document.body.appendChild(m);
   }
@@ -709,7 +717,8 @@
     var links = disp ? (w.dispute_orders || []).map(function (o) { return '<a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(o) + '\'})">Open disputed order</a>'; }).join(" ") : "";
     var acts = open ? '<button class="btn btn-sm" onclick="lvWithdrawDecide(\'' + esc(w.id) + '\',\'approve\',' + (disp ? "true" : "false") + ')">Approve</button><button class="btn btn-sm btn-outline" onclick="lvWithdrawDecide(\'' + esc(w.id) + '\',\'reject\')">Reject</button>' : "";
     var age = w.shop_since ? Math.max(1, Math.floor((Date.now() - new Date(w.shop_since).getTime()) / 86400000)) : null;
-    return '<div class="lv-ap-row"><div class="lv-ap-main"><b>' + naira(Number(w.amount_kobo) / 100) + "</b> " + chip + '<span class="badge ' + (w.status === "approved" ? "badge-success" : rej ? "badge-danger" : "badge-warning") + '">' + esc({ requested: "Waiting", approved: w.kind === "instant" ? "Sent at once" : "Approved", rejected: "Rejected" }[w.status] || w.status) + "</span> " + chg +
+    (window.__lvPayReg = window.__lvPayReg || {})["wd:" + w.id] = w;
+    return '<div class="lv-ap-row lv-tap" data-lvd="wd:' + esc(w.id) + '"><div class="lv-ap-main"><b>' + naira(Number(w.amount_kobo) / 100) + "</b> " + chip + '<span class="badge ' + (w.status === "approved" ? "badge-success" : rej ? "badge-danger" : "badge-warning") + '">' + esc({ requested: "Waiting", approved: w.kind === "instant" ? "Sent at once" : "Approved", rejected: "Rejected" }[w.status] || w.status) + "</span> " + chg +
       "<small>" + esc(w.business_name || "") + " · " + when(w.created_at) + (age ? " · shop " + age + " day" + (age === 1 ? "" : "s") + " old" : "") + (w.bank_name ? " · " + esc(w.bank_name) + (w.account_name ? " (" + esc(w.account_name) + ")" : "") : "") + (rej && w.reject_reason ? " · Reason: " + esc(w.reject_reason) : "") + "</small>" + links + '</div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
   window.lvPayRange = function (r) { range = r; reuse = true; navigate("adminPayments", {}, false); };
@@ -723,7 +732,8 @@
     var onBalance = p.status === "pending" && p.last_error === "Paystack balance too low";
     var pst = p.status === "success" || p.status === "paid_manually" ? "in" : p.status === "failed" || p.status === "reversed" ? "bad" : "wait";
     var pic = pst === "in" ? "fa-arrow-up-right-from-square" : pst === "bad" ? "fa-triangle-exclamation" : p.status === "on_hold" ? "fa-pause" : "fa-hourglass-half";
-    return '<div class="lv-ap-row ap2-row"><span class="ap2-ico ' + pst + '"><i class="fa-solid ' + pic + '"></i></span><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + (onBalance ? '<span class="badge badge-danger">Waiting for Paystack balance</span>' : pill(p.status)) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error && !onBalance ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
+    (window.__lvPayReg = window.__lvPayReg || {})["payout:" + p.id] = p;
+    return '<div class="lv-ap-row ap2-row lv-tap" data-lvd="payout:' + esc(p.id) + '"><span class="ap2-ico ' + pst + '"><i class="fa-solid ' + pic + '"></i></span><div class="lv-ap-main"><b>' + naira(p.amount) + "</b> " + (onBalance ? '<span class="badge badge-danger">Waiting for Paystack balance</span>' : pill(p.status)) + "<small>" + esc(p.business_name || "") + " · " + when(p.created_at) + (p.hold_reason ? " · " + esc(p.hold_reason) : "") + (p.last_error && !onBalance ? " · " + esc(p.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open order</a></div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
   var paidOut = {};   // orders whose shop has already been paid: they cannot be refunded from here
   function txRow(t) {
@@ -736,11 +746,12 @@
     var ic = good ? "fa-arrow-down" : bad ? "fa-xmark" : t.status === "refunded" || t.status === "partially_refunded" ? "fa-rotate-left" : "fa-hourglass-half";
     var tail = can ? '<button class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(t.order_id) + '\')">Refund</button>' : (full ? '<span class="ap2-tag ap2-tag-ref"><i class="fa-solid fa-rotate-left"></i> Fully refunded</span>' : okStatus && shopPaid ? '<span class="ap2-tag"><i class="fa-solid fa-circle-check"></i> Shop paid</span>' : "");
     if (can && back > 0) tail = '<span class="ap2-tag ap2-tag-ref"><i class="fa-solid fa-rotate-left"></i> ' + naira(back) + ' back</span>' + tail;
-    return '<div class="lv-ap-row ap2-row"><span class="ap2-ico ' + (good ? "in" : bad ? "bad" : "wait") + '"><i class="fa-solid ' + ic + '"></i></span><div class="lv-ap-main"><b>' + naira(t.amount) + "</b> " + payPill(t.status) + "<small>" + esc(what) + (t.business_name ? " \u00b7 " + esc(t.business_name) : "") + " \u00b7 " + when(t.paid_at || t.created_at) + '</small></div><div class="lv-ap-acts">' + tail + "</div></div>";
+    (window.__lvPayReg = window.__lvPayReg || {})["tx:" + t.id] = t;
+    return '<div class="lv-ap-row ap2-row lv-tap" data-lvd="tx:' + esc(t.id) + '"><span class="ap2-ico ' + (good ? "in" : bad ? "bad" : "wait") + '"><i class="fa-solid ' + ic + '"></i></span><div class="lv-ap-main"><b>' + naira(t.amount) + "</b> " + payPill(t.status) + "<small>" + esc(what) + (t.business_name ? " \u00b7 " + esc(t.business_name) : "") + " \u00b7 " + when(t.paid_at || t.created_at) + '</small></div><div class="lv-ap-acts">' + tail + "</div></div>";
   }
 
 
-  function refundRow(r) { return '<div class="lv-ap-row ap2-row"><span class="ap2-ico wait"><i class="fa-solid fa-rotate-left"></i></span><div class="lv-ap-main"><b>' + naira(r.amount) + "</b> " + pill(r.status) + "<small>Refund for order #" + esc(String(r.order_id || "").slice(0, 8).toUpperCase()) + " \u00b7 " + when(r.created_at) + (r.reason ? " \u00b7 " + esc(r.reason) : "") + (r.last_error ? " \u00b7 " + esc(r.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(r.order_id) + '\'})">Open order</a></div></div>'; }
+  function refundRow(r) { (window.__lvPayReg = window.__lvPayReg || {})["refund:" + r.id] = r; return '<div class="lv-ap-row ap2-row lv-tap" data-lvd="refund:' + esc(r.id) + '"><span class="ap2-ico wait"><i class="fa-solid fa-rotate-left"></i></span><div class="lv-ap-main"><b>' + naira(r.amount) + "</b> " + pill(r.status) + "<small>Refund for order #" + esc(String(r.order_id || "").slice(0, 8).toUpperCase()) + " \u00b7 " + when(r.created_at) + (r.reason ? " \u00b7 " + esc(r.reason) : "") + (r.last_error ? " \u00b7 " + esc(r.last_error) : "") + '</small><a class="lv-ap-link" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(r.order_id) + '\'})">Open order</a></div></div>'; }
   function reportRow(r) {
     var rep = r.report || {}; var list = (rep.problems || []).map(function (p) { return "<li>" + esc(p.detail) + "</li>"; }).join("");
     return '<div class="lv-ap-row lv-ap-col"><div class="lv-ap-main"><b>' + esc(String(r.window_start).slice(0, 10)) + "</b> " + (r.problems ? '<span class="badge badge-danger">' + r.problems + " to check</span>" : '<span class="badge badge-success">All matched</span>') + "<small>" + (rep.error ? esc(rep.error) : (rep.checked || 0) + " payments checked") + "</small></div>" + (list ? "<ul class=\"lv-ap-list\">" + list + "</ul>" : "") + "</div>";
@@ -1842,19 +1853,22 @@
         sb.from("commission_charges").select("order_id,amount,status,created_at,paid_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(300),
         sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
         sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
-        sb.from("withdrawal_requests").select("id,status,kind,amount_kobo,has_dispute,reject_reason,created_at,decided_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(30)
+        sb.from("withdrawal_requests").select("id,status,kind,amount_kobo,has_dispute,reject_reason,created_at,decided_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(30),
+        // money given back to buyers comes off the shop's wallet (the shop's share, after commission)
+        sb.from("paystack_refunds").select("order_id,amount_kobo,status").neq("status", "failed").limit(500)
       ]);
       var orders = (res[0] && res[0].data) || [], payouts = (res[1] && res[1].data) || [], charges = (res[2] && res[2].data) || [];
       var owed = Number((res[3] && res[3].data) || 0), dueAt = res[4] && res[4].data && res[4].data[0] ? res[4].data[0].earliest_due_at : null;
       var payoutBy = {}; payouts.forEach(function (p) { payoutBy[p.order_id] = p; });
       var commBy = {}; charges.forEach(function (c) { commBy[c.order_id] = (commBy[c.order_id] || 0) + Number(c.amount || 0); });
       var requests = (res[5] && res[5].data) || [];
+      var refundBy = {}; ((res[6] && res[6].data) || []).forEach(function (r) { refundBy[r.order_id] = (refundBy[r.order_id] || 0) + Number(r.amount_kobo || 0) / 100; });
       var tx = [], pending = 0, onWay = 0, paidOut = 0, ready = 0, held = 0, asked = 0, heldReason = "", delayed = 0;
       orders.forEach(function (o) {
         var paid = (o.payments || []).filter(function (p) { return p.status === "paid" && FEE_TYPES[p.payment_type] && (p.method === "card" || /^(lvm_ord_|medris_)/.test(String(p.provider_reference || ""))); });
         if (!paid.length) return;
         var gross = paid.reduce(function (s, p) { return s + Number(p.amount || 0); }, 0);
-        var comm = commBy[o.id] || 0, net = Math.max(0, gross - comm);
+        var comm = commBy[o.id] || 0, back = refundBy[o.id] || 0, net = Math.max(0, gross - comm - back);
         var at = paid.map(function (p) { return p.paid_at; }).filter(Boolean).sort().pop() || o.created_at;
         var legacy = paid.every(function (p) { return /^medris_/.test(String(p.provider_reference || "")); });
         var pay = payoutBy[o.id], state, amount = net, date = at;
@@ -1871,7 +1885,7 @@
         if (state === "pending") pending += amount; else if (state === "ready") ready += amount; else if (state === "held") held += amount; else if (state === "asked") asked += amount; else if (state === "onway") onWay += amount; else paidOut += amount;
         var names = (o.items || []).map(function (i) { return i && i.product && i.product.name; }).filter(Boolean);
         var title = names.length ? names[0] + (names.length > 1 ? " +" + (names.length - 1) + " more" : "") : "Order";
-        tx.push({ id: o.id, state: state, amount: amount, gross: gross, comm: comm, date: date, title: title });
+        tx.push({ id: o.id, state: state, amount: amount, gross: gross, comm: comm, refunded: back, date: date, title: title });
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
       var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
@@ -1973,7 +1987,7 @@
     return '<div class="lvw-chips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
       (rows.length ? '<ul class="lvw-list">' + rows.map(function (t) {
         return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : t.state === "ready" ? "fa-wallet" : t.state === "asked" ? "fa-user-clock" : t.state === "held" ? "fa-scale-balanced" : "fa-hourglass-half") + '"></i></span>' +
-          '<div class="lvw-li"><strong>' + esc(t.title) + '</strong><small>#' + esc(String(t.id).slice(0, 8).toUpperCase()) + " · " + LABEL[t.state] + " · " + esc(when(t.date)) + '</small>' + (t.comm ? '<small>Sale ' + esc(money(t.gross)) + ' − commission ' + esc(money(t.comm)) + '</small>' : "") + '</div>' +
+          '<div class="lvw-li"><strong>' + esc(t.title) + '</strong><small>#' + esc(String(t.id).slice(0, 8).toUpperCase()) + " · " + LABEL[t.state] + " · " + esc(when(t.date)) + '</small>' + ((t.comm || t.refunded) ? '<small>Sale ' + esc(money(t.gross)) + (t.comm ? ' − commission ' + esc(money(t.comm)) : "") + (t.refunded ? ' − refunded ' + esc(money(t.refunded)) : "") + '</small>' : "") + '</div>' +
           '<b class="lvw-amt ' + t.state + '">' + money(t.amount) + '</b></li>';
       }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-regular fa-credit-card"></i><strong>Nothing here yet</strong><span>Payments made through Levromart appear here.</span></div>');
   }
@@ -2074,6 +2088,7 @@
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
       '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes. Money from a very recent card payment goes out automatically the next business day.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
+      '<li><b>Refunds.</b> If a buyer is refunded for an order, that amount comes off your wallet automatically. A refund is paid out of your share of the sale (what is left after Levromart\'s commission); the commission is not refunded.</li>' +
       '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
 
@@ -2283,7 +2298,9 @@ window.lvAskCancel = async function (orderId) {
   window.lvRefundHow = function () {
     sheet("Your refunds wallet",
       '<ul class="lvw-how"><li><b>Refunds land here.</b> If an order you paid for is cancelled, or a problem is settled in your favour, the money is put in this wallet.</li>' +
-      '<li><b>Withdraw any time.</b> Tap <b>Withdraw</b> to send it to your refund bank account (from \u20a6100). Withdrawals open 24 hours after you add or change the account.</li>' +
+      '<li><b>Withdraw any time.</b> Tap <b>Withdraw</b> to send it to your refund bank account (from \u20a6100).</li>' +
+      '<li><b>Where it comes from.</b> A refund is paid out of the shop\'s share of the sale. You get back what you paid for the order; Paystack\'s payment fee is not refunded.</li>' +
+      '<li><b>Changed your bank account?</b> You can still withdraw. Levromart is told about the change and may check it.</li>' +
       '<li><b>No account yet?</b> Add one so refunds can reach you. It must be an account in your own name.</li></ul>' +
       (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
@@ -3478,4 +3495,318 @@ window.lvAskCancel = async function (orderId) {
   if (typeof origLocate === "function") window.vmpLocate = async function () { var r = await origLocate.apply(this, arguments); swapIcons(); return r; };
   var lvmRaf = 0;
   new MutationObserver(function () { if (lvmRaf) return; lvmRaf = requestAnimationFrame(function () { lvmRaf = 0; if (document.getElementById("vmPage")) swapIcons(); }); }).observe(document.getElementById("app") || document.body, { childList: true, subtree: true });
+})();
+
+/* ===== Admin: Disputes page, tidied (adp-) =====
+   Two tabs that matter (Open, Resolved) and a third only when there are payment checks. One clean card per dispute: who, why,
+   the shop's reply, the money (paid / refunded, with a Refund button), and the outcome in one place. Choosing an outcome never
+   undoes a refund that was already made. */
+(function () {
+  "use strict";
+  function money(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
+  function ref(id) { return "#" + String(id || "").slice(0, 8).toUpperCase(); }
+  function nice(s) { return String(s || "").replace(/_/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); }
+  function when(t) { try { return new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); } catch (_) { return ""; } }
+  function paidOnline(o) {
+    return (o.payments || []).filter(function (p) { return p.status === "paid" && /^lvm_ord_/.test(String(p.provider_reference || "")); }).reduce(function (s, p) { return s + Number(p.amount || 0); }, 0);
+  }
+  var claimOf = function (o) { return (o.payments || []).find(function (p) { return p.status === "pending" && ["buyer_report", "service_offer_report"].indexOf(String(p.provider_reference || "").toLowerCase()) >= 0; }); };
+  window.lvAdpTab = function (t) {
+    document.querySelectorAll(".adp-tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); b.setAttribute("aria-selected", String(b.dataset.t === t)); });
+    document.querySelectorAll(".adp-panel").forEach(function (p) { p.classList.toggle("hidden", p.dataset.t !== t); });
+  };
+  window.lvAdpOutcome = function (id, v, btn) {
+    var inp = document.getElementById("newstatus-" + id); if (inp) inp.value = v;
+    var wrap = btn && btn.parentElement; if (wrap) wrap.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); b.setAttribute("aria-checked", String(b === btn)); });
+  };
+  function card(d, refunded) {
+    var o = d.order || {}, paid = paidOnline(o), back = refunded[o.id] || 0, claim = claimOf(o);
+    var buyer = d.__buyer ? esc(d.__buyer) : "Buyer";
+    var vResp = d.vendor_response ? '<p>' + esc(d.vendor_response) + '</p>' : '<p class="adp-muted">The shop has not replied yet.</p>';
+    var ev = typeof disputeEvidenceHtml === "function" ? disputeEvidenceHtml(d.attachments) : "";
+    return '<article class="adp-card">' +
+      '<header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div>' +
+      '<span class="adp-pill">Raised by ' + esc(String(d.raised_by || "unknown")) + '</span></header>' +
+      '<div class="adp-meta"><span><i class="fa-regular fa-user"></i> ' + buyer + '</span><span><i class="fa-regular fa-clock"></i> ' + esc(when(d.created_at)) + '</span></div>' +
+      '<div class="adp-block"><label>Reason</label><p>' + esc(d.reason || "") + '</p>' + ev + '</div>' +
+      '<div class="adp-block"><label>Shop\'s reply</label>' + vResp + '</div>' +
+      (claim ? '<div class="adp-claim"><div><strong>Payment claim: ' + money(claim.amount) + '</strong><small>The buyer reported a direct transfer that is not verified yet.</small></div><div class="adp-row"><button class="btn btn-sm" onclick="adminConfirmReportedPayment(\'' + esc(o.id) + '\')">Verify</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment(\'' + esc(o.id) + '\')">Reject</button></div></div>' : "") +
+      (paid > 0 ? '<div class="adp-money"><div><small>Paid by buyer</small><b>' + money(paid) + '</b></div><div><small>Refunded</small><b class="' + (back ? "adp-red" : "") + '">' + money(back) + '</b></div><button type="button" class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(o.id) + '\')"><i class="fa-solid fa-rotate-left"></i> Refund</button></div>' : "") +
+      '<div class="adp-links">' + (o.buyer_id && o.vendor_id ? '<button type="button" onclick="openDisputeChat(\'' + esc(o.buyer_id) + '\',\'' + esc(o.vendor_id) + '\')"><i class="fa-solid fa-comment-dots"></i> View chat</button>' : "") +
+        '<button type="button" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(o.id) + '\'})"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open order</button></div>' +
+      '<div class="adp-resolve"><label for="notes-' + esc(d.id) + '">Resolution notes</label><textarea id="notes-' + esc(d.id) + '" rows="2" placeholder="What did you decide, and why?"></textarea>' +
+        '<label>Order outcome</label><input type="hidden" id="newstatus-' + esc(d.id) + '" value="">' +
+        '<div class="adp-outcomes" role="radiogroup" aria-label="Order outcome"><button type="button" role="radio" aria-checked="false" onclick="lvAdpOutcome(\'' + esc(d.id) + '\',\'completed\',this)"><i class="fa-solid fa-circle-check"></i> Completed</button><button type="button" role="radio" aria-checked="false" onclick="lvAdpOutcome(\'' + esc(d.id) + '\',\'cancelled\',this)"><i class="fa-solid fa-ban"></i> Cancelled</button></div>' +
+        '<small class="adp-hint"><i class="fa-solid fa-circle-info"></i> A refund you already made stays, whichever outcome you pick. Refund separately with the button above.</small>' +
+        '<button type="button" class="btn adp-go" onclick="resolveDispute(\'' + esc(d.id) + '\',\'' + esc(o.id) + '\',\'' + esc(o.payout_status) + '\')">Mark resolved</button></div>' +
+    '</article>';
+  }
+  function doneCard(d, refunded) {
+    var o = d.order || {}, back = refunded[o.id] || 0, st = String(o.status || "");
+    return '<article class="adp-card adp-done"><header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div>' +
+      '<span class="adp-pill adp-st-' + esc(st) + '">' + esc(nice(st)) + '</span></header>' +
+      '<div class="adp-block"><label>Reason</label><p>' + esc(d.reason || "") + '</p></div>' +
+      (d.admin_notes ? '<div class="adp-block"><label>Your notes</label><p>' + esc(d.admin_notes) + '</p></div>' : "") +
+      (back ? '<div class="adp-note"><i class="fa-solid fa-rotate-left"></i> ' + money(back) + ' was refunded to the buyer. This stays whatever the order status is.</div>' : "") +
+      '<div class="adp-row adp-row-end"><button class="btn btn-sm btn-outline" onclick="adminReopenDispute(\'' + esc(d.id) + '\')"><i class="fa-solid fa-rotate-left"></i> Reopen</button>' +
+      (st !== "completed" ? '<button class="btn btn-sm btn-outline" onclick="adminRemarkDispute(\'' + esc(d.id) + '\',\'' + esc(o.id || "") + '\',\'completed\',\'' + esc(o.payout_status || "") + '\')">Set completed</button>' : "") +
+      (st !== "cancelled" ? '<button class="btn btn-sm btn-outline" onclick="adminRemarkDispute(\'' + esc(d.id) + '\',\'' + esc(o.id || "") + '\',\'cancelled\',\'' + esc(o.payout_status || "") + '\')">Set cancelled</button>' : "") + '</div></article>';
+  }
+  function checkCard(o, kind) {
+    var claim = claimOf(o);
+    return '<article class="adp-card"><header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div><span class="adp-pill">' + (kind === "unresolved" ? "Payment unresolved" : "Confirmed, unpaid") + '</span></header>' +
+      (claim ? '<div class="adp-block"><label>Reported payment</label><p>' + money(claim.amount) + ' — the buyer reported a direct transfer; the shop has not confirmed it.</p></div>' : '<p class="adp-muted">No pending payment claim is visible.</p>') +
+      '<div class="adp-row">' + (kind === "unresolved" ? '<button class="btn btn-sm" ' + (claim ? "" : "disabled") + ' onclick="adminConfirmReportedPayment(\'' + esc(o.id) + '\')">Verify payment</button><button class="btn btn-sm btn-danger" ' + (claim ? "" : "disabled") + ' onclick="adminRejectReportedPayment(\'' + esc(o.id) + '\')">Reject claim</button>' : '<button class="btn btn-sm btn-danger" onclick="adminCancelConfirmedOverdue(\'' + esc(o.id) + '\')">Cancel order</button>') +
+      '<button class="btn btn-sm btn-outline" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(o.id) + '\'})">Open order</button></div></article>';
+  }
+  window.renderAdminDisputes = async function () {
+    if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+    var pay = "id,payment_type,amount,status,provider_reference,created_at,paid_at";
+    var res = await Promise.all([
+      sb.from("disputes").select("*, order:orders(id, order_type, buyer_id, vendor_id, payout_status, status, payment_unresolved_at, payment_escalated_at, total_amount, status_changed_at, vendor:vendors(business_name), payments(" + pay + "))").eq("status", "open").order("created_at", { ascending: true }),
+      sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,payment_unresolved_at,payment_escalated_at,total_amount,vendor:vendors(business_name),payments(" + pay + ")").eq("status", "payment_unresolved").not("payment_escalated_at", "is", null).order("payment_escalated_at", { ascending: true }),
+      sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,total_amount,status_changed_at,payment_escalated_at,vendor:vendors(business_name),payments(" + pay + ")").eq("status", "confirmed").not("payment_escalated_at", "is", null).order("payment_escalated_at", { ascending: true }),
+      sb.from("disputes").select("id,reason,admin_notes,created_at,order:orders(id,order_type,status,total_amount,payout_status,vendor:vendors(business_name))").eq("status", "resolved").order("created_at", { ascending: false }).limit(60)
+    ]);
+    var head = '<h2 class="adp-h"><i class="fa-solid fa-scale-balanced"></i> Disputes</h2>' + adminNavHtml("adminDisputes");
+    if (res[0].error && res[1].error && res[2].error) return head + errorStateHtml(res[0].error);
+    var open = res[0].data || [], resolved = res[3].data || [];
+    var unresolved = (res[1].data || []).filter(function (o) { return !open.some(function (d) { return String((d.order && d.order.id) || d.order_id || "") === String(o.id); }); });
+    var confirmed = (res[2].data || []).filter(function (o) { var fee = o.order_type === "rental" ? "rental_fee" : "sale_price"; return !(o.payments || []).some(function (p) { return String(p.payment_type || "").toLowerCase() === fee && p.status === "paid"; }); });
+    var checks = unresolved.length + confirmed.length;
+    // refunds made so far, and the buyers' names
+    var ids = open.map(function (d) { return d.order && d.order.id; }).concat(resolved.map(function (d) { return d.order && d.order.id; })).filter(Boolean);
+    var refunded = {};
+    try { var rr = await sb.from("paystack_refunds").select("order_id,amount_kobo,status").in("order_id", ids).neq("status", "failed"); ((rr && rr.data) || []).forEach(function (r) { refunded[r.order_id] = (refunded[r.order_id] || 0) + Number(r.amount_kobo || 0) / 100; }); } catch (_) {}
+    try {
+      var bids = open.map(function (d) { return d.order && d.order.buyer_id; }).filter(Boolean);
+      if (bids.length) { var ur = await sb.from("users").select("id,name").in("id", bids); var nm = {}; ((ur && ur.data) || []).forEach(function (u) { nm[u.id] = u.name; }); open.forEach(function (d) { d.__buyer = d.order && nm[d.order.buyer_id]; }); }
+    } catch (_) {}
+    var tab = "open";
+    var tabs = '<div class="adp-tabs" role="tablist"><button role="tab" class="adp-tab on" data-t="open" aria-selected="true" onclick="lvAdpTab(\'open\')">Open' + (open.length ? '<i>' + open.length + '</i>' : "") + '</button><button role="tab" class="adp-tab" data-t="resolved" aria-selected="false" onclick="lvAdpTab(\'resolved\')">Resolved' + (resolved.length ? '<i class="ok">' + resolved.length + '</i>' : "") + '</button>' + (checks ? '<button role="tab" class="adp-tab" data-t="checks" aria-selected="false" onclick="lvAdpTab(\'checks\')">Payment checks<i>' + checks + '</i></button>' : "") + '</div>';
+    var empty = function (t, ic) { return '<div class="adp-empty"><i class="fa-solid ' + ic + '"></i><strong>' + t + '</strong></div>'; };
+    return head + '<div class="adp">' + tabs +
+      '<section class="adp-panel" data-t="open">' + (open.length ? open.map(function (d) { return card(d, refunded); }).join("") : empty("No open disputes", "fa-circle-check")) + '</section>' +
+      '<section class="adp-panel hidden" data-t="resolved">' + (resolved.length ? resolved.map(function (d) { return doneCard(d, refunded); }).join("") : empty("No resolved disputes yet", "fa-box-archive")) + '</section>' +
+      (checks ? '<section class="adp-panel hidden" data-t="checks">' + unresolved.map(function (o) { return checkCard(o, "unresolved"); }).concat(confirmed.map(function (o) { return checkCard(o, "confirmed"); })).join("") + '</section>' : "") + '</div>';
+  };
+  // an outcome never undoes a refund: cancelling a paid order no longer refuses; the admin is reminded that a refund is its own step
+  async function setOutcome(disputeId, orderId, status, notes, paidNote) {
+    if (paidNote && status === "cancelled") {
+      var ok = await showConfirmDialog("This order was paid online. Cancelling it does not refund the buyer by itself: use Refund on the dispute card for that. Any refund already made stays. Mark the order as cancelled?", { title: "Cancel the order", okLabel: "Mark cancelled", cancelLabel: "Go back", danger: true });
+      if (!ok) return false;
+    }
+    var r = await sb.rpc("resolve_dispute", { p_dispute_id: disputeId, p_admin_notes: notes, p_new_order_status: status });
+    if (r.error) { showToast(r.error.message || "Could not save the outcome.", "error"); return false; }
+    return true;
+  }
+  window.resolveDispute = async function (id, orderId, payoutStatus) {
+    var notes = (document.getElementById("notes-" + id).value || "").trim() || "Resolved.";
+    var status = (document.getElementById("newstatus-" + id) || {}).value || "";
+    if (!status) { showToast("Choose an outcome (Completed or Cancelled) before resolving.", "error"); return; }
+    if (status === "completed" && payoutStatus === "held") {
+      var res = await fetch("/api/order-payout-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release", orderId: orderId, accessToken: session.access_token }) });
+      var json = await res.json().catch(function () { return {}; });
+      if (!res.ok) { showToast(json.error || "Could not release payment.", "error"); return; }
+      var e2 = await sb.rpc("resolve_dispute", { p_dispute_id: id, p_admin_notes: notes });
+      if (e2.error) { showToast(e2.error.message, "error"); return; }
+      showToast("Dispute resolved.", "success"); navigate("adminDisputes", {}, false); return;
+    }
+    if (await setOutcome(id, orderId, status, notes, payoutStatus === "held" || payoutStatus === "released")) { showToast("Dispute resolved.", "success"); navigate("adminDisputes", {}, false); }
+  };
+  window.adminRemarkDispute = async function (id, orderId, status, payoutStatus) {
+    if (!(await showConfirmDialog("Set this order to " + status + "? A refund that was already made stays.", { title: "Change outcome", okLabel: "Yes, set " + status, cancelLabel: "Go back" }))) return;
+    var r = await sb.rpc("resolve_dispute", { p_dispute_id: id, p_admin_notes: "Outcome changed by admin to " + status + ".", p_new_order_status: status });
+    if (r.error) { showToast(r.error.message || "Could not change the outcome.", "error"); return; }
+    showToast("Done.", "success"); navigate("adminDisputes", {}, false);
+  };
+})();
+
+/* ===== My listings: the listing details pop-up, tidied (vld-) =====
+   Name, status chips, three stat tiles (views, saved, sales), the facts as clean rows, then the actions. */
+(function () {
+  "use strict";
+  function chip(t, cls) { return '<span class="vld-chip' + (cls ? " " + cls : "") + '">' + esc(t) + "</span>"; }
+  function row(ic, k, v) { return '<div class="vld-row"><span class="vld-ic"><i class="fa-solid ' + ic + '"></i></span><span class="vld-k">' + k + '</span><b>' + v + "</b></div>"; }
+  window.showVendorProductDetails = function (productId) {
+    var d = (window.__vlDetailsRaw || {})[productId], old = (window.__vendorProductCardDetails || {})[productId];
+    if (!d && !old) return;
+    var modal = document.getElementById("vendorProductDetailsModal"); if (!modal) return;
+    var p = d ? d.p : {}, body = document.getElementById("vendorProductDetailsBody");
+    document.getElementById("vendorProductDetailsTitle").textContent = (d ? p.name : old.name) || "Listing";
+    if (d) {
+      var st = String(p.status || ""), kind = p.is_service ? "Service" : (String(p.listing_type || "sale").replace(/^./, function (c) { return c.toUpperCase(); }));
+      var avail = p.is_service ? "" : (p.track_quantity === false ? "Always available" : (p.quantity_available + " of " + p.quantity_total + " available"));
+      var chips = chip(kind) + (avail ? chip(avail) : "") + chip(st.replace(/^./, function (c) { return c.toUpperCase(); }), st === "active" ? "ok" : st === "paused" ? "warn" : "");
+      var vr = Array.isArray(p.variants) && p.variants.length ? p.variants : null;
+      var expiry = p.billing_model === "monthly" && p.billing_paid_until && typeof listingExpiryMarkup === "function" ? '<div class="vld-note">' + listingExpiryMarkup(p) + "</div>" : "";
+      body.innerHTML = '<div class="vld">' +
+        '<div class="vld-chips">' + chips + "</div>" +
+        '<div class="vld-tiles"><div><i class="fa-solid fa-eye"></i><b>' + Number(p.view_count || 0).toLocaleString("en-NG") + '</b><small>Views</small></div><div><i class="fa-solid fa-heart"></i><b>' + Number(d.favCount || 0).toLocaleString("en-NG") + '</b><small>Saved</small></div><div><i class="fa-solid fa-sack-dollar"></i><b>' + naira(d.revenue || 0) + '</b><small>Sales</small></div></div>' +
+        (vr ? row("fa-layer-group", "Varieties", vr.length + " · " + esc(vr.slice(0, 3).map(function (v) { return v.name; }).join(", ")) + (vr.length > 3 ? "…" : "")) : "") +
+        (d.topRegion ? row("fa-map-location-dot", "Sells best in", '<a href="#" onclick="event.stopPropagation();showProductRegions(\'' + esc(p.id) + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\');return false;">' + esc(d.topRegion.city) + " (" + d.topRegion.order_count + ")</a>") : "") +
+        expiry +
+        (d.hasPendingOrder ? '<div class="vld-warn"><i class="fa-solid fa-circle-exclamation"></i> This listing has a pending order. It cannot be removed until that is cleared.</div>' : "") +
+      "</div>";
+    } else body.innerHTML = old.html;
+    var viewBtn = document.getElementById("vendorProductDetailsViewBtn");
+    if (viewBtn) viewBtn.onclick = function () { modal.classList.add("hidden"); navigate("productDetail", { productId: productId }); };
+    modal.classList.add("vld-modal");
+    modal.classList.remove("hidden");
+  };
+})();
+
+/* ===== Every "Cancel" button is red =====
+   Any button whose label starts with "Cancel" (Cancel, Cancel order, Cancel & refund…) gets the red look, so a person can tell at a
+   glance which button backs out or cancels. "Cancelled" (a status) is not a button to press, so it is left alone. */
+(function () {
+  "use strict";
+  var RE = /^cancel(?!led)\b/i;
+  function label(b) { return String(b.textContent || "").replace(/\s+/g, " ").trim(); }
+  function tag(root) {
+    var list = (root.nodeType === 1 && root.matches && root.matches("button,.btn")) ? [root] : [];
+    if (root.querySelectorAll) list = list.concat([].slice.call(root.querySelectorAll("button,.btn")));
+    list.forEach(function (b) {
+      if (b.__lvc === label(b)) return;
+      b.__lvc = label(b);
+      var on = RE.test(b.__lvc) && !b.closest(".order-status-pills-rail,.adp-outcomes,.segmented-tabs");
+      b.classList.toggle("lv-cancel", on);
+    });
+  }
+  var raf = 0, queue = [];
+  new MutationObserver(function (muts) {
+    muts.forEach(function (m) {
+      m.addedNodes.forEach(function (n) { if (n.nodeType === 1) queue.push(n); });
+      if (m.type === "characterData" && m.target.parentElement) queue.push(m.target.parentElement);
+    });
+    if (!raf) raf = requestAnimationFrame(function () { raf = 0; var q = queue; queue = []; q.forEach(tag); });
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  tag(document.body);
+})();
+
+/* ===== Admin: tap any payment, refund, payout or withdrawal to see everything about it (lvpd-) =====
+   Who paid whom, how (card / bank transfer / USSD), the Paystack reference, and the money breakdown: what the buyer paid, the
+   Paystack fee, Levromart's commission, the shop's share, refunds, and what was sent to the shop. Read-only. */
+(function () {
+  "use strict";
+  function naira(n) { try { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + n; } }
+  function k(x) { return Number(x || 0) / 100; }
+  function when(t) { try { return t ? new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + ", " + new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "—"; } catch (_) { return "—"; } }
+  function nice(s) { return String(s || "").replace(/_/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); }
+  function ref(id) { return id ? "#" + String(id).slice(0, 8).toUpperCase() : "—"; }
+  var CHANNEL = { card: "Card", bank: "Bank", bank_transfer: "Bank transfer", ussd: "USSD", mobile_money: "Mobile money", qr: "QR", eft: "EFT", apple_pay: "Apple Pay" };
+  function kv(a, b, cls) { return '<div class="lvpd-kv' + (cls ? " " + cls : "") + '"><span>' + a + '</span><b>' + b + "</b></div>"; }
+  function sec(t, body) { return body ? '<section class="lvpd-sec"><h4>' + t + "</h4>" + body + "</section>" : ""; }
+  function person(role, name, extra) { return '<div class="lvpd-p"><span class="lvpd-pr">' + role + '</span><b>' + esc(name || "—") + "</b>" + (extra ? "<small>" + extra + "</small>" : "") + "</div>"; }
+  function statusChip(s) { var st = String(s || ""); var good = /success|processed|paid|approved|sent/.test(st), bad = /fail|reject|reverse|abandon/.test(st); return '<span class="lvpd-chip ' + (good ? "ok" : bad ? "bad" : "wait") + '">' + esc(nice(st || "unknown")) + "</span>"; }
+  async function ctx(orderId, vendorId) {
+    var out = { order: null, buyer: null, shop: null, owner: null, pays: [], comm: [], payout: null, refunds: [], wd: null };
+    var safe = function (p) { return Promise.resolve(p).then(function (r) { return r && r.data; }, function () { return null; }); };
+    if (orderId) {
+      var rs = await Promise.all([
+        safe(sb.from("orders").select("id,status,order_type,total_amount,delivery_fee,created_at,completed_at,buyer_id,vendor_id,delivery_method").eq("id", orderId).maybeSingle()),
+        safe(sb.from("payments").select("payment_type,amount,status,method,provider_reference,paid_at").eq("order_id", orderId)),
+        safe(sb.from("commission_charges").select("amount,status,paid_at,created_at").eq("order_id", orderId)),
+        safe(sb.from("vendor_payouts").select("id,amount_kobo,commission_kobo,status,hold_reason,last_error,withdrawal_id,paystack_transfer_code,updated_at,created_at").eq("order_id", orderId).maybeSingle()),
+        safe(sb.from("paystack_refunds").select("id,amount_kobo,status,reason,created_at,transaction_reference").eq("order_id", orderId).order("created_at", { ascending: true }))
+      ]);
+      out.order = rs[0]; out.pays = rs[1] || []; out.comm = rs[2] || []; out.payout = rs[3]; out.refunds = rs[4] || [];
+      if (out.order) { vendorId = vendorId || out.order.vendor_id; }
+      if (out.order && out.order.buyer_id) out.buyer = await safe(sb.from("users").select("name,email,phone").eq("id", out.order.buyer_id).maybeSingle());
+      if (out.payout && out.payout.withdrawal_id) out.wd = await safe(sb.from("withdrawal_requests").select("id,status,kind,amount_kobo,created_at,decided_at").eq("id", out.payout.withdrawal_id).maybeSingle());
+    }
+    if (vendorId) out.shop = await safe(sb.from("vendors").select("business_name,bank_name,account_name,user_id").eq("id", vendorId).maybeSingle());
+    if (out.shop && out.shop.user_id) out.owner = await safe(sb.from("users").select("name,email,phone").eq("id", out.shop.user_id).maybeSingle());
+    return out;
+  }
+  // the money, step by step, for one order: buyer paid → fee → commission → shop share → refunds → paid to the shop
+  function breakdown(c, t) {
+    var paidNet = c.pays.filter(function (p) { return p.status === "paid" && /^lvm_ord_/.test(String(p.provider_reference || "")); }).reduce(function (s, p) { return s + Number(p.amount || 0); }, 0);
+    var gross = t && t.amount != null ? Number(t.amount) : paidNet, fee = Math.max(0, gross - paidNet);
+    var comm = c.comm.filter(function (x) { return x.status !== "waived"; }).reduce(function (s, x) { return s + Number(x.amount || 0); }, 0);
+    var rate = paidNet > 0 ? Math.round(comm / paidNet * 1000) / 10 : 0;
+    var back = c.refunds.filter(function (r) { return r.status !== "failed" && r.status !== "abandoned"; }).reduce(function (s, r) { return s + k(r.amount_kobo); }, 0);
+    var share = Math.max(0, paidNet - comm), net = Math.max(0, share - back);
+    var h = kv("Buyer paid in total", naira(gross)) + (fee ? kv("Paystack fee (paid by the buyer)", naira(fee), "lvpd-dim") : "") + kv("Paid for the order", naira(paidNet)) +
+      kv("Levromart commission" + (rate ? " (" + rate + "%)" : ""), "− " + naira(comm)) + kv("Shop's share", naira(share));
+    if (back) h += kv("Refunded to the buyer", "− " + naira(back), "lvpd-red") + kv("Shop's share after refunds", naira(net), "lvpd-strong");
+    else h += kv("Shop's share after refunds", naira(net), "lvpd-strong");
+    var po = c.payout;
+    if (po) {
+      var sent = po.status === "success" || po.status === "paid_manually";
+      h += kv("Sent to the shop", sent ? naira(k(po.amount_kobo)) : "Not yet (" + esc(nice(po.status === "on_hold" ? (po.hold_reason ? "waiting for withdrawal" : "on hold") : po.status)) + ")");
+    }
+    return h;
+  }
+  function timeline(c, t) {
+    var ev = [];
+    c.pays.filter(function (p) { return p.status === "paid"; }).forEach(function (p) { ev.push([p.paid_at, "Buyer paid " + naira(p.amount), "fa-arrow-down"]); });
+    c.refunds.forEach(function (r) { ev.push([r.created_at, "Refund " + naira(k(r.amount_kobo)) + " · " + nice(r.status) + (r.reason ? " · " + esc(r.reason) : ""), "fa-rotate-left"]); });
+    if (c.wd) ev.push([c.wd.created_at, "Shop asked to withdraw", "fa-hand-holding-dollar"]);
+    if (c.payout && (c.payout.status === "success" || c.payout.status === "paid_manually")) ev.push([c.payout.updated_at, "Sent to the shop " + naira(k(c.payout.amount_kobo)), "fa-paper-plane"]);
+    ev = ev.filter(function (x) { return x[0]; }).sort(function (a, b) { return new Date(a[0]) - new Date(b[0]); });
+    return ev.length ? '<ul class="lvpd-tl">' + ev.map(function (x) { return '<li><i class="fa-solid ' + x[2] + '"></i><div><b>' + x[1] + "</b><small>" + esc(when(x[0])) + "</small></div></li>"; }).join("") + "</ul>" : "";
+  }
+  function open(title, sub, bodyHtml) {
+    var old = document.getElementById("lvpdSheet"); if (old) old.remove();
+    var m = document.createElement("div"); m.id = "lvpdSheet"; m.className = "lvw-sheet-wrap lvpd-wrap";
+    m.innerHTML = '<div class="lvw-sheet lvpd" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
+      '<div class="lvpd-head"><div><small>' + esc(sub || "") + '</small><h3>' + title + '</h3></div><button type="button" class="lvw-eye lvw-eye-dark" aria-label="Close" onclick="document.getElementById(\'lvpdSheet\').remove()"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<div class="lvw-sheet-body lvpd-body">' + bodyHtml + "</div></div>";
+    m.addEventListener("click", function (e) { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    return m;
+  }
+  var LOADING = '<p class="muted" style="text-align:center;padding:1.2rem 0"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</p>';
+  var PURPOSE = { order_payment: "Order payment", order_balance: "Order balance payment", listing_fee: "Listing fee", commission: "Commission payment", monthly_fee: "Monthly listing fee" };
+  async function showTx(t) {
+    var title = naira(t.amount), what = PURPOSE[t.purpose] || nice(t.purpose || "payment");
+    var m = open(title, what, LOADING);
+    var c = await ctx(t.order_id, t.vendor_id), body = m.querySelector(".lvpd-body"); if (!body) return;
+    var shopName = (c.shop && c.shop.business_name) || t.business_name || "Shop";
+    var from = c.buyer ? person("From (buyer)", c.buyer.name || c.buyer.email, esc([c.buyer.email, c.buyer.phone].filter(Boolean).join(" · "))) : person("From", t.order_id ? "Buyer" : shopName);
+    var to = person("To (shop)", shopName, c.owner ? esc([c.owner.name, c.owner.phone].filter(Boolean).join(" · ")) : "");
+    var isOrder = /^order/.test(String(t.purpose || "")) && c.order;
+    body.innerHTML = '<div class="lvpd-top">' + statusChip(t.status) + '<span class="lvpd-meth"><i class="fa-solid fa-credit-card"></i> ' + esc(CHANNEL[String(t.channel || "").toLowerCase()] || nice(t.channel || "Not recorded")) + "</span></div>" +
+      '<div class="lvpd-who">' + from + '<i class="fa-solid fa-arrow-right"></i>' + to + "</div>" +
+      sec("Money breakdown", isOrder ? breakdown(c, t) : kv("Amount", naira(t.amount))) +
+      sec("Payment", kv("Method", esc(CHANNEL[String(t.channel || "").toLowerCase()] || nice(t.channel || "Not recorded"))) + kv("Paid at", esc(when(t.paid_at || t.created_at))) + kv("Paystack reference", '<code>' + esc(t.reference || "—") + "</code>") + (t.order_id ? kv("Order", esc(ref(t.order_id)) + (c.order ? " · " + esc(nice(c.order.status)) : "")) : "")) +
+      sec("What happened", timeline(c, t)) +
+      (t.order_id ? '<button type="button" class="btn btn-outline lvpd-open" onclick="document.getElementById(\'lvpdSheet\').remove();navigate(\'orderDetail\',{orderId:\'' + esc(t.order_id) + '\'})">Open the order</button>' : "");
+  }
+  async function showRefund(r) {
+    var m = open(naira(r.amount), "Refund", LOADING);
+    var c = await ctx(r.order_id, null), body = m.querySelector(".lvpd-body"); if (!body) return;
+    var credit = null; try { credit = (await sb.from("refund_credits").select("status,amount_kobo,created_at").eq("refund_id", r.id).maybeSingle()).data; } catch (_) {}
+    var shopName = (c.shop && c.shop.business_name) || "Shop";
+    var dest = credit ? "Buyer's Levromart refunds wallet" + (credit.status === "available" ? " (waiting to be withdrawn)" : credit.status === "processing" ? " (being sent to their bank)" : " (withdrawn to their bank)") : /processed|processing|success/.test(r.status) ? "Back to the buyer's card (through Paystack)" : "Not sent yet";
+    body.innerHTML = '<div class="lvpd-top">' + statusChip(r.status) + '<span class="lvpd-meth"><i class="fa-solid fa-rotate-left"></i> Refund</span></div>' +
+      '<div class="lvpd-who">' + person("From", shopName + "'s share", "Taken off the shop's wallet") + '<i class="fa-solid fa-arrow-right"></i>' + (c.buyer ? person("To (buyer)", c.buyer.name || c.buyer.email, esc([c.buyer.email, c.buyer.phone].filter(Boolean).join(" · "))) : person("To", "Buyer")) + "</div>" +
+      sec("Refund", kv("Amount", naira(r.amount)) + kv("Went to", esc(dest)) + kv("Reason", esc(r.reason || "—")) + kv("Asked by", esc(nice(r.source || "admin"))) + kv("Date", esc(when(r.created_at))) + (r.last_error ? kv("Note", esc(r.last_error), "lvpd-red") : "") + kv("Original payment", "<code>" + esc(r.transaction_reference || "—") + "</code>")) +
+      (c.order ? sec("The order's money", breakdown(c, null)) : "") +
+      '<button type="button" class="btn btn-outline lvpd-open" onclick="document.getElementById(\'lvpdSheet\').remove();navigate(\'orderDetail\',{orderId:\'' + esc(r.order_id) + '\'})">Open the order</button>';
+  }
+  async function showPayout(p) {
+    var m = open(naira(p.amount), "Payout to a shop", LOADING);
+    var c = await ctx(p.order_id, p.vendor_id), body = m.querySelector(".lvpd-body"); if (!body) return;
+    body.innerHTML = '<div class="lvpd-top">' + statusChip(p.status) + '<span class="lvpd-meth"><i class="fa-solid fa-building-columns"></i> Bank transfer</span></div>' +
+      '<div class="lvpd-who">' + person("From", "Levromart", "Paystack balance") + '<i class="fa-solid fa-arrow-right"></i>' + person("To (shop)", (c.shop && c.shop.business_name) || p.business_name, c.shop ? esc([c.shop.account_name, c.shop.bank_name].filter(Boolean).join(" · ")) : "") + "</div>" +
+      sec("Payout", kv("Amount sent", naira(p.amount)) + kv("Commission taken", naira(p.commission)) + kv("Status", esc(nice(p.status))) + (p.hold_reason ? kv("Why on hold", esc(p.hold_reason)) : "") + (p.last_error ? kv("Last problem", esc(p.last_error), "lvpd-red") : "") + kv("Updated", esc(when(p.updated_at)))) +
+      (c.order ? sec("The order's money", breakdown(c, null)) : "") + sec("What happened", timeline(c, null)) +
+      '<button type="button" class="btn btn-outline lvpd-open" onclick="document.getElementById(\'lvpdSheet\').remove();navigate(\'orderDetail\',{orderId:\'' + esc(p.order_id) + '\'})">Open the order</button>';
+  }
+  async function showWd(w) {
+    var m = open(naira(Number(w.amount_kobo) / 100), "Withdrawal request", LOADING);
+    var c = await ctx(null, w.vendor_id), body = m.querySelector(".lvpd-body"); if (!body) return;
+    body.innerHTML = '<div class="lvpd-top">' + statusChip(w.status) + '<span class="lvpd-meth"><i class="fa-solid fa-hand-holding-dollar"></i> ' + (w.kind === "instant" ? "Sent at once" : "Needed approval") + "</span></div>" +
+      '<div class="lvpd-who">' + person("From", "Levromart", "Paystack balance") + '<i class="fa-solid fa-arrow-right"></i>' + person("To (shop)", w.business_name || (c.shop && c.shop.business_name), esc([w.account_name, w.bank_name].filter(Boolean).join(" · "))) + "</div>" +
+      sec("Request", kv("Amount", naira(Number(w.amount_kobo) / 100)) + kv("Orders covered", String((w.order_ids || []).length)) + kv("Asked", esc(when(w.created_at))) + (w.decided_at ? kv("Decided", esc(when(w.decided_at))) : "") + (w.reject_reason ? kv("Reason given", esc(w.reject_reason)) : "") + (w.has_dispute ? kv("Dispute", "Has a disputed order", "lvpd-red") : "") + (w.account_changed_at ? kv("Bank account", "Changed " + esc(when(w.account_changed_at)), "lvpd-red") : ""));
+  }
+  var BUILD = { tx: showTx, refund: showRefund, payout: showPayout, wd: showWd };
+  window.lvPayDetail = function (key) { var kind = String(key).split(":")[0], row = (window.__lvPayReg || {})[key]; if (row && BUILD[kind]) BUILD[kind](row); };
+  document.addEventListener("click", function (e) {
+    var row = e.target.closest && e.target.closest(".lv-tap[data-lvd]"); if (!row) return;
+    if (e.target.closest("button,a,.btn,select,input,textarea,label")) return;
+    window.lvPayDetail(row.getAttribute("data-lvd"));
+  });
 })();
