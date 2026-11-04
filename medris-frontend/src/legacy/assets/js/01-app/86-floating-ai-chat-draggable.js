@@ -501,7 +501,7 @@ const AI_PRODUCTS_TAG_RE=/\[\[PRODUCTS:([a-zA-Z0-9,-]+)\]\]/;
 function parseAiProductTags(content){const str=String(content||"");const m=AI_PRODUCTS_TAG_RE.exec(str);if(!m)return{text:str,ids:[]};return{text:(str.slice(0,m.index)+str.slice(m.index+m[0].length)).replace(/\s{2,}/g," ").trim(),ids:m[1].split(",").filter(Boolean).slice(0,6)};}
 const AI_VENDORS_TAG_RE=/\[\[VENDORS:([a-zA-Z0-9,-]+)\]\]/;
 function parseAiVendorTags(content){const str=String(content||"");const m=AI_VENDORS_TAG_RE.exec(str);if(!m)return{text:str,ids:[]};return{text:(str.slice(0,m.index)+str.slice(m.index+m[0].length)).replace(/\s{2,}/g," ").trim(),ids:m[1].split(",").filter(Boolean).slice(0,6)};}
-function leviCardDistance(v){try{const d=typeof vendorDistanceKm==="function"?vendorDistanceKm(v):null;return d==null||!Number.isFinite(d)?"":(typeof formatDistanceKm==="function"?formatDistanceKm(d):d.toFixed(1)+" km")+" away";}catch(_){return "";}}
+function leviCardDistance(v){try{const d=typeof vendorDistanceKm==="function"?vendorDistanceKm(v):null;return d==null||!Number.isFinite(d)?"":String(typeof formatDistanceKm==="function"?formatDistanceKm(d):d.toFixed(1)+" km").replace(/(\s*away)+\s*$/i,"")+" away";}catch(_){return "";}}
 function leviCardLogo(v,cls){const n=(v?.business_name||"?").trim().charAt(0).toUpperCase();return v?.logo_url?`<img class="${cls}" src="${esc(v.logo_url)}" alt="" loading="lazy">`:`<span class="${cls} lvc-letter">${esc(n)}</span>`;}
 // Cards under a Levi answer: product photo, price and the shop's logo and distance; or the shop itself.
 async function renderLeviSuggestedProducts(el, ids){

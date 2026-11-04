@@ -585,16 +585,33 @@ async function leviOfflineFallback(text) {
   // Levi's server could not be reached: search the shops right here instead of giving a stock sentence
   try {
     const RELATED = { bottle: ["flask", "thermos", "tumbler"], chips: ["crisps", "plantain chips", "snacks"], gown: ["dress", "maxi"], dress: ["gown"], sneakers: ["shoes"], perfume: ["fragrance", "body spray"], wig: ["hair", "bundles"], phone: ["iphone", "samsung"] };
-    const term = q.replace(/\b(levi|please|pls|i need|i want|looking for|find me|show me|get me|where can i (get|buy)|who sells|vendors? (that|who) sells?|any|some|a|an|the|for me|near me|closest|nearest|cheap(est)?|buy)\b/g, " ").replace(/\s+/g, " ").trim();
+    // a price range ("from 5k to 10k", "under 10k"), a follow-up ("give me another") and "something to stand my phone"
+    const nOf = (v) => { const m = /^(\d+(?:\.\d+)?)(k|m)?$/.exec(String(v).replace(/[₦,\s]|naira/gi, "")); return m ? Math.round(Number(m[1]) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : 1)) : null; };
+    const NUM = "₦?\\s?\\d[\\d,]*(?:\\.\\d+)?\\s?(?:k|m)?";
+    let range = null, rq = q, mm;
+    if ((mm = new RegExp(`(?:from|between)?\\s*(${NUM})\\s*(?:to|and|-)\\s*(${NUM})`).exec(rq))) { range = [nOf(mm[1]), nOf(mm[2])]; rq = rq.replace(mm[0], " "); }
+    else if ((mm = new RegExp(`(?:under|below|less than|max|within|up to)\\s*(${NUM})`).exec(rq))) { range = [0, nOf(mm[1])]; rq = rq.replace(mm[0], " "); }
+    else if ((mm = new RegExp(`(?:above|over|more than|at least)\\s*(${NUM})`).exec(rq))) { range = [nOf(mm[1]), Infinity]; rq = rq.replace(mm[0], " "); }
+    const follow = /^(?:can you |please )?(?:give(?:n)?|show|send|find|get)?\s*(?:me\s*)?(?:an?other(?: one)?|more|others|something else|next)\b/.test(rq.trim());
+    rq = rq.replace(/\bsomething (?:to|that can) (\w+) (?:my|the|a) (\w+)/, "$2 $1");
+    let term = follow ? "" : rq.replace(/\b(levi|please|pls|i need|i want|looking for|find me|show me|get me|where can i (get|buy)|who sells|vendors? (that|who) sells?|any|some|a|an|the|for me|near me|closest|nearest|cheap(est)?|buy)\b/g, " ").replace(/\s+/g, " ").trim();
+    if (!term) {
+      // a follow-up: the last thing asked for in this chat
+      const prev = (typeof aiChatMessages !== "undefined" ? aiChatMessages : []).filter((m) => m.role === "user").map((m) => leviNormaliseText(m.content)).slice(0, -1).reverse();
+      for (const p of prev) { const t = p.replace(/^(?:no+|nope|i mean|actually)\b[\s,]*/, "").replace(/\bsomething (?:to|that can) (\w+) (?:my|the|a) (\w+)/, "$2 $1").replace(new RegExp(`(?:from|between|under|below|above|over)?\\s*${NUM}(?:\\s*(?:to|and|-)\\s*${NUM})?`, "g"), " ").replace(/\b(levi|please|pls|i need|i want|looking for|find me|show me|get me|give me|another|more|any|some|a|an|the)\b/g, " ").replace(/\s+/g, " ").trim(); if (t.length >= 2) { term = t; break; } }
+    }
     if (term.length >= 2) {
       const find = window.resolveLeviProductSuggestions || resolveLeviProductSuggestions;
       let products = await find(term);
+      const priceOf = (p) => p.discount_price != null && Number(p.discount_price) > 0 ? Number(p.discount_price) : p.sale_price != null ? Number(p.sale_price) : Number(p.rental_rate);
+      if (range && products?.length) { const inR = products.filter((p) => priceOf(p) >= (range[0] || 0) && priceOf(p) <= (range[1] ?? Infinity)); if (inR.length) products = inR; else return `I couldn't find **${term}** in that price range on Levromart right now. The closest prices are below. ${leviProductSuggestionTag(products.slice(0, 6))}`; }
+      if (follow && products?.length) { const seen = (typeof aiChatMessages !== "undefined" ? aiChatMessages : []).filter((m) => m.role === "assistant").slice(-2).map((m) => leviNormaliseText(m.content)).join(" "); const fresh = products.filter((p) => !seen.includes(leviNormaliseText(p.name))); if (fresh.length) products = fresh; else return `That's everything on Levromart for **${term}** right now. Want me to look for something similar?`; }
       let used = term;
       if (!products?.length) for (const w of term.split(" ")) { for (const alt of RELATED[w.replace(/s$/, "")] || RELATED[w] || []) { products = await find(alt); if (products?.length) { used = alt; break; } } if (products?.length) break; }
       if (products?.length) {
         const price = (p) => p.discount_price != null && Number(p.discount_price) > 0 ? Number(p.discount_price) : p.sale_price != null ? Number(p.sale_price) : p.rental_rate;
-        const lines = products.slice(0, 5).map((p, i) => `${i + 1}. ${p.name}${price(p) != null ? ` ₦${Number(price(p)).toLocaleString("en-NG")}` : ""}${p.vendor?.business_name ? ` from ${p.vendor.business_name}` : ""}`);
-        return `${used === term ? `Here is what I found for "${term}"` : `I could not find "${term}" exactly, but these ${used} listings are close`}:\n${lines.join("\n")} ${leviProductSuggestionTag(products.slice(0, 5))}`;
+        const lines = products.slice(0, 6).map((p, i) => `${i + 1}. **${p.name}**${price(p) != null ? ` · ₦${Number(price(p)).toLocaleString("en-NG")}` : ""}${p.vendor?.business_name ? ` from **${p.vendor.business_name}**` : ""}`);
+        return `${used === term ? `🛍️ **Here's what I found for ${term}:**` : `😕 I couldn't find **${term}** exactly. **You may also like:**`}\n${lines.join("\n")} ${leviProductSuggestionTag(products.slice(0, 6))}`;
       }
       const { data: shops } = await sb.from("vendors").select("id,business_name,city").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(5);
       if (shops?.length) return `These shops match "${term}":\n${shops.map((v, i) => `${i + 1}. ${v.business_name}${v.city ? ` (${v.city})` : ""}`).join("\n")}`;

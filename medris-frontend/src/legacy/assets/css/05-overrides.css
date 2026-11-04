@@ -6629,3 +6629,57 @@ html:root:root body #app .vl2 .vl-tabs .vh-stat.active{outline:3px solid #22c55e
 html:root:root body #app .vl2 .vl-tabs .vh-stat{border-bottom:0!important}
 html:root:root body #app .vl2 .vl-tabs .vl2-all{flex-direction:row!important}
 html:root:root body #app .vl2 .vl-tabs .vl2-all>*{display:inline!important;margin:0!important}
+
+/* Levi: small product cards (like Trending now), three per row, and nothing wider than the chat (no sideways sliding) */
+html:root:root body #aiChatPanel,html:root:root body #aiChatPanel .ai-chat-messages{overflow-x:hidden!important}
+html:root:root body #aiChatPanel .ai-chat-msg,html:root:root body #aiChatPanel .lvmd,html:root:root body #aiChatPanel .lvmd *{min-width:0;max-width:100%;overflow-wrap:anywhere}
+html:root:root body #aiChatPanel .lvc-list{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.45rem!important;width:100%;max-width:100%}
+html:root:root body #aiChatPanel .lvc-card{min-width:0!important;width:auto!important;padding:.35rem!important;border-radius:14px!important;gap:.3rem!important}
+html:root:root body #aiChatPanel .lvc-card .lvc-img{width:100%!important;height:auto!important;aspect-ratio:1/1;border-radius:10px!important}
+html:root:root body #aiChatPanel .lvc-card .lvc-body{min-width:0}
+html:root:root body #aiChatPanel .lvc-card .lvc-body strong{font-size:.74rem!important;line-height:1.2!important;-webkit-line-clamp:2}
+html:root:root body #aiChatPanel .lvc-card .lvc-price{font-size:.78rem!important}
+html:root:root body #aiChatPanel .lvc-card .lvc-shop{font-size:.64rem!important;min-width:0}
+html:root:root body #aiChatPanel .lvc-card .lvc-shop span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+html:root:root body #aiChatPanel .lvc-card .lvc-logo{width:.95rem!important;height:.95rem!important}
+@media (min-width:640px){html:root:root body #aiChatPanel .lvc-list{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+
+/* 3D icon set: pictures on the page itself, no coloured tiles behind them */
+img.lv3di{display:inline-block;object-fit:contain;flex:none;vertical-align:middle}
+html:root:root body .notification-system-icon.lv3d-n{background:none!important;box-shadow:none!important;border:0!important;width:44px!important;height:44px!important;min-width:44px;display:grid!important;place-items:center;padding:0!important}
+html:root:root body .notification-system-icon.lv3d-n img{width:42px;height:42px}
+html:root:root body .lvo-empty .lvo-empty-ico,html:root:root body .orders-empty-icon,html:root:root body .lv-empty-state span{background:none!important;box-shadow:none!important;width:auto!important;height:auto!important}
+.lv3d-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:28px 16px}
+.lv3d-empty img{width:120px;height:120px;object-fit:contain;margin-bottom:6px}
+.lv3d-empty strong{font-size:1rem}
+.lv3d-empty span{font-size:.84rem;opacity:.7;max-width:280px}
+/* vendors page: the shop picture */
+html:root:root body .vd-empty-ico{width:120px!important;height:120px!important;background:url(/icons3d/lv/empty-vendors.webp) center/contain no-repeat!important;box-shadow:none!important;border:0!important}
+html:root:root body .vd-empty-ico i{display:none!important}
+/* seller dashboard: tool rows and section headings */
+html:root:root body #app .vh-hub .vh-row-ico{background:none!important}
+html:root:root body #app .vh-hub .vh-row-ico .vh-3d{width:34px!important;height:34px!important}
+html:root:root body #app .vh-group .vh-gico{width:26px;height:26px;object-fit:contain;vertical-align:-6px;margin-right:8px}
+html:root:root body #app .lv-stat .lv-stat-ico{background:none!important;box-shadow:none!important}
+/* wallet and transaction lists: the picture for each state (the old icon hides) */
+html:root:root body :is(.lvw-ico,.lw-ico){background-color:transparent!important;background-position:center!important;background-size:contain!important;background-repeat:no-repeat!important;box-shadow:none!important;border:0!important;width:38px!important;height:38px!important;flex:none}
+html:root:root body :is(.lvw-ico,.lw-ico) i{display:none!important}
+html:root:root body .lvw-ico.pending,html:root:root body .lvw-ico.asked,html:root:root body .lw-ico.wait{background-image:url(/icons3d/lv/tx-pending.webp)!important}
+html:root:root body .lvw-ico.ready{background-image:url(/icons3d/lv/tx-ready.webp)!important}
+html:root:root body .lvw-ico.onway{background-image:url(/icons3d/lv/tx-onway.webp)!important}
+html:root:root body .lvw-ico.paid{background-image:url(/icons3d/lv/tx-paid.webp)!important}
+html:root:root body .lvw-ico.held{background-image:url(/icons3d/lv/dispute.webp)!important}
+html:root:root body .lvw-ico:has(.fa-check){background-image:url(/icons3d/lv/withdrawal-approved.webp)!important}
+html:root:root body .lvw-ico:has(.fa-xmark){background-image:url(/icons3d/lv/withdrawal-rejected.webp)!important}
+html:root:root body .lvw-ico:has(.fa-percent){background-image:url(/icons3d/lv/monthly-listing.webp)!important}
+html:root:root body .lvw-ico:has(.fa-rotate-left){background-image:url(/icons3d/lv/payout-sent.webp)!important}
+html:root:root body .lw-ico:has(.fa-plus){background-image:url(/icons3d/lv/tx-all.webp)!important}
+html:root:root body .lw-ico:has(.fa-arrow-down),html:root:root body .lw-ico:has(.fa-rotate-left),html:root:root body .lw-ico:has(.fa-reply){background-image:url(/icons3d/lv/tx-paid.webp)!important}
+html:root:root body .lw-ico:has(.fa-arrow-up),html:root:root body .lw-ico:has(.fa-rotate-right){background-image:url(/icons3d/lv/payout-sent.webp)!important}
+html:root:root body .lw-ico:has(.fa-bag-shopping){background-image:url(/icons3d/lv/new-order.webp)!important}
+html:root:root body .lw-ico:has(.fa-store){background-image:url(/icons3d/lv/empty-bank.webp)!important}
+html:root:root body .lw-ico:has(.fa-building-columns){background-image:url(/icons3d/lv/withdrawal-approved.webp)!important}
+html:root:root body .lw-ico.wait:has(.fa-building-columns){background-image:url(/icons3d/lv/tx-onway.webp)!important}
+html:root:root body .lvw-empty>i{display:block!important;width:110px;height:110px;margin:0 auto 6px;background:url(/icons3d/lv/empty-bank.webp) center/contain no-repeat;font-size:0!important;color:transparent!important}
+html:root:root body .lvw-empty>i::before{content:none!important}
+html:root:root body .lv-stat .lv-stat-ico img,html:root:root body .lv-stat .lv-stat-ico .lv3d{width:44px!important;height:44px!important;object-fit:contain}
