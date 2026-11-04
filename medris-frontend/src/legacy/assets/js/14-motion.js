@@ -4487,3 +4487,42 @@ window.lvAskCancel = async function (orderId) {
     }).join("");
   };
 })();
+
+/* ===== Shop location: the locate button is the Levromart logo and spins while it finds you; tapping the map or its
+   buttons never throws the page back to the top (iPhone scrolls to a focused map) ===== */
+(function () {
+  "use strict";
+  function dress() {
+    var b = document.querySelector("#veLocationMap .vendor-map-locate-control");
+    if (b && !b.__lv) { b.__lv = true; b.innerHTML = '<span class="lv-loc-logo" aria-hidden="true"></span>'; }
+  }
+  new MutationObserver(function () { dress(); }).observe(document.body, { childList: true, subtree: true });
+  var loc0 = window.locateVendorMapOnly;
+  if (typeof loc0 === "function" && !loc0.__lv) {
+    var loc1 = async function () {
+      var b = document.querySelector("#veLocationMap .vendor-map-locate-control");
+      if (b) b.classList.add("is-locating");
+      try { return await loc0.apply(this, arguments); } finally { if (b) b.classList.remove("is-locating"); }
+    };
+    loc1.__lv = true; window.locateVendorMapOnly = loc1;
+  }
+  // keep the page where it was for a moment after a tap on the location map or its buttons
+  var keep = null;
+  function hold(e) {
+    var t = e.target;
+    if (!t || !t.closest || !t.closest("#veLocationMap, #veUseLocationBtn, .saved-location-select")) return;
+    keep = { y: window.scrollY, until: Date.now() + 2500 };
+  }
+  document.addEventListener("pointerdown", hold, true);
+  document.addEventListener("touchstart", hold, { capture: true, passive: true });
+  window.addEventListener("scroll", function () {
+    if (!keep || Date.now() > keep.until) { keep = null; return; }
+    // a jump of more than a screen towards the top that the person did not make: put the page back
+    if (keep.y - window.scrollY > Math.min(600, window.innerHeight * 0.6)) { var y = keep.y; requestAnimationFrame(function () { window.scrollTo(0, y); }); }
+  }, { passive: true });
+  // the map itself should not grab focus (that is what makes iPhone scroll)
+  document.addEventListener("focusin", function (e) {
+    var m = e.target && e.target.closest && e.target.closest("#veLocationMap");
+    if (m && e.target === m) { try { e.target.blur(); } catch (_) {} }
+  }, true);
+})();

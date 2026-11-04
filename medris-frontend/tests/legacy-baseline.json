@@ -6,7 +6,7 @@
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "f7d99a3a9273b5e14a2dbc09105f1426c70ab5e230e324613b4d2aef4abd00ec",
     "assets/css/04-shell.css": "ee55c3fa57d56111b3e6e69997cadc9cbd9eea62b4dfb0f4917a7fc69917353f",
-    "assets/css/05-overrides.css": "9f4140726e72c93c6e5d8f2c4bb2c30a32969c1912132fb4f5fb872544fd7e26",
+    "assets/css/05-overrides.css": "dfa3c74e1bc4cc7c80d445eef5fef3a4724134391d4911aa05a34899ae9e59d7",
     "assets/js/01-app.js": "2a6b01f5740c40d5de73c962d241a62ecf1ea2545b87bc6f681dae2e81ff4661",
     "assets/js/02-levromart-legal-consent-final-js.js": "be98e78bcda9fe58a6f75cc4b2ced9bab14bb66073c7fcf9b37f2527536f7eb6",
     "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "bef5a81c2aeeb2959367765fa2ff00791279ff411d1c09518d7ff3aa5906e7a0",
@@ -20,7 +20,7 @@
     "assets/js/11-levromart-global-broken-image-fallback.js": "386a13d33fd705122356e8f733fc0f0605158322c36a458df64a5208daff538d",
     "assets/js/12-lv-onboarding-auth-js.js": "55a2d0d14958cb9cd1d3e774583c18bca71e76ec54c9c1446c0b4bfb64c39a8d",
     "assets/js/13-face-verify.js": "c6bb25b5fdc1e402431ec5cf0e529fd613a3164440df54c84c4e4125a66334e4",
-    "assets/js/14-motion.js": "c4d143a45ebd81c4caff23510ffd1b2227c5d722d7cea51c513e0cf8968cf0dc",
+    "assets/js/14-motion.js": "a10a7be627eff40c04ab4223ab4c2b6fb1384a0077964514534ee252cb299179",
     "assets/js/15-autosave.js": "8e2bfd6570edb21f584bfa2a2ff848f34c173beb09e5e7dd9b622555c69b5582",
     "sw.js": "33128408dd94d722e4a65d0adb3e1512ece59b0af6928bc48ec9a157425719be"
   }

@@ -6335,3 +6335,11 @@ html:root:root body .fp2-btn{flex:none;height:32px;padding:0 13px;border:0;borde
 html:root:root body #app .fp2 .fp-tabs .fp-tab.active,html:root:root body #app .fp2 .fp-tabs .fp-tab.active b{color:#fff!important;-webkit-text-fill-color:#fff!important}
 html:root:root[data-theme="dark"] body #app .fp2 .fp-tabs .fp-tab.active,html:root:root[data-theme="dark"] body #app .fp2 .fp-tabs .fp-tab.active b{color:#111827!important;-webkit-text-fill-color:#111827!important}
 html:root:root[data-theme="dark"] body .fp2-btn{background:rgba(99,102,241,.22)!important;color:#c7d2fe!important}
+
+/* Shop location: Levromart logo as the locate button, spinning while it locates */
+.lv-loc-logo{display:block;width:22px;height:22px;background:#0f9d6b;-webkit-mask:url(/levromart-badge.png) center/contain no-repeat;mask:url(/levromart-badge.png) center/contain no-repeat}
+.vendor-map-locate-control.is-locating .lv-loc-logo{animation:lvLocSpin .9s linear infinite}
+@keyframes lvLocSpin{to{transform:rotate(360deg)}}
+:root[data-theme="dark"] .lv-loc-logo{background:#34d399}
+#veUseLocationBtn .fa-spinner{animation:lvLocSpin .9s linear infinite!important;width:1em;height:1em;background:currentColor;-webkit-mask:url(/levromart-badge.png) center/contain no-repeat;mask:url(/levromart-badge.png) center/contain no-repeat}
+#veUseLocationBtn .fa-spinner::before{content:""!important}
