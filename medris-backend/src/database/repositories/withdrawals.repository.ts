@@ -31,9 +31,32 @@ export type WithdrawalRow = {
   destination?: string;
 };
 
+/**
+ * Whether withdrawal_requests has the `destination` column (migration 0033). Until that migration is applied, withdrawals
+ * keep working as before (bank only). The answer is remembered for a minute.
+ */
+let destinationKnown: { has: boolean; at: number } | null = null;
+export function resetWithdrawalSchemaCache(): void {
+  destinationKnown = null;
+}
+
 /** Withdrawals (migration 0017): the money waiting per order, and the requests for it. Service role only. */
 export class WithdrawalsRepository {
   constructor(private readonly db: Executor) {}
+
+  async hasDestination(): Promise<boolean> {
+    if (destinationKnown && Date.now() - destinationKnown.at < 60_000) return destinationKnown.has;
+    const r = await jsonRow<{ x: boolean }>(
+      this.db,
+      sql`select exists (select 1 from pg_catalog.pg_attribute where attrelid = to_regclass('public.withdrawal_requests') and attname = 'destination' and not attisdropped) as x`,
+    );
+    destinationKnown = { has: r?.x === true, at: Date.now() };
+    return destinationKnown.has;
+  }
+
+  private async destCol() {
+    return (await this.hasDestination()) ? sql`w.destination` : sql`'bank'::text`;
+  }
 
   /** The shop's money that is waiting to be withdrawn, one row per completed order (what was paid, minus commission, minus refunds). */
   buckets(vendorId: string): Promise<Bucket[]> {
@@ -61,11 +84,13 @@ export class WithdrawalsRepository {
     return jsonRows(this.db, sql`select distinct d.order_id from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = ${vendorId} and d.status = 'open'`);
   }
 
-  openRequest(vendorId: string, destination: "bank" | "wallet" = "bank"): Promise<WithdrawalRow | null> {
+  async openRequest(vendorId: string, destination: "bank" | "wallet" = "bank"): Promise<WithdrawalRow | null> {
+    if (!(await this.hasDestination()) && destination === "wallet") return null;
+    const dest = await this.destCol();
     return jsonRow<WithdrawalRow>(
       this.db,
       sql`select w.id, w.vendor_id, null::text as business_name, null::uuid as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at
-          from public.withdrawal_requests w where w.vendor_id = ${vendorId} and w.status = 'requested' and w.destination = ${destination} for update`,
+          from public.withdrawal_requests w where w.vendor_id = ${vendorId} and w.status = 'requested' and ${dest} = ${destination} for update`,
     );
   }
 
@@ -79,6 +104,15 @@ export class WithdrawalsRepository {
 
   async insertRequest(vendorId: string, kind: "instant" | "approval", orderIds: string[], amountKobo: number, hasDispute: boolean, destination: "bank" | "wallet" = "bank"): Promise<string> {
     const status = kind === "instant" ? "approved" : "requested";
+    if (!(await this.hasDestination())) {
+      if (destination !== "bank") throw new Error('relation "public.wallet_accounts" does not exist');
+      const [old] = await jsonReturning<{ id: string }>(
+        this.db,
+        sql`insert into public.withdrawal_requests (vendor_id, status, kind, order_ids, amount_kobo, has_dispute, decided_at)
+            values (${vendorId}, ${status}, ${kind}, ${sql.raw(`'{${orderIds.join(",")}}'`)}::uuid[], ${amountKobo}, ${hasDispute}, ${kind === "instant" ? sql`now()` : sql`null`}) returning id`,
+      );
+      return old!.id;
+    }
     const [row] = await jsonReturning<{ id: string }>(
       this.db,
       sql`insert into public.withdrawal_requests (vendor_id, status, kind, order_ids, amount_kobo, has_dispute, decided_at, destination)
@@ -112,7 +146,8 @@ export class WithdrawalsRepository {
 
   /** Whether money already went to the bank since the payout account was saved (the first time after a change is checked by an admin). */
   async bankWithdrawnSince(vendorId: string, since: string): Promise<boolean> {
-    return (await jsonRow(this.db, sql`select 1 as x from public.withdrawal_requests where vendor_id = ${vendorId} and destination = 'bank' and status = 'approved' and coalesce(decided_at, created_at) >= ${since}::timestamptz limit 1`)) !== null;
+    const dest = await this.destCol();
+    return (await jsonRow(this.db, sql`select 1 as x from public.withdrawal_requests w where w.vendor_id = ${vendorId} and ${dest} = 'bank' and w.status = 'approved' and coalesce(decided_at, created_at) >= ${since}::timestamptz limit 1`)) !== null;
   }
 
   /** The waiting rows of a request that may be released now (an order with an open dispute stays held). */
@@ -138,10 +173,11 @@ export class WithdrawalsRepository {
     await this.db.execute(sql`update public.vendor_payouts set withdrawal_id = null where withdrawal_id = ${requestId} and status = 'on_hold'`);
   }
 
-  byId(id: string): Promise<WithdrawalRow | null> {
+  async byId(id: string): Promise<WithdrawalRow | null> {
+    const dest = await this.destCol();
     return jsonRow<WithdrawalRow>(
       this.db,
-      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, w.destination
+      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, ${dest} as destination
           from public.withdrawal_requests w join public.vendors v on v.id = w.vendor_id where w.id = ${id} for update of w`,
     );
   }
@@ -151,10 +187,11 @@ export class WithdrawalsRepository {
   }
 
   /** Requests for the admin screen, with what the admin must see before approving: open disputes and how long the shop has been around. */
-  adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string; account_changed_at: string | null })[]> {
+  async adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string; account_changed_at: string | null })[]> {
+    const dest = await this.destCol();
     return jsonRows(
       this.db,
-      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, w.destination,
+      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, ${dest} as destination,
                  (select count(*)::int from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open') as disputes,
                  coalesce((select array_agg(distinct d.order_id) from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open'), '{}') as dispute_orders,
                  v.account_name, v.bank_name, v.created_at as shop_since,

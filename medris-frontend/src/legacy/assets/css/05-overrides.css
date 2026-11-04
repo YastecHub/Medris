@@ -6689,3 +6689,108 @@ html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app#app .
 html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app#app .orders-icon-btn.lvo-pill:not(.on){color:#f3f4f6!important;-webkit-text-fill-color:#f3f4f6!important}
 /* My Listings tiles: the 3D pictures stand on the tile itself */
 html:root:root body #app :is(.vh-hub,.vl2) .vh-stat .vh-stat-ico,html:root:root body #app :is(.vh-hub,.vl2) .vh-stat .vh-3d{background:none!important;box-shadow:none!important}
+
+/* ===== 3D pictures stand on the page with no plate or shadow behind them; empty cart centred, flat on the page ===== */
+html:root:root body .vd-empty-ico.lv-empty-illus{background:none!important;width:auto!important;height:auto!important}
+html:root:root body img.lv3di{background:none!important;box-shadow:none!important;border:0!important;filter:none}
+html:root:root body #app .cart-page .vd-empty{border:0!important;background:none!important;box-shadow:none!important;min-height:calc(100dvh - 300px);justify-content:center;padding:1rem!important;gap:.55rem}
+html:root:root body #app .cart-page .vd-empty p{max-width:300px;margin:0 auto .3rem;opacity:.75}
+html:root:root body #app .lvo-empty .lvo-empty-ico img,html:root:root body #app .orders-empty-icon img{filter:none!important}
+
+/* ===== Admin: Approve green, Reject red, Delete outlined red (all three used to look the same) ===== */
+html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-approve{background:#16a06a!important;border:1px solid #16a06a!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-reject,html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-reject *{background:#e5484d!important;border:1px solid #e5484d!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-reject *{background:none!important;border:0!important}
+html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-delete,html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-delete *{background:transparent!important;border:1.5px solid #e5484d!important;color:#e5484d!important;-webkit-text-fill-color:#e5484d!important}
+html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn.ad-delete *{border:0!important}
+html:root:root:root:root:root:root:root:root:root body #app#app .ad-btn[disabled]{opacity:.65}
+
+/* ===== Settings: the "On" pill is green like every other switch ===== */
+html:root:root:root:root body #settings-page .settings-status-pill.active,html:root:root:root:root body .settings-status-pill.active{background:#16a06a!important;border-color:transparent!important;color:#fff!important;box-shadow:0 6px 14px -8px rgba(22,160,106,.8)!important}
+
+/* ===== Contact us: the help card reads in one row (purple icon, the words beside it, a small button under the words) ===== */
+html:root:root body #app .contact-us-help{display:grid!important;grid-template-columns:auto 1fr;align-items:start;column-gap:12px;row-gap:10px;text-align:left!important;padding:14px!important}
+html:root:root body #app .contact-us-help-ico{grid-row:1/3;width:44px!important;height:44px!important;border-radius:14px!important;display:grid!important;place-items:center;margin:0!important;background:linear-gradient(145deg,#8b5cf6,#6d28d9)!important;color:#fff!important;box-shadow:0 8px 18px -10px rgba(109,40,217,.8)!important;font-size:1.1rem}
+html:root:root body #app .contact-us-help strong{display:block;font-size:.95rem;line-height:1.25}
+html:root:root body #app .contact-us-help p{margin:.2rem 0 0!important;font-size:.8rem;opacity:.75}
+html:root:root body #app .contact-us-help .vl-add{grid-column:2;justify-self:start;width:auto!important;min-height:36px!important;padding:0 14px!important;font-size:.82rem!important;border-radius:999px!important;margin:0!important}
+
+/* ===== Vendors map: the map/grid switch is indigo like "View shop"; the locate button is the Levromart mark ===== */
+html:root:root:root body #app .vmpage .vmp-view-switch{background:#eef2ff!important;border-color:transparent!important}
+html:root:root:root body #app .vmpage .vmp-view-switch button{color:#4f46e5!important;background:transparent!important}
+html:root:root:root body #app .vmpage .vmp-view-switch button.active{background:#4f46e5!important;color:#fff!important;box-shadow:0 4px 12px -6px rgba(79,70,229,.8)!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch{background:rgba(99,102,241,.22)!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button{color:#c7d2fe!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button.active{background:#6366f1!important;color:#fff!important}
+html:root:root body #app .vmpage .vmp-locate .lv-loc-logo{width:24px;height:24px}
+html:root:root body #app .vmpage .vmp-locate.is-loading .lv-loc-logo{animation:lvLocSpin .9s linear infinite}
+html:root:root body #app .vmpage .vmp-locate.is-loading::after{display:none!important}
+
+/* ===== Search and Vendors: the floating 3D magnifier / map pin (no tile behind them; they still float) ===== */
+html body .lv-mapfab .mf-core.mf-3dcore{background:none!important;box-shadow:none!important;border:0!important;overflow:visible}
+html body .lv-mapfab .mf-3d{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.22));animation:mf3dBob 3.2s ease-in-out infinite}
+html body .lv-mapfab .mf-ring{display:none!important}
+html body .lv-mapfab.mf-drag .mf-3d{animation:none;transform:scale(1.08)}
+@keyframes mf3dBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+@media(prefers-reduced-motion:reduce){html body .lv-mapfab .mf-3d{animation:none}}
+
+/* ===== Verified badges: a blue tick for a verified seller (not a student), the green one stays for students ===== */
+html:root:root body .lv-nsv{color:#1d9bf0!important;font-size:.9em}
+html:root:root body .lv-nsv::before{content:"\f058"!important}
+html:root:root body .lv-nsv-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;background:rgba(29,155,240,.12)!important;color:#1d75c9!important;font-size:.72rem;font-weight:800;margin-left:.5rem}
+html:root:root body .lv-nsv-pill i::before{content:"\f058"!important}
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body .lv-nsv-pill{background:rgba(29,155,240,.2)!important;color:#8ecbff!important}
+
+/* ===== Vendor requests page ===== */
+html:root:root body #app .vrq-ready .vr-page-head{align-items:center}
+html:root:root body #app .vrq-title{display:flex!important;align-items:center;gap:10px;margin:0!important}
+html:root:root body #app .vrq-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#19c486,#0b8a5f);color:#fff;flex:none;box-shadow:0 10px 20px -12px rgba(11,138,95,.9)}
+html:root:root body #app .vrq-tt{display:flex;flex-direction:column;line-height:1.15}
+html:root:root body #app .vrq-tt b{font-size:1.25rem;font-weight:900}
+html:root:root body #app .vrq-tt small{font-size:.76rem;font-weight:500;opacity:.7;margin-top:2px}
+html:root:root body #app .vrq-ready .vr-tabs{display:flex;gap:6px;padding:5px;border-radius:999px;background:var(--surface-2,#f1f4f2);border:0!important;margin:12px 0}
+html:root:root body #app .vrq-ready .vr-tabs .vendor-request-tab{flex:1;border:0!important;border-radius:999px!important;padding:9px 10px!important;font-weight:800;font-size:.86rem;background:transparent!important;color:inherit;opacity:.7;box-shadow:none!important}
+html:root:root body #app .vrq-ready .vr-tabs .vendor-request-tab::after{display:none!important}
+html:root:root body #app .vrq-ready .vr-tabs .vendor-request-tab.active{background:#fff!important;opacity:1;color:#0b8a5f!important;box-shadow:0 2px 8px rgba(16,24,40,.08)!important}
+html:root:root body #app .vrq-ready .vr-tabs .vendor-request-tab span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#16a06a;color:#fff;font-size:.7rem;margin-left:4px}
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vrq-ready .vr-tabs{background:rgba(255,255,255,.06)}
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vrq-ready .vr-tabs .vendor-request-tab.active{background:#2b313a!important;color:#6ee7b7!important}
+html:root:root body #app .vrq-empty{padding:30px 16px 20px}
+html:root:root body #app .vrq-empty .lvo-btn{margin-top:10px}
+
+/* ===== Revenue chart colour palette ===== */
+.lvc-pal-btn{display:inline-grid;place-items:center;width:26px;height:26px;margin-left:6px;border-radius:50%;border:0;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-size:.78rem;vertical-align:middle;cursor:pointer}
+.lvc-pal{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.lvc-pal.hidden{display:none}
+.lvc-pal button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;background:var(--c);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.lvc-pal button[aria-checked="true"]{border-color:#fff;outline:2px solid var(--c)}
+
+/* ===== QR card watermark ===== */
+#lvqrSheet .lvqr-body.lvqr-wm{position:relative;isolation:isolate}
+#lvqrSheet .lvqr-body.lvqr-wm::before{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--lvqr-wm);background-size:176px 160px;opacity:.08;pointer-events:none;border-radius:inherit}
+
+/* ===== Order history: the same cards as the order list ===== */
+html:root:root body #app .lvo-hist-day{margin:6px 0 14px}
+
+/* ===== Add to your shop: 3D pictures ===== */
+#addListingChooser .alc-3d{width:52px;height:52px;object-fit:contain;flex:none}
+.lwa-tl{margin:12px 2px 6px;font-size:.72rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;opacity:.75}
+
+/* ===== Levi for vendors: tap-to-answer chips, the highlighted "Add photos", the photo touch-up bar ===== */
+.lvw-chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 2px}
+.lvw-chip{border:1.5px solid rgba(22,160,106,.35);background:rgba(22,160,106,.08);color:#0b8a5f;font-weight:700;font-size:.8rem;padding:7px 12px;border-radius:999px;cursor:pointer;line-height:1.2;text-align:left}
+.lvw-chip:active{transform:scale(.97)}
+.lvw-chips.used .lvw-chip:not(.on){opacity:.4;pointer-events:none}
+.lvw-chips.used .lvw-chip.on{background:#16a06a;color:#fff;border-color:#16a06a}
+:root:is([data-theme="dark"],[data-theme="black"]) .lvw-chip{color:#6ee7b7;background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.35)}
+.lvw-vsug{padding:4px 6px 8px}
+#photoDropzone.lvw-glow{animation:lvwGlow 1.2s ease-in-out 4;border-color:#16a06a!important}
+@keyframes lvwGlow{0%,100%{box-shadow:0 0 0 0 rgba(22,160,106,0)}50%{box-shadow:0 0 0 6px rgba(22,160,106,.35)}}
+.lv-enh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 4px;padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(22,160,106,.1));border:1px solid rgba(124,58,237,.18)}
+.lv-enh-t{font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:6px}
+.lv-enh-t i{color:#7c3aed}
+.lv-enh button{flex:none;border:0;border-radius:999px;padding:8px 13px;font-weight:800;font-size:.8rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.lv-enh-go{background:linear-gradient(135deg,#7c3aed,#16a06a);color:#fff}
+.lv-enh-undo{background:rgba(0,0,0,.06);color:inherit}
+:root:is([data-theme="dark"],[data-theme="black"]) .lv-enh-undo{background:rgba(255,255,255,.1)}
+.lv-enh-spin{width:14px;height:14px;display:inline-block}

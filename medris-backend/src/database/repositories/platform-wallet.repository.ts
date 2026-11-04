@@ -46,6 +46,13 @@ export class PlatformWalletRepository {
     return Number(r?.k ?? 0);
   }
 
+  /** Monthly listing fees (migration 0036, after Paystack's fee) over the last `days` days; null = all time. */
+  async listingFeesKobo(days: number | null): Promise<number> {
+    const since = days == null ? sql`true` : sql`created_at >= now() - make_interval(days => ${days})`;
+    const r = await jsonRow<{ k: string }>(this.db, sql`select coalesce(sum(amount_kobo), 0)::text as k from public.platform_wallet_entries where kind = 'listing_fee' and ${since}`);
+    return Number(r?.k ?? 0);
+  }
+
   async withdrawnKobo(): Promise<number> {
     const r = await jsonRow<{ k: string }>(this.db, sql`select coalesce(-sum(amount_kobo), 0)::text as k from public.platform_wallet_entries where kind in ('withdrawal', 'withdrawal_return')`);
     return Number(r?.k ?? 0);
