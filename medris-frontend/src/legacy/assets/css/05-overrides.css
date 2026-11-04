@@ -7040,3 +7040,34 @@ html[data-lv-paystack="on"] .payment-confirmation-card,html[data-lv-paystack="on
 .lvdp button.on::after{background:#fff!important}
 .lvdp-acts{margin-top:.9rem}
 .lvdp-month{width:100%;border:0;border-radius:14px;background:rgba(22,160,106,.14);color:#0b8a5f;font:inherit;font-weight:800;padding:12px;cursor:pointer}
+
+/* admin wallet: history strip inside the card, like the people's wallet */
+.lwa-strip{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding:9px 12px;border:0;border-radius:13px;background:rgba(0,0,0,.28);color:#fff;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer;text-align:left}
+.lwa-strip-ic{display:inline-flex;width:24px;height:24px;flex:none}.lwa-strip-ic img{width:24px;height:24px;object-fit:contain}
+.lwa-strip-t{flex:1}
+.lwa-strip-last{opacity:.85;font-weight:600;font-size:.74rem;text-transform:capitalize}.lwa-strip-last b{font-weight:800}
+.lwa-strip>i{opacity:.7;font-size:.7rem}
+.apx-badge-amber{background:#d97706!important}
+
+.lvw-ico3d,.lwa-ic3d{background:transparent!important;display:inline-flex;align-items:center;justify-content:center}
+.lvw-ico3d img,.lwa-ic3d img{width:34px;height:34px;object-fit:contain}
+
+.lw-bank-logo{width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex:none}
+.lw-bank-logo img{width:100%;height:100%;object-fit:contain}
+
+/* map locate button: spins while it finds you, and is the same indigo as the map / grid switch */
+html:root:root:root body #app .vmpage .vmp-locate .lv-loc-logo{background:#4f46e5;opacity:1!important}
+html:root:root:root body #app .vmpage .vmp-locate.is-loading .lv-loc-logo{opacity:1!important;animation:lvLocSpin .9s linear infinite!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-locate .lv-loc-logo{background:#a5b4fc}
+html:root:root:root body #app .vmpage .vmp-locate.on .lv-loc-logo{background:#4f46e5}
+
+/* admin account menu: icons, sections, and a log out */
+.lv-pp-row .lv-pp-fa{flex:none;width:22px;margin-right:.75rem;text-align:center;font-size:1rem;color:#16a06a}
+.lv-pp-row.lv-pp-logout .lv-pp-fa{color:#dc2626}
+
+/* notifications: the quick first paint and the fresh paint are drawn exactly alike, so nothing (the time, the title) shifts after opening */
+html:root body .notif-item .notif-copy{display:flex!important;flex-direction:column!important;gap:2px!important;min-width:0;flex:1}
+html:root body .notif-item .notif-copy>br{display:none!important}
+html:root body .notif-item .notif-copy>strong{display:block!important;margin:0!important}
+html:root body .notif-item .avatar-circle,html:root body .notif-item .lv-admin-ico,html:root body .notif-item>img{width:2.15rem!important;height:2.15rem!important;min-width:2.15rem;flex:none!important;object-fit:cover}
+html:root body .notif-item{align-items:flex-start!important}

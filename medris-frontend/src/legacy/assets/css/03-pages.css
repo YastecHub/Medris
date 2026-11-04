@@ -3725,14 +3725,18 @@ html.lv-route-transitioning body {
 /* Request flow page transition: keep the new screen grounded and avoid a
    modal/drawer impression. The app shell is translated only during route swap. */
 #app.lv-page-slide-transition {
-  /* no sideways movement at all: a page just settles in with a very short fade, so nothing tilts or shifts */
-  transition: opacity 110ms ease-out;
+  /* the new page glides in from the side it belongs to (forward from the right, back from the left) and fades up: short and soft */
+  transition: transform 210ms cubic-bezier(.22,.75,.25,1), opacity 180ms ease-out;
   transform: none;
+  will-change: transform, opacity;
 }
 #app.lv-page-slide-transition.lv-page-slide-enter {
-  transform: none;
-  opacity: .86;
+  transform: translate3d(var(--lv-slide-x, 26px),0,0);
+  opacity: .35;
 }
+html.lv-route-transitioning,
+html.lv-route-transitioning body { overflow-x: clip !important; }
+html, body { overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) {
   #app.lv-page-slide-transition,
   #app.lv-page-slide-transition.lv-page-slide-enter {

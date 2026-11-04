@@ -2063,7 +2063,7 @@
     var rows = d.tx.filter(function (t) { return filter === "all" || t.state === filter; });
     return '<div class="lvw-chips lvw-fchips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
       (rows.length ? '<ul class="lvw-list">' + rows.map(function (t) {
-        return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : t.state === "ready" ? "fa-wallet" : t.state === "asked" ? "fa-user-clock" : t.state === "held" ? "fa-scale-balanced" : "fa-hourglass-half") + '"></i></span>' +
+        return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico lvw-ico3d ' + t.state + '">' + (window.lv3dIcon ? window.lv3dIcon({ paid: "tx-paid", onway: "tx-onway", ready: "tx-ready", asked: "tx-pending", held: "dispute", pending: "tx-pending" }[t.state] || "tx-pending", 34) : "") + '</span>' +
           '<div class="lvw-li"><strong>' + esc(t.title) + '</strong><small>#' + esc(String(t.id).slice(0, 8).toUpperCase()) + " · " + LABEL[t.state] + " · " + esc(when(t.date)) + '</small>' + ((t.comm || t.refunded) ? '<small>Sale ' + esc(money(t.gross)) + (t.comm ? ' − commission ' + esc(money(t.comm)) : "") + (t.refunded ? ' − refunded ' + esc(money(t.refunded)) : "") + '</small>' : "") + '</div>' +
           '<b class="lvw-amt ' + t.state + '">' + money(t.amount) + '</b></li>';
       }).join("") + '</ul>' : '<div class="lvw-empty"><i class="fa-regular fa-credit-card"></i><strong>Nothing here yet</strong><span>Payments made through Levromart appear here.</span></div>');
@@ -2154,6 +2154,7 @@
       go.disabled = true; go.textContent = "Please wait…";
       var pin = await window.lvPinGate({ title: "Withdraw to your bank", rows: [["Sent to your bank now", NOW(total), 1]].concat(appr > 0 && canAsk ? [["Waiting for Levromart (paid in the last 24 hours)", NOW(appr)]] : []), cta: "Withdraw " + NOW(total) });
       if (!pin) { go.disabled = false; go.textContent = "Withdraw " + NOW(total); return; }
+      if (!(await showConfirmDialog("Withdraw " + NOW(total) + " to your bank account? This is final.", { title: "Withdraw money", okLabel: "Yes, withdraw", cancelLabel: "No, go back" }))) { go.disabled = false; go.textContent = "Withdraw " + NOW(total); return; }
       go.disabled = true; go.textContent = "Please wait…";
       var q = await sb.rpc("request_withdrawal", { p_pin: pin });
       if (q.error) { go.disabled = false; go.textContent = "Try again"; return showToast(q.error.message || "Could not withdraw.", "error"); }
@@ -3603,6 +3604,13 @@ window.lvAskCancel = async function (orderId) {
     };
     w.__lvm = true; window.initVendorsMapPage = w;
   }
+  // switching the Vendors page to its map also drops the nearest shop's card (View shop / Follow) by itself
+  var origSwitch = window.switchVendorsView;
+  if (typeof origSwitch === "function" && !origSwitch.__lvm) {
+    var sw = function (mode) { var r = origSwitch.apply(this, arguments); if (mode === "map") { setTimeout(function () { lockOn(0); }, 500); setTimeout(function () { lockOn(20); }, 1500); } return r; };
+    sw.__lvm = true; window.switchVendorsView = sw;
+    try { switchVendorsView = sw; } catch (_) {}
+  }
   // without the person's location there is no real distance: show the shop and a button to turn location on (not "~0 m")
   var origRouteCard = window.vmpRouteCardDraw;
   if (typeof origRouteCard === "function") window.vmpRouteCardDraw = function (v) {
@@ -4113,6 +4121,7 @@ window.lvAskCancel = async function (orderId) {
       if (amt + fee > Number(d.balance_kobo)) return err(m, "You need " + money(amt + fee, true) + ". You have " + money(d.balance_kobo, true) + ".");
       var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
       if (!pin) return;
+      if (!(await showConfirmDialog("Send " + short(amt) + " to " + (pick.name || "@" + pick.handle) + " (@" + pick.handle + ")? You cannot get it back once it is sent.", { title: "Send money", okLabel: "Yes, send it", cancelLabel: "No, go back" }))) return;
       var b = this; b.disabled = true; b.textContent = "Sending…";
       var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not send."); }
@@ -4121,6 +4130,15 @@ window.lvAskCancel = async function (orderId) {
     };
   };
 
+  // the bank's code from its name (the account only carries the name), so its own logo can be shown
+  function bankCodeOf(name) {
+    try {
+      var n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, ""), list = (typeof NIGERIAN_BANKS !== "undefined" && NIGERIAN_BANKS) || [];
+      for (var i = 0; i < list.length; i++) { var b = String(list[i].name || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (b && (n === b || n.indexOf(b) > -1 || b.indexOf(n) > -1)) return list[i].code; }
+      if (/opay|paycom/.test(n)) return "999992";
+    } catch (_) {}
+    return "";
+  }
   window.lvW3Withdraw = async function () {
     var d = await load(true); if (!d) return showToast("Your wallet is not available right now.", "error");
     if (!d.account) {
@@ -4129,7 +4147,7 @@ window.lvAskCancel = async function (orderId) {
       return;
     }
     var a = d.account, most = Number(d.withdrawable_now_kobo || 0);
-    var m = sheet("Withdraw", '<div class="lw-bank"><span><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
+    var m = sheet("Withdraw", '<div class="lw-bank"><span class="ve-bank-ico lw-bank-logo" data-bank-code="' + esc(a.bank_code || bankCodeOf(a.bank_name)) + '"><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
       '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", k2n(most)) + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + ' · the most you can withdraw is ' + money(most, true) + '</p>' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo">Continue</button>');
     m.querySelector("#lwWdGo").onclick = async function () {
@@ -4139,6 +4157,7 @@ window.lvAskCancel = async function (orderId) {
       if (amt + fee > Number(d.balance_kobo)) return err(m, "You have " + money(d.balance_kobo, true) + ". This withdrawal needs " + money(amt + fee, true) + ".");
       var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
       if (!pin) return;
+      if (!(await showConfirmDialog("Withdraw " + short(amt) + " to " + (a.bank_name || "your bank") + " ···" + (a.last4 || "") + (a.account_name ? " (" + a.account_name + ")" : "") + "? This is final.", { title: "Withdraw money", okLabel: "Yes, withdraw", cancelLabel: "No, go back" }))) return;
       var b = this; b.disabled = true; b.textContent = "Please wait…";
       var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not withdraw."); }
@@ -4341,7 +4360,8 @@ window.lvAskCancel = async function (orderId) {
     else if (e.kind === "listing_fee") { ic = "fa-calendar-check"; cls = "in"; title = "Monthly listing fee" + (e.shop_name ? " · " + e.shop_name : ""); sub += " · after Paystack's fee"; }
     else if (e.kind === "withdrawal") { ic = "fa-building-columns"; cls = e.withdrawal_status === "success" ? "out" : e.withdrawal_status === "failed" || e.withdrawal_status === "reversed" ? "fail" : "wait"; title = "Withdrawal"; sub += " · " + (e.bank_name || "Bank") + " ···" + (e.account_last4 || "") + " · " + ({ success: "Sent", processing: "On its way", failed: "Not sent", reversed: "Returned" }[e.withdrawal_status] || ""); }
     else { ic = "fa-arrow-rotate-left"; cls = "back"; title = "Withdrawal returned"; }
-    return '<div class="lwa-row"><span class="lwa-ic ' + cls + '"><i class="fa-solid ' + ic + '"></i></span><div class="lwa-mid"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></div><span class="lwa-amt ' + cls + '">' + (plus ? "+" : "−") + naira(Math.abs(k)) + "</span></div>";
+    var three = { commission: "chart", commission_reversed: "order-cancelled", transaction_fee: "bars", transaction_fee_return: "moved-up", listing_fee: "monthly-listing", withdrawal: cls === "fail" ? "withdrawal-rejected" : cls === "wait" ? "tx-pending" : "payout-sent", withdrawal_return: "withdrawal-rejected" }[e.kind] || "tx-all";
+    return '<div class="lwa-row"><span class="lwa-ic lwa-ic3d ' + cls + '">' + (window.lv3dIcon ? window.lv3dIcon(three, 30) : '<i class="fa-solid ' + ic + '"></i>') + '</span><div class="lwa-mid"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></div><span class="lwa-amt ' + cls + '">' + (plus ? "+" : "−") + naira(Math.abs(k)) + "</span></div>";
   }
   var lwAll = false, lwTab = "all";
   var LW_KINDS = { commission: ["commission", "commission_reversed"], listing: ["listing_fee"], fees: ["transaction_fee", "transaction_fee_return"], withdrawals: ["withdrawal", "withdrawal_return"] };
@@ -4378,9 +4398,10 @@ window.lvAskCancel = async function (orderId) {
         (lf ? '<div><small>Monthly listing fees</small><b>' + naira(lf.all_kobo) + '</b><em>Today ' + naira(lf.today_kobo) + '</em></div>' : "") +
         (d.transaction_fees ? '<div><small>Transaction fees</small><b>' + naira(d.transaction_fees.all_kobo) + '</b><em>Today ' + naira(d.transaction_fees.today_kobo) + '</em></div>' : "") +
       '</div>' +
+      '<button type="button" class="lwa-strip" onclick="navigate(\'adminWalletHistory\')"><span class="lwa-strip-ic">' + (window.lv3dIcon ? window.lv3dIcon("tx-all", 22) : '<i class="fa-solid fa-clock-rotate-left"></i>') + '</span><span class="lwa-strip-t">Transaction history</span>' +
+        ((d.entries || [])[0] ? '<span class="lwa-strip-last">' + esc(String(((d.entries || [])[0].kind || "").replace(/_/g, " "))) + ' <b>' + (Number((d.entries || [])[0].amount_kobo) > 0 ? "+" : "−") + naira(Math.abs(Number((d.entries || [])[0].amount_kobo))) + '</b></span>' : "") + '<i class="fa-solid fa-chevron-right"></i></button>' +
       "</div>" +
-      (d.can_manage ? "" : '<p class="aw-note"><i class="fa-solid fa-lock"></i> Only the super admin can withdraw or change the payout account.</p>') +
-      '<button type="button" class="lwa-histbtn" onclick="navigate(\'adminWalletHistory\')"><i class="fa-solid fa-clock-rotate-left"></i><span>Transaction history</span><i class="fa-solid fa-chevron-right"></i></button></div>';
+      (d.can_manage ? "" : '<p class="aw-note"><i class="fa-solid fa-lock"></i> Only the super admin can withdraw or change the payout account.</p>') + '</div>';
   }
   function pwSheet(title, text, okLabel) {
     return new Promise(function (resolve) {
@@ -4460,9 +4481,11 @@ window.lvAskCancel = async function (orderId) {
     if (wl) wl.innerHTML = walletsHtml();
     if (wt) wt.innerHTML = waitingHtml();
     var n = AWD ? (AWD.withdrawals || []).filter(function (x) { return x.status === "requested"; }).length : 0;
-    var badge = document.getElementById("lvApxBadge"); if (badge) { badge.textContent = n > 9 ? "9+" : String(n); badge.hidden = !n; }
+    var nMain = n + Number(window.__lvPayPending || 0), nHold = AWD ? (AWD.wallets || []).filter(function (x) { return x.frozen; }).length : 0;
+    var b1 = document.getElementById("lvApxBadgeMain"); if (b1) { b1.textContent = nMain > 9 ? "9+" : String(nMain); b1.hidden = !nMain; }
+    var b2 = document.getElementById("lvApxBadgeWallets"); if (b2) { b2.textContent = nHold > 9 ? "9+" : String(nHold); b2.hidden = !nHold; b2.className = "apx-badge apx-badge-amber"; }
   }
-  var apxTab = "earn";
+  var apxTab = "main";
   window.lvApxTab = function (t) {
     apxTab = t;
     document.querySelectorAll("#lvApxTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
@@ -4533,10 +4556,9 @@ window.lvAskCancel = async function (orderId) {
       var html = String(await orig.apply(this, arguments)); setTimeout(function () { paint(); window.lvApxTab(apxTab); }, 60);
       var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
       var rest = nav && html.indexOf(nav) === 0 ? html.slice(nav.length) : html;
-      var tabs = '<div class="apx-tabs" id="lvApxTabs"><button type="button" data-t="earn" class="on" onclick="lvApxTab(\'earn\')">Earnings</button><button type="button" data-t="wallets" onclick="lvApxTab(\'wallets\')">Wallets</button><button type="button" data-t="check" onclick="lvApxTab(\'check\')">To check <i class="apx-badge" id="lvApxBadge" hidden></i></button></div>';
-      var panels = '<div class="apx-panel" data-p="earn"><div id="lvAwBox" class="aw-box"></div></div>' +
-        '<div class="apx-panel" data-p="wallets" hidden><div id="lvAwWallets" class="aw-box"></div></div>' +
-        '<div class="apx-panel" data-p="check" hidden><div id="lvAwWaiting" class="aw-box"></div><h3 class="ap-h">Payments to check</h3>' + rest + '</div>';
+      var tabs = '<div class="apx-tabs" id="lvApxTabs"><button type="button" data-t="main" class="on" onclick="lvApxTab(\'main\')">Levromart <i class="apx-badge" id="lvApxBadgeMain" hidden></i></button><button type="button" data-t="wallets" onclick="lvApxTab(\'wallets\')">People\'s wallets <i class="apx-badge" id="lvApxBadgeWallets" hidden></i></button></div>';
+      var panels = '<div class="apx-panel" data-p="main"><div id="lvAwBox" class="aw-box"></div><div id="lvAwWaiting" class="aw-box"></div><h3 class="ap-h">Payments to check</h3>' + rest + '</div>' +
+        '<div class="apx-panel" data-p="wallets" hidden><div id="lvAwWallets" class="aw-box"></div></div>';
       return nav + tabs + panels;
     };
     w.__aw = true; window.renderAdminPayments = w;

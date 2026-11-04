@@ -71,6 +71,9 @@ async function renderVendorDashboard() {
   const totalFavorites = (favCounts || []).reduce((s, r) => s + r.count, 0);
   // "Listings" is how many are live right now (active ones), not every listing ever made
   const totalListings = (products || []).filter((p) => p.status === "active").length + Number(hubPackages || 0);
+  // how many people opened this shop's profile today
+  let profileViewsToday = 0;
+  try { const t0 = new Date(); t0.setHours(0, 0, 0, 0); const { count } = await sb.from("vendor_profile_view_events").select("id", { count: "exact", head: true }).eq("vendor_id", v.id).gte("viewed_at", t0.toISOString()); profileViewsToday = count || 0; } catch (_) {}
   const totalFollowers = Number(followerCounts?.[0]?.follower_count || 0);
   const commissionOwed = Number(owed || 0);
   const earliestCommissionDueAt = commissionDeadline?.[0]?.earliest_due_at || null;
@@ -92,7 +95,7 @@ async function renderVendorDashboard() {
       ${v.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(v.city)}</p>` : ""}
       ${v.bio ? `<p class="vendor-profile-header-bio">${esc(v.bio)}</p>` : ""}
       <div class="storefront-stats">
-        <span><strong>${totalListings}</strong> listing${totalListings === 1 ? "" : "s"}</span>
+        <span><strong>${profileViewsToday}</strong> profile view${profileViewsToday === 1 ? "" : "s"} today</span>
         <button type="button" class="storefront-stat-link" onclick="navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300);"><strong>${v.review_count || 0}</strong> review${Number(v.review_count || 0) === 1 ? "" : "s"}</button>
         <button type="button" class="storefront-stat-link" onclick="navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300);"><strong>★ ${Number(v.avg_rating ?? 0).toFixed(1)}</strong> rating</button>
         <button type="button" class="storefront-stat-link" onclick="navigate('vendorFollowers')"><strong>${totalFollowers.toLocaleString()}</strong> follower${totalFollowers === 1 ? "" : "s"}</button>
@@ -111,7 +114,7 @@ async function renderVendorDashboard() {
     <div class="lv-stat-grid">
       ${lvStatTile("1f6d2", `${totalOrders}`, "Total orders", "navigate('vendorOrders')")}
       ${lvStatTile("1f48e", naira(revenue), "Revenue", "navigate('vendorEarnings')")}
-      ${lvStatTile("1f4e6", `${totalListings}`, "Listings", "navigate('vendorProducts')")}
+      ${lvStatTile("lv:stat-views", `${profileViewsToday}`, "Profile views today", "")}
       ${lvStatTile("1f465", `${totalFollowers}`, "Followers", "navigate('vendorFollowers')")}
       ${lvStatTile("1f4c8", `${totalViews}`, "Product views", "")}
       ${lvStatTile("1f381", `${totalFavorites}`, "Wishlist saves", "")}
@@ -177,7 +180,7 @@ async function renderVendorDashboard() {
 
 // A statistic tile: a 3D icon (the same family as the category icons), the value large, the label small; a button when it leads somewhere.
 function lvStatTile(icon3d, value, label, onclick) {
-  const inner = `<span class="lv-stat-ico">${typeof lv3d === "function" ? lv3d(icon3d) : ""}</span><strong class="lv-stat-val">${value}</strong><small class="lv-stat-label">${label}</small>`;
+  const inner = `<span class="lv-stat-ico">${String(icon3d).startsWith("lv:") ? (typeof window.lv3dIcon === "function" ? window.lv3dIcon(String(icon3d).slice(3), 44) : "") : (typeof lv3d === "function" ? lv3d(icon3d) : "")}</span><strong class="lv-stat-val">${value}</strong><small class="lv-stat-label">${label}</small>`;
   return onclick ? `<button type="button" class="lv-stat" onclick="${onclick}">${inner}</button>` : `<div class="lv-stat">${inner}</div>`;
 }
 // The shop's average rating, its stars and the number of reviews; opens the reviews on the public profile.

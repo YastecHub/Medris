@@ -452,7 +452,16 @@ function updateAuthUI() {
       <div class="profile-panel-scroll">
         ${profile.role === "admin" ? `<div class="lv-pp">
           <div class="lv-pp-stats admin-profile-stats">${adminStats.map(s => `<button type="button" class="lv-pp-stat" data-admin-stat="${esc(s.key)}" onclick="closeAllPanels();${s.action || ""}"><b>${s.value}</b> ${esc(String(s.label).toLowerCase())}</button>`).join("")}</div>
-          <div class="lv-pp-group">${links.map((l) => `<button type="button" class="lv-pp-row"${l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : ""} onclick="closeAllPanels();${l.action}">${l.label}</button>`).join("")}</div>
+          ${(() => {
+            const FA = [[/adminPanel/, "fa-gauge-high"], [/adminMonthlyListing/, "fa-calendar-check"], [/adminUsers/, "fa-user-shield"], [/adminFinance/, "fa-store"], [/adminDisputes/, "fa-scale-balanced"], [/adminSupportRequests/, "fa-headset"], [/adminConversations/, "fa-comments"], [/adminFeedback/, "fa-lightbulb"], [/adminPoints/, "fa-star"], [/adminLinkLibrary/, "fa-link"], [/contactUs/, "fa-phone"], [/settings/, "fa-gear"]];
+            const iconOf = (a) => (FA.find((x) => x[0].test(String(a))) || [0, "fa-circle"])[1];
+            const arow = (l) => `<button type="button" class="lv-pp-row"${l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : ""} onclick="closeAllPanels();${l.action}"><i class="fa-solid ${iconOf(l.action)} lv-pp-fa" aria-hidden="true"></i>${l.label}</button>`;
+            const manage = links.filter((l) => !/contactUs|'settings'/.test(l.action));
+            const help = links.filter((l) => /contactUs/.test(l.action));
+            const rest = links.filter((l) => /'settings'/.test(l.action));
+            const out = `<button type="button" class="lv-pp-row lv-pp-logout" onclick="closeAllPanels();logout()"><i class="fa-solid fa-right-from-bracket lv-pp-fa" aria-hidden="true"></i>Log out</button>`;
+            return `<div class="lv-pp-group">${manage.map(arow).join("")}</div>` + (help.length ? `<div class="lv-pp-group">${help.map(arow).join("")}</div>` : "") + `<div class="lv-pp-group">${rest.map(arow).join("")}${out}</div>`;
+          })()}
         </div>` : `
         <div class="lv-pp">
           <div class="lv-pp-stats${vendor ? "" : " lv-hide"}">${(vendor
