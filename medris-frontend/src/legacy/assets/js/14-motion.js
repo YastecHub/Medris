@@ -4118,11 +4118,20 @@ window.lvAskCancel = async function (orderId) {
     if (!(target && target.nodeType === 1)) return navigate("walletHistory");
     var body = target;
     var r = await sb.rpc("get_levro_wallet_history", {});
-    var all = (r && r.data) || [], filter = "all", term = "", more = all.length >= 50;
+    var all = (r && r.data) || [], filter = "all", term = "", period = "all", more = all.length >= 50;
     if (!all.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
-    body.innerHTML = '<div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div><button type="button" class="lwh-more" id="lwhMore" hidden>Show older</button>';
+    body.innerHTML = '<div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-periods">' + [["all", "All time"], ["month", "This month"], ["last", "Last month"]].map(function (c) { return '<button type="button" data-p="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div><button type="button" class="lwh-more" id="lwhMore" hidden>Load more</button>';
+    function inPeriod(e) {
+      if (period === "all") return true;
+      var d = new Date(e.created_at), n = new Date(), a = new Date(n.getFullYear(), n.getMonth() - (period === "last" ? 1 : 0), 1), b = new Date(n.getFullYear(), n.getMonth() - (period === "last" ? 0 : -1), 1);
+      return d >= a && d < b;
+    }
     function paint() {
-      var rows = all.filter(function (e) {
+      var inP = all.filter(inPeriod), tin = 0, tout = 0;
+      inP.forEach(function (e) { var a = Number(e.amount_kobo); if (a > 0) tin += a; else tout += -a; });
+      var sum = body.querySelector("#lwhSum");
+      if (sum) sum.innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + esc(short(tin)) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + esc(short(tout)) + "</b></div>";
+      var rows = inP.filter(function (e) {
         var amt = Number(e.amount_kobo);
         if (filter === "in" && amt <= 0) return false; if (filter === "out" && amt >= 0) return false;
         if (!term) return true;
@@ -4150,12 +4159,16 @@ window.lvAskCancel = async function (orderId) {
       return '<div class="lw-hist">' + h + "</ul></div>";
     }
     body.querySelector(".lwh-chips").onclick = function (e) { var b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; body.querySelectorAll(".lwh-chips button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
+    body.querySelector(".lwh-periods").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; period = b.dataset.p; body.querySelectorAll(".lwh-periods button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
     body.querySelector(".lwh-search").oninput = function () { term = this.value.trim().toLowerCase(); paint(); };
     body.querySelector("#lwhMore").onclick = async function () {
       var btn = this; btn.disabled = true; btn.textContent = "Loading…";
       var q = await sb.rpc("get_levro_wallet_history", { p_before: all[all.length - 1].created_at });
-      var next = (q && q.data) || [];
-      all = all.concat(next); more = next.length >= 50; btn.disabled = false; btn.textContent = "Show older"; paint();
+      var have = {}; all.forEach(function (e) { have[e.id] = 1; });
+      var next = ((q && q.data) || []).filter(function (e) { return !have[e.id]; });
+      all = all.concat(next); more = next.length >= 50; btn.disabled = false; btn.textContent = "Load more";
+      if (!next.length) { more = false; if (typeof showToast === "function") showToast("That is everything.", "info"); }
+      paint();
     };
     paint();
   };
