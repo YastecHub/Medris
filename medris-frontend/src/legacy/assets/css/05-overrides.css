@@ -7167,3 +7167,17 @@ html:root:root:root:root body .lv-nsv,html:root:root:root:root body i.lv-nsv::be
 :root:root:root:root:root body i[data-vt].lv-blue{filter:hue-rotate(62deg) saturate(1.25)}
 /* the student mark (graduation cap) keeps its green */
 :root:root:root:root:root body i.lv-svi.fa-user-graduate{filter:none}
+
+/* ===== Transaction history: clear in light mode (dark text, a green chosen chip), and no outline around the month ===== */
+html:root:root:root:root body #app .lwh-monthbar .lwh-pick,html:root:root:root:root body #app .lwh-monthbar .lwh-pick:active,html:root:root:root:root body #app .lwh-monthbar .lwh-pick:focus-visible{background:none!important;border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;color:var(--text,#111827)!important;-webkit-text-fill-color:var(--text,#111827)!important;min-height:0!important;height:auto!important}
+html:root:root:root:root body #app .lwh-chips button{background:transparent!important;color:var(--text,#111827)!important;-webkit-text-fill-color:var(--text,#111827)!important;border:1.5px solid rgba(100,116,139,.4)!important}
+html:root:root:root:root body #app .lwh-chips button.on{background:#16a06a!important;border-color:#16a06a!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root body #app .lwh-sum-c small{color:#475569!important;opacity:1}
+html:root:root:root:root body #app .lwh-sum-c.in b{color:#047857!important}
+html:root:root:root:root body #app .lwh-sum-c.out b{color:#dc2626!important}
+html:root:root:root:root body #app .lwh-search{color:var(--text,#111827)!important;border:1.5px solid rgba(100,116,139,.4)!important}
+html:root:root:root:root body #app .lwh-search::placeholder{color:#64748b!important;opacity:1}
+html:root:root:root:root body #app .lw-day{color:#334155!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .lwh-sum-c small,html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .lw-day{color:#cbd5e1!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .lwh-sum-c.in b{color:#4ade80!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .lwh-sum-c.out b{color:#f87171!important}
