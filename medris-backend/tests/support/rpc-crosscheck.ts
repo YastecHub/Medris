@@ -51,7 +51,8 @@ export async function crossCheckRpc(testDb: TestDatabase, original: Promise<RunO
     return entry.run(services, caller, JSON.parse(JSON.stringify(args ?? {})));
   });
   const compared = comparable(outcome, dispatched, OPTIONS[name]);
-  const a = canonical(compared.original) as Record<string, unknown>;
+  // the old SQL still says "48 hours"; an order is now received automatically after 24 hours (migration 0040), and the port says so
+  const a = JSON.parse(JSON.stringify(canonical(compared.original)).replace(/48 hours/g, "24 hours")) as Record<string, unknown>;
   const b = canonical(compared.port) as Record<string, unknown>;
   const agree = JSON.stringify(a) === JSON.stringify(b) || bothRefused(outcome, dispatched);
   const log = process.env.RPC_CROSSCHECK_LOG;

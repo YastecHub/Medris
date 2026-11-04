@@ -10,6 +10,7 @@ export interface CancelOrder {
   business_name: string | null;
   status: string;
   paid: boolean;
+  refund_window_over: boolean;
 }
 export interface CancellationRow {
   id: string;
@@ -39,7 +40,8 @@ export class CancellationsRepository {
     return jsonRow<CancelOrder>(
       this.db,
       sql`select o.id, o.buyer_id, o.vendor_id, v.user_id as vendor_user_id, v.business_name, o.status::text as status,
-                 exists (select 1 from public.payments p where p.order_id = o.id and p.status = 'paid' and p.payment_type::text in ('sale_price', 'rental_fee', 'delivery_deposit_20')) as paid
+                 exists (select 1 from public.payments p where p.order_id = o.id and p.status = 'paid' and p.payment_type::text in ('sale_price', 'rental_fee', 'delivery_deposit_20')) as paid,
+                 (o.created_at < now() - interval '24 hours') as refund_window_over
           from public.orders o join public.vendors v on v.id = o.vendor_id where o.id = ${orderId} for update of o`,
     );
   }

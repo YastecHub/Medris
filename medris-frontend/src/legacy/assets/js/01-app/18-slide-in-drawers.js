@@ -18,7 +18,7 @@ function openDrawer(id) {
   if (!wasOpen) {
     target.classList.add("open");
     byId("drawerBackdrop")?.classList.add("open");
-    playSound("open");
+    setTimeout(() => { try { playSound("open"); } catch (_) {} }, 0);   // the sound never delays the panel
   }
 }
 function toggleSettingsPanel() { navigate("settings"); }

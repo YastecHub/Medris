@@ -346,8 +346,7 @@ function updateAuthUI() {
       links.push({ label: `Disputes <span class="badge danger profile-disputes-badge ${Number(window.__adminDisputeCount || 0) > 0 ? "" : "hidden"}">${Number(window.__adminDisputeCount || 0) > 9 ? "9+" : Number(window.__adminDisputeCount || 0)}</span>`, action: "navigate('adminDisputes')", profileKey: "disputes" });
       links.push({ label: `Support requests`, action: "navigate('adminSupportRequests')" });
       links.push({ label: `Conversations`, action: "navigate('adminConversations')" });
-      links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')", profileKey: "suggestions" });
-      links.push({ label: `Feedback`, action: "navigate('adminFeedback')" });
+      links.push({ label: `Feedback${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')", profileKey: "suggestions" });
       links.push({ label: "Points manager", action: "navigate('adminPoints')" });
       links.push({ label: "Link Library", action: "navigate('adminLinkLibrary')" });
       links.push({ label: "Contact us", action: "navigate('contactUs')" });
@@ -432,7 +431,7 @@ function updateAuthUI() {
       <div class="profile-panel-static">
         <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn profile-settings-gear" onclick="closeAllPanels();navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></div>
 
-        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
+        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : true ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
           <div class="avatar-edit-wrap">
             ${profile.avatar_url
               ? `<button type="button" class="profile-avatar-lightbox-btn" onclick="openProfileImageLightbox('${escJs(profile.avatar_url)}','${escJs(profile.name || "Profile")}',event)" aria-label="View profile picture"><img src="${esc(profile.avatar_url)}" class="avatar-circle avatar-lg" style="object-fit:cover;" alt="${esc(profile.name || "Profile")}" draggable="false" /></button>`
@@ -445,7 +444,7 @@ function updateAuthUI() {
             <strong class="profile-account-name">${esc(profile.name || "")}</strong>
             <span class="profile-account-email muted">${esc(profile.email)}</span>
             <span class="badge profile-role-badge ${profile.role === "admin" ? "" : "lv-hide"}">${profile.role === "admin" ? "admin" : vendor ? "vendor" : "customer"}</span>
-            ${profile.role !== "admin" ? `<span class="profile-view-full-link">View full profile <i class="fa-solid fa-chevron-right"></i></span>` : ""}
+            <span class="profile-view-full-link">View full profile <i class="fa-solid fa-chevron-right"></i></span>
           </div>
         </div>
       </div>
@@ -465,7 +464,7 @@ function updateAuthUI() {
         </div>` : `
         <div class="lv-pp">
           <div class="lv-pp-stats${vendor ? "" : " lv-hide"}">${(vendor
-            ? [{ n: Number(vendorProductCount || 0), t: Number(vendorProductCount || 0) === 1 ? "listing" : "listings", a: "navigate('vendorProducts')" }, { n: Number(vendorPendingOrderCount || 0), t: "pending orders", a: "navigate('vendorOrders',{status:'all',perspective:'sales'})" }]
+            ? [{ n: Number(window.vendorProfileViewsToday || (typeof vendorProfileViewsToday !== "undefined" ? vendorProfileViewsToday : 0) || 0), t: "profile views today", a: "navigate('vendorDashboard')" }, { n: Number(vendorPendingOrderCount || 0), t: "pending orders", a: "navigate('vendorOrders',{status:'all',perspective:'sales'})" }]
             : [{ n: Number(buyerTotalOrderCount || 0), t: Number(buyerTotalOrderCount || 0) === 1 ? "order" : "orders", a: "navigate('buyerOrders')" }, { n: (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0), t: "saved items", a: "navigate('wishlist')" }]
           ).map(x => `<button type="button" class="lv-pp-stat" onclick="closeAllPanels();${x.a}"><b>${x.n}</b> ${x.t}</button>`).join("")}</div>
           ${(() => {

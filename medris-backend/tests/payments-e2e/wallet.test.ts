@@ -121,7 +121,15 @@ describe("the Levromart wallet", () => {
     expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [old])).toMatchObject({ status: "to_wallet" });
     const open = await rowOf<any>(w, `select id from public.withdrawal_requests where status = 'requested' and destination = 'wallet'`);
     expect(open).toBeTruthy();
-    expect((await call("admin_decide_withdrawal", w.admin.token, { p_request_id: open.id, p_decision: "approve" })).status).toBe(200);
+    // the shop can take a waiting request back (only its own, only while it waits); the money goes back to its waiting pile
+    expect((await call("cancel_withdrawal_request", w.buyer.token, { p_request_id: open.id })).status).toBe(403);
+    expect((await call("cancel_withdrawal_request", w.vendor.token, { p_request_id: open.id })).status).toBe(200);
+    expect((await call("cancel_withdrawal_request", w.vendor.token, { p_request_id: open.id })).status).toBe(409);
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [fresh])).toMatchObject({ status: "on_hold" });
+    const again = await call("request_withdrawal", w.vendor.token, { p_destination: "wallet" });
+    expect(again.status).toBe(200);
+    const open2 = await rowOf<any>(w, `select id from public.withdrawal_requests where status = 'requested' and destination = 'wallet'`);
+    expect((await call("admin_decide_withdrawal", w.admin.token, { p_request_id: open2.id, p_decision: "approve" })).status).toBe(200);
     expect(await balance(w.vendor.token)).toBe(388000 + 194000);
     await runJob(w, "vendor-payouts");
     expect(w.paystack.callsTo("POST", "/transfer")).toHaveLength(0); // nothing left Levromart's Paystack balance

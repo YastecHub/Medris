@@ -129,7 +129,7 @@ export class ScheduledJobsService {
     });
   }
 
-  /** Replaces: public.auto_complete_eligible_orders() - paid orders not confirmed or disputed within 48 hours are completed. */
+  /** Replaces: public.auto_complete_eligible_orders() - paid orders not confirmed or disputed within 24 hours are completed. */
   autoCompleteEligibleOrders(): Promise<number> {
     return this.tx(async (_tx, jobs, notify) => {
       let n = 0;
@@ -140,7 +140,7 @@ export class ScheduledJobsService {
           userId: r.buyer_id,
           type: "order_completed",
           title: "Order marked as received",
-          body: "No issue was reported within 48 hours, so your order was marked as received and completed.",
+          body: "No issue was reported within 24 hours, so your order was marked as received and completed.",
           targetView: "orderDetail",
           targetParams: { orderId: r.id, reviewEligible: true },
         });

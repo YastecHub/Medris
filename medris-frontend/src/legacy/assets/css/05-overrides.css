@@ -7078,3 +7078,56 @@ html:root body .storefront-profile-name .lv-nsv{margin:0 0 0 .1rem!important;fon
 html:root body .storefront-profile-name{gap:.25rem!important}
 /* the green tick (verified students) is as small as the blue one */
 :root:root:root:root body i.vendor-inline-verified,:root:root:root:root body i.lv-svi,:root:root:root:root body i.lv-cr-vtick,:root:root:root:root body i.sr-verified,:root:root:root:root body i.od-verified,:root:root:root:root body .lcl-v i,:root:root:root:root body .vd-verified i,:root:root:root:root body .verified-tick i,:root:root:root:root body .vendor-card-verified-badge i{width:.9em!important;height:.9em!important}
+
+/* ===== Vendors map fills the whole screen: no empty band above it, and the shop pictures sit clear of the bottom edge ===== */
+html:root:root:root body[data-view="vendorsMap"],html:root:root:root body.vendors-map-full-page{padding-top:0!important}
+html:root:root:root body[data-view="vendorsMap"] #app,html:root:root:root body.vendors-map-full-page #app{margin-top:0!important;padding-top:0!important}
+html:root:root:root body[data-view="vendorsMap"] #app .vmpage,html:root:root:root body.vendors-map-full-page #app .vmpage{height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important}
+html:root:root:root body[data-view="vendorsMap"] #app .vmpage .vmp-bottom,html:root:root:root body.vendors-map-full-page #app .vmpage .vmp-bottom{padding-bottom:calc(1.1rem + env(safe-area-inset-bottom,0px))!important}
+html:root:root:root body[data-view="vendorsMap"] #app .vmpage .vmp-rail,html:root:root:root body.vendors-map-full-page #app .vmpage .vmp-rail{padding-bottom:.6rem!important}
+/* locate button: calm grey, spinning in place while it finds you (no colour change mid-spin) */
+html:root:root:root:root body #app .vmpage .vmp-locate .lv-loc-logo,html:root:root:root:root body #app .vmpage .vmp-locate.on .lv-loc-logo,html:root:root:root:root body #app .vmpage .vmp-locate.is-loading .lv-loc-logo{background:#6b7280!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-locate .lv-loc-logo,html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-locate.on .lv-loc-logo{background:#9ca3af!important}
+html:root:root:root:root body #app .vmpage .vmp-locate.is-loading .lv-loc-logo{opacity:1!important;animation:lvLocSpin .9s linear infinite!important;transform-origin:50% 50%}
+html:root:root:root:root body #app .vmpage .vmp-locate.is-loading i,html:root:root:root:root body #app .vmpage .vmp-locate.is-loading::before,html:root:root:root:root body #app .vmpage .vmp-locate.is-loading::after{display:none!important;animation:none!important}
+
+/* wallet card placeholder while the wallet loads (so the older card never flashes) */
+.lvw-skel{min-height:11rem}
+.lvw-skel-bar{display:inline-block;flex:1;border-radius:12px;background:rgba(255,255,255,.22);animation:lvSkel 1.2s ease-in-out infinite}
+.lvw-skel .lw-acts{display:flex;gap:.6rem;margin-top:1rem}
+@keyframes lvSkel{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* date picker: light and clean, no dim layer behind it, a year stepper with a scrolling list */
+.lvdp-wrap{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.lvdp-wrap .lvw-sheet{box-shadow:0 12px 40px rgba(0,0,0,.18)!important;border:1px solid rgba(128,128,128,.2)}
+.lvdp-ystep{display:flex;align-items:center;gap:8px}
+.lvdp-ystep>button{width:40px;height:40px;border-radius:50%;border:0;background:rgba(128,128,128,.14);color:inherit;cursor:pointer;flex:none}
+.lvdp-ystep>button:disabled{opacity:.3}
+.lvdp-ysel{position:relative;flex:1;display:block}
+.lvdp-ysel select{width:100%;height:40px;appearance:none;-webkit-appearance:none;border:1.5px solid rgba(128,128,128,.3);border-radius:12px;background:transparent;color:inherit;font:inherit;font-weight:800;text-align:center;text-align-last:center;padding:0 28px}
+.lvdp-ysel i{position:absolute;right:12px;top:50%;margin-top:-6px;font-size:.7rem;opacity:.6;pointer-events:none}
+
+#textPromptModalInput.lv-required-miss{border-color:#dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+
+/* order page: slim payment summary, "I have received it" up top */
+.od-card-slim{padding:.7rem .9rem!important}
+.od-pay-row{display:flex;flex-wrap:wrap;gap:1.2rem;align-items:flex-end}
+.od-pay-row>div{display:flex;flex-direction:column;gap:2px}
+.od-paid-chip{color:#16a06a}
+.od-actions-receive{margin:.2rem 0 .6rem}
+.od-actions-receive .od-btn-received{width:100%;justify-content:center;font-size:1rem;padding:.9rem 1rem;box-shadow:0 8px 20px -8px rgba(22,160,106,.7)}
+
+/* beneficiaries: pictures, and a View all list */
+.lw-ben-h{display:flex;align-items:center;justify-content:space-between}.lw-ben-h button{border:0;background:none;color:#0b8a5f;font:inherit;font-size:.78rem;font-weight:800;cursor:pointer}
+.lw-ben button span,.lw-benrow span{overflow:hidden}
+.lw-ben button span img,.lw-benrow span img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.lw-benlist{display:flex;flex-direction:column;margin-top:.6rem}
+.lw-benrow{display:flex;align-items:center;gap:.7rem;border:0;background:none;color:inherit;font:inherit;text-align:left;padding:.55rem .2rem;border-bottom:1px solid rgba(128,128,128,.15);cursor:pointer}
+.lw-benrow[hidden]{display:none}
+.lw-benrow span{flex:none;width:42px;height:42px;border-radius:50%;background:rgba(22,160,106,.15);color:#0b8a5f;display:flex;align-items:center;justify-content:center;font-weight:800}
+.lw-benrow b{flex:1;font-weight:700}.lw-benrow small{opacity:.6}
+.lv-row-ico img.lv3di{width:30px;height:30px;object-fit:contain;display:block}
+.lv-row-ico:has(img.lv3di){background:transparent!important}
+
+#lvOfflineBar{position:fixed;left:0;right:0;top:0;z-index:20000;display:none;align-items:center;justify-content:center;gap:.5rem;padding:calc(.45rem + env(safe-area-inset-top,0px)) .8rem .45rem;background:#b91c1c;color:#fff;font-size:.8rem;font-weight:700}
+#lvOfflineBar.on{display:flex}

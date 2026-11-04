@@ -6,8 +6,6 @@ import { escapeHtml } from "../lib/format.js";
  */
 
 const LOGO_URL = "https://levromart.vercel.app/icon-512.png";
-const BRAND_TEAL = "#0e8f7f";
-const BRAND_TEAL_DARK = "#075c52";
 
 export interface EmailShellInput {
   preheader?: string;
@@ -18,31 +16,34 @@ export interface EmailShellInput {
 }
 
 export function emailShell({ preheader, heading, bodyHtml, ctaLabel, ctaUrl }: EmailShellInput): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-  <body style="margin:0;padding:0;background:#f3f8f7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-    <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${preheader || ""}</span>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f8f7;padding:24px 12px;">
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><title>Levromart</title></head>
+  <body style="margin:0;padding:0;background:#eaf3ee;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader || ""}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eaf3ee;padding:28px 12px;">
       <tr><td align="center">
-        <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(7,92,82,0.08);">
-          <tr>
-            <td style="background:linear-gradient(135deg,${BRAND_TEAL} 0%,${BRAND_TEAL_DARK} 100%);padding:28px 28px 22px;text-align:center;">
-              <img src="${LOGO_URL}" width="44" height="44" alt="Levromart" style="display:block;margin:0 auto 8px;border-radius:12px;">
-              <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.01em;">Levromart</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:32px 28px 8px;">
-              <h1 style="margin:0 0 16px;font-size:20px;color:#0d201c;">${heading}</h1>
-              ${bodyHtml}
-              ${ctaUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 6px;"><tr><td style="border-radius:10px;background:${BRAND_TEAL};"><a href="${ctaUrl}" style="display:inline-block;padding:12px 22px;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;border-radius:10px;">${ctaLabel}</a></td></tr></table>` : ""}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:20px 28px 28px;border-top:1px solid #e7f1ee;margin-top:20px;">
-              <p style="margin:16px 0 0;font-size:12px;color:#7a9089;">Levromart — a marketplace for Lagos, covering healthcare equipment, food, electronics, and more.<br>This is an automated message about an order on your account.</p>
-            </td>
-          </tr>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+          <tr><td style="background:#0d8a5f;background-image:linear-gradient(135deg,#0b7a55 0%,#16a06a 60%,#2fc58a 100%);border-radius:22px 22px 0 0;padding:34px 28px 54px;text-align:center;">
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td style="background:#ffffff;border-radius:20px;padding:10px;box-shadow:0 8px 22px rgba(0,60,40,0.28);">
+              <img src="${LOGO_URL}" width="60" height="60" alt="Levromart" style="display:block;border-radius:14px;">
+            </td></tr></table>
+            <div style="margin-top:14px;color:#ffffff;font-size:24px;font-weight:800;letter-spacing:-0.02em;">Levromart</div>
+            <div style="margin-top:4px;color:#d7f5e7;font-size:13px;letter-spacing:0.04em;">Shop. Sell. Pay safely.</div>
+          </td></tr>
+          <tr><td style="background:#ffffff;border-radius:0 0 22px 22px;padding:0 0 6px;box-shadow:0 10px 34px rgba(7,70,50,0.12);">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:-30px;"><tr><td style="padding:0 18px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;border:1px solid #e3efe9;"><tr><td style="padding:30px 26px 12px;">
+                <h1 style="margin:0 0 16px;font-size:23px;line-height:1.25;color:#10231c;font-weight:800;letter-spacing:-0.01em;">${heading}</h1>
+                <div style="font-size:15px;line-height:1.65;color:#3a4a45;">${bodyHtml}</div>
+                ${ctaUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 8px;"><tr><td style="border-radius:999px;background:#16a06a;background-image:linear-gradient(135deg,#16a06a,#0b7a55);box-shadow:0 8px 18px rgba(11,122,85,0.35);"><a href="${ctaUrl}" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:999px;">${ctaLabel || "Open Levromart"}</a></td></tr></table><p style="margin:10px 0 0;font-size:12px;color:#8aa098;word-break:break-all;">Button not working? Paste this link in your browser:<br><a href="${ctaUrl}" style="color:#0b7a55;">${ctaUrl}</a></p>` : ""}
+              </td></tr></table>
+            </td></tr></table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:22px 28px 26px;text-align:center;">
+              <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#0b7a55;">Levromart</p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#7a9089;">A marketplace for students and shoppers in Lagos: products, services and packages, paid for safely in the app.<br>You are getting this email because of activity on your Levromart account.</p>
+            </td></tr></table>
+          </td></tr>
         </table>
+        <p style="margin:16px 0 0;font-size:11px;color:#8aa098;">&copy; Levromart. All rights reserved.</p>
       </td></tr>
     </table>
   </body></html>`;
