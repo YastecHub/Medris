@@ -1108,9 +1108,9 @@
   function myVersion() { var s = document.querySelector('script[src*="01-app.js"]'); var m = s && /[?&]v=(\d+)/.exec(s.getAttribute("src") || ""); return m ? m[1] : null; }
   var mine = myVersion(), reloading = false;
   function typing() { var a = document.activeElement; return !!a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && String(a.value || "").length > 0; }
-  function go() {
+  function go(force) {
     if (reloading) return;
-    var k = "lv-reloaded-for"; try { if (sessionStorage.getItem(k) === String(Date.now() - (Date.now() % 60000))) return; sessionStorage.setItem(k, String(Date.now() - (Date.now() % 60000))); } catch (_) {}
+    var k = "lv-reloaded-for"; try { if (!force && sessionStorage.getItem(k) === String(Date.now() - (Date.now() % 60000))) return; sessionStorage.setItem(k, String(Date.now() - (Date.now() % 60000))); } catch (_) {}
     if (typing()) { var t = setInterval(function () { if (!typing()) { clearInterval(t); go(); } }, 2000); return; }
     reloading = true;
     try { navigator.serviceWorker.getRegistration().then(function (r) { r && r.update(); }).catch(function () {}); } catch (_) {}
@@ -1126,9 +1126,15 @@
   }
   try { navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", function (e) { if (e.data && e.data.type === "LV_APP_UPDATED") go(); }); } catch (_) {}
   try { navigator.serviceWorker && navigator.serviceWorker.addEventListener("controllerchange", function () { setTimeout(check, 300); }); } catch (_) {}
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+  // coming back to the app: switch to the newest version at once, and after a longer break reload so no old screen is left behind
+  var leftAt = 0;
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { leftAt = Date.now(); return; }
+    check();
+    if (leftAt && Date.now() - leftAt > 60000 && !typing()) { leftAt = 0; go(true); }
+  });
   window.addEventListener("online", check);
-  window.addEventListener("pageshow", function (e) { if (e.persisted) check(); });
+  window.addEventListener("pageshow", function (e) { if (e.persisted) go(true); });
   setTimeout(check, 1500);
   setInterval(check, 180000);
 })();
@@ -3937,7 +3943,7 @@ window.lvAskCancel = async function (orderId) {
   // the card; `kind` is "shop" (shop orders / dashboard) or "me" (everywhere else). `shop` is the shop's earnings (older card data).
   window.lvWalletCardHtml = function (kind, shop) {
     var d = W.data; if (!d || W.off) { load(false).then(function (x) { if (x) repaint(); }); return null; }
-    var last = (d.entries || [])[0];
+    var last = (d.entries || []).filter(function (e) { return e.kind !== "fee" && e.kind !== "fee_return"; })[0];
     var pendingWd = (d.withdrawals || []).filter(function (w) { return w.status === "requested"; });
     var earn = kind === "shop" && shop ? Number(shop.ready || 0) * 100 : 0, earnPending = kind === "shop" && shop ? Number(shop.pending || 0) * 100 : 0;
     var notes = "";
@@ -4136,15 +4142,17 @@ window.lvAskCancel = async function (orderId) {
     if (!(target && target.nodeType === 1)) return navigate("walletHistory");
     var body = target;
     var r = await sb.rpc("get_levro_wallet_history", {});
-    var all = (r && r.data) || [], filter = "all", term = "";
+    var isFee = function (e) { return e.kind === "fee" || e.kind === "fee_return"; };   // charges are never listed
+    var all = ((r && r.data) || []).filter(function (e) { return !isFee(e); }), rawCount = ((r && r.data) || []).length, filter = "all", term = "";
     var now0 = new Date(), cur = { y: now0.getFullYear(), m: now0.getMonth() }, month = { y: cur.y, m: cur.m };
     if (!all.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
     // every transaction is loaded up front, so each month is complete (no "load more")
-    for (var pg = 0; pg < 40 && all.length >= 50 * (pg + 1); pg++) {
-      var q = await sb.rpc("get_levro_wallet_history", { p_before: all[all.length - 1].created_at });
-      var have = {}; all.forEach(function (e) { have[e.id] = 1; });
+    var oldest = (r && r.data) || [];
+    for (var pg = 0; pg < 40 && oldest.length >= 50 * (pg + 1) && oldest.length; pg++) {
+      var q = await sb.rpc("get_levro_wallet_history", { p_before: oldest[oldest.length - 1].created_at });
+      var have = {}; oldest.forEach(function (e) { have[e.id] = 1; });
       var next = ((q && q.data) || []).filter(function (e) { return !have[e.id]; });
-      if (!next.length) break; all = all.concat(next);
+      if (!next.length) break; oldest = oldest.concat(next); all = all.concat(next.filter(function (e) { return !isFee(e); }));
     }
     var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     body.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lwhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><b id="lwhMonth"></b><button type="button" id="lwhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div>';
@@ -4363,7 +4371,7 @@ window.lvAskCancel = async function (orderId) {
     var m = document.createElement("div");
     m.className = "lvw-sheet-wrap lw-wrap"; m.id = "lvLwAcct";
     m.innerHTML = '<div class="lvw-sheet lw-sheet" role="dialog" aria-modal="true" aria-label="Levromart payout account"><div class="lvw-sheet-grab" aria-hidden="true"></div><div class="lvw-sheet-head"><h3>Levromart payout account</h3><button type="button" class="lvw-eye lvw-eye-dark" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body">' +
-      '<p class="lw-hint">Levromart\'s commission is withdrawn to this account. For safety, withdrawals open 24 hours after it is added or changed, and every admin is told.</p>' +
+      '<p class="lw-hint">Levromart\'s commission is withdrawn to this account. Every admin is told when it changes. Each withdrawal needs your password.</p>' +
       '<select class="lwa-pw" id="lvLwBank"><option value="">Choose the bank</option>' + list.map(function (b) { return '<option value="' + esc(b.code) + '">' + esc(b.name) + "</option>"; }).join("") + "</select>" +
       '<input class="lwa-pw" id="lvLwNum" inputmode="numeric" maxlength="10" placeholder="10-digit account number">' +
       '<div class="lwa-found" hidden></div><p class="lw-err" hidden></p><button type="button" class="btn lw-go" data-ok>Check account</button></div></div>';
@@ -4390,7 +4398,7 @@ window.lvAskCancel = async function (orderId) {
         if (!pw) return;
         var s = await sb.rpc("set_levromart_payout_account", { p_bank_code: code, p_account_number: num, p_confirmed_name: found.accountName, p_password: pw });
         if (s.error) return say(s.error.message || "Could not save.");
-        m.remove(); showToast("Saved. Withdrawals to it open in 24 hours.", "success"); paint();
+        m.remove(); showToast("Saved.", "success"); paint();
       } finally { go.disabled = false; }
     };
   };

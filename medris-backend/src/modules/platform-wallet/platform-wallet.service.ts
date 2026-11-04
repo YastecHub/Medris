@@ -16,7 +16,7 @@ export const PLATFORM = {
   minWithdrawal: 10_000, // ₦100
   withdrawalsPerDay: 5,
   /** After Levromart's bank account is added or changed, nothing can be withdrawn for this long. */
-  bankChangeWaitHours: 24,
+  bankChangeWaitHours: 0, // no waiting after the payout account changes: the super admin's password is the safeguard
   /** Wrong passwords before the person must wait. */
   passwordTries: 5,
   passwordLockMs: 15 * 60_000,
@@ -124,7 +124,7 @@ export class PlatformWalletService {
         await repo.logAdminAction(user.userId, "set_levromart_payout_account", `${bank.name} ···${accountNumber.slice(-4)}`);
         await new NotificationWriter(tx).notifyAdmins(
           "Levromart's payout account was changed",
-          `Commission withdrawals will go to ${bank.name} ···${accountNumber.slice(-4)} (${found.account_name}) from 24 hours from now. If this was not planned, act now.`,
+          `Commission withdrawals now go to ${bank.name} ···${accountNumber.slice(-4)} (${found.account_name}). If this was not planned, act now.`,
           "adminPayments",
           null,
           null,
