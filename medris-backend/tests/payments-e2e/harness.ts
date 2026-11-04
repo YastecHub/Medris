@@ -161,3 +161,10 @@ export function rpcWithPin(w: World) {
     return json(await api.post(w, `/rpc/${name}`, token, MONEY_RPCS.has(name) && !("p_pin" in body) ? { ...body, p_pin: TEST_PIN } : body));
   };
 }
+
+/** The shop agrees to a buyer's refund request on a paid order (a paid order is no longer refunded by the buyer's cancel alone). */
+export async function shopRefunds(w: World, orderId: string) {
+  const req = await rowOf<any>(w, `select id from public.cancellation_requests where order_id = $1 and status = 'requested'`, [orderId]);
+  const res = await json(await api.post(w, "/rpc/vendor_decide_cancellation", w.vendor.token, { p_request_id: req.id, p_decision: "refund" }));
+  return res;
+}

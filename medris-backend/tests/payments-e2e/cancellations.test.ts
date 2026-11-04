@@ -8,17 +8,46 @@ describe("cancelling paid orders", () => {
   const call = async (name: string, token: string, body: Record<string, unknown> = {}) => json(await api.post(w, `/rpc/${name}`, token, body));
   const refundsOf = (orderId: string) => w.db.query<{ amount_kobo: string; status: string }>(`select amount_kobo::text, status from public.paystack_refunds where order_id = $1`, [orderId]);
 
-  it("the buyer cancels a paid order before delivery and the refund is queued", async () => {
+  it("the buyer cancelling a paid order asks for a refund; nothing moves until the shop (or an admin) agrees", async () => {
     const o = await newOrder(w, 5000);
     await payOrder(w, o);
-    const r = await call("buyer_cancel_order", w.buyer.token, { p_order_id: o });
+    const r = await call("buyer_cancel_order", w.buyer.token, { p_order_id: o, p_reason: "Changed my mind" });
     expect(r.status).toBe(200);
-    expect(r.data).toMatchObject({ cancelled: true, refunded: true });
+    expect(r.data).toMatchObject({ cancelled: false, requested: true });
+    expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [o]))?.s).toBe("confirmed"); // still on
+    expect(await refundsOf(o)).toHaveLength(0);
+    // the shop and the admins were told at once
+    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and type = 'refund_requested'`, [w.vendor.id])).toBeTruthy();
+    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and title = 'Refund request'`, [w.admin.id])).toBeTruthy();
+    expect((await call("buyer_cancel_order", w.buyer.token, { p_order_id: o })).status).toBe(409); // one request at a time
+    // the buyer, the shop and an admin can see it; a stranger cannot
+    expect((await call("get_order_cancellation", w.buyer.token, { p_order_id: o })).data).toMatchObject({ requester_role: "buyer", status: "requested" });
+    expect((await call("get_order_cancellation", w.buyer2.token, { p_order_id: o })).status).toBe(403);
+    const req = await rowOf<any>(w, `select id from public.cancellation_requests where order_id = $1`, [o]);
+    expect((await call("vendor_decide_cancellation", w.buyer.token, { p_request_id: req.id, p_decision: "refund" })).status).toBe(403); // only the shop
+    const ok = await call("vendor_decide_cancellation", w.vendor.token, { p_request_id: req.id, p_decision: "refund" });
+    expect(ok.status).toBe(200);
     expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [o]))?.s).toBe("cancelled");
     const rows = await refundsOf(o);
     expect(rows).toHaveLength(1);
     expect(Number(rows[0]!.amount_kobo)).toBe(500000);
     expect((await call("buyer_cancel_order", w.buyer.token, { p_order_id: o })).status).toBe(400);
+  });
+
+  it("when the shop declines, an admin can still refund the buyer", async () => {
+    const o = await newOrder(w, 4500);
+    await payOrder(w, o);
+    await call("buyer_cancel_order", w.buyer.token, { p_order_id: o });
+    const req = await rowOf<any>(w, `select id from public.cancellation_requests where order_id = $1`, [o]);
+    expect((await call("vendor_decide_cancellation", w.vendor.token, { p_request_id: req.id, p_decision: "decline" })).status).toBe(400); // a reason is needed
+    const no = await call("vendor_decide_cancellation", w.vendor.token, { p_request_id: req.id, p_decision: "decline", p_reason: "Already prepared" });
+    expect(no.data).toMatchObject({ vendor_decision: "declined" });
+    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and type = 'refund_declined'`, [w.buyer.id])).toBeTruthy();
+    expect(await refundsOf(o)).toHaveLength(0);
+    expect((await call("get_order_cancellation", w.admin.token, { p_order_id: o })).data).toMatchObject({ vendor_decision: "declined", status: "requested" });
+    const adminOk = await call("admin_decide_cancellation", w.admin.token, { p_request_id: req.id, p_decision: "approve" });
+    expect(adminOk.status).toBe(200);
+    expect(Number((await refundsOf(o))[0]!.amount_kobo)).toBe(450000);
   });
 
   it("nobody else can cancel it, and the buyer cannot once it is out for delivery", async () => {

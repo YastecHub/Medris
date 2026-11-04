@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- response bodies are checked field by field */
 import { describe, expect, it } from "vitest";
-import { api, rpcWithPin, handOver, json, newOrder, payOrder, rowOf, runJob, sendWebhook, useWorld } from "./harness.js";
+import { api, shopRefunds, rpcWithPin, handOver, json, newOrder, payOrder, rowOf, runJob, sendWebhook, useWorld } from "./harness.js";
 
 // Migration 0033: one Levromart wallet per person - @tags, top-ups, transfers, paying orders, earnings, refunds, withdrawals.
 describe("the Levromart wallet", () => {
@@ -136,6 +136,7 @@ describe("the Levromart wallet", () => {
     const started = await json(await api.post(w, `/orders/${o}/paystack/initialize`, w.buyer2.token));
     await sendWebhook(w, "charge.success", w.paystack.completeCheckout(started.data.reference));
     expect((await call("buyer_cancel_order", w.buyer2.token, { p_order_id: o })).status).toBe(200);
+    expect((await shopRefunds(w, o)).status).toBe(200);
     await runJob(w, "paystack-refunds");
     expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(0);
     expect(await balance(w.buyer2.token)).toBe(300000);

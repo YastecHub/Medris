@@ -15,8 +15,12 @@ const orderLink = (orderId: string) => ({ targetView: "orderDetail", targetParam
 export class CancellationsService {
   constructor(private readonly db: () => DataContext) {}
 
-  /** The buyer cancels (before the order is out for delivery). */
-  async buyerCancel(me: Identity | null, orderId: string) {
+  /**
+   * The buyer cancels before the order is out for delivery. An order that was not paid is cancelled at once. A paid order
+   * becomes a refund request: the shop and the admins are told, the shop may refund or decline, and an admin can refund the
+   * buyer whatever the shop says (nothing is refunded by itself, so a cancelled order cannot be turned into a refund claim later).
+   */
+  async buyerCancel(me: Identity | null, orderId: string, reasonInput: string | null = null) {
     if (!me) throw forbidden("Please log in to continue.");
     return this.db().onBehalfOf(me, async (tx) => {
       const repo = new CancellationsRepository(tx);
@@ -24,8 +28,16 @@ export class CancellationsService {
       if (!o) throw notFound("Order not found.");
       if (o.buyer_id !== me.userId) throw forbidden("Only the buyer can cancel this order.");
       if (!["pending", "confirmed"].includes(o.status)) throw badRequest("This order can no longer be cancelled: it is already out for delivery or finished. If something is wrong, report an issue from the order page.");
-      await repo.setCancelled(orderId);
       const notify = new NotificationWriter(tx);
+      if (o.paid) {
+        if (await repo.open(orderId)) throw conflict("You have already asked for a refund on this order.");
+        const reason = (reasonInput ?? "").trim() || "The buyer wants to cancel and be refunded.";
+        const id = await repo.insert(orderId, me.userId, reason.slice(0, 500), "buyer");
+        await notify.create({ userId: o.vendor_user_id, type: "refund_requested", title: "Refund request", body: "The buyer cancelled this paid order and asked for a refund. Refund them, or tell them why not.", ...orderLink(orderId), actorId: me.userId });
+        await notify.notifyAdmins("Refund request", `A buyer asked for a refund on a paid order from ${o.business_name ?? "a shop"}: ${reason.slice(0, 120)}`, "adminPayments", { tab: "todo" }, me.userId);
+        return { cancelled: false, requested: true, requestId: id };
+      }
+      await repo.setCancelled(orderId);
       await notify.create({ userId: o.vendor_user_id, type: "order_cancelled", title: "Order cancelled", body: "The buyer cancelled this order.", ...orderLink(orderId), actorId: me.userId });
       const refunded = await repo.queuedRefundKobo(orderId);
       return { cancelled: true, refunded: refunded > 0, refundedAmount: refunded / 100 };
@@ -48,6 +60,49 @@ export class CancellationsService {
       const id = await repo.insert(orderId, me.userId, reason);
       await new NotificationWriter(tx).notifyAdmins("Cancellation request", `${o.business_name ?? "A shop"} asked to cancel a paid order: ${reason.slice(0, 120)}`, "adminPayments", { tab: "cancellations" }, me.userId);
       return { id, status: "requested" };
+    });
+  }
+
+  /** The shop answers a buyer's refund request: refund (the order is cancelled and the buyer's money goes back) or decline (an admin decides). */
+  async vendorDecide(me: Identity | null, id: string, decision: string, reasonInput: string | null) {
+    if (!me) throw forbidden("Please log in to continue.");
+    if (decision !== "refund" && decision !== "decline") throw badRequest("Decision must be refund or decline.");
+    const why = (reasonInput ?? "").trim();
+    if (decision === "decline" && why.length < 3) throw badRequest("Please tell the buyer why you are not refunding.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const repo = new CancellationsRepository(tx);
+      const c = await repo.byId(id);
+      if (!c || c.requester_role !== "buyer") throw notFound("Refund request not found.");
+      if (c.vendor_user_id !== me.userId) throw forbidden("Only the shop can answer this request.");
+      if (c.status !== "requested") throw conflict("This request was already decided.");
+      const notify = new NotificationWriter(tx);
+      if (decision === "decline") {
+        if (c.vendor_decision === "declined") throw conflict("You already declined this request.");
+        await repo.vendorDeclined(id, why.slice(0, 500));
+        await notify.create({ userId: c.buyer_id ?? "", type: "refund_declined", title: "The shop did not refund yet", body: `The shop said: ${why.slice(0, 200)}. Levromart will look at your request and decide.`, ...orderLink(c.order_id), actorId: me.userId });
+        await notify.notifyAdmins("Refund request declined by the shop", `The shop declined a buyer's refund request: ${why.slice(0, 120)}`, "adminPayments", { tab: "todo" }, me.userId);
+        return { status: "requested", vendor_decision: "declined" };
+      }
+      const o = await repo.order(c.order_id);
+      if (!o || !["pending", "confirmed"].includes(o.status)) throw conflict("This order is no longer waiting to be delivered, so it cannot be cancelled this way.");
+      await repo.setCancelled(c.order_id);
+      const refunded = await repo.queuedRefundKobo(c.order_id);
+      await repo.decide(id, "approved", me.userId, null);
+      await notify.create({ userId: c.buyer_id ?? "", type: "order_cancelled", title: "Refund on its way", body: refunded > 0 ? "The shop agreed. Your order was cancelled and your money is being refunded." : "The shop agreed and your order was cancelled.", ...orderLink(c.order_id), actorId: me.userId });
+      return { status: "approved", refunded: refunded / 100 };
+    });
+  }
+
+  /** The newest cancellation / refund request on an order, for the buyer, the shop and the admins. */
+  async forOrder(me: Identity | null, orderId: string) {
+    if (!me) throw forbidden("Please log in to continue.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const repo = new CancellationsRepository(tx);
+      const c = await repo.latestForOrder(orderId);
+      if (!c) return null;
+      const admin = await new AccessRepository(tx).isAdmin(me.userId);
+      if (!admin && me.userId !== c.buyer_id && me.userId !== c.vendor_user_id) throw forbidden("This request is not yours.");
+      return c;
     });
   }
 
