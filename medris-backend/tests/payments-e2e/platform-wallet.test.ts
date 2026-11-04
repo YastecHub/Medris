@@ -65,6 +65,18 @@ describe("Levromart's commission wallet", () => {
     expect((await call("get_levromart_wallet", w.buyer.token)).status).toBe(403);
   });
 
+  it("the 3% reaches Levromart's wallet the moment the order is paid, before anyone confirms anything (migration 0039)", async () => {
+    await superAdmin();
+    await w.db.query(`delete from public.platform_wallet_entries`);
+    const order = await newOrder(w, 10000, "confirmed");
+    await payOrder(w, order);
+    const s = await call("get_levromart_wallet", w.admin.token);
+    expect(s.data.balance_kobo).toBe("30000"); // 3% of ₦10,000, already Levromart's
+    await handOver(w, order);
+    expect((await json(await api.post(w, `/orders/${order}/received`, w.buyer.token))).status).toBe(200);
+    expect((await call("get_levromart_wallet", w.admin.token)).data.balance_kobo).toBe("30000"); // completing adds nothing more
+  });
+
   it("needs the super admin's right password; the commission is sent once (no waiting after a bank change)", async () => {
     await superAdmin();
     for (const t of ["platform_wallet_entries", "platform_withdrawals", "platform_payout_account"]) await w.db.query(`delete from public.${t}`);

@@ -7014,3 +7014,29 @@ html[data-lv-paystack="on"] .payment-confirmation-card,html[data-lv-paystack="on
 .lwa-histbtn{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding:12px 14px;border:1px solid rgba(128,128,128,.25);border-radius:14px;background:var(--card,#fff);color:inherit;font:inherit;font-weight:800;cursor:pointer;text-align:left}
 .lwa-histbtn span{flex:1}.lwa-histbtn i:first-child{color:#16a06a}
 :root[data-theme="dark"] .lwa-histbtn,:root[data-theme="black"] .lwa-histbtn{background:#22272e}
+
+/* date picker */
+.lwh-pick{flex:1;margin:0 8px;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;font-size:1.02rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px;border-radius:12px}
+.lwh-pick i{font-size:.7rem;opacity:.6}
+.lwh-pick:active{background:rgba(128,128,128,.14)}
+.lvdp{max-height:88dvh;overflow-y:auto}
+.lvdp-head{display:flex;align-items:center;justify-content:space-between;margin:.2rem 0 .4rem}
+.lvdp-head h3{margin:0;font-size:1.1rem}
+.lvdp-x{width:36px;height:36px;border:0;border-radius:50%;background:rgba(128,128,128,.16);color:inherit;cursor:pointer}
+.lvdp-lab{margin:.8rem 0 .4rem;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.65}
+.lvdp-lab small{text-transform:none;letter-spacing:0;font-weight:600}
+.lvdp-years{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.lvdp-years::-webkit-scrollbar{display:none}
+.lvdp-years button,.lvdp-months button{border:1.5px solid rgba(128,128,128,.3);background:transparent;color:inherit;border-radius:12px;font:inherit;font-weight:700;padding:9px 14px;cursor:pointer;flex:0 0 auto}
+.lvdp-months{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.lvdp-months button{padding:10px 0}
+.lvdp-dow,.lvdp-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.lvdp-dow span{font-size:.7rem;font-weight:700;opacity:.55;padding-bottom:2px}
+.lvdp-days button,.lvdp-days i{height:40px}
+.lvdp-days button{border:0;border-radius:12px;background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;position:relative}
+.lvdp-days button.mk::after{content:"";position:absolute;bottom:5px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#16a06a}
+.lvdp-days button:disabled,.lvdp-months button:disabled{opacity:.3;cursor:default}
+.lvdp button.on{background:#16a06a!important;border-color:#16a06a!important;color:#fff!important}
+.lvdp button.on::after{background:#fff!important}
+.lvdp-acts{margin-top:.9rem}
+.lvdp-month{width:100%;border:0;border-radius:14px;background:rgba(22,160,106,.14);color:#0b8a5f;font:inherit;font-weight:800;padding:12px;cursor:pointer}

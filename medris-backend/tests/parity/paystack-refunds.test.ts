@@ -79,10 +79,10 @@ describe("paystack refunds (issue #99)", () => {
   it("refunds everything still refundable by default, as the order amount (not Paystack's fee)", async () => {
     const { orderId } = await paidOrder(2000);
     const r = await refunds.refundOrder(as(admin), orderId, { reason: "Dispute settled for the buyer" });
-    expect(r.amount).toBe(2000);
-    expect(await rows(orderId)).toEqual([expect.objectContaining({ status: "pending", amount_kobo: "200000", source: "admin" })]);
+    expect(r.amount).toBe(1940); // the order amount minus the 3% Levromart took when it was paid
+    expect(await rows(orderId)).toEqual([expect.objectContaining({ status: "pending", amount_kobo: "194000", source: "admin" })]);
     await refunds.run();
-    expect(calls).toEqual([expect.objectContaining({ amount: 200000 })]);
+    expect(calls).toEqual([expect.objectContaining({ amount: 194000 })]);
     expect((await rows(orderId))[0]!.status).toBe("processing");
     const told = await db.query(`select 1 from public.notifications where user_id = $1 and type = 'refund_started'`, [buyer]);
     expect(told.length).toBeGreaterThan(0);
@@ -98,7 +98,7 @@ describe("paystack refunds (issue #99)", () => {
     expect(calls).toHaveLength(0);
     expect((await rows(orderId))[0]!.status).toBe("processed");
     const after = Number((await db.query<{ b: string }>(`select balance_kobo::text as b from public.wallet_accounts where user_id = $1`, [buyer]))[0]!.b);
-    expect(after - before).toBe(150000);
+    expect(after - before).toBe(145500);
     const told = await db.query(`select 1 from public.notifications where user_id = $1 and type = 'refund_in_wallet'`, [buyer]);
     expect(told.length).toBeGreaterThan(0);
   });
@@ -108,10 +108,10 @@ describe("paystack refunds (issue #99)", () => {
     await refunds.refundOrder(as(admin), orderId, { amountNaira: 500.5, reason: "Item was damaged" });
     await refunds.run();
     await db.query(`update public.paystack_refunds set status = 'processed' where order_id = $1`, [orderId]);
-    await expect(refunds.refundOrder(as(admin), orderId, { amountNaira: 1500, reason: "too much" })).rejects.toThrow(/at most ₦1,499\.5/);
+    await expect(refunds.refundOrder(as(admin), orderId, { amountNaira: 1500, reason: "too much" })).rejects.toThrow(/at most ₦1,439\.5/);
     await refunds.refundOrder(as(admin), orderId, { reason: "the rest" });
     const all = await rows(orderId);
-    expect(all.map((x) => x.amount_kobo)).toEqual(["50050", "149950"]);
+    expect(all.map((x) => x.amount_kobo)).toEqual(["50050", "143950"]);
     expect(all.map((x) => x.attempt)).toEqual([1, 2]);
   });
 
@@ -167,7 +167,7 @@ describe("paystack refunds (issue #99)", () => {
     await db.query(`update public.orders set status = 'cancelled' where id = $1`, [orderId]);
     await db.query(`update public.orders set status = 'confirmed' where id = $1`, [orderId]);
     await db.query(`update public.orders set status = 'cancelled' where id = $1`, [orderId]);
-    expect(await rows(orderId)).toEqual([expect.objectContaining({ amount_kobo: "180000", source: "cancellation" })]);
+    expect(await rows(orderId)).toEqual([expect.objectContaining({ amount_kobo: "174600", source: "cancellation" })]);
     await refunds.run();
     expect(calls).toHaveLength(1);
   });

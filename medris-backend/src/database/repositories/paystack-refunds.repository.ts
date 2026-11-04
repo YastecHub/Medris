@@ -48,7 +48,7 @@ export class PaystackRefundsRepository {
   paidPayments(orderId: string): Promise<PaidPayment[]> {
     return jsonRows<PaidPayment>(
       this.db,
-      sql`select p.provider_reference as reference, round(sum(p.amount) * 100)::text as net_kobo,
+      sql`select p.provider_reference as reference, (round(sum(p.amount) * 100) - round(coalesce((select sum(c.amount) from public.commission_charges c where c.payment_id = any(array_agg(p.id)) and c.status = 'paid'), 0) * 100))::text as net_kobo,
                  coalesce((select sum(r.amount_kobo) from public.paystack_refunds r where r.transaction_reference = p.provider_reference and r.status <> 'failed'), 0)::text as refunded_kobo
           from public.payments p join public.paystack_transactions t on t.reference = p.provider_reference and t.status in ('success', 'partially_refunded')
           where p.order_id = ${orderId} and p.status = 'paid' and p.method = 'card' and p.provider_reference like 'lvm\_ord\_%'

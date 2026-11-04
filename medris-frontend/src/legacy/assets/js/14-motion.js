@@ -1100,6 +1100,46 @@
   };
 })();
 
+/* ===== A clean date picker (year, month, day) for the transaction history pages ===== */
+(function () {
+  "use strict";
+  var MS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  // opts: { y, m, d (null = the whole month), minYear, marks: function (y, m) -> { day: true } }
+  window.lvPickDate = function (opts) {
+    return new Promise(function (resolve) {
+      var now = new Date(), cy = now.getFullYear(), cm = now.getMonth(), cd = now.getDate();
+      var y = opts.y, m = opts.m, d = opts.d || null, minY = Math.min(opts.minYear || cy, cy);
+      var el = document.createElement("div"); el.className = "lvw-sheet-wrap lvdp-wrap";
+      document.body.appendChild(el);
+      function done(v) { el.remove(); resolve(v); }
+      function paint() {
+        var years = ""; for (var yy = cy; yy >= minY; yy--) years += '<button type="button" class="' + (yy === y ? "on" : "") + '" data-y="' + yy + '">' + yy + "</button>";
+        var months = MS.map(function (n, i) { var off = y === cy && i > cm; return '<button type="button" class="' + (i === m ? "on" : "") + '"' + (off ? " disabled" : "") + ' data-m="' + i + '">' + n.slice(0, 3) + "</button>"; }).join("");
+        var first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), marks = (opts.marks && opts.marks(y, m)) || {}, cells = "";
+        for (var b = 0; b < first; b++) cells += "<i></i>";
+        for (var k = 1; k <= days; k++) { var off2 = y === cy && m === cm && k > cd; cells += '<button type="button" class="' + (d === k ? "on " : "") + (marks[k] ? "mk" : "") + '"' + (off2 ? " disabled" : "") + ' data-d="' + k + '">' + k + "</button>"; }
+        el.innerHTML = '<div class="lvw-sheet lvdp" role="dialog" aria-modal="true" aria-label="Pick a date"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
+          '<div class="lvdp-head"><h3>Go to a date</h3><button type="button" class="lvdp-x" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>' +
+          '<div class="lvdp-lab">Year</div><div class="lvdp-years">' + years + "</div>" +
+          '<div class="lvdp-lab">Month</div><div class="lvdp-months">' + months + "</div>" +
+          '<div class="lvdp-lab">Day <small>(dots = you have transactions)</small></div><div class="lvdp-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="lvdp-days">' + cells + "</div>" +
+          '<div class="lvdp-acts"><button type="button" class="lvdp-month" data-whole>Show all of ' + MS[m] + " " + y + "</button></div></div>";
+        var on = el.querySelector(".lvdp-years .on"); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: "center", block: "nearest" }); } catch (_) {}
+      }
+      el.addEventListener("click", function (e) {
+        var t = e.target;
+        if (t === el || (t.closest && t.closest("[data-x]"))) return done(null);
+        var b = t.closest && t.closest("button"); if (!b || b.disabled) return;
+        if (b.dataset.y) { y = +b.dataset.y; if (y === cy && m > cm) m = cm; d = null; paint(); }
+        else if (b.dataset.m) { m = +b.dataset.m; d = null; paint(); }
+        else if (b.dataset.d) { done({ y: y, m: m, d: +b.dataset.d }); }
+        else if (b.hasAttribute("data-whole")) { done({ y: y, m: m, d: null }); }
+      });
+      paint();
+    });
+  };
+})();
+
 /* ===== The app never stays on an old version =====
    The installed app asks, every time it is opened or brought back, whether a newer version exists and switches to it by itself
    (at once, or the moment you stop typing). It never keeps running old screens, such as old payment flows. */
@@ -1899,7 +1939,9 @@
         var paid = (o.payments || []).filter(function (p) { return p.status === "paid" && FEE_TYPES[p.payment_type] && (p.method === "card" || /^(lvm_ord_|medris_)/.test(String(p.provider_reference || ""))); });
         if (!paid.length) return;
         var gross = paid.reduce(function (s, p) { return s + Number(p.amount || 0); }, 0);
-        var comm = commBy[o.id] || 0, back = refundBy[o.id] || 0, net = Math.max(0, gross - comm - back);
+        var legacyPay = paid.every(function (p) { return /^medris_/.test(String(p.provider_reference || "")); });
+        // Levromart's 3% is taken the moment the order is paid, so the shop only ever sees its 97%
+        var comm = commBy[o.id] != null ? commBy[o.id] : (legacyPay || o.commission_exempt ? 0 : Math.round(gross * 3) / 100), back = refundBy[o.id] || 0, net = Math.max(0, gross - comm - back);
         var at = paid.map(function (p) { return p.paid_at; }).filter(Boolean).sort().pop() || o.created_at;
         var legacy = paid.every(function (p) { return /^medris_/.test(String(p.provider_reference || "")); });
         var pay = payoutBy[o.id], state, amount = net, date = at;
@@ -4144,7 +4186,7 @@ window.lvAskCancel = async function (orderId) {
     var r = await sb.rpc("get_levro_wallet_history", {});
     var isFee = function (e) { return e.kind === "fee" || e.kind === "fee_return"; };   // charges are never listed
     var all = ((r && r.data) || []).filter(function (e) { return !isFee(e); }), rawCount = ((r && r.data) || []).length, filter = "all", term = "";
-    var now0 = new Date(), cur = { y: now0.getFullYear(), m: now0.getMonth() }, month = { y: cur.y, m: cur.m };
+    var now0 = new Date(), cur = { y: now0.getFullYear(), m: now0.getMonth() }, month = { y: cur.y, m: cur.m }, day = null;
     if (!all.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
     // every transaction is loaded up front, so each month is complete (no "load more")
     var oldest = (r && r.data) || [];
@@ -4155,12 +4197,12 @@ window.lvAskCancel = async function (orderId) {
       if (!next.length) break; oldest = oldest.concat(next); all = all.concat(next.filter(function (e) { return !isFee(e); }));
     }
     var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    body.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lwhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><b id="lwhMonth"></b><button type="button" id="lwhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div>';
-    function inPeriod(e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m; }
+    body.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lwhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="lwh-pick" id="lwhMonth" aria-label="Pick a date"></button><button type="button" id="lwhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div>';
+    function inPeriod(e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m && (!day || d.getDate() === day); }
     function paint() {
       var inP = all.filter(inPeriod), tin = 0, tout = 0;
       inP.forEach(function (e) { var a = Number(e.amount_kobo); if (a > 0) tin += a; else tout += -a; });
-      body.querySelector("#lwhMonth").textContent = MONTHS[month.m] + " " + month.y;
+      body.querySelector("#lwhMonth").innerHTML = (day ? day + " " : "") + MONTHS[month.m] + " " + month.y + ' <i class="fa-solid fa-chevron-down"></i>';
       body.querySelector("#lwhNext").disabled = month.y === cur.y && month.m === cur.m;
       var sum = body.querySelector("#lwhSum");
       sum.innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + esc(short(tin)) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + esc(short(tout)) + "</b></div>";
@@ -4190,8 +4232,13 @@ window.lvAskCancel = async function (orderId) {
       return '<div class="lw-hist">' + h + "</ul></div>";
     }
     body.querySelector(".lwh-chips").onclick = function (e) { var b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; body.querySelectorAll(".lwh-chips button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
-    body.querySelector("#lwhPrev").onclick = function () { month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paint(); };
-    body.querySelector("#lwhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paint(); };
+    body.querySelector("#lwhPrev").onclick = function () { day = null; month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paint(); };
+    body.querySelector("#lwhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; day = null; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paint(); };
+    body.querySelector("#lwhMonth").onclick = async function () {
+      var minY = all.reduce(function (a, e) { return Math.min(a, new Date(e.created_at).getFullYear()); }, cur.y);
+      var pick = await window.lvPickDate({ y: month.y, m: month.m, d: day, minYear: minY, marks: function (yy, mm) { var o = {}; all.forEach(function (e) { var t = new Date(e.created_at); if (t.getFullYear() === yy && t.getMonth() === mm) o[t.getDate()] = true; }); return o; } });
+      if (pick) { month = { y: pick.y, m: pick.m }; day = pick.d; paint(); }
+    };
     body.querySelector(".lwh-search").oninput = function () { term = this.value.trim().toLowerCase(); paint(); };
     paint();
   };
@@ -4438,13 +4485,13 @@ window.lvAskCancel = async function (orderId) {
       var next = ((more && more.data) || []).filter(function (e) { return !have[e.id]; });
       if (!next.length) break; all = all.concat(next);
     }
-    var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() }, month = { y: cur.y, m: cur.m }, kind = "all";
+    var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() }, month = { y: cur.y, m: cur.m }, kind = "all", day = null;
     var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    host.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lvAhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><b id="lvAhMonth"></b><button type="button" id="lvAhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lvAhSum"></div><div class="lwa-tabs">' + [["all", "All"], ["commission", "Commission"], ["listing", "Listing fees"], ["fees", "Transaction fees"], ["withdrawals", "Withdrawals"]].map(function (t) { return '<button type="button" data-k="' + t[0] + '" class="' + (t[0] === "all" ? "on" : "") + '">' + t[1] + "</button>"; }).join("") + '</div><div class="lwa-hist" id="lvAhList"></div>';
+    host.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lvAhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="lwh-pick" id="lvAhMonth" aria-label="Pick a date"></button><button type="button" id="lvAhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lvAhSum"></div><div class="lwa-tabs">' + [["all", "All"], ["commission", "Commission"], ["listing", "Listing fees"], ["fees", "Transaction fees"], ["withdrawals", "Withdrawals"]].map(function (t) { return '<button type="button" data-k="' + t[0] + '" class="' + (t[0] === "all" ? "on" : "") + '">' + t[1] + "</button>"; }).join("") + '</div><div class="lwa-hist" id="lvAhList"></div>';
     function paintH() {
-      var inM = all.filter(function (e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m; });
+      var inM = all.filter(function (e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m && (!day || d.getDate() === day); });
       var tin = 0, tout = 0; inM.forEach(function (e) { var a = Number(e.amount_kobo); if (e.kind === "withdrawal" && (e.withdrawal_status === "failed" || e.withdrawal_status === "reversed")) return; if (a > 0) tin += a; else tout += -a; });
-      host.querySelector("#lvAhMonth").textContent = MONTHS[month.m] + " " + month.y;
+      host.querySelector("#lvAhMonth").innerHTML = (day ? day + " " : "") + MONTHS[month.m] + " " + month.y + ' <i class="fa-solid fa-chevron-down"></i>';
       host.querySelector("#lvAhNext").disabled = month.y === cur.y && month.m === cur.m;
       host.querySelector("#lvAhSum").innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + naira(tin) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + naira(tout) + "</b></div>";
       var rows = kind === "all" ? inM : inM.filter(function (e) { return LW_KINDS[kind].indexOf(e.kind) >= 0; });
@@ -4452,8 +4499,13 @@ window.lvAskCancel = async function (orderId) {
       host.querySelector("#lvAhList").innerHTML = rows.length ? historyHtml(rows) : '<p class="aw-note" style="text-align:center;padding:1rem 0">Nothing this month.</p>';
       lwTab = saveTab;
     }
-    host.querySelector("#lvAhPrev").onclick = function () { month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paintH(); };
-    host.querySelector("#lvAhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paintH(); };
+    host.querySelector("#lvAhPrev").onclick = function () { day = null; month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paintH(); };
+    host.querySelector("#lvAhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; day = null; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paintH(); };
+    host.querySelector("#lvAhMonth").onclick = async function () {
+      var minY = all.reduce(function (a, e) { return Math.min(a, new Date(e.created_at).getFullYear()); }, cur.y);
+      var pick = await window.lvPickDate({ y: month.y, m: month.m, d: day, minYear: minY, marks: function (yy, mm) { var o = {}; all.forEach(function (e) { var t = new Date(e.created_at); if (t.getFullYear() === yy && t.getMonth() === mm) o[t.getDate()] = true; }); return o; } });
+      if (pick) { month = { y: pick.y, m: pick.m }; day = pick.d; paintH(); }
+    };
     host.querySelector(".lwa-tabs").onclick = function (e) { var b = e.target.closest("[data-k]"); if (!b) return; kind = b.dataset.k; host.querySelectorAll(".lwa-tabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); paintH(); };
     paintH();
   }
