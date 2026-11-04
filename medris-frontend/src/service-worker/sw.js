@@ -47,6 +47,9 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
 
+  // the app's own "is there a newer version?" question always goes to the network
+  if (url.searchParams.has('lvcheck')) return;
+
   /*
    * Navigation requests:
    * Ask the network first, but only wait a short while (4 s). A normal

@@ -65,7 +65,7 @@ describe("Levromart's commission wallet", () => {
     expect((await call("get_levromart_wallet", w.buyer.token)).status).toBe(403);
   });
 
-  it("needs the super admin's right password; the bank account waits 24 hours; then the commission is sent once", async () => {
+  it("needs the super admin's right password; the commission is sent once (no waiting after a bank change)", async () => {
     await superAdmin();
     for (const t of ["platform_wallet_entries", "platform_withdrawals", "platform_payout_account"]) await w.db.query(`delete from public.${t}`);
     await w.db.query(`insert into public.platform_wallet_entries (kind, amount_kobo, note) values ('commission', 500000, 'seed')`);
@@ -76,13 +76,9 @@ describe("Levromart's commission wallet", () => {
     expect(wrong.status).toBe(403);
     const set = await call("set_levromart_payout_account", w.admin.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Ada Obi", p_password: GOOD });
     expect(set.status).toBe(200);
-    expect(set.data.wait_hours).toBe(24);
+    expect(set.data.wait_hours).toBe(0);
 
-    // a fresh bank account: nothing goes out for 24 hours
-    const tooSoon = await call("withdraw_levromart_commission", w.admin.token, { p_amount_kobo: 100000, p_password: GOOD });
-    expect(tooSoon.status).toBe(400);
-    await w.db.query(`update public.platform_payout_account set changed_at = now() - interval '25 hours'`);
-
+    // a fresh bank account can be used at once: the password is the safeguard
     expect((await call("withdraw_levromart_commission", w.admin.token, { p_amount_kobo: 100000, p_password: "nope" })).status).toBe(403);
     expect((await call("withdraw_levromart_commission", w.admin.token, { p_amount_kobo: 900000, p_password: GOOD })).status).toBe(400); // more than there is
 
