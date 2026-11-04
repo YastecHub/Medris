@@ -6724,7 +6724,7 @@ html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpa
 html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button.active{background:#6366f1!important;color:#fff!important}
 html:root:root body #app .vmpage .vmp-locate .lv-loc-logo{width:24px;height:24px}
 html:root:root body #app .vmpage .vmp-locate.is-loading .lv-loc-logo{animation:lvLocSpin .9s linear infinite}
-html:root:root body #app .vmpage .vmp-locate.is-loading::after{display:none!important}
+html:root:root body #app .vmpage .vmp-locate.is-loading .lv-loc-logo{opacity:0}
 
 /* ===== Search and Vendors: the floating 3D magnifier / map pin (no tile behind them; they still float) ===== */
 html body .lv-mapfab .mf-core.mf-3dcore{background:none!important;box-shadow:none!important;border:0!important;overflow:visible}
@@ -6767,7 +6767,7 @@ html:root:root body #app .vrq-empty .lvo-btn{margin-top:10px}
 
 /* ===== QR card watermark ===== */
 #lvqrSheet .lvqr-body.lvqr-wm{position:relative;isolation:isolate}
-#lvqrSheet .lvqr-body.lvqr-wm::before{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--lvqr-wm);background-size:260px 230px;opacity:1;pointer-events:none;border-radius:inherit}
+#lvqrSheet .lvqr-body.lvqr-wm::before{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--lvqr-wm);background-size:260px 230px;opacity:.55;pointer-events:none;border-radius:inherit}
 
 /* ===== Order history: the same cards as the order list ===== */
 html:root:root body #app .lvo-hist-day{margin:6px 0 14px}
@@ -6866,3 +6866,40 @@ html:root:root body .lv-nsv-pill{display:none!important}
 .lvpin-link{display:block;margin:12px auto 0;border:0;background:none;color:#64748b;font-weight:700;text-decoration:underline}
 .lvpin-err{margin:8px 0 0;text-align:center;color:#dc2626;font-size:.84rem;font-weight:700}
 .lvpin-in{width:100%;margin:6px 0;padding:13px 14px;border-radius:14px;border:1.5px solid rgba(100,116,139,.4);background:transparent;color:inherit;font-size:1rem}
+
+
+/* ===== Batch: tick in front of the name, add-money amounts level, light map card on search ===== */
+html:root:root body #app .storefront-profile-name{display:inline-flex!important;align-items:center;flex-wrap:nowrap!important;gap:.4rem;max-width:100%}
+html:root:root body #app .storefront-profile-name .vendor-inline-verified,html:root:root body #app .storefront-profile-name .lv-nsv,html:root:root body #app .storefront-profile-name .lv-svi{flex:none;display:inline-block!important;margin:0!important;position:static!important;color:#1d9bf0}
+html:root:root body #app .storefront-name-row .lv-nsv,html:root:root body #app .storefront-name-row .lv-svi{margin-left:.45rem;vertical-align:middle}
+/* add money: every amount on one level, same size */
+html:root:root body .lw-chips{display:grid!important;grid-template-columns:repeat(5,1fr);gap:6px}
+html:root:root body .lw-chips button{min-width:0;padding:0 2px!important;font-size:.74rem!important;text-align:center;white-space:nowrap}
+@media(max-width:380px){html:root:root body .lw-chips{grid-template-columns:repeat(3,1fr)}}
+/* vendors map: while the search box is being used the shop card gets out of the way */
+html:root:root body #app .vmpage.vmp-searching #vmpRouteCard,html:root:root body #app .vmpage.vmp-searching #vmpExpandedCard,html:root:root body #app .vmpage.vmp-searching .vmp-rail,html:root:root body #app .vmpage.vmp-searching .vmp-fabs{opacity:0!important;pointer-events:none!important;transform:translateY(12px);transition:opacity .15s,transform .15s}
+
+/* ===== Admin payments: Levromart's wallet first; three clear sources of revenue; history tabs ===== */
+.lwa-src{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin-top:12px}
+.lwa-src>div{padding:10px 10px;border-radius:14px;background:rgba(255,255,255,.14);min-width:0}
+.lwa-src small{display:block;font-size:.68rem;opacity:.85;font-weight:700}
+.lwa-src b{display:block;font-size:1.02rem;margin:2px 0;word-break:break-word}
+.lwa-src em{display:block;font-size:.66rem;opacity:.8;font-style:normal}
+.lwa-tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.lwa-tabs::-webkit-scrollbar{display:none}
+.lwa-tabs button{flex:none;border:1.5px solid rgba(100,116,139,.35);background:transparent;color:inherit;border-radius:999px;padding:6px 12px;font-weight:700;font-size:.78rem}
+.lwa-tabs button.on{background:#16a06a;border-color:#16a06a;color:#fff}
+.aw-fold{margin:14px 0;border-radius:16px;border:1px solid rgba(100,116,139,.25);padding:4px 12px}
+.aw-fold>summary{cursor:pointer;font-weight:800;padding:12px 2px;list-style:none;display:flex;align-items:center;gap:8px}
+.aw-fold>summary::-webkit-details-marker{display:none}
+.ap-h{margin:20px 2px 8px;font-size:1rem;font-weight:900}
+
+html:root:root:root:root:root:root:root body #app#app .ad-btn.ad-unverify{background:transparent!important;border:1.5px solid #d97706!important;color:#b45309!important;-webkit-text-fill-color:#b45309!important}
+
+.ai-tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
+.ai-tabs::-webkit-scrollbar{display:none}
+.ai-tabs button{flex:none;border:1.5px solid rgba(100,116,139,.35);background:transparent;color:inherit;border-radius:999px;padding:7px 14px;font-weight:800;font-size:.82rem;display:inline-flex;gap:6px;align-items:center}
+.ai-tabs button span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:rgba(100,116,139,.18);font-size:.7rem}
+.ai-tabs button.on{background:#16a06a;border-color:#16a06a;color:#fff}
+.ai-tabs button.on span{background:rgba(255,255,255,.25)}
+.admin-inventory-status-select{display:none}

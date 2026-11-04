@@ -94,9 +94,12 @@ async function runSearchPageQuery(term, saveToHistory) {
         // Vendors match by shop name AND by what they sell: a search for a product or service also surfaces the shops offering it.
         const limit = kind === "all" ? 6 : 30;
         const vendorCols = "id,user_id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id";
-        const byName = await sb.from("vendors").select(vendorCols).eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(limit).abortSignal(controller.signal);
+        // both lookups start together (they used to run one after the other, which doubled the wait)
+        const [byName, prodRes] = await Promise.all([
+          sb.from("vendors").select(vendorCols).eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(limit).abortSignal(controller.signal),
+          sb.rpc("search_products_full_v2", { p_query: term, p_limit: 40 }).abortSignal(controller.signal),
+        ]);
         if (byName.error) return byName;
-        const prodRes = await sb.rpc("search_products_full_v2", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
         const known = new Set((byName.data || []).map((v) => String(v.id)));
         const ids = [...new Set((prodRes.data || []).map((r) => r.vendor_id).filter(Boolean).map(String))].filter((id) => !known.has(id)).slice(0, limit);
         let extra = [];
