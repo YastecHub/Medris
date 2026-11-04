@@ -6366,3 +6366,26 @@ html:root:root[data-theme="dark"] body #app .ve-card label{color:#9ca3af}
 .lv-sv .sv-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .lv-sv .sv-head h4{margin:0}
 html:root:root body .lv-sv .sv-edit{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #d1d5db;border-radius:999px;background:transparent;color:inherit;font-size:.76rem;font-weight:800;cursor:pointer}
+
+/* Suggestions / Feedback cards: their <header> row was styled like the app's top bar (fixed to the top of the screen), so
+   names, dates and a long red "New" bar piled up under the search bar. A header inside a card is just a row. */
+html:root:root body #app article header,html:root:root body #app .sg-card>.sg-top{position:static!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;width:auto!important;height:auto!important;min-height:0!important;z-index:auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;padding:0!important;margin:0 0 8px!important;background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transform:none!important}
+html:root:root body #app .sg-top .sg-who{flex:1;min-width:0;display:flex;flex-direction:column}
+html:root:root body #app .sg-top .sg-who strong{font-size:.9rem}
+html:root:root body #app .sg-top .sg-who span{font-size:.72rem;color:#6b7280}
+html:root:root body #app .sg-top .sg-av{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,#ede9fe,#dbeafe);color:#4c1d95}
+html:root:root body #app .sg-top .sg-av.is-anon{background:#f1f5f9;color:#475569}
+html:root:root body #app .sg-top .sg-chip{flex:none!important;width:auto!important;padding:3px 10px!important;border-radius:999px!important;font-size:.68rem!important;font-weight:800!important;background:#f1f5f9;color:#475569}
+html:root:root body #app .sg-top .sg-chip-new{background:#fee2e2!important;color:#b91c1c!important}
+html:root:root body #app .sg-top .sg-chip-done{background:#dcfce7!important;color:#166534!important}
+html:root:root body #app .sg-card{padding:14px 16px!important;border-radius:18px!important}
+html:root:root body #app .sg-card .sg-msg{margin:0 0 10px!important;font-size:.95rem;line-height:1.45}
+html:root:root body #app .sg-actions .sg-btn{height:36px!important;padding:0 14px!important;font-size:.8rem!important;box-shadow:none!important}
+html:root:root body #app .sg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin:6px 0 12px}
+html:root:root body #app .sg-head h2{margin:0 0 2px;font-size:1.35rem}
+html:root:root body #app .sg-head .sg-head-badge{flex:none;padding:4px 10px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:.74rem;font-weight:800}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-chip{background:rgba(255,255,255,.08);color:#cbd5e1}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-chip-new,html:root:root[data-theme="dark"] body #app .sg-head .sg-head-badge{background:rgba(239,68,68,.18)!important;color:#fca5a5!important}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-chip-done{background:rgba(34,197,94,.16)!important;color:#86efac!important}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-av{background:rgba(139,92,246,.2);color:#ddd6fe}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-who span{color:#9ca3af}
