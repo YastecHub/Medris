@@ -5253,3 +5253,18 @@ window.lvAskCancel = async function (orderId) {
   new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; bar(); }, 120); }).observe(document.body, { childList: true, subtree: true });
   window.lvEnhancePhoto = enhance;   // for checking on a preview
 })();
+
+/* ===== Pictures never open the browser's image menu ("Copy image / Download image / Share image / Open in Chrome") when they
+   are long-pressed or right-clicked, and cannot be dragged out. Everything else (message long-press, text selection, buttons)
+   keeps working: the event is only cancelled for pictures, never stopped. ===== */
+(function () {
+  "use strict";
+  var PIC = "img, picture, canvas, video, svg image";
+  function isPic(t) { try { return !!(t && t.closest && t.closest(PIC)); } catch (_) { return false; } }
+  document.addEventListener("contextmenu", function (e) { if (isPic(e.target)) e.preventDefault(); }, true);
+  document.addEventListener("dragstart", function (e) { if (isPic(e.target)) e.preventDefault(); }, true);
+  // pictures added later: no drag, and no "hold to save" on iPhone either
+  function mark(root) { (root.querySelectorAll ? root.querySelectorAll("img:not([data-nodrag])") : []).forEach(function (i) { i.setAttribute("draggable", "false"); i.setAttribute("data-nodrag", "1"); }); }
+  mark(document);
+  new MutationObserver(function (list) { list.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) { if (n.tagName === "IMG" && !n.dataset.nodrag) { n.setAttribute("draggable", "false"); n.dataset.nodrag = "1"; } else mark(n); } }); }); }).observe(document.documentElement, { childList: true, subtree: true });
+})();

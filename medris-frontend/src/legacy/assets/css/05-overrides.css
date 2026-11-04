@@ -6794,3 +6794,7 @@ html:root:root body #app .lvo-hist-day{margin:6px 0 14px}
 .lv-enh-undo{background:rgba(0,0,0,.06);color:inherit}
 :root:is([data-theme="dark"],[data-theme="black"]) .lv-enh-undo{background:rgba(255,255,255,.1)}
 .lv-enh-spin{width:14px;height:14px;display:inline-block}
+
+/* ===== Pictures: no long-press menu, no selecting, no dragging; the 3D icons are decoration and ignore touches ===== */
+img,picture,canvas,video{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+img.lv3di,img.lv3d,img.lv3d-ico,img.mf-3d,img.alc-3d,.lv3d-empty img,.lvo-empty img,.orders-empty-icon img,.lv-empty-illus img,.notification-system-icon img{pointer-events:none}
