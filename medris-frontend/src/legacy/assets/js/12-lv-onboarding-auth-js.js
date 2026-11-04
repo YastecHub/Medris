@@ -564,7 +564,10 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
     if(searchPageFilter!=="all"&&searchPageFilter!=="vendors"){ document.getElementById("lvSearchVendors")?.remove(); return; }
     var w=strip(); if(!w) return;
     w.dataset.typed="1";
-    w.innerHTML='<div class="lv-svr-head"><strong>Suggested vendors</strong></div>'+(list.length?'<div class="lv-svr-row">'+list.slice(0,24).map(item).join("")+'</div>':'<p class="muted" style="margin:.2rem 0 .4rem;font-size:.85rem;">No vendors match "'+ee(term)+'"</p>');
+    // only touch the page when the vendors really changed: redrawing the same row (on every key, then again with the
+    // server's answer) reloaded every picture and made the row shake
+    var html='<div class="lv-svr-head"><strong>Suggested vendors</strong></div>'+(list.length?'<div class="lv-svr-row">'+list.slice(0,24).map(item).join("")+'</div>':'<p class="muted" style="margin:.2rem 0 .4rem;font-size:.85rem;">No vendors match "'+ee(term)+'"</p>');
+    if(w.__html===html) return; w.__html=html; w.innerHTML=html;
   }
   var lastTerm="";
   function instant(){

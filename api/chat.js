@@ -16,8 +16,10 @@ const { readBody, env } = require("./_util");
 
 // Levi runs on the newest Gemini Pro model. If it is rate-limited, overloaded or retired the call falls back to the
 // newest stable Flash model, so Levi never goes silent. Set GEMINI_MODEL in Vercel to change the primary without a deploy.
-const MODEL = String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.1-pro-preview";
-const FALLBACK_MODEL = "gemini-3.8-flash";
+const MODEL = String(process.env.GEMINI_MODEL || "").trim() || "gemini-flash-latest";
+const FALLBACK_MODEL = "gemini-2.5-flash";
+/** All model attempts together must finish well inside Vercel's 60-second limit, so Levi always has time to answer from the catalogue. */
+const MODEL_BUDGET_MS = 25000;
 const DAILY_MESSAGE_LIMIT = 200;
 const TOOL_CACHE_TTL = 20_000;
 const MAX_TOOL_ROUNDS = 8;
@@ -28,7 +30,7 @@ let goodModel = null;
 // Fast Flash models go before the slow Pro one: a chat answer in a few seconds matters more than the extra depth.
 // "-latest" names are Google's own aliases that always point at a current model, so Levi keeps working when a fixed model
 // name is retired or was never available on this key.
-function modelChain(primary) { return [...new Set([goodModel, process.env.GEMINI_MODEL && primary, "gemini-flash-latest", FALLBACK_MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite", primary, "gemini-pro-latest"].filter(Boolean))]; }
+function modelChain(primary) { return [...new Set([goodModel, process.env.GEMINI_MODEL && primary, "gemini-flash-latest", FALLBACK_MODEL, "gemini-2.5-flash-lite"].filter(Boolean))]; }
 
 function jsonSafe(value) {
   try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
@@ -896,6 +898,31 @@ async function quickFind(messages, ctx) {
   return `${head}\n${lines.join("\n")}${tail} [[PRODUCTS:${ids.join(",")}]]`;
 }
 
+// Words people use for the same thing, so a search that finds nothing tries what they most likely mean.
+const RELATED = [
+  [/bottle|flask|thermos|tumbler/, ["flask", "thermos", "water bottle", "tumbler"]],
+  [/chips|crisps|snack/, ["chips", "plantain chips", "crisps", "snacks"]],
+  [/gown|dress|frock/, ["dress", "gown", "maxi"]],
+  [/sneaker|shoe|trainer|kicks/, ["sneakers", "shoes", "canvas"]],
+  [/phone|iphone|android|samsung/, ["iphone", "samsung", "phone"]],
+  [/laptop|computer|macbook/, ["laptop", "macbook", "computer"]],
+  [/hair|wig|bundle|weave/, ["wig", "hair", "bundles"]],
+  [/perfume|fragrance|cologne|scent/, ["perfume", "body spray", "fragrance"]],
+  [/bag|purse|handbag|backpack/, ["bag", "handbag", "backpack"]],
+  [/shawarma|burger|pizza|food|meal/, ["shawarma", "burger", "food"]],
+  [/drink|juice|smoothie|water/, ["juice", "drinks", "water"]],
+  [/charger|cable|power ?bank/, ["charger", "power bank", "cable"]],
+];
+function relatedTerms(term) {
+  const t = normalize(term);
+  const out = [];
+  for (const [re, words] of RELATED) if (re.test(t)) for (const w of words) if (w !== t && !out.includes(w)) out.push(w);
+  // a plural or a longer phrase: try its main word too
+  const main = t.split(/\s+/).filter((w) => w.length > 2).pop();
+  if (main && main !== t && !out.includes(main)) out.push(main.replace(/s$/, ""));
+  return out.slice(0, 4);
+}
+
 // When the AI model cannot be reached, Levi still answers what it can from the live catalogue: products, the shops that sell
 // them (closest first when the location is known), and shops by name.
 async function liveDataAnswer(latest, messages, ctx) {
@@ -918,7 +945,16 @@ async function liveDataAnswer(latest, messages, ctx) {
       const lines = vendors.slice(0, 6).map((v, i) => `${i + 1}. ${v.business_name}${v.city ? ` (${v.city})` : ""}${hasLoc && Number.isFinite(v.distance_km) ? `, ${distLabel(v.distance_km)}` : ""}`);
       return `These shops match "${term}":\n${lines.join("\n")}`;
     }
-    return `I could not find "${term}" on Levromart right now. Try another word for it, or post a request and vendors will come to you with offers.`;
+    // nothing for those exact words: try what the person most likely means (a water bottle may be listed as a flask)
+    for (const alt of relatedTerms(term)) {
+      const more = await searchEverything({ query: alt, nearest: hasLoc }, ctx).catch(() => null);
+      const ps = ((more && more.products) || []).filter((p) => p.vendor);
+      if (ps.length) {
+        const lines = ps.slice(0, 6).map((p, i) => `${i + 1}. ${p.name} ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)} from ${p.vendor.business_name}${hasLoc && Number.isFinite(p.vendor.distance_km) ? `, ${distLabel(p.vendor.distance_km)}` : ""}`);
+        return `I could not find "${term}" exactly, but these ${alt} listings are close${hasLoc ? " (closest first)" : ""}:\n${lines.join("\n")} [[PRODUCTS:${ps.slice(0, 5).map((p) => p.id).join(",")}]]`;
+      }
+    }
+    return `I could not find "${term}" on Levromart yet. Try another word for it, or post a request (Request on the bottom bar) and shops that have it will send you offers.`;
   }
   if (wantsVendors && hasLoc) {
     const near = await searchVendors({ nearest: true, limit: 6 }, ctx);
@@ -1038,8 +1074,8 @@ module.exports = async function handler(req, res) {
         // every AI model failed (busy, retired or out of quota): answer from the live catalogue instead of a generic line
         console.error("[levi] all models failed, answering from live data:", String(modelErr && modelErr.message || modelErr).slice(0, 200));
         const live = await liveDataAnswer(latest, messages, ctx).catch(() => null);
-        if (live) { res.status(200).json({ reply: live }); return; }
-        throw modelErr;
+        res.status(200).json({ reply: live || "I'm a little slow right now. Tell me what you're looking for in a few words (for example \"chips near me\" or \"black gown under 10k\") and I'll search the shops for you." });
+        return;
       }
       const candidate = apiRes?.candidates?.[0];
       const calls = extractFunctionCalls(candidate);
@@ -1109,7 +1145,9 @@ async function callGemini(apiKey, model, contents, systemInstruction, withTools)
   // the primary model, then the newest Flash, then a long-standing stable one: Levi must not go silent because one model is busy or retired
   const chain = modelChain(model);
   let lastErr = null;
+  const started = Date.now();
   for (const m of chain) {
+    if (Date.now() - started > MODEL_BUDGET_MS) break;   // out of time: the caller answers from the live catalogue instead
     try {
       const thinking = /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
       const out = await geminiOnce(apiKey, m, { ...body, generationConfig: { ...body.generationConfig, thinkingConfig: thinking } });

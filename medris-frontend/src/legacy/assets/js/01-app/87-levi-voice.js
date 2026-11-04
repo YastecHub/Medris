@@ -574,7 +574,26 @@ async function leviOfflineFallback(text) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
     return `Hi${name ? `, ${name}` : ''}. I'm Levi. Tell me what you need and I'll help you get there.`;
   }
-  return `I couldn’t get an answer just now, so I won’t guess. Please send that again in a moment.`;
+  // Levi's server could not be reached: search the shops right here instead of giving a stock sentence
+  try {
+    const RELATED = { bottle: ["flask", "thermos", "tumbler"], chips: ["crisps", "plantain chips", "snacks"], gown: ["dress", "maxi"], dress: ["gown"], sneakers: ["shoes"], perfume: ["fragrance", "body spray"], wig: ["hair", "bundles"], phone: ["iphone", "samsung"] };
+    const term = q.replace(/\b(levi|please|pls|i need|i want|looking for|find me|show me|get me|where can i (get|buy)|who sells|vendors? (that|who) sells?|any|some|a|an|the|for me|near me|closest|nearest|cheap(est)?|buy)\b/g, " ").replace(/\s+/g, " ").trim();
+    if (term.length >= 2) {
+      const find = window.resolveLeviProductSuggestions || resolveLeviProductSuggestions;
+      let products = await find(term);
+      let used = term;
+      if (!products?.length) for (const w of term.split(" ")) { for (const alt of RELATED[w.replace(/s$/, "")] || RELATED[w] || []) { products = await find(alt); if (products?.length) { used = alt; break; } } if (products?.length) break; }
+      if (products?.length) {
+        const price = (p) => p.discount_price != null && Number(p.discount_price) > 0 ? Number(p.discount_price) : p.sale_price != null ? Number(p.sale_price) : p.rental_rate;
+        const lines = products.slice(0, 5).map((p, i) => `${i + 1}. ${p.name}${price(p) != null ? ` ₦${Number(price(p)).toLocaleString("en-NG")}` : ""}${p.vendor?.business_name ? ` from ${p.vendor.business_name}` : ""}`);
+        return `${used === term ? `Here is what I found for "${term}"` : `I could not find "${term}" exactly, but these ${used} listings are close`}:\n${lines.join("\n")} ${leviProductSuggestionTag(products.slice(0, 5))}`;
+      }
+      const { data: shops } = await sb.from("vendors").select("id,business_name,city").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(5);
+      if (shops?.length) return `These shops match "${term}":\n${shops.map((v, i) => `${i + 1}. ${v.business_name}${v.city ? ` (${v.city})` : ""}`).join("\n")}`;
+      return `I could not find "${term}" on Levromart yet. Try another word for it, or post a request (Request on the bottom bar) and shops that have it will send you offers.`;
+    }
+  } catch (_) {}
+  return `Tell me what you're looking for in a few words (for example "chips" or "black gown") and I'll search the shops for you.`;
 }
 
 async function fetchLeviReply(payload) {

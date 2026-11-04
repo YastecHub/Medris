@@ -1607,7 +1607,7 @@
         sb.from('vendors').select('id',{count:'exact',head:true}).eq('verification_status','pending').is('deleted_at',null),
         sb.from('support_requests').select('id',{count:'exact',head:true}).in('status',['open','in_progress']),
         sb.from('disputes').select('id,order_id',{count:'exact'}).not('status','in','(resolved,closed)'),
-        sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new'),
+        sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new').eq('target_type','platform'),
         sb.from('orders').select('id',{count:'exact',head:true}).eq('status','payment_unresolved').not('payment_escalated_at','is',null),
         sb.from('orders').select('id',{count:'exact',head:true}).eq('status','confirmed').not('payment_escalated_at','is',null)
       ]);
