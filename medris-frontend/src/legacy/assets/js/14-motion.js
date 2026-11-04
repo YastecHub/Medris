@@ -2085,7 +2085,10 @@
         if (!ok) return;
       }
       go.disabled = true; go.textContent = "Please wait…";
-      var q = await sb.rpc("request_withdrawal");
+      var pin = await window.lvPinGate({ title: "Withdraw to your bank", rows: [["Sent to your bank now", NOW(total), 1]].concat(appr > 0 && canAsk ? [["Waiting for Levromart (paid in the last 24 hours)", NOW(appr)]] : []), cta: "Withdraw " + NOW(total) });
+      if (!pin) { go.disabled = false; go.textContent = "Withdraw " + NOW(total); return; }
+      go.disabled = true; go.textContent = "Please wait…";
+      var q = await sb.rpc("request_withdrawal", { p_pin: pin });
       if (q.error) { go.disabled = false; go.textContent = "Try again"; return showToast(q.error.message || "Could not withdraw.", "error"); }
       var d = q.data || {};
       var el = document.getElementById("lvwSheet"); if (el) el.remove();
@@ -3877,7 +3880,9 @@ window.lvAskCancel = async function (orderId) {
       try {
         var r = await sb.rpc("get_levro_wallet");
         if (r.error || !r.data) { if (r.error && /set up|not ready|being set|unknown|not found|404|503/i.test(String(r.error.message || r.error.code || ""))) W.off = true; return W.data; }
-        W.data = r.data; W.at = Date.now(); return W.data;
+        W.data = r.data; W.at = Date.now();
+        try { if (W.data.pin) window.__lvHasPin = !!W.data.pin.has_pin; if (W.data.pin && !W.data.pin.has_pin && typeof window.lvPinNudge === "function") window.lvPinNudge(false); } catch (_) {}
+        return W.data;
       } catch (_) { return W.data; }
     })().finally(function () { W.loading = null; });
     return W.loading;
@@ -3953,8 +3958,10 @@ window.lvAskCancel = async function (orderId) {
     m.querySelector("#lwAddGo").onclick = async function () {
       var amt = readAmount("lwAddAmt"), b = this;
       if (amt < 10000) return err(m, "The smallest amount is ₦100.");
+      var pin = await window.lvPinGate({ title: "Add money", rows: [["Amount into your wallet", short(amt), 1], ["Paystack's fee", "added on the next screen"]], cta: "Continue to Paystack" });
+      if (!pin) return;
       b.disabled = true; b.textContent = "Opening Paystack…";
-      var r = await sb.rpc("wallet_topup", { p_amount_kobo: amt });
+      var r = await sb.rpc("wallet_topup", { p_amount_kobo: amt, p_pin: pin });
       if (r.error || !r.data) { b.disabled = false; b.textContent = "Continue"; return err(m, (r.error && r.error.message) || "Could not start. Please try again."); }
       var info = r.data;
       closeSheet();
@@ -4013,10 +4020,12 @@ window.lvAskCancel = async function (orderId) {
       if (amt < 5000) return err(m, "The smallest amount is ₦50.");
       if (amt > Number(d.balance_kobo)) return err(m, "You only have " + money(d.balance_kobo, true) + ". Add money first.");
       err(m, "");
-      var ok = await showConfirmDialog("Send " + short(amt) + " to " + (pick.name || "") + " (@" + pick.handle + ")? Transfers cannot be undone.", { title: "Confirm transfer", okLabel: "Send " + short(amt), cancelLabel: "Go back" });
-      if (!ok) return;
+      var fee = window.lvWalletFee(amt);
+      if (amt + fee > Number(d.balance_kobo)) return err(m, "You need " + money(amt + fee, true) + " (" + short(amt) + " plus a " + short(fee) + " fee). You have " + money(d.balance_kobo, true) + ".");
+      var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Transfer fee", short(fee)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
+      if (!pin) return;
       var b = this; b.disabled = true; b.textContent = "Sending…";
-      var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey });
+      var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not send."); }
       await load(true); repaint();
       m.querySelector(".lvw-sheet-body").innerHTML = '<div class="lw-done"><span><i class="fa-solid fa-check"></i></span><b>' + short(amt) + ' sent</b><p>to ' + esc(pick.name || "") + ' (@' + esc(pick.handle) + ')</p><button type="button" class="btn lw-go" onclick="document.getElementById(\'lvW3Sheet\').remove()">Done</button></div>';
@@ -4030,21 +4039,22 @@ window.lvAskCancel = async function (orderId) {
       if (add) { if (typeof vendor !== "undefined" && vendor && window.lvGoToPayout) window.lvGoToPayout(); else if (window.lvRefundAccount) window.lvRefundAccount(); }
       return;
     }
-    var a = d.account, fresh = Math.max(0, Number(d.balance_kobo) - Number(d.withdrawable_now_kobo));
+    var a = d.account, most = Number(d.withdrawable_now_kobo || 0);
     var m = sheet("Withdraw", '<div class="lw-bank"><span><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
-      '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", k2n(d.balance_kobo)) + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + (fresh > 0 ? " · " + money(fresh, true) + " arrived in the last 24 hours and is checked by Levromart before it goes to a bank" : "") + "</p>" +
-      (a.changed_hours_ago < 24 ? '<p class="lw-warn"><i class="fa-solid fa-shield-halved"></i> Your bank account was added or changed less than 24 hours ago. For your safety you can withdraw ' + Math.max(1, 24 - a.changed_hours_ago) + ' hour(s) from now.</p>' : "") +
-      '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo"' + (a.changed_hours_ago < 24 ? " disabled" : "") + '>Withdraw</button>');
+      '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", k2n(most)) + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + ' · the most you can withdraw is ' + money(most, true) + ' (a fee comes out of the same balance)</p>' +
+      '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo">Continue</button>');
     m.querySelector("#lwWdGo").onclick = async function () {
       var amt = readAmount("lwWdAmt");
       if (amt < 10000) return err(m, "The smallest withdrawal is ₦100.");
-      if (amt > Number(d.balance_kobo)) return err(m, "You have " + money(d.balance_kobo, true) + ".");
+      var fee = window.lvWalletFee(amt);
+      if (amt + fee > Number(d.balance_kobo)) return err(m, "You have " + money(d.balance_kobo, true) + ". This withdrawal needs " + money(amt + fee, true) + " (" + short(amt) + " plus a " + short(fee) + " fee).");
+      var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Withdrawal fee", short(fee)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
+      if (!pin) return;
       var b = this; b.disabled = true; b.textContent = "Please wait…";
-      var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt });
-      if (r.error) { b.disabled = false; b.textContent = "Withdraw"; return err(m, r.error.message || "Could not withdraw."); }
+      var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt, p_pin: pin });
+      if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not withdraw."); }
       closeSheet(); await load(true); repaint();
-      if (r.data && r.data.status === "requested") showToast(short(amt) + " is waiting for Levromart's check (" + (r.data.review_reason || "security check") + "). You will get a message.", "info");
-      else showToast(short(amt) + " is on its way to your bank.", "success");
+      showToast(short(amt) + " is on its way to your bank.", "success");
     };
   };
 
@@ -4054,7 +4064,9 @@ window.lvAskCancel = async function (orderId) {
     if (!now && !later) return showToast("There are no earnings ready to move yet.", "info");
     var ok = await showConfirmDialog((now ? short(now) + " (paid 24 hours ago or more) moves into your wallet now." : "") + (later ? (now ? " " : "") + short(later) + " was paid less than 24 hours ago, so Levromart checks it first." : ""), { title: "Move earnings to your wallet", okLabel: "Move", cancelLabel: "Go back" });
     if (!ok) return;
-    var r = await sb.rpc("request_withdrawal", { p_destination: "wallet" });
+    var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(now), 1]].concat(later ? [["Checked by Levromart first", short(later)]] : []), cta: "Move" });
+    if (!pin) return;
+    var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin });
     if (r.error) return showToast(r.error.message || "Could not move your earnings.", "error");
     showToast(Number(r.data.sent_kobo) > 0 ? short(r.data.sent_kobo) + " is now in your wallet." : "Request sent. We will message you when it is approved.", "success");
     await load(true); repaint(); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
@@ -4065,10 +4077,12 @@ window.lvAskCancel = async function (orderId) {
     sheet("How your wallet works", '<ul class="lvw-how">' +
       '<li><b>One wallet.</b> Money you add, money people send you, refunds' + (shop ? " and your shop earnings" : "") + ' all land here. Your @tag is how people send you money.</li>' +
       '<li><b>Add money.</b> With your card, bank transfer or USSD through Paystack. Paystack\'s small fee is added on top.</li>' +
-      '<li><b>Pay for orders.</b> Choose "Levromart wallet" when you pay: no Paystack fee, and the shop gets the order money the usual way.</li>' +
+      '<li><b>Pay for orders.</b> Choose "Levromart wallet" when you pay: no Paystack screens, quick and easy to track. A small fee applies (shown before you pay), and the shop gets its share the usual way: 97% to the shop, 3% to Levromart.</li>' +
       '<li><b>Transfer.</b> Send money to anyone by their @tag. Check the name before you send: transfers cannot be undone.</li>' +
       (shop ? '<li><b>Shop earnings.</b> When a buyer confirms an order, your share (the sale minus Levromart\'s 3% commission) is ready. Money paid 24 hours ago or more moves into your wallet at once; newer money is checked by Levromart first. If a buyer is refunded, it comes out of your share.</li>' : '<li><b>Refunds.</b> If an order is cancelled or a problem is settled in your favour, the refund comes into your wallet. It is paid out of the shop\'s share.</li>') +
-      '<li><b>Withdraw.</b> To your own bank account. For your safety: nothing can be withdrawn for 24 hours after you add or change your bank account, and the first withdrawal to a new account is checked by Levromart. This stops anyone who gets into your account from sending your money to their own bank. Money added or received in the last 24 hours is also checked before it goes to a bank.</li>' +
+      '<li><b>Your PIN.</b> A 6-digit PIN protects every payment, transfer and withdrawal, like a bank app. Keep it to yourself: Levromart will never ask for it.</li>' +
+      '<li><b>Fees.</b> Paying with your wallet, sending money and withdrawing each carry Paystack\'s usual fee (1.5%, plus \u20a6100 from \u20a62,500, at most \u20a62,000). You see it before you confirm.</li>' +
+      '<li><b>Withdraw.</b> To your own bank account, at any time, with your PIN. You can change your bank account whenever you like. Only a shop\'s earnings paid in the last 24 hours wait for a check by Levromart.</li>' +
       '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
 
@@ -4100,7 +4114,7 @@ window.lvAskCancel = async function (orderId) {
     var d = await load(true);
     if (!d || d.frozen) return paystackGo();
     var bal = Number(d.balance_kobo), need = Math.round(Number(total || 0) * 100), enough = need > 0 ? bal >= need : bal > 0;
-    var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? " · no fee" : " · not enough") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
+    var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? " · small fee" : " · not enough") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       (enough ? "" : '<button type="button" class="lw-link" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money to your wallet</button>') +
       '<button type="button" class="lw-pay" id="lwPayCard"><span class="lw-pay-ic p"><i class="fa-solid fa-credit-card"></i></span><div><b>Card, bank transfer or USSD</b><small>Through Paystack · a small fee is added</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       '<p class="lw-err" hidden></p>');
@@ -4108,10 +4122,12 @@ window.lvAskCancel = async function (orderId) {
     var wb = m.querySelector("#lwPayWallet");
     wb.onclick = async function () {
       if (wb.disabled) return;
-      var ok = await showConfirmDialog("Pay " + (need ? short(need) : "this order") + " from your Levromart wallet?", { title: "Pay with wallet", okLabel: "Pay now", cancelLabel: "Go back" });
-      if (!ok) return;
+      var fee = need ? window.lvWalletFee(need) : 0;
+      if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + " (" + short(need) + " for the order plus a " + short(fee) + " fee). You have " + money(bal, true) + ".");
+      var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Payment fee", short(fee)], ["Total from your wallet", short(need + fee), 1], ["Of the order amount", "97% to the shop, 3% to Levromart"]], cta: "Pay " + short(need + fee), note: "You pay this fee to Levromart instead of Paystack. It is quick, and every payment is on your wallet history." });
+      if (!pin) return;
       wb.disabled = true;
-      var r = await sb.rpc("wallet_pay_order", { p_order_id: orderId });
+      var r = await sb.rpc("wallet_pay_order", { p_order_id: orderId, p_pin: pin });
       if (r.error) { wb.disabled = false; return err(m, r.error.message || "Could not pay."); }
       closeSheet(); await load(true); repaint();
       showToast("Paid from your wallet. Thank you!", "success");
@@ -5328,4 +5344,143 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
   }
   new MutationObserver(function () { strip(); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   setTimeout(strip, 1500);
+})();
+
+
+/* ===== The wallet PIN (migration 0037): six digits, asked for before every movement of wallet money. A sheet shows exactly
+   what will happen (the breakdown, with the fee) and a keypad for the PIN. The native keyboard is never used, so the PIN is
+   never suggested, remembered or seen by autofill. Levromart will never ask for it. ===== */
+(function () {
+  "use strict";
+  var LEN = 6;
+  // Paystack's local fee on an amount (kobo): 1.5%, plus 100 naira from 2,500 naira, at most 2,000 naira. The server decides the
+  // real fee; this only shows it. The same numbers live in medris-backend/src/integrations/paystack/fees.ts.
+  window.lvWalletFee = function (kobo) { kobo = Math.round(Number(kobo) || 0); if (kobo <= 0) return 0; return Math.min(200000, Math.ceil(kobo * 0.015) + (kobo >= 250000 ? 10000 : 0)); };
+  function naira(k) { try { return "₦" + (Number(k) / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + k; } }
+  function close() { var m = document.getElementById("lvPinSheet"); if (m) m.remove(); }
+  function frame(title, inner) {
+    close();
+    var m = document.createElement("div");
+    m.id = "lvPinSheet"; m.className = "lvpin-wrap";
+    m.innerHTML = '<div class="lvpin" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="lvpin-grab" aria-hidden="true"></div>' + inner + "</div>";
+    document.body.appendChild(m);
+    return m;
+  }
+  function pad(host, onFull, onChange) {
+    var val = "";
+    host.innerHTML = '<div class="lvpin-dots" aria-live="polite">' + new Array(LEN + 1).join('<i></i>') + '</div>' +
+      '<div class="lvpin-keys">' + [1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "⌫"].map(function (k) { return k === "" ? "<span></span>" : '<button type="button" data-k="' + k + '" aria-label="' + (k === "⌫" ? "Delete" : k) + '">' + k + "</button>"; }).join("") + "</div>";
+    var dots = host.querySelectorAll(".lvpin-dots i");
+    function paint() { dots.forEach(function (d, i) { d.classList.toggle("on", i < val.length); }); if (onChange) onChange(val); }
+    host.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-k]"); if (!b) return;
+      var k = b.getAttribute("data-k");
+      if (k === "⌫") val = val.slice(0, -1); else if (val.length < LEN) val += k;
+      paint(); if (val.length === LEN && onFull) onFull(val);
+    });
+    return { get: function () { return val; }, clear: function () { val = ""; paint(); }, shake: function () { host.classList.remove("lvpin-shake"); void host.offsetWidth; host.classList.add("lvpin-shake"); } };
+  }
+  async function status() {
+    try { var r = await sb.rpc("get_wallet_pin_status"); if (r && r.data) { window.__lvHasPin = !!r.data.has_pin; return r.data; } } catch (_) {}
+    return { has_pin: !!window.__lvHasPin };
+  }
+  function rows(list) {
+    return '<div class="lvpin-rows">' + (list || []).map(function (r) { return '<div class="lvpin-row' + (r[2] ? " strong" : "") + '"><span>' + esc(r[0]) + "</span><b>" + esc(r[1]) + "</b></div>"; }).join("") + "</div>";
+  }
+  var dismissedNudge = false;
+
+  /* Creating the PIN: enter it, then enter it again. Resolves true when it is saved. `required` hides "Do it later". */
+  window.lvPinSetup = function (o) {
+    o = o || {};
+    return new Promise(function (resolve) {
+      var first = null;
+      var m = frame("Create your wallet PIN", '<div class="lvpin-ico">' + (window.lv3dIcon ? window.lv3dIcon("tx-ready", 64) : "") + '</div><h3 class="lvpin-t" id="lvpT">Create your wallet PIN</h3>' +
+        '<p class="lvpin-s" id="lvpS">Six digits. You enter it for every payment, transfer and withdrawal. Keep it to yourself: Levromart will never ask for your PIN.</p>' +
+        '<div id="lvpPad"></div><p class="lvpin-err" id="lvpE" hidden></p>' + (o.required ? "" : '<button type="button" class="lvpin-link" id="lvpLater">Do it later</button>'));
+      var P = pad(m.querySelector("#lvpPad"), async function (v) {
+        var err = m.querySelector("#lvpE"); err.hidden = true;
+        if (first === null) { first = v; P.clear(); m.querySelector("#lvpT").textContent = "Enter it again"; m.querySelector("#lvpS").textContent = "Type the same six digits to confirm."; return; }
+        if (v !== first) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Create your wallet PIN"; m.querySelector("#lvpS").textContent = "The two PINs did not match. Start again."; return; }
+        var r = await sb.rpc("set_wallet_pin", { p_pin: first, p_pin_confirm: v });
+        if (r.error) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Create your wallet PIN"; err.textContent = r.error.message || "Could not save your PIN."; err.hidden = false; return; }
+        window.__lvHasPin = true; close(); if (typeof showToast === "function") showToast("Your wallet PIN is set. Keep it safe.", "success"); resolve(true);
+      });
+      var later = m.querySelector("#lvpLater"); if (later) later.onclick = function () { close(); resolve(false); };
+      m.addEventListener("click", function (e) { if (e.target === m && !o.required) { close(); resolve(false); } });
+    });
+  };
+  /* A gentle reminder (once per visit) for people who have not made a PIN yet; after a bank account is saved it is compulsory. */
+  window.lvPinNudge = function (required) {
+    if (window.__lvHasPin) return;
+    if (!required && dismissedNudge) return;
+    if (document.getElementById("lvPinSheet")) return;
+    setTimeout(async function () {
+      var st = await status(); if (st.has_pin || document.getElementById("lvPinSheet")) return;
+      var ok = await window.lvPinSetup({ required: !!required });
+      if (!ok && !required) dismissedNudge = true;
+    }, 400);
+  };
+
+  /* Before money moves: the breakdown and the PIN. Resolves the PIN, or null when the person goes back. */
+  window.lvPinGate = async function (o) {
+    o = o || {};
+    var st = await status();
+    if (!st.has_pin) { var made = await window.lvPinSetup({ required: true }); if (!made) return null; }
+    else if (st.locked_minutes > 0) { if (typeof showToast === "function") showToast("Too many wrong PINs. Try again in " + st.locked_minutes + " minute" + (st.locked_minutes === 1 ? "" : "s") + ".", "error"); return null; }
+    return new Promise(function (resolve) {
+      var person = o.person && (o.person.avatar_url ? '<img class="lvpin-av" src="' + esc(o.person.avatar_url) + '" alt="">' : '<span class="lvpin-av">' + esc(String(o.person.name || o.person.handle || "?").slice(0, 1).toUpperCase()) + "</span>");
+      var m = frame(o.title || "Confirm", '<h3 class="lvpin-t">' + esc(o.title || "Confirm") + "</h3>" + (person ? '<div class="lvpin-person">' + person + "</div>" : "") + rows(o.rows) +
+        (o.note ? '<p class="lvpin-note">' + esc(o.note) + "</p>" : "") + '<p class="lvpin-s">Enter your 6-digit PIN</p><div id="lvpPad"></div>' +
+        '<button type="button" class="lvpin-go" id="lvpGo" disabled>' + esc(o.cta || "Confirm") + '</button><button type="button" class="lvpin-back" id="lvpBack">Go back</button>');
+      var go = m.querySelector("#lvpGo"), pin = "";
+      var P = pad(m.querySelector("#lvpPad"), null, function (v) { pin = v; go.disabled = v.length !== LEN; });
+      go.onclick = function () { if (pin.length === LEN) { close(); resolve(pin); } };
+      m.querySelector("#lvpBack").onclick = function () { close(); resolve(null); };
+      m.addEventListener("click", function (e) { if (e.target === m) { close(); resolve(null); } });
+    });
+  };
+
+  /* Changing the PIN (Settings): the account password first, then the new PIN twice. */
+  window.lvPinChange = async function () {
+    var st = await status();
+    if (!st.has_pin) return window.lvPinSetup({ required: false });
+    var pw = await new Promise(function (res) {
+      var m = frame("Change your PIN", '<div class="lvpin-ico">' + (window.lv3dIcon ? window.lv3dIcon("settings", 64) : "") + '</div><h3 class="lvpin-t">Change your PIN</h3><p class="lvpin-s">Enter your account password first.</p>' +
+        '<input id="lvpPw" class="lvpin-in" type="password" autocomplete="current-password" placeholder="Your password"><p class="lvpin-err" id="lvpE" hidden></p>' +
+        '<button type="button" class="lvpin-go" id="lvpGo">Continue</button><button type="button" class="lvpin-back" id="lvpBack">Go back</button>');
+      m.querySelector("#lvpGo").onclick = function () { var v = m.querySelector("#lvpPw").value; if (!v) { var e = m.querySelector("#lvpE"); e.textContent = "Enter your password."; e.hidden = false; return; } close(); res(v); };
+      m.querySelector("#lvpBack").onclick = function () { close(); res(null); };
+      setTimeout(function () { try { m.querySelector("#lvpPw").focus(); } catch (_) {} }, 80);
+    });
+    if (!pw) return false;
+    return new Promise(function (resolve) {
+      var first = null;
+      var m = frame("New PIN", '<h3 class="lvpin-t" id="lvpT">Choose a new PIN</h3><p class="lvpin-s" id="lvpS">Six digits. Not 123456 or the same digit six times.</p><div id="lvpPad"></div><p class="lvpin-err" id="lvpE" hidden></p><button type="button" class="lvpin-back" id="lvpBack">Cancel</button>');
+      var P = pad(m.querySelector("#lvpPad"), async function (v) {
+        var err = m.querySelector("#lvpE"); err.hidden = true;
+        if (first === null) { first = v; P.clear(); m.querySelector("#lvpT").textContent = "Enter it again"; m.querySelector("#lvpS").textContent = "Type the new PIN once more."; return; }
+        if (v !== first) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Choose a new PIN"; err.textContent = "The two PINs did not match. Start again."; err.hidden = false; return; }
+        var r = await sb.rpc("change_wallet_pin", { p_password: pw, p_pin: first, p_pin_confirm: v });
+        if (r.error) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Choose a new PIN"; err.textContent = r.error.message || "Could not change your PIN."; err.hidden = false; return; }
+        close(); if (typeof showToast === "function") showToast("Your PIN was changed.", "success"); resolve(true);
+      });
+      m.querySelector("#lvpBack").onclick = function () { close(); resolve(false); };
+    });
+  };
+})();
+
+/* a bank account saved: the wallet PIN becomes compulsory right away */
+(function () {
+  "use strict";
+  function wrap() {
+    if (typeof sb === "undefined" || !sb || typeof sb.rpc !== "function" || sb.rpc.__lvPin) return;
+    var rpc0 = sb.rpc;
+    var rpc1 = function (name) {
+      var call = rpc0.apply(this, arguments);
+      if (name === "save_refund_account") Promise.resolve(call).then(function (r) { if (r && !r.error && typeof window.lvPinNudge === "function") window.lvPinNudge(true); }).catch(function () {});
+      return call;
+    };
+    rpc1.__lvPin = true; sb.rpc = rpc1;
+  }
+  wrap(); setTimeout(wrap, 1500); setTimeout(wrap, 5000);
 })();
