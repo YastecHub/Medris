@@ -331,6 +331,7 @@
   hookNav(); window.addEventListener("load",hookNav);
   var raf=0;
   function autoScroll(row){
+    return;   // no automatic movement of the vendors row
     if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     var paused=false,t=0,pos=0;
     function pause(){paused=true;clearTimeout(t);} function resume(){clearTimeout(t);t=setTimeout(function(){pos=row.scrollLeft;paused=false;},1800);}
@@ -449,6 +450,7 @@ window.lmFilterFollowing=function(q){q=String(q||"").trim().toLowerCase();docume
 /* suggested vendors: endless manual loop (3 copies, silently re-centred) */
 (function(){
   function setup(row){
+    return;   // vendors never loop: the row starts and ends
     if(row.__lmLoop||row.children.length<4) return; row.__lmLoop=true;
     var orig=[].slice.call(row.children);
     [0,1].forEach(function(){orig.forEach(function(n){var c=n.cloneNode(true);c.setAttribute("aria-hidden","true");c.tabIndex=-1;row.appendChild(c);});});
