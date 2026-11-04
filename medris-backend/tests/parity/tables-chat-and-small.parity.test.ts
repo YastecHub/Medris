@@ -221,7 +221,7 @@ describe("parity: table queries - blocks, message pins, push, comment reports, o
           runTableQuery(db, who ? me(who) : null, sql`select * from public.points_rules where active = true order by sort_order`),
           runIsolated(db, (ctx) => new PointsService(() => ctx).rules(who ? me(who) : null)),
         );
-        expect((o.result as { kind: string }[]).map((r) => r.kind)).toEqual(["product_listed", "order_completed"]);
+        expect((o.result as { kind: string }[]).map((r) => r.kind)).toEqual(["product_listed", "order_completed", "product_comment"]); // product_comment: migration 0026
       }
     });
   });
