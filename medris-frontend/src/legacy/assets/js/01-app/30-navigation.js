@@ -410,7 +410,12 @@ async function navigate(view, params = {}, pushHistory = true) {
   const cachedRouteHtml = reactView ? undefined : routeHtmlCache.get(cacheKey);
   const persistedRouteHtml = reactView ? "" : getPersistedRouteHtml(view, params);
   const instantRouteHtml = (cachedRouteHtml && isUsableRouteSnapshot(String(cachedRouteHtml))) ? cachedRouteHtml : persistedRouteHtml;
-  const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders");
+  // Switching between "Orders from customers" and "My purchases" is a different page: show the copy from the last visit at
+  // once (then the fresh one), instead of waiting for both lists to load again. Status pills on one tab keep their own path.
+  const ordersSide = view === "vendorOrders" ? (params?.perspective === "purchases" ? "purchases" : "sales") : null;
+  const ordersSideChanged = !!ordersSide && previousView === view && window.__lvOrdersSide && window.__lvOrdersSide !== ordersSide;
+  if (ordersSide) window.__lvOrdersSide = ordersSide;
+  const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders") && !(ordersSideChanged && instantRouteHtml);
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab && !window.__lvSwipeNav) {
     // Storefront used to be excluded here, on the assumption its own
     // renderer was now fast enough not to need a shell. But the very first

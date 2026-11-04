@@ -6275,3 +6275,148 @@ html:root:root[data-theme="dark"] body .lwa-pw{background:#1f2937;border-color:#
 .lvw3 .lw-earn b small{font-size:.7rem;font-weight:600;opacity:.8;margin-right:2px}
 html:root:root body .lvw3 .lw-earn button{min-height:30px}
 html:root:root body .lwa-more{margin:10px auto 2px;padding:6px 14px;border:1px solid #d1d5db;border-radius:999px;background:transparent;color:inherit;font-size:.76rem;font-weight:700;cursor:pointer}
+
+/* Comment threads: replies hang from their comment on a line; tags for the seller and the thread's author; the reply a
+   notification points at lights up for a moment */
+html:root:root body .comment-replies-dropdown{position:relative}
+html:root:root body .comment-replies-dropdown>.product-comment-row{position:relative;overflow:visible}
+html:root:root body .comment-replies-dropdown>.product-comment-row::before{content:"";position:absolute;left:-1.45rem;top:-.55rem;width:1.1rem;height:1.75rem;border-left:2px solid #dbe3ea;border-bottom:2px solid #dbe3ea;border-bottom-left-radius:12px;pointer-events:none}
+html:root:root body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{content:"";position:absolute;left:-1.45rem;top:1rem;bottom:-.8rem;border-left:2px solid #dbe3ea;pointer-events:none}
+html:root:root[data-theme="dark"] body .comment-replies-dropdown>.product-comment-row::before,
+html:root:root[data-theme="dark"] body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{border-color:rgba(255,255,255,.14)}
+.lv-cr-tag{display:inline-flex;align-items:center;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:.62rem;font-weight:800;letter-spacing:.02em;vertical-align:middle;line-height:1.5}
+.lv-cr-tag.seller{background:#dcfce7;color:#166534}
+.lv-cr-tag.author{background:#e0e7ff;color:#3730a3}
+:root[data-theme="dark"] .lv-cr-tag.seller{background:rgba(34,197,94,.18);color:#86efac}
+:root[data-theme="dark"] .lv-cr-tag.author{background:rgba(99,102,241,.2);color:#c7d2fe}
+@keyframes lvCrFlash{0%,30%{background:rgba(250,204,21,.32)}100%{background:transparent}}
+html:root:root body .product-comment-row.lv-cr-flash{animation:lvCrFlash 2.4s ease-out;border-radius:12px}
+/* the comment box inside the comment sheet: a straight box too (beats the older pill rule there) */
+html:root:root body #lvCs .product-comment-compose-row textarea,
+html:root:root body .product-comment-compose-row textarea#productCommentInput,
+html:root:root body .product-comment-compose-row textarea#packageCommentInput{border-radius:12px!important;min-height:44px!important;max-height:160px!important;padding:11px 13px!important;line-height:1.4!important;overflow-y:auto!important}
+html:root:root body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{top:.6rem;bottom:-1.6rem}
+
+/* Followers page (fp2) */
+html body #app .fp2 .fp-head{gap:10px}
+.fp2-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 4px}
+.fp2-stat{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:16px;text-align:center}
+.fp2-stat i{font-size:.85rem;margin-bottom:2px}
+.fp2-stat b{font-size:1.15rem;font-weight:800;line-height:1.1}
+.fp2-stat small{font-size:.64rem;font-weight:700;opacity:.8;white-space:nowrap}
+.fp2-stat.g{background:#dcfce7;color:#166534}.fp2-stat.o{background:#ffedd5;color:#9a3412}.fp2-stat.p{background:#f3e8ff;color:#6b21a8}.fp2-stat.b{background:#dbeafe;color:#1e40af}
+:root[data-theme="dark"] .fp2-stat.g{background:rgba(34,197,94,.15);color:#86efac}:root[data-theme="dark"] .fp2-stat.o{background:rgba(249,115,22,.15);color:#fdba74}
+:root[data-theme="dark"] .fp2-stat.p{background:rgba(168,85,247,.16);color:#d8b4fe}:root[data-theme="dark"] .fp2-stat.b{background:rgba(59,130,246,.16);color:#93c5fd}
+html body #app .fp2 .fp-tabs{display:flex;gap:8px;border:0!important;margin:12px 0 6px;overflow-x:auto;scrollbar-width:none}
+html body #app .fp2 .fp-tab{flex:none;padding:7px 14px!important;border-radius:999px!important;border:1px solid var(--border,#e5e7eb)!important;background:transparent!important;font-size:.82rem;font-weight:700;color:inherit}
+html body #app .fp2 .fp-tab::after{display:none!important}
+html body #app .fp2 .fp-tab.active{background:#111827!important;border-color:#111827!important;color:#fff!important}
+:root[data-theme="dark"] body #app .fp2 .fp-tab.active{background:#f9fafb!important;border-color:#f9fafb!important;color:#111827!important}
+html body #app .fp2 .fp-tab b{opacity:.65;margin-left:2px}
+.fp2-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--border,#eef2f7);cursor:default}
+.fp2-row[role="link"]{cursor:pointer}
+.fp2-ring{flex:none;display:inline-grid;place-items:center;padding:2.5px;border-radius:50%;background:transparent}
+.fp2-ring.shop{background:linear-gradient(135deg,#f59e0b,#ec4899,#8b5cf6)}
+.fp2-ring.new{background:linear-gradient(135deg,#22c55e,#14b8a6)}
+.fp2-ring>*{border:2.5px solid var(--bg,#fff);border-radius:50%}
+:root[data-theme="dark"] .fp2-ring>*{border-color:#0f1115}
+.fp2-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fp2-copy strong{font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp2-new{font-style:normal;margin-left:4px;padding:1px 6px;border-radius:999px;background:#22c55e;color:#fff;font-size:.6rem;font-weight:800;vertical-align:middle}
+.fp2-sub{font-size:.76rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp2-sub i{font-size:.68rem;color:#8b5cf6}
+:root[data-theme="dark"] .fp2-sub{color:#9ca3af}
+.fp2-copy .fn-tag{align-self:flex-start;margin-top:2px}
+html:root:root body .fp2-btn{flex:none;height:32px;padding:0 13px;border:0;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:.76rem;font-weight:800;cursor:pointer}
+:root[data-theme="dark"] .fp2-btn{background:rgba(99,102,241,.2);color:#c7d2fe}
+.fp2-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:40px 16px;text-align:center}
+.fp2-empty span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dcfce7,#e0e7ff);color:#15803d;font-size:1.5rem}
+.fp2-empty small{color:#6b7280}
+html:root:root body #app .fp2 .fp-tabs .fp-tab.active,html:root:root body #app .fp2 .fp-tabs .fp-tab.active b{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root[data-theme="dark"] body #app .fp2 .fp-tabs .fp-tab.active,html:root:root[data-theme="dark"] body #app .fp2 .fp-tabs .fp-tab.active b{color:#111827!important;-webkit-text-fill-color:#111827!important}
+html:root:root[data-theme="dark"] body .fp2-btn{background:rgba(99,102,241,.22)!important;color:#c7d2fe!important}
+
+/* Shop location: Levromart logo as the locate button, spinning while it locates */
+.lv-loc-logo{display:block;width:22px;height:22px;background:#0f9d6b;-webkit-mask:url(/levromart-badge.png) center/contain no-repeat;mask:url(/levromart-badge.png) center/contain no-repeat}
+.vendor-map-locate-control.is-locating .lv-loc-logo{animation:lvLocSpin .9s linear infinite}
+@keyframes lvLocSpin{to{transform:rotate(360deg)}}
+:root[data-theme="dark"] .lv-loc-logo{background:#34d399}
+#veUseLocationBtn .fa-spinner{animation:lvLocSpin .9s linear infinite!important;width:1em;height:1em;background:currentColor;-webkit-mask:url(/levromart-badge.png) center/contain no-repeat;mask:url(/levromart-badge.png) center/contain no-repeat}
+#veUseLocationBtn .fa-spinner::before{content:""!important}
+
+/* Edit business profile: slim Storefront / Pause pills, a branded header, the logo overlapping it on the left like the
+   profile page, and boxed fields */
+html:root:root body #app .dash-actions:has(+ .ve-card){display:flex!important;gap:8px!important;justify-content:flex-end;margin:0 auto .6rem!important}
+html:root:root body #app .dash-actions:has(+ .ve-card) .quick-action{flex:none!important;flex-direction:row!important;gap:7px!important;width:auto!important;min-height:0!important;height:36px!important;padding:0 14px!important;border-radius:999px!important;font-size:.8rem!important;font-weight:800!important;box-shadow:none!important}
+html:root:root body #app .dash-actions:has(+ .ve-card) .quick-action-icon{width:auto!important;height:auto!important;border:0!important;background:none!important;font-size:.85rem!important;margin:0!important}
+html:root:root body #app .ve-card .vendor-cover-editor .storefront-cover{height:150px!important;background-color:#0b3d2e;background-image:linear-gradient(135deg,#0b3d2e 0%,#15803d 55%,#22c55e 100%)}
+html:root:root body #app .ve-card .vendor-cover-editor .storefront-cover.has-custom-cover{background-color:transparent}
+html:root:root body #app .ve-card .storefront-cover-empty{color:rgba(255,255,255,.85)!important;font-weight:700}
+html:root:root body #app .ve-card .vendor-cover-editor>p{display:none}
+html:root:root body #app .ve-card .vendor-edit-avatar-area{display:flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:flex-end!important;gap:12px;margin:-58px 0 14px 14px!important;text-align:left!important;position:relative;z-index:2}
+html:root:root body #app .ve-card .vendor-edit-avatar-wrap{margin:0!important}
+html:root:root body #app .ve-card .vendor-edit-avatar-wrap .avatar-circle,html:root:root body #app .ve-card .vendor-edit-avatar-wrap>div:first-child{border:4px solid var(--card,#fff)!important;box-shadow:0 6px 18px -8px rgba(0,0,0,.35)}
+html:root:root body #app .ve-card .vendor-edit-avatar-area>p{display:none!important}
+html:root:root body #app .ve-card label{font-size:.76rem!important;font-weight:700!important;margin:12px 0 5px!important;color:#6b7280}
+html:root:root:root body #app .ve-card.lv-flat input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),html:root:root:root body #app .ve-card.lv-flat select,html:root:root:root body #app .ve-card.lv-flat textarea{border:1.5px solid #e5e7eb!important;border-bottom:1.5px solid #e5e7eb!important;width:100%;box-sizing:border-box;border-radius:12px!important;background:#fff!important;padding:11px 12px!important;font-size:.95rem!important;box-shadow:none!important}
+html:root:root body #app .ve-card input:focus,html:root:root body #app .ve-card select:focus,html:root:root body #app .ve-card textarea:focus{border-color:#16a34a!important;outline:none!important;box-shadow:0 0 0 3px rgba(22,163,74,.14)!important}
+html:root:root:root[data-theme="dark"] body #app .ve-card.lv-flat input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),html:root:root[data-theme="dark"] body #app .ve-card.lv-flat select,html:root:root[data-theme="dark"] body #app .ve-card.lv-flat textarea{border-bottom-color:#30363d!important;background:#161b22!important;border-color:#30363d!important;color:#f3f4f6!important}
+html:root:root[data-theme="dark"] body #app .ve-card label{color:#9ca3af}
+/* student verification: an Edit pen on the verified card */
+.lv-sv .sv-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lv-sv .sv-head h4{margin:0}
+html:root:root body .lv-sv .sv-edit{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #d1d5db;border-radius:999px;background:transparent;color:inherit;font-size:.76rem;font-weight:800;cursor:pointer}
+
+/* Suggestions / Feedback cards: their <header> row was styled like the app's top bar (fixed to the top of the screen), so
+   names, dates and a long red "New" bar piled up under the search bar. A header inside a card is just a row. */
+html:root:root body #app article header,html:root:root body #app .sg-card>.sg-top{position:static!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;width:auto!important;height:auto!important;min-height:0!important;z-index:auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;padding:0!important;margin:0 0 8px!important;background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transform:none!important}
+html:root:root body #app .sg-top .sg-who{flex:1;min-width:0;display:flex;flex-direction:column}
+html:root:root body #app .sg-top .sg-who strong{font-size:.9rem}
+html:root:root body #app .sg-top .sg-who span{font-size:.72rem;color:#6b7280}
+html:root:root body #app .sg-top .sg-av{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,#ede9fe,#dbeafe);color:#4c1d95}
+html:root:root body #app .sg-top .sg-av.is-anon{background:#f1f5f9;color:#475569}
+html:root:root body #app .sg-top .sg-chip{flex:none!important;width:auto!important;padding:3px 10px!important;border-radius:999px!important;font-size:.68rem!important;font-weight:800!important;background:#f1f5f9;color:#475569}
+html:root:root body #app .sg-top .sg-chip-new{background:#fee2e2!important;color:#b91c1c!important}
+html:root:root body #app .sg-top .sg-chip-done{background:#dcfce7!important;color:#166534!important}
+html:root:root body #app .sg-card{padding:14px 16px!important;border-radius:18px!important}
+html:root:root body #app .sg-card .sg-msg{margin:0 0 10px!important;font-size:.95rem;line-height:1.45}
+html:root:root body #app .sg-actions .sg-btn{height:36px!important;padding:0 14px!important;font-size:.8rem!important;box-shadow:none!important}
+html:root:root body #app .sg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin:6px 0 12px}
+html:root:root body #app .sg-head h2{margin:0 0 2px;font-size:1.35rem}
+html:root:root body #app .sg-head .sg-head-badge{flex:none;padding:4px 10px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:.74rem;font-weight:800}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-chip{background:rgba(255,255,255,.08);color:#cbd5e1}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-chip-new,html:root:root[data-theme="dark"] body #app .sg-head .sg-head-badge{background:rgba(239,68,68,.18)!important;color:#fca5a5!important}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-chip-done{background:rgba(34,197,94,.16)!important;color:#86efac!important}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-av{background:rgba(139,92,246,.2);color:#ddd6fe}
+html:root:root[data-theme="dark"] body #app .sg-top .sg-who span{color:#9ca3af}
+
+/* Seller dashboard "My Listings", refreshed: a branded header card with the Add button, colour tiles with 3D icons,
+   3D icons on every tool row */
+html:root:root body #app .vh-hub .vh-hero{position:relative;overflow:hidden;padding:16px 16px 14px;border-radius:22px;background:linear-gradient(135deg,#0b3d2e 0%,#15803d 60%,#22c55e 100%);color:#fff;margin:4px 0 14px}
+html:root:root body #app .vh-hub .vh-hero-copy{position:relative;z-index:1;max-width:72%}
+html:root:root body #app .vh-hub .vh-hero .vl-eyebrow{color:rgba(255,255,255,.85)!important}
+html:root:root body #app .vh-hub .vh-hero .vh-title{color:#fff!important;margin:2px 0 4px!important;font-size:1.6rem!important}
+html:root:root body #app .vh-hub .vh-hero .vh-sub{color:rgba(255,255,255,.85)!important;font-size:.82rem!important;margin:0 0 12px!important}
+html:root:root body #app .vh-hub .vh-hero-art{position:absolute;right:-6px;top:6px;width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 10px 16px rgba(0,0,0,.3));pointer-events:none}
+html:root:root body #app .vh-hub .vh-hero .vl-add{position:relative;z-index:1;width:100%;height:46px!important;border-radius:14px!important;background:#fff!important;color:#0b3d2e!important;font-weight:800!important;box-shadow:0 8px 18px -10px rgba(0,0,0,.5)!important;border:0!important}
+html:root:root body #app .vh-hub .vh-stats{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+html:root:root body #app .vh-hub .vh-stat{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:6px!important;padding:12px!important;border-radius:18px!important;border:0!important;box-shadow:none!important;text-align:left}
+html:root:root body #app .vh-hub .vh-stat .vh-chev{display:none!important}
+html:root:root body #app .vh-hub .vh-stat-ico{width:40px!important;height:40px!important;border-radius:12px!important;background:rgba(255,255,255,.7)!important;display:grid!important;place-items:center!important;border:0!important}
+html:root:root body #app .vh-hub .vh-3d{width:30px;height:30px;object-fit:contain}
+html:root:root body #app .vh-hub .vh-stat b{display:block;font-size:1.4rem!important;line-height:1.1}
+html:root:root body #app .vh-hub .vh-stat small{font-size:.74rem!important;font-weight:700;opacity:.8}
+html:root:root body #app .vh-hub .vh-stat-products{background:#dcfce7!important;color:#14532d!important}
+html:root:root body #app .vh-hub .vh-stat-services{background:#ffedd5!important;color:#7c2d12!important}
+html:root:root body #app .vh-hub .vh-stat-packages{background:#f3e8ff!important;color:#581c87!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-products{background:rgba(34,197,94,.14)!important;color:#bbf7d0!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-services{background:rgba(249,115,22,.14)!important;color:#fed7aa!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-packages{background:rgba(168,85,247,.16)!important;color:#e9d5ff!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-ico{background:rgba(255,255,255,.08)!important}
+html:root:root body #app .vh-hub .vh-row-ico{width:40px!important;height:40px!important;border-radius:12px!important;background:#f1f5f9!important;display:grid!important;place-items:center!important;flex:none}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-row-ico{background:rgba(255,255,255,.07)!important}
+html:root:root body #app .vh-hub .vh-row-ico .vh-3d{width:26px;height:26px}
+html:root:root body #app .vh-hub .vh-tabs button{border-radius:999px!important}
+html:root:root body #app .vh-hub .vl-discarded{border-radius:16px!important}
+html:root:root body #app .vh-hub .vh-hero .vl-add,html:root:root body #app .vh-hub .vh-hero .vl-add *{color:#0b3d2e!important;-webkit-text-fill-color:#0b3d2e!important}
+html:root:root body #app .vh-hub .vh-hero .vl-add{background-image:none!important;display:flex!important;align-items:center;justify-content:center;gap:8px;font-size:.95rem!important}

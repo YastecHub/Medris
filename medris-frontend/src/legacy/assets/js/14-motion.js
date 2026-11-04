@@ -1916,7 +1916,7 @@
     if (d && d.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-calendar-day"></i> <span><b>' + money(d.delayed) + '</b> arrives in your bank next business day.</span></div>';
     var ICO = { paid: "fa-arrow-down-long", onway: "fa-paper-plane", ready: "fa-wallet", asked: "fa-user-clock", held: "fa-scale-balanced", pending: "fa-hourglass-half" };
     return '<div class="lvw-card lvw2' + (compact ? " is-compact" : "") + '">' +
-      '<div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-wallet"></i> Wallet</span>' +
+      '<div class="lvw-top"><span class="lvw-label"></span>' +
       '<button type="button" class="lvw-help" onclick="lvWalletHow()" aria-label="How your wallet works and wallet colour"><i class="fa-solid fa-circle-question"></i></button>' +
       '<span class="lvw-top-sp"></span>' +
       '<button type="button" class="lvw-eye" onclick="lvWalletToggle()" aria-label="' + (eye ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (eye ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
@@ -2116,9 +2116,9 @@
       var cut = html.indexOf('<hr class="vendor-profile-divider"');
       return cut > 0 ? html.slice(0, cut) + wallet + html.slice(cut) : wallet + html;
     });
-    // orders from customers: a slimmer wallet on top (not on "My purchases")
+    // orders: the one wallet on top of both tabs (orders from customers and my purchases)
     wrapFn("renderVendorOrders", function (html, args) {
-      if (typeof vendor === "undefined" || !vendor || (args[5] === "purchases") || html.indexOf("empty-state") === 0 && html.length < 200) return null;
+      if (typeof vendor === "undefined" || !vendor || html.indexOf("empty-state") === 0 && html.length < 200) return null;
       return '<div class="lvw" data-lv-wallet="compact">' + card((cache || (readStored(), cache)) && cache.data, true) + "</div>" + html;
     });
   }
@@ -2282,18 +2282,20 @@ window.lvAskCancel = async function (orderId) {
   function card(d) {
     if (window.lvWalletCardHtml) { var h3 = window.lvWalletCardHtml("me", null); if (h3) return h3; }
     var pa = pendingAcct(), has = d && d.has_account, bal = d ? Number(d.available_kobo) : 0, pend = d ? Number(d.processing_kobo) : 0;
-    return '<div class="lvw-card lvw2 is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"><i class="fa-solid fa-rotate-left"></i> Refunds wallet</span><button type="button" class="lvw-help" onclick="lvRefundHow()" aria-label="How refunds work and wallet colour"><i class="fa-solid fa-circle-question"></i></button><span class="lvw-top-sp"></span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
+    return '<div class="lvw-card lvw2 is-compact lvrw-card"><div class="lvw-top"><span class="lvw-label"></span><button type="button" class="lvw-help" onclick="lvRefundHow()" aria-label="How refunds work and wallet colour"><i class="fa-solid fa-circle-question"></i></button><span class="lvw-top-sp"></span><button type="button" class="lvw-eye" onclick="lvRefundEye()" aria-label="' + (rHide ? "Show amounts" : "Hide amounts") + '"><i class="fa-regular ' + (rHide ? "fa-eye-slash" : "fa-eye") + '"></i></button></div>' +
       '<div class="lvw-bal-label">' + (has ? "Available to withdraw" : pa ? "Refund account saved" : "Refunds you are owed land here") + '</div>' +
       '<div class="lvw-bal">' + (d || failed ? mR(bal) : '<span class="lvw-skel"></span>') + '</div>' +
       (pend ? '<div class="lvw-note"><i class="fa-solid fa-paper-plane"></i> <b>' + mR(pend) + '</b> on its way to your bank</div>' : "") +
       '<div class="lvw-foot"><div class="lvw-foot-l">' + (has ? '<small>Refund account</small><b>' + esc(d.account.bank_name) + " ···" + esc(d.account.last4) + ' <button type="button" class="lvw-inline" onclick="lvRefundAccount()">Change</button></b>' : '<small>Refund account</small><b>Not added yet</b>') + '</div>' +
       (has ? '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : '<button type="button" class="lvw-btn lvw-btn-withdraw" onclick="lvRefundAccount()"><i class="fa-solid ' + (pa ? "fa-pen" : "fa-plus") + '"></i> ' + (pa ? "Change bank" : "Add bank") + '</button>') + '</div>' +
-      '<button type="button" class="lvw-strip" onclick="lvRefundHistory()"><i class="fa-solid fa-clock-rotate-left lvw-strip-ic"></i><span class="lvw-strip-t">Refund history</span><i class="fa-solid fa-chevron-right lvw-strip-go"></i></button>' +
+      '<button type="button" class="lvw-strip" onclick="lvRefundHistory()"><i class="fa-solid fa-clock-rotate-left lvw-strip-ic"></i><span class="lvw-strip-t">Transaction history</span><i class="fa-solid fa-chevron-right lvw-strip-go"></i></button>' +
     '</div>';
   }
   window.lvRefundRepaint = function () { paint(); };
   function paint() {
-    document.querySelectorAll("[data-lv-rwallet]").forEach(function (el) { var h = card(cache && cache.data); if (el.__h !== h) { el.innerHTML = h; el.__h = h; } });
+    // with the one Levromart wallet switched on, a page that already shows it does not show it twice
+    var one = window.lvWalletCardHtml && document.querySelector("[data-lv-wallet]") && window.lvWalletCardHtml("me", null);
+    document.querySelectorAll("[data-lv-rwallet]").forEach(function (el) { var h = one ? "" : card(cache && cache.data); if (el.__h !== h) { el.innerHTML = h; el.__h = h; el.hidden = !h; } });
   }
   async function refresh(force) { paint(); await load(force); paint(); }
   function sheet(title, body) {
@@ -2432,6 +2434,7 @@ window.lvAskCancel = async function (orderId) {
       var html = await f.apply(this, arguments);
       var str = String(html == null ? "" : html);
       if (!signedIn() || str.length < 200 || str.indexOf("data-lv-rwallet") >= 0 || (name === "renderVendorOrders" && arguments[5] !== "purchases")) return html;   // one wallet only: the page may already carry it
+      if (str.indexOf("data-lv-wallet") >= 0 && window.lvWalletCardHtml && window.lvWalletCardHtml("me", null)) return html;   // the one Levromart wallet is already on this page
       setTimeout(function () { refresh(false); }, 30);
       var rw = '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>";
       var end = name === "renderBuyerProfile" ? str.indexOf("</section>") : -1;   // on the profile: under the profile header
@@ -4341,4 +4344,185 @@ window.lvAskCancel = async function (orderId) {
   function grow(t){try{t.style.height="auto";t.style.height=Math.min(t.scrollHeight+2,160)+"px";}catch(_){}}
   document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="TEXTAREA"&&t.closest&&t.closest(".product-comment-compose-row"))grow(t);},true);
   document.addEventListener("focusin",function(e){var t=e.target;if(t&&t.tagName==="TEXTAREA"&&t.closest&&t.closest(".product-comment-compose-row"))grow(t);},true);
+})();
+
+/* ===== Comments: a reply notification opens the reply and lights it up; replies hang from their comment on a line
+   (like LinkedIn), and the shop's own comments say "Seller", the person who started the thread "Author". ===== */
+(function () {
+  "use strict";
+  var owner = { key: "", uid: null };
+  function rowsIn(root) { return Array.prototype.slice.call((root || document).querySelectorAll(".product-comment-row[data-comment-id]")); }
+  function tag(row, text, cls) {
+    if (row.querySelector(".lv-cr-tag")) return;
+    var name = row.querySelector(".lv-cr-name") || row.querySelector(".product-comment-head strong"); if (!name) return;
+    var t = document.createElement("span"); t.className = "lv-cr-tag " + cls; t.textContent = text;
+    name.insertAdjacentElement("afterend", t);
+  }
+  function decorate() {
+    rowsIn(document).forEach(function (row) {
+      if (row.__lvTagged) return;
+      var uid = row.getAttribute("data-uid") || "";
+      if (!uid) return;
+      if (owner.uid && uid === String(owner.uid)) { tag(row, "Seller", "seller"); row.__lvTagged = true; return; }
+      var box = row.closest(".comment-replies-dropdown");
+      if (box) {
+        var rootId = (box.id || "").replace(/^levro-replies-(product|package)-/, "");
+        var root = rootId && document.querySelector('.product-comment-row[data-comment-id="' + CSS.escape(rootId) + '"]');
+        if (root && root.getAttribute("data-uid") === uid) tag(row, "Author", "author");
+      }
+      row.__lvTagged = true;
+    });
+  }
+  async function loadOwner(kind, id) {
+    var key = kind + ":" + id; if (owner.key === key) return; owner.key = key; owner.uid = null;
+    try {
+      var r = kind === "package"
+        ? await sb.from("vendor_packages").select("vendor:vendors(user_id)").eq("id", id).maybeSingle()
+        : await sb.from("products").select("vendor:vendors(user_id)").eq("id", id).maybeSingle();
+      if (owner.key === key) { owner.uid = r && r.data && r.data.vendor && r.data.vendor.user_id || null; rowsIn(document).forEach(function (x) { x.__lvTagged = false; }); decorate(); }
+    } catch (_) {}
+  }
+  var open0 = window.openSocialCommentSheet;
+  if (typeof open0 === "function" && !open0.__lvTag) {
+    var open1 = function (kind, id) { try { loadOwner(kind === "package" ? "package" : "product", id); } catch (_) {} return open0.apply(this, arguments); };
+    open1.__lvTag = true; window.openSocialCommentSheet = open1;
+  }
+  var t = null;
+  new MutationObserver(function () { clearTimeout(t); t = setTimeout(function () { decorate(); focusTick(); }, 60); }).observe(document.body, { childList: true, subtree: true });
+
+  /* ---- jump to the comment a notification is about */
+  var focus = null;
+  function openBox(row) {
+    var box = row.closest(".comment-replies-dropdown");
+    if (box && box.classList.contains("hidden")) {
+      var rootId = (box.id || "").replace(/^levro-replies-(product|package)-/, ""), kind = /package/.test(box.id) ? "package" : "product";
+      try { if (window.toggleInlineCommentReplies) window.toggleInlineCommentReplies(rootId, kind); else box.classList.remove("hidden"); } catch (_) { box.classList.remove("hidden"); }
+      if (box.classList.contains("hidden")) box.classList.remove("hidden");
+    }
+  }
+  function flash(row) {
+    openBox(row);
+    try { row.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) {}
+    row.classList.remove("lv-cr-flash"); void row.offsetWidth; row.classList.add("lv-cr-flash");
+    setTimeout(function () { row.classList.remove("lv-cr-flash"); }, 2600);
+  }
+  function focusTick() {
+    if (!focus) return;
+    if (Date.now() - focus.at > 12000) { focus = null; return; }
+    var ids = [focus.reply, focus.parent].filter(Boolean);
+    for (var i = 0; i < ids.length; i++) {
+      var row = document.querySelector('.product-comment-row[data-comment-id="' + CSS.escape(String(ids[i])) + '"]');
+      if (row) {
+        // the parent is only the fallback while the reply itself has not arrived yet (give it a moment)
+        if (i === 1 && focus.reply && Date.now() - focus.at < 4000) { openBox(row); var dd = document.getElementById("levro-replies-product-" + ids[i]) || document.getElementById("levro-replies-package-" + ids[i]); if (dd) dd.classList.remove("hidden"); return; }
+        var f = focus; focus = null; setTimeout(function () { flash(row); }, 250); void f; return;
+      }
+    }
+  }
+  var hn0 = window.handleNotifItemClick;
+  if (typeof hn0 === "function" && !hn0.__lvFocus) {
+    var hn1 = function (event, id) {
+      try {
+        var item = (event && event.currentTarget) || document.querySelector('.notif-item[data-id="' + CSS.escape(String(id)) + '"]');
+        var p = {}; try { p = JSON.parse((item && item.dataset.params) || "{}"); } catch (_) {}
+        if (p && p.commentId) {
+          focus = { parent: String(p.commentId), reply: null, at: Date.now() };
+          // the reply's own id is in the notification's details
+          sb.from("notifications").select("metadata").eq("id", id).maybeSingle().then(function (r) {
+            var m = r && r.data && r.data.metadata; if (focus && m && m.comment_id) { focus.reply = String(m.comment_id); focusTick(); }
+          }, function () {});
+        }
+      } catch (_) {}
+      return hn0.apply(this, arguments);
+    };
+    hn1.__lvFocus = true; window.handleNotifItemClick = hn1;
+  }
+  // a push notification that opens the app with a comment in its link
+  window.lvFocusComment = function (parent, reply) { focus = { parent: parent ? String(parent) : null, reply: reply ? String(reply) : null, at: Date.now() }; focusTick(); };
+})();
+
+/* ===== Followers page, livelier: a summary strip, ringed avatars (gradient for shops), "New" for the last 7 days,
+   pill tabs, and a "View shop" button on shops ===== */
+(function () {
+  "use strict";
+  var page0 = window.renderVendorFollowersPage;
+  if (typeof page0 === "function" && !page0.__fp2) {
+    var page1 = async function () {
+      var html = String(await page0.apply(this, arguments));
+      return html.replace('<div class="fp-page">', '<div class="fp-page fp2">').replace('<div class="fp-tabs"', '<div class="fp2-hero" id="fp2Hero"></div><div class="fp-tabs"');
+    };
+    page1.__fp2 = true; window.renderVendorFollowersPage = page1;
+  }
+  var DAY = 864e5;
+  window.fpRender = function () {
+    var st = window.__fp || { rows: [] }, rows = st.rows || [], tab = st.tab, q = st.q;
+    var vend = rows.filter(function (r) { return r.is_vendor; }), cust = rows.filter(function (r) { return !r.is_vendor; });
+    var fresh = rows.filter(function (r) { return r.followed_at && Date.now() - new Date(r.followed_at) < 7 * DAY; }).length;
+    var hero = document.getElementById("fp2Hero");
+    if (hero) hero.innerHTML = [[rows.length, "Followers", "fa-user-group", "g"], [fresh, "New this week", "fa-bolt", "o"], [vend.length, "Shops", "fa-store", "p"], [cust.length, "Customers", "fa-user", "b"]]
+      .map(function (x) { return '<div class="fp2-stat ' + x[3] + '"><i class="fa-solid ' + x[2] + '"></i><b>' + x[0] + "</b><small>" + x[1] + "</small></div>"; }).join("");
+    var tabs = document.getElementById("fpTabs");
+    if (tabs) tabs.innerHTML = [["all", "All", rows.length], ["vendors", "Shops", vend.length], ["customers", "Customers", cust.length]]
+      .map(function (x) { return '<button type="button" role="tab" class="fp-tab' + (tab === x[0] ? " active" : "") + '" aria-selected="' + (tab === x[0]) + '" onclick="fpTab(\'' + x[0] + '\')">' + x[1] + " <b>" + x[2] + "</b></button>"; }).join("");
+    var c = document.getElementById("fpCount"); if (c) c.textContent = "";
+    var list = tab === "vendors" ? vend : tab === "customers" ? cust : rows;
+    if (q) list = list.filter(function (r) { return ((r.name || "") + " " + (r.business_name || "") + " " + (r.city || "") + " " + (r.sector_name || "")).toLowerCase().indexOf(q) >= 0; });
+    var box = document.getElementById("fpList"); if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<div class="fp2-empty"><span><i class="fa-solid fa-user-group"></i></span><strong>' + (q ? "No one matches “" + esc(q) + "”" : tab === "vendors" ? "No shops follow you yet" : tab === "customers" ? "No customers follow you yet" : "No followers yet") + "</strong><small>" + (q ? "Try another name." : "Share your shop's QR code so people can follow you.") + "</small></div>";
+      return;
+    }
+    box.innerHTML = list.map(function (r) {
+      var name = r.name || "Levromart user";
+      var isNew = r.followed_at && Date.now() - new Date(r.followed_at) < 7 * DAY;
+      var when = r.followed_at ? new Date(r.followed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+      var sub = r.is_vendor ? [r.sector_name, r.city].filter(Boolean).join(" · ") || "Shop" : "Customer";
+      var go = r.is_vendor && r.vendor_id ? "navigate('storefront',{vendorId:'" + esc(r.vendor_id) + "'})" : "";
+      var tagHtml = typeof fpTag === "function" ? fpTag(r) : "";
+      return '<div class="fp2-row"' + (go ? ' role="link" tabindex="0" onclick="' + go + '"' : "") + ">" +
+        '<span class="fp2-ring ' + (r.is_vendor ? "shop" : isNew ? "new" : "") + '">' + profileAvatarHtml(r.avatar_url, name, "3.1rem") + "</span>" +
+        '<div class="fp2-copy"><strong>' + esc(name) + (isNew ? ' <em class="fp2-new">New</em>' : "") + "</strong>" +
+        '<span class="fp2-sub">' + (r.is_vendor ? '<i class="fa-solid fa-store"></i> ' : "") + esc(sub) + (when ? " · since " + esc(when) : "") + "</span>" + tagHtml + "</div>" +
+        (go ? '<button type="button" class="fp2-btn" onclick="event.stopPropagation();' + go + '">View shop</button>' : "") + "</div>";
+    }).join("");
+  };
+})();
+
+/* ===== Shop location: the locate button is the Levromart logo and spins while it finds you; tapping the map or its
+   buttons never throws the page back to the top (iPhone scrolls to a focused map) ===== */
+(function () {
+  "use strict";
+  function dress() {
+    var b = document.querySelector("#veLocationMap .vendor-map-locate-control");
+    if (b && !b.__lv) { b.__lv = true; b.innerHTML = '<span class="lv-loc-logo" aria-hidden="true"></span>'; }
+  }
+  new MutationObserver(function () { dress(); }).observe(document.body, { childList: true, subtree: true });
+  var loc0 = window.locateVendorMapOnly;
+  if (typeof loc0 === "function" && !loc0.__lv) {
+    var loc1 = async function () {
+      var b = document.querySelector("#veLocationMap .vendor-map-locate-control");
+      if (b) b.classList.add("is-locating");
+      try { return await loc0.apply(this, arguments); } finally { if (b) b.classList.remove("is-locating"); }
+    };
+    loc1.__lv = true; window.locateVendorMapOnly = loc1;
+  }
+  // keep the page where it was for a moment after a tap on the location map or its buttons
+  var keep = null;
+  function hold(e) {
+    var t = e.target;
+    if (!t || !t.closest || !t.closest("#veLocationMap, #veUseLocationBtn, .saved-location-select")) return;
+    keep = { y: window.scrollY, until: Date.now() + 2500 };
+  }
+  document.addEventListener("pointerdown", hold, true);
+  document.addEventListener("touchstart", hold, { capture: true, passive: true });
+  window.addEventListener("scroll", function () {
+    if (!keep || Date.now() > keep.until) { keep = null; return; }
+    // a jump of more than a screen towards the top that the person did not make: put the page back
+    if (keep.y - window.scrollY > Math.min(600, window.innerHeight * 0.6)) { var y = keep.y; requestAnimationFrame(function () { window.scrollTo(0, y); }); }
+  }, { passive: true });
+  // the map itself should not grab focus (that is what makes iPhone scroll)
+  document.addEventListener("focusin", function (e) {
+    var m = e.target && e.target.closest && e.target.closest("#veLocationMap");
+    if (m && e.target === m) { try { e.target.blur(); } catch (_) {} }
+  }, true);
 })();

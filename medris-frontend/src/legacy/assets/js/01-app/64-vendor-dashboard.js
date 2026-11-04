@@ -142,14 +142,15 @@ async function renderVendorDashboard() {
   // ---------- 4. Seller hub: listings overview, management tools, more options ----------
   const hubRow = (icon, title, sub, value, onclick) => `<button type="button" class="vh-row" onclick="${onclick}"><span class="vh-row-ico">${String(icon).charAt(0) === "<" ? icon : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span><span class="vh-row-copy"><strong>${title}</strong>${sub ? `<small>${sub}</small>` : ""}</span>${value ? `<span class="vh-row-val">${value}</span>` : ""}<i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   const goTab = (tab) => `try{localStorage.setItem('levromart-vendor-listing-tab','${tab}')}catch(_){};navigate('vendorProducts')`;
-  const hubStat = (icon, n, label, tab) => `<button type="button" class="vh-stat" onclick="${goTab(tab)}"><span class="vh-stat-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><span><b>${n}</b><small>${label}</small></span><i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
+  const hubStat = (icon, n, label, tab) => `<button type="button" class="vh-stat vh-stat-${tab}" onclick="${goTab(tab)}"><span class="vh-stat-ico">${String(icon).charAt(0) === "<" ? icon : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span><span><b>${n}</b><small>${label}</small></span><i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   html += `<hr class="vendor-profile-divider" />
   <div class="vh-hub">
-    <span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
+    <div class="vh-hero"><div class="vh-hero-copy"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
     <h2 class="vh-title">My Listings</h2>
-    <p class="vh-sub">Manage your products, services and packages in one place.</p>
-    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button>
-    <div class="vh-stats">${hubStat("fa-box", hubProducts, "Products", "products")}${hubStat("fa-hand-holding-heart", hubServices, "Services", "services")}${hubStat("fa-box-open", hubPackages, "Packages", "packages")}</div>
+    <p class="vh-sub">Manage your products, services and packages in one place.</p></div>
+    <img class="vh-hero-art" src="/icons3d/1f6cd-fe0f.webp" alt="" aria-hidden="true">
+    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button></div>
+    <div class="vh-stats">${hubStat('<img class="vh-3d" src="/icons3d/1f4e6.webp" alt="" loading="lazy" decoding="async">', hubProducts, "Products", "products")}${hubStat('<img class="vh-3d" src="/icons3d/1f6e0-fe0f.webp" alt="" loading="lazy" decoding="async">', hubServices, "Services", "services")}${hubStat('<img class="vh-3d" src="/icons3d/1f381.webp" alt="" loading="lazy" decoding="async">', hubPackages, "Packages", "packages")}</div>
     <div class="vh-section-head"><h3><i class="fa-solid fa-layer-group"></i> My listings</h3><button type="button" onclick="${goTab("all")}">Manage all <i class="fa-solid fa-chevron-right"></i></button></div>
     <div class="vh-tabs" role="tablist">
       <button type="button" role="tab" onclick="${goTab("products")}"><i class="fa-solid fa-box"></i> Products <em>${hubProducts}</em></button>
@@ -159,8 +160,8 @@ async function renderVendorDashboard() {
     <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${hubDiscarded ? ` (${hubDiscarded})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="navigate('vendorProducts').then(()=>setTimeout(()=>toggleVendorDiscarded(null,true),250))" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>
     <h3 class="vh-group">Management tools</h3>
     <div class="vh-list">
-      ${hubRow("fa-list-check", "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
-      ${hubRow("fa-calendar-days", "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4dd.webp" alt="" loading="lazy" decoding="async">', "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4c8.webp" alt="" loading="lazy" decoding="async">', "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
     </div>
     <h3 class="vh-group">Reviews &amp; ratings</h3>
     ${lvRatingCardHtml(v)}
@@ -168,9 +169,9 @@ async function renderVendorDashboard() {
     ${lvHoursCardHtml(v)}
     <h3 class="vh-group">More options</h3>
     <div class="vh-list">
-      ${hubRow("fa-comments", "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
-      ${hubRow("fa-lightbulb", "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
-      ${hubRow("fa-headset", "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4ac.webp" alt="" loading="lazy" decoding="async">', "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4a1.webp" alt="" loading="lazy" decoding="async">', "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f6ce-fe0f.webp" alt="" loading="lazy" decoding="async">', "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
     </div>
     <div class="vh-list vh-list-single">${hubRow(window.LV_SETTINGS_SVG, "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
   </div>`;
@@ -342,7 +343,7 @@ async function lvOpenProfileShare(kind, targetId) {
       <div class="lvqr-cover"${cover && !isMap ? ` style="background-image:url('${esc(cover)}')"` : ""}>${isMap ? LV_MAPQR_BANNER : ""}</div>
       <div class="lvqr-body">
         ${isMap ? '<span class="lvqr-mapbadge"><i class="fa-solid fa-location-dot"></i> Find me on the map</span>' : ""}<h3>${esc(name)}</h3>
-        ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : `<p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>`}
+        ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : ""}
         <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas>${centrePic ? `<img class="lvqr-pic" src="${esc(centrePic)}" alt="">` : ""}</div>
         ${products.length ? `<div class="lvqr-products">${products.map((src) => `<img src="${esc(typeof lvThumb === "function" ? lvThumb(src, 160) : src)}" alt="" loading="lazy">`).join("")}</div>` : ""}
         <p class="lvqr-hint">${hint}</p>
@@ -441,7 +442,7 @@ async function lvOpenProfileShare(kind, targetId) {
         x.fillStyle = "#fff"; x.beginPath(); x.arc(540, 232, 20, 0, Math.PI * 2); x.fill();
       }
       x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240 + mo);
-      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(isMap ? "Find me on the map" : link.replace(/^https?:\/\//, "").slice(0, 44), 540, 295 + mo);
+      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; if (isMap) x.fillText("Find me on the map", 540, 295 + mo);
       x.drawImage(qrC, 240, 340 + mo, 600, 600); y = 940 + mo;
       if (prodImgs.length) {
         const sz = 150, gap = 26, total = prodImgs.length * sz + (prodImgs.length - 1) * gap; let px = 540 - total / 2;
