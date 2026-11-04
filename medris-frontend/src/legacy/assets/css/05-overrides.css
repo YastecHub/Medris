@@ -6275,3 +6275,24 @@ html:root:root[data-theme="dark"] body .lwa-pw{background:#1f2937;border-color:#
 .lvw3 .lw-earn b small{font-size:.7rem;font-weight:600;opacity:.8;margin-right:2px}
 html:root:root body .lvw3 .lw-earn button{min-height:30px}
 html:root:root body .lwa-more{margin:10px auto 2px;padding:6px 14px;border:1px solid #d1d5db;border-radius:999px;background:transparent;color:inherit;font-size:.76rem;font-weight:700;cursor:pointer}
+
+/* Comment threads: replies hang from their comment on a line; tags for the seller and the thread's author; the reply a
+   notification points at lights up for a moment */
+html:root:root body .comment-replies-dropdown{position:relative}
+html:root:root body .comment-replies-dropdown>.product-comment-row{position:relative;overflow:visible}
+html:root:root body .comment-replies-dropdown>.product-comment-row::before{content:"";position:absolute;left:-1.45rem;top:-.55rem;width:1.1rem;height:1.75rem;border-left:2px solid #dbe3ea;border-bottom:2px solid #dbe3ea;border-bottom-left-radius:12px;pointer-events:none}
+html:root:root body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{content:"";position:absolute;left:-1.45rem;top:1rem;bottom:-.8rem;border-left:2px solid #dbe3ea;pointer-events:none}
+html:root:root[data-theme="dark"] body .comment-replies-dropdown>.product-comment-row::before,
+html:root:root[data-theme="dark"] body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{border-color:rgba(255,255,255,.14)}
+.lv-cr-tag{display:inline-flex;align-items:center;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:.62rem;font-weight:800;letter-spacing:.02em;vertical-align:middle;line-height:1.5}
+.lv-cr-tag.seller{background:#dcfce7;color:#166534}
+.lv-cr-tag.author{background:#e0e7ff;color:#3730a3}
+:root[data-theme="dark"] .lv-cr-tag.seller{background:rgba(34,197,94,.18);color:#86efac}
+:root[data-theme="dark"] .lv-cr-tag.author{background:rgba(99,102,241,.2);color:#c7d2fe}
+@keyframes lvCrFlash{0%,30%{background:rgba(250,204,21,.32)}100%{background:transparent}}
+html:root:root body .product-comment-row.lv-cr-flash{animation:lvCrFlash 2.4s ease-out;border-radius:12px}
+/* the comment box inside the comment sheet: a straight box too (beats the older pill rule there) */
+html:root:root body #lvCs .product-comment-compose-row textarea,
+html:root:root body .product-comment-compose-row textarea#productCommentInput,
+html:root:root body .product-comment-compose-row textarea#packageCommentInput{border-radius:12px!important;min-height:44px!important;max-height:160px!important;padding:11px 13px!important;line-height:1.4!important;overflow-y:auto!important}
+html:root:root body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{top:.6rem;bottom:-1.6rem}

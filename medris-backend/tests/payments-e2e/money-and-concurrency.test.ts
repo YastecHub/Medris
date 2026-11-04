@@ -131,7 +131,9 @@ describe.skipIf(!REAL)("concurrency (real PostgreSQL)", () => {
     const results = await Promise.all(Array.from({ length: N }, () => api.post(w, `/admin/orders/${orderId}/refund`, w.admin.token, { reason: "many clicks" }).then(json)));
     await Promise.all(Array.from({ length: 3 }, () => runJob(w, "paystack-refunds")));
     expect(results.length).toBe(N);
-    expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(1);
+    // the refund goes into the buyer's Levromart wallet (migration 0033), or back to the card when the wallet is on hold: once
+    const toWallet = Number((await rowOf<{ n: number }>(w, `select count(*)::int as n from public.wallet_entries where order_id = $1 and kind = 'refund_in'`, [orderId]))?.n ?? 0);
+    expect(w.paystack.callsTo("POST", "/refund").length + toWallet).toBe(1);
   });
 
   it("a refund and a payout at the same moment never take the same money", async () => {

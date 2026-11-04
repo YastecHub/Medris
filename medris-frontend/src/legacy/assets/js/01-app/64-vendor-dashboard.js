@@ -342,7 +342,7 @@ async function lvOpenProfileShare(kind, targetId) {
       <div class="lvqr-cover"${cover && !isMap ? ` style="background-image:url('${esc(cover)}')"` : ""}>${isMap ? LV_MAPQR_BANNER : ""}</div>
       <div class="lvqr-body">
         ${isMap ? '<span class="lvqr-mapbadge"><i class="fa-solid fa-location-dot"></i> Find me on the map</span>' : ""}<h3>${esc(name)}</h3>
-        ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : `<p class="lvqr-link">${esc(link.replace(/^https?:\/\//, ""))}</p>`}
+        ${isProduct ? `${priceText ? `<p class="lvqr-price">${esc(priceText)}</p>` : ""}<p class="lvqr-by">${pic ? `<img src="${esc(pic)}" alt="" onerror="this.remove()">` : ""}<span>Sold by <b>${esc(byName)}</b></span></p>` : ""}
         <div class="lvqr-code"><canvas width="640" height="640" aria-label="QR code for ${esc(name)}"></canvas>${centrePic ? `<img class="lvqr-pic" src="${esc(centrePic)}" alt="">` : ""}</div>
         ${products.length ? `<div class="lvqr-products">${products.map((src) => `<img src="${esc(typeof lvThumb === "function" ? lvThumb(src, 160) : src)}" alt="" loading="lazy">`).join("")}</div>` : ""}
         <p class="lvqr-hint">${hint}</p>
@@ -441,7 +441,7 @@ async function lvOpenProfileShare(kind, targetId) {
         x.fillStyle = "#fff"; x.beginPath(); x.arc(540, 232, 20, 0, Math.PI * 2); x.fill();
       }
       x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240 + mo);
-      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; x.fillText(isMap ? "Find me on the map" : link.replace(/^https?:\/\//, "").slice(0, 44), 540, 295 + mo);
+      x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; if (isMap) x.fillText("Find me on the map", 540, 295 + mo);
       x.drawImage(qrC, 240, 340 + mo, 600, 600); y = 940 + mo;
       if (prodImgs.length) {
         const sz = 150, gap = 26, total = prodImgs.length * sz + (prodImgs.length - 1) * gap; let px = 540 - total / 2;
