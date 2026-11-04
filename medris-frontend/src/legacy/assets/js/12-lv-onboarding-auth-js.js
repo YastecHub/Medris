@@ -2013,7 +2013,7 @@ async function setVendorRequestPref(v){
         var swapped=swapLocation(card,x);
         var nm=card.querySelector(".vd-name,.vc2-name,.vendor-home-copy>strong,strong");
         if(x.student_verified&&nm&&!nm.querySelector(".lv-svi")){ var ic=document.createElement("i"); ic.className="fa-solid fa-user-graduate lv-svi"; ic.title="Verified student"; ic.setAttribute("aria-label","Verified student"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic); }
-        else if(x.non_student_verified&&nm&&!nm.querySelector(".lv-nsv")){ var ic2=document.createElement("i"); ic2.className="fa-solid fa-store lv-nsv"; ic2.title="Verified seller (not a student)"; ic2.setAttribute("aria-label","Verified seller"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic2); }
+        else if(x.non_student_verified&&nm&&!nm.querySelector(".lv-nsv")){ nm.querySelectorAll(".vendor-inline-verified").forEach(function(g){g.remove();}); var ic2=document.createElement("i"); ic2.className="fa-solid fa-store lv-nsv"; ic2.title="Verified seller (not a student)"; ic2.setAttribute("aria-label","Verified seller"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic2); }
         if(!swapped){ var c=chipFor({campus_id:x.campus_id,student_verified:false},false); if(c) card.appendChild(c); }
       });
       applyScope(map);

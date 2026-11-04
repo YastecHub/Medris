@@ -2068,8 +2068,8 @@
     if (!canInst) { appr = askAmt; inst = 0; }
     var h = '<div class="lvw-wd">';
     if (s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> ' + esc(s.blocked) + "</p>";
-    h += '<div class="lvw-wd-row"><span>Sent to your bank right now</span><b>' + NOW(inst) + '</b></div><small>Money paid 24 hours ago or more.</small>' +
-      '<div class="lvw-wd-row"><span>Needs Levromart\'s approval</span><b>' + NOW(appr) + '</b></div><small>Paid less than 24 hours ago. We check and reply, you will get a message.</small>';
+    h += '<div class="lvw-wd-row"><span>Sent to your bank right now</span><b>' + NOW(inst) + '</b></div><small>Earnings are released 24 hours after payment.</small>' +
+      '<div class="lvw-wd-row"><span>Needs Levromart\'s approval</span><b>' + NOW(appr) + '</b></div><small>Not released yet: earnings are released 24 hours after payment, so a buyer who reports a scam can still be refunded.</small>';
     if (held > 0) h += '<div class="lvw-wd-row lvw-wd-held"><span>On hold (disputed order)</span><b>' + NOW(held) + '</b></div><small>This stays held until the dispute is settled. The rest of your money is not affected.</small>';
     if (s.open_request) h += '<p class="lvw-sheet-msg"><i class="fa-solid fa-user-clock"></i> You already have a request of ' + NOW(Number(s.open_request.amount_kobo)) + ' waiting for approval.</p>';
     if (s.recent_bank_change != null && !s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> You changed your bank account recently, so Levromart checks every withdrawal first. It can still be approved.</p>';
@@ -2099,7 +2099,7 @@
   window.lvWalletHow = function () {
     openSheet("How your wallet works",
       '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
-      '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Money paid 24 hours ago or more goes straight away, whatever the amount (from \u20a6100); newer money is checked by Levromart first. An order with a dispute is held until it is settled.</li>' +
+      '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Earnings are released 24 hours after payment (this protects you and your buyers if a scam is reported). An order with a dispute is held until it is settled.</li>' +
       '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes. Money from a very recent card payment goes out automatically the next business day.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
       '<li><b>Refunds.</b> If a buyer is refunded for an order, that amount comes off your wallet automatically. A refund is paid out of your share of the sale (what is left after Levromart\'s commission); the commission is not refunded.</li>' +
@@ -4026,8 +4026,8 @@ window.lvAskCancel = async function (orderId) {
       if (amt > Number(d.balance_kobo)) return err(m, "You only have " + money(d.balance_kobo, true) + ". Add money first.");
       err(m, "");
       var fee = window.lvWalletFee(amt);
-      if (amt + fee > Number(d.balance_kobo)) return err(m, "You need " + money(amt + fee, true) + " (" + short(amt) + " plus a " + short(fee) + " fee). You have " + money(d.balance_kobo, true) + ".");
-      var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Transfer fee", short(fee)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
+      if (amt + fee > Number(d.balance_kobo)) return err(m, "You need " + money(amt + fee, true) + ". You have " + money(d.balance_kobo, true) + ".");
+      var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
       if (!pin) return;
       var b = this; b.disabled = true; b.textContent = "Sending…";
       var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey, p_pin: pin });
@@ -4052,8 +4052,8 @@ window.lvAskCancel = async function (orderId) {
       var amt = readAmount("lwWdAmt");
       if (amt < 10000) return err(m, "The smallest withdrawal is ₦100.");
       var fee = window.lvWalletFee(amt);
-      if (amt + fee > Number(d.balance_kobo)) return err(m, "You have " + money(d.balance_kobo, true) + ". This withdrawal needs " + money(amt + fee, true) + " (" + short(amt) + " plus a " + short(fee) + " fee).");
-      var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Withdrawal fee", short(fee)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
+      if (amt + fee > Number(d.balance_kobo)) return err(m, "You have " + money(d.balance_kobo, true) + ". This withdrawal needs " + money(amt + fee, true) + ".");
+      var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
       if (!pin) return;
       var b = this; b.disabled = true; b.textContent = "Please wait…";
       var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt, p_pin: pin });
@@ -4067,7 +4067,7 @@ window.lvAskCancel = async function (orderId) {
     var r0 = await sb.rpc("get_withdrawal_summary"); var s = (r0 && r0.data) || {};
     var now = Number(s.to_wallet_now_kobo || 0), later = Number(s.to_wallet_approval_kobo || 0);
     if (!now && !later) return showToast("There are no earnings ready to move yet.", "info");
-    var ok = await showConfirmDialog((now ? short(now) + " (paid 24 hours ago or more) moves into your wallet now." : "") + (later ? (now ? " " : "") + short(later) + " was paid less than 24 hours ago, so Levromart checks it first." : ""), { title: "Move earnings to your wallet", okLabel: "Move", cancelLabel: "Go back" });
+    var ok = await showConfirmDialog((now ? short(now) + " moves into your wallet now." : "") + (later ? (now ? " " : "") + short(later) + " is released 24 hours after it was paid. This protects you and your buyers: if a buyer reports a scam in that time, the money can still be refunded." : ""), { title: "Move earnings to your wallet", okLabel: "Move", cancelLabel: "Go back" });
     if (!ok) return;
     var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(now), 1]].concat(later ? [["Checked by Levromart first", short(later)]] : []), cta: "Move" });
     if (!pin) return;
@@ -4082,11 +4082,10 @@ window.lvAskCancel = async function (orderId) {
     sheet("How your wallet works", '<ul class="lvw-how">' +
       '<li><b>One wallet.</b> Money you add, money people send you, refunds' + (shop ? " and your shop earnings" : "") + ' all land here. Your @tag is how people send you money.</li>' +
       '<li><b>Add money.</b> With your card, bank transfer or USSD through Paystack. Paystack\'s small fee is added on top.</li>' +
-      '<li><b>Pay for orders.</b> Choose "Levromart wallet" when you pay: no Paystack screens, quick and easy to track. A small fee applies (shown before you pay), and the shop gets its share the usual way: 97% to the shop, 3% to Levromart.</li>' +
+      '<li><b>Pay for orders.</b> Choose "Levromart wallet" when you pay: no Paystack screens, quick and easy to track. The shop gets its share the usual way.</li>' +
       '<li><b>Transfer.</b> Send money to anyone by their @tag. Check the name before you send: transfers cannot be undone.</li>' +
-      (shop ? '<li><b>Shop earnings.</b> When a buyer confirms an order, your share (the sale minus Levromart\'s 3% commission) is ready. Money paid 24 hours ago or more moves into your wallet at once; newer money is checked by Levromart first. If a buyer is refunded, it comes out of your share.</li>' : '<li><b>Refunds.</b> If an order is cancelled or a problem is settled in your favour, the refund comes into your wallet. It is paid out of the shop\'s share.</li>') +
+      (shop ? '<li><b>Shop earnings.</b> When a buyer confirms an order, your share (the sale minus Levromart\'s 3% commission) is ready. Earnings are released 24 hours after the payment. This protects you and your buyers: if a buyer reports a scam in that time, the money can still be refunded. A refund comes out of your share.</li>' : '<li><b>Refunds.</b> If an order is cancelled or a problem is settled in your favour, the refund comes into your wallet. It is paid out of the shop\'s share.</li>') +
       '<li><b>Your PIN.</b> A 6-digit PIN protects every payment, transfer and withdrawal, like a bank app. Keep it to yourself: Levromart will never ask for it.</li>' +
-      '<li><b>Fees.</b> Paying with your wallet, sending money and withdrawing each carry Paystack\'s usual fee (1.5%, plus \u20a6100 from \u20a62,500, at most \u20a62,000). You see it before you confirm.</li>' +
       '<li><b>Withdraw.</b> To your own bank account, at any time, with your PIN. You can change your bank account whenever you like. Only a shop\'s earnings paid in the last 24 hours wait for a check by Levromart.</li>' +
       '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
@@ -4128,8 +4127,8 @@ window.lvAskCancel = async function (orderId) {
     wb.onclick = async function () {
       if (wb.disabled) return;
       var fee = need ? window.lvWalletFee(need) : 0;
-      if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + " (" + short(need) + " for the order plus a " + short(fee) + " fee). You have " + money(bal, true) + ".");
-      var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Payment fee", short(fee)], ["Total from your wallet", short(need + fee), 1], ["Of the order amount", "97% to the shop, 3% to Levromart"]], cta: "Pay " + short(need + fee), note: "You pay this fee to Levromart instead of Paystack. It is quick, and every payment is on your wallet history." });
+      if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + ". You have " + money(bal, true) + ".");
+      var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Total from your wallet", short(need + fee), 1]], cta: "Pay " + short(need + fee) });
       if (!pin) return;
       wb.disabled = true;
       var r = await sb.rpc("wallet_pay_order", { p_order_id: orderId, p_pin: pin });
@@ -4976,7 +4975,8 @@ window.lvAskCancel = async function (orderId) {
     return T;
   };
   // the saved picture: tiles the pattern lightly over the white card
-  window.lvQrWatermark = async function (x, kind, X, Y, W, H, R, col) {
+  window.lvQrWatermark = async function () { return; };   // the QR card has no watermark (removed on request)
+  window.lvQrWatermarkOld = async function (x, kind, X, Y, W, H, R, col) {
     var wm = window.__lvQrWm; if (!wm) return;
     try {
       var T = await window.lvQrWatermarkTile(wm, col);
@@ -4987,6 +4987,7 @@ window.lvAskCancel = async function (orderId) {
   // on screen
   var busy = false;
   new MutationObserver(function () {
+    return;   // no watermark on the QR card
     var card = document.querySelector("#lvqrSheet .lvqr-card"); if (!card || busy) return;
     var body = card.querySelector(".lvqr-body"), wm = window.__lvQrWm; if (!body || !wm) return;
     var col = "#0f9d6b";
@@ -5189,9 +5190,23 @@ window.lvAskCancel = async function (orderId) {
     var list = (await latestProducts(12)).slice(0, 6);
     setTimeout(function () {
       if (!list.length) return;
-      chips(list.map(function (p) { return { label: p.name, value: p.name, html: esc(String(p.name).slice(0, 34)) }; }), function (name) {
-        var i = document.getElementById("aiChatInput"); if (!i) return; i.value = "Add " + name + " to my cart"; try { sendAiChatMessage(); } catch (_) {}
+      var host = lastBubble(); if (!host) return;
+      var wrap = document.createElement("div"); wrap.className = "lvw-pcards";
+      list.forEach(function (p) {
+        var img = Array.isArray(p.photos) && p.photos[0] ? p.photos[0] : "";
+        var price = p.sale_price != null ? (typeof naira === "function" ? naira(p.sale_price) : "₦" + p.sale_price) : "";
+        var c = document.createElement("div"); c.className = "lvw-pcard";
+        c.innerHTML = '<div class="lvw-pimg">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" draggable="false">' : "") + '</div><div class="lvw-pname">' + esc(String(p.name || "")) + '</div><div class="lvw-pprice">' + esc(price) + '</div><button type="button" class="lvw-padd">Add to cart</button>';
+        var b = c.querySelector(".lvw-padd");
+        b.onclick = async function () {
+          if (b.disabled) return; b.disabled = true; b.textContent = "Adding…";
+          try { await addToCart(p.id, 1); b.textContent = "Added ✓"; b.classList.add("done"); }
+          catch (_) { b.disabled = false; b.textContent = "Add to cart"; }
+        };
+        wrap.appendChild(c);
       });
+      host.appendChild(wrap);
+      try { var box = document.getElementById("aiChatMessages"); box.scrollTop = box.scrollHeight; } catch (_) {}
     }, 350);
   }
   // ---- plugging into Levi ----
@@ -5609,4 +5624,34 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   };
   var t = 0;
   new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; paint(); }, 200); }).observe(document.getElementById("app") || document.body, { childList: true, subtree: true });
+})();
+
+/* ===== Settings opens at the top and stays there; notification times never jump ===== */
+(function () {
+  "use strict";
+  var base = window.navigate;
+  if (typeof base === "function" && !base.__lvSet) {
+    var w = function (view) {
+      var r = base.apply(this, arguments);
+      if (view === "settings") {
+        var moved = false, onScroll = function () { if (Math.abs(window.scrollY) > 2 && Date.now() - t0 > 700) moved = true; }, t0 = Date.now();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        [0, 120, 350, 700].forEach(function (ms) { setTimeout(function () { if (!moved && window.scrollY > 0) window.scrollTo({ top: 0, behavior: "auto" }); }, ms); });
+        setTimeout(function () { window.removeEventListener("scroll", onScroll); }, 900);
+      }
+      return r;
+    };
+    w.__lvSet = true; window.navigate = w; try { navigate = w; } catch (_) {}
+  }
+  // a timestamp without a time zone is UTC; a clock a little ahead of the server never shows a time in the future
+  window.timeAgo = function (dateStr) {
+    var s = String(dateStr || ""); if (/^\d{4}-\d\d-\d\d[T ]\d\d:\d\d/.test(s) && !/(Z|[+-]\d\d:?\d\d)$/.test(s)) s = s.replace(" ", "T") + "Z";
+    var t = new Date(s).getTime(); if (!isFinite(t)) return "";
+    var diff = Math.max(0, (Date.now() - t) / 1000);
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+    if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+    return Math.floor(diff / 86400) + "d ago";
+  };
+  try { timeAgo = window.timeAgo; } catch (_) {}
 })();

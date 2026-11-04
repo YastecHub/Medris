@@ -3725,13 +3725,13 @@ html.lv-route-transitioning body {
 /* Request flow page transition: keep the new screen grounded and avoid a
    modal/drawer impression. The app shell is translated only during route swap. */
 #app.lv-page-slide-transition {
-  transition: transform 220ms cubic-bezier(.22,.75,.25,1), opacity 180ms ease;
+  transition: transform 170ms cubic-bezier(.22,.75,.25,1), opacity 140ms ease;
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
 }
 #app.lv-page-slide-transition.lv-page-slide-enter {
-  transform: translate3d(18px,0,0);
-  opacity: .86;
+  transform: translate3d(var(--lv-slide-x, 30px),0,0);
+  opacity: .8;
 }
 @media (prefers-reduced-motion: reduce) {
   #app.lv-page-slide-transition,

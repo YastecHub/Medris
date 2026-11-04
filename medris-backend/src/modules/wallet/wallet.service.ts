@@ -18,11 +18,11 @@ type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 /** Limits that keep the wallet safe (all in kobo). */
 export const WALLET = {
   minTransfer: 5_000, // ₦50
-  maxTransfer: 20_000_000, // ₦200,000 per transfer
-  maxSentPerDay: 50_000_000, // ₦500,000 a day
+  maxTransfer: 5_000_000, // ₦50,000 per transfer
+  maxSentPerDay: 10_000_000, // ₦100,000 a day
   minTopup: 10_000, // ₦100
-  maxTopup: 20_000_000, // ₦200,000 per top-up
-  maxBalanceForTopup: 200_000_000, // a top-up never takes a wallet above ₦2,000,000
+  maxTopup: 10_000_000, // ₦100,000 per top-up
+  maxBalanceForTopup: 30_000_000, // a top-up never takes a wallet above ₦300,000 (no wallet is unlimited)
   minWithdrawal: 10_000, // ₦100 (Paystack sends nothing smaller)
   withdrawalsPerDay: 10,
 } as const;
@@ -172,7 +172,7 @@ export class WalletService {
         if (!theirs) throw notFound("That wallet is not available.");
         if (mine.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
         if (theirs.frozen) throw badRequest("That wallet cannot receive money right now.");
-        if (Number(mine.balance_kobo) < amount + fee) throw badRequest(`You do not have enough in your wallet. You need ${naira(amount + fee)} (${naira(amount)} plus a ${naira(fee)} fee). Your balance is ${naira(mine.balance_kobo)}.`);
+        if (Number(mine.balance_kobo) < amount + fee) throw badRequest(`You do not have enough in your wallet. You need ${naira(amount + fee)}. Your balance is ${naira(mine.balance_kobo)}.`);
         if ((await repo.sentTodayKobo(user.userId)) + amount > WALLET.maxSentPerDay) throw badRequest(`You can send up to ${naira(WALLET.maxSentPerDay)} in 24 hours.`);
         const transferId = await repo.insertTransfer(user.userId, to.user_id, amount, note, key);
         if (!transferId) throw conflict("This transfer was already sent.");
@@ -275,7 +275,7 @@ export class WalletService {
         if (!w) throw notFound("Wallet not found.");
         if (w.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
         const fee = walletFeeKobo(amount);
-        if (Number(w.balance_kobo) < amount + fee) throw badRequest(`Your wallet has ${naira(w.balance_kobo)}. You need ${naira(amount + fee)} (${naira(amount)} for the order plus a ${naira(fee)} fee).`);
+        if (Number(w.balance_kobo) < amount + fee) throw badRequest(`Your wallet has ${naira(w.balance_kobo)}. You need ${naira(amount + fee)} for this order.`);
         const reference = `lvm_ord_${orderId.replace(/-/g, "").slice(0, 8)}_w${crypto.randomBytes(8).toString("hex")}`;
         const after = await repo.move(user.userId, -amount, "order_payment", { reference, orderId, note: o.vendor_name ? `Paid ${o.vendor_name}` : "Order payment" });
         if (after == null) throw badRequest("You do not have enough in your wallet.");
@@ -320,7 +320,7 @@ export class WalletService {
         const amount = amountKobo == null ? withdrawableKobo(balance) : Number(amountKobo);
         if (!Number.isInteger(amount) || amount < WALLET.minWithdrawal) throw badRequest(`The smallest withdrawal is ${naira(WALLET.minWithdrawal)}.`);
         const fee = walletFeeKobo(amount);
-        if (amount + fee > balance) throw badRequest(`You have ${naira(balance)} in your wallet. This withdrawal needs ${naira(amount + fee)} (${naira(amount)} plus a ${naira(fee)} fee).`);
+        if (amount + fee > balance) throw badRequest(`You have ${naira(balance)} in your wallet. This withdrawal needs ${naira(amount + fee)}.`);
         if ((await repo.withdrawalsToday(user.userId)) >= WALLET.withdrawalsPerDay) throw badRequest(`You can withdraw ${WALLET.withdrawalsPerDay} times in 24 hours. Please try again tomorrow.`);
         const reference = WALLET_TRANSFER_PREFIX + crypto.randomBytes(12).toString("hex");
         const id = await repo.insertWithdrawal({ userId: user.userId, amountKobo: amount, feeKobo: fee, status: "processing", reviewReason: null, reference, account });
