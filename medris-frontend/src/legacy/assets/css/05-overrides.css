@@ -7131,3 +7131,16 @@ html:root:root:root:root body #app .vmpage .vmp-locate.is-loading i,html:root:ro
 
 #lvOfflineBar{position:fixed;left:0;right:0;top:0;z-index:20000;display:none;align-items:center;justify-content:center;gap:.5rem;padding:calc(.45rem + env(safe-area-inset-top,0px)) .8rem .45rem;background:#b91c1c;color:#fff;font-size:.8rem;font-weight:700}
 #lvOfflineBar.on{display:flex}
+
+/* ===== Order page: tighter, calmer cards ===== */
+html:root body #app .od-card{padding:.85rem .95rem!important;border-radius:18px!important;margin-bottom:.7rem!important}
+html:root body #app .od-card h3,html:root body #app .od-card-head h3{font-size:1rem!important;margin:0 0 .5rem!important}
+html:root body #app .od-info{padding:.8rem .9rem!important;margin:.2rem 0 .7rem!important;border-radius:16px!important}
+html:root body #app .od-info strong{font-size:.98rem!important}
+html:root body #app .od-info p{font-size:.84rem!important;margin:.15rem 0 0!important;line-height:1.4}
+html:root body #app .od-item{gap:.7rem!important;padding:.35rem 0!important}
+html:root body #app .od-item-img{width:64px!important;height:64px!important;border-radius:12px!important}
+html:root body #app .od-tracker{padding:.8rem .6rem!important}
+html:root body #app .od-actions{gap:.5rem!important;margin:.2rem 0 .6rem!important}
+html:root body #app .od-btn{border-radius:14px!important;min-height:46px}
+html:root body #app .od-status{padding:.85rem .95rem!important}

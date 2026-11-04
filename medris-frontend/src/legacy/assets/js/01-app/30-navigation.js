@@ -246,12 +246,17 @@ async function navigate(view, params = {}, pushHistory = true) {
   const __TAB = { home: 0, vendors: 1, vendorsMap: 1, requestEquipment: 2, vendorRequests: 2, notifications: 3, buyerOrders: 4, vendorOrders: 4 };
   const __isSlideRoute = view !== currentView;
   const __previousIsSlideRoute = false;
-  let __slidDone = false;
+  let __slidDone = false, __slideStart = 0;
+  // One smooth glide per page change, run by the browser's animation engine (no leftover classes, no re-layout):
+  // the page comes in from the side it belongs to and fades up. The same motion is used for every page, Home included.
   const __slideEnterNow = (appEl) => {
-    if (!__isSlideRoute || !appEl || __slidDone) return; __slidDone = true;
-    appEl.style.setProperty("--lv-slide-x", __slideDir * 30 + "px");
-    appEl.classList.add("lv-page-slide-transition", "lv-page-slide-enter");
-    requestAnimationFrame(() => requestAnimationFrame(() => appEl.classList.remove("lv-page-slide-enter")));
+    if (!__isSlideRoute || !appEl || __slidDone) return; __slidDone = true; __slideStart = Date.now();
+    try {
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const dx = __slideDir * 28;
+      appEl.getAnimations?.().forEach((a) => a.cancel());
+      appEl.animate([{ transform: `translate3d(${dx}px,0,0)`, opacity: 0.35 }, { transform: "translate3d(0,0,0)", opacity: 1 }], { duration: 240, easing: "cubic-bezier(.22,.75,.25,1)" });
+    } catch (_) {}
   };
   const __slideDir = view in __TAB && currentView in __TAB ? (__TAB[view] >= __TAB[currentView] ? 1 : -1) : pushHistory === false ? -1 : 1;
   // Leaving the notification surface commits the unread items that were
@@ -696,21 +701,10 @@ async function navigate(view, params = {}, pushHistory = true) {
       liveStorefrontFollowHtml = liveWrap.innerHTML;
     }
   }
-  if (__isSlideRoute || __previousIsSlideRoute) {
-    app.style.setProperty("--lv-slide-x", __slideDir * 30 + "px");
-    app.classList.add("lv-page-slide-transition");
-    app.dataset.routeTransition = "request";
-  } else {
-    app.classList.remove("lv-page-slide-transition");
-    delete app.dataset.routeTransition;
-  }
+  // if Home was already painted from the saved copy and is gliding in, the fresh copy waits for the glide to end so nothing jumps
+  if (__slidDone && __slideStart && Date.now() - __slideStart < 260) await new Promise((r) => setTimeout(r, 260 - (Date.now() - __slideStart)));
   app.innerHTML = html;
-  if (!__slidDone && (__isSlideRoute || __previousIsSlideRoute)) {
-    app.classList.add("lv-page-slide-enter");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => app.classList.remove("lv-page-slide-enter"));
-    });
-  }
+  __slideEnterNow(app);
   // REACT-REGISTRY HOOK (4/4): draw the React screen into the placeholder. If React is late or
   // the screen fails, the registry switches that screen off for the session and the legacy
   // screen is rendered instead, so the page is never left blank.

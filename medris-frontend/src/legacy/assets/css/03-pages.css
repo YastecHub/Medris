@@ -3724,16 +3724,7 @@ html.lv-route-transitioning body {
 
 /* Request flow page transition: keep the new screen grounded and avoid a
    modal/drawer impression. The app shell is translated only during route swap. */
-#app.lv-page-slide-transition {
-  /* the new page glides in from the side it belongs to (forward from the right, back from the left) and fades up: short and soft */
-  transition: transform 210ms cubic-bezier(.22,.75,.25,1), opacity 180ms ease-out;
-  transform: none;
-  will-change: transform, opacity;
-}
-#app.lv-page-slide-transition.lv-page-slide-enter {
-  transform: translate3d(var(--lv-slide-x, 26px),0,0);
-  opacity: .35;
-}
+/* the page glide is run from script (Web Animations); nothing here may create a transform or will-change on #app */
 html.lv-route-transitioning,
 html.lv-route-transitioning body { overflow-x: clip !important; }
 html, body { overflow-x: clip; }
