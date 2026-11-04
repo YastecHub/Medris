@@ -2119,6 +2119,9 @@
     // orders: the one wallet on top of both tabs (orders from customers and my purchases)
     wrapFn("renderVendorOrders", function (html, args) {
       if (typeof vendor === "undefined" || !vendor || html.indexOf("empty-state") === 0 && html.length < 200) return null;
+      // "My purchases" shows the shop's card only once it is the one Levromart wallet; until then that tab keeps its own
+      // single card, so a vendor never sees two wallets there
+      if (args[5] === "purchases" && !(window.lvWalletCardHtml && window.lvWalletCardHtml("shop", {}))) return null;
       return '<div class="lvw" data-lv-wallet="compact">' + card((cache || (readStored(), cache)) && cache.data, true) + "</div>" + html;
     });
   }
@@ -4524,5 +4527,105 @@ window.lvAskCancel = async function (orderId) {
   document.addEventListener("focusin", function (e) {
     var m = e.target && e.target.closest && e.target.closest("#veLocationMap");
     if (m && e.target === m) { try { e.target.blur(); } catch (_) {} }
+  }, true);
+})();
+
+/* ===== Levi, clearer: answers show their formatting (bold, numbered lists, bullets), a spinning Levromart mark with what
+   Levi is doing while it works, and product cards two per row (up to 12). ===== */
+(function () {
+  "use strict";
+  function inline(t) {
+    return t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[\s(])\*([^*\s][^*]*)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>");
+  }
+  // escape first, then the few markdown pieces Levi uses
+  window.lvLeviMarkdown = function (text) {
+    var e = (typeof esc === "function" ? esc : function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); })(String(text || ""));
+    var lines = e.split(/\n/), out = [], list = null;
+    function close() { if (list) { out.push("</" + list + ">"); list = null; } }
+    lines.forEach(function (raw) {
+      var ln = raw.replace(/\s+$/, "");
+      var num = /^\s*(\d+)[.)]\s+(.*)$/.exec(ln), bul = /^\s*[-•*]\s+(.*)$/.exec(ln), head = /^\s*#{1,4}\s+(.*)$/.exec(ln);
+      if (num) { if (list !== "ol") { close(); out.push('<ol class="lvmd-ol" start="' + num[1] + '">'); list = "ol"; } out.push("<li>" + inline(num[2]) + "</li>"); return; }
+      if (bul) { if (list !== "ul") { close(); out.push('<ul class="lvmd-ul">'); list = "ul"; } out.push("<li>" + inline(bul[1]) + "</li>"); return; }
+      if (list && /^\s{2,}\S/.test(raw) && out.length) { out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, '<span class="lvmd-sub">' + inline(ln.trim()) + "</span></li>"); return; }
+      close();
+      if (head) { out.push('<p class="lvmd-h">' + inline(head[1]) + "</p>"); return; }
+      if (!ln.trim()) { out.push('<div class="lvmd-gap"></div>'); return; }
+      out.push("<p>" + inline(ln) + "</p>");
+    });
+    close();
+    return out.join("").replace(/(<div class="lvmd-gap"><\/div>){2,}/g, '<div class="lvmd-gap"></div>');
+  };
+  var STEPS = ["Checking the shops…", "Comparing prices…", "Working out distances…", "Picking the best matches…", "Almost there…"];
+  function spinnerHtml() { return '<span class="lvthink"><span class="lvthink-mark" aria-hidden="true"></span><span class="lvthink-t">Thinking…</span></span>'; }
+  var app0 = window.appendAiChatMessage;
+  if (typeof app0 === "function" && !app0.__lvmd) {
+    var app1 = function (role, content) {
+      var r = app0.apply(this, arguments);
+      try {
+        var wrap = document.getElementById("aiChatMessages"); if (!wrap) return r;
+        if (role === "typing") {
+          var ty = document.getElementById("aiChatTyping");
+          if (ty) {
+            ty.classList.add("lvthink-row"); ty.innerHTML = spinnerHtml();
+            var i = 0, t0 = Date.now();
+            var tick = setInterval(function () {
+              var el = document.getElementById("aiChatTyping"); if (!el || el !== ty) { clearInterval(tick); return; }
+              var s = Date.now() - t0, lab = el.querySelector(".lvthink-t"); if (!lab) return;
+              if (s > 1400) { lab.textContent = STEPS[Math.min(STEPS.length - 1, i++)]; }
+            }, 1700);
+          }
+          return r;
+        }
+        if (role === "assistant") {
+          var msgs = wrap.querySelectorAll(".ai-chat-msg.assistant"), el2 = msgs[msgs.length - 1];
+          if (el2 && !el2.__lvmd) {
+            el2.__lvmd = true;
+            var node = el2.firstChild;
+            // the reply as Levi wrote it (with its line breaks), minus the app's own [[...]] instructions
+            var src = String(content || "").replace(/\[\[DRAFTMSG[\s\S]*?\[\[\/DRAFTMSG\]\]/g, "").replace(/\[\[[^\]]*\]\]/g, "").replace(/[ \t]+\n/g, "\n").trim();
+            if (node && node.nodeType === 3 && node.nodeValue.trim()) {
+              var div = document.createElement("div"); div.className = "lvmd"; div.innerHTML = window.lvLeviMarkdown(src || node.nodeValue);
+              el2.replaceChild(div, node);
+            }
+          }
+        }
+      } catch (_) {}
+      return r;
+    };
+    app1.__lvmd = true; window.appendAiChatMessage = app1;
+  }
+  // up to 12 product cards under an answer (they show two per row)
+  window.parseAiProductTags = function (content) {
+    var str = String(content || ""), m = /\[\[PRODUCTS:([a-zA-Z0-9,-]+)\]\]/.exec(str);
+    if (!m) return { text: str, ids: [] };
+    return { text: (str.slice(0, m.index) + str.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, " ").trim(), ids: m[1].split(",").filter(Boolean).slice(0, 12) };
+  };
+})();
+
+/* ===== A tap is never lost: when the page redraws itself between the finger going down and coming up (fresh data arriving),
+   the tapped button no longer exists and the phone drops the tap. The same button in the new page is pressed instead. ===== */
+(function () {
+  "use strict";
+  var down = null;
+  function key(el) {
+    var b = el && el.closest && el.closest("button,a,[onclick],[role=button],[role=link]");
+    if (!b) return null;
+    return { el: b, onclick: b.getAttribute("onclick"), id: b.id, txt: (b.textContent || "").trim().slice(0, 60), x: 0, y: 0 };
+  }
+  document.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    var k = key(e.target); if (!k || !k.el.closest("#app")) { down = null; return; }
+    k.x = e.clientX; k.y = e.clientY; k.t = Date.now(); down = k;
+  }, true);
+  document.addEventListener("pointermove", function (e) { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) down = null; }, { capture: true, passive: true });
+  document.addEventListener("pointerup", function (e) {
+    var k = down; down = null;
+    if (!k || Date.now() - k.t > 700 || document.contains(k.el)) return;   // nothing lost: the normal click happens
+    var twin = null;
+    if (k.id) twin = document.getElementById(k.id);
+    if (!twin && k.onclick) twin = Array.prototype.find.call(document.querySelectorAll("#app [onclick]"), function (n) { return n.getAttribute("onclick") === k.onclick; });
+    if (!twin) { var at = document.elementFromPoint(e.clientX, e.clientY); var c = at && at.closest && at.closest("button,a,[onclick],[role=button],[role=link]"); if (c && (c.textContent || "").trim().slice(0, 60) === k.txt) twin = c; }
+    if (twin && document.contains(twin)) setTimeout(function () { try { twin.click(); } catch (_) {} }, 0);
   }, true);
 })();

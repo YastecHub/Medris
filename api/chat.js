@@ -661,8 +661,17 @@ const TOOL_DECLARATIONS = [
 function toolSystemPrompt() {
   return `You are Levi, the deeply integrated Levromart agent. You are not a generic chatbot. You have live tools that can inspect Levromart's catalogue, sectors, categories, verified vendors, distances, the signed-in user's own cart/orders/messages, and (when the signed-in person is a vendor) that vendor's private shop analytics. Use the tools instead of guessing. Never use em dashes in replies; use commas, full stops or colons instead.
 
+HOW YOUR ANSWERS LOOK (the app shows this formatting):
+- Write like a friendly, sharp shopping assistant. Use **bold** for shop names, product names, prices and the key fact. Use numbered lists (1. 2. 3.) for shops or steps and "- " bullets for details. A short bold heading line is fine. One or two fitting emojis per answer (for example 🧴 🛍️ 📍 ⭐ ✅), never more than a few.
+- For shopping questions give a complete, well organised answer: the shops that sell it (closest first when location is known, with distance and rating), then products with prices. The app draws product cards from the products you name, two per row, so name every product you recommend.
+- Short replies for simple actions ("Done, I opened your cart ✅").
+- When the request is broad (for example "skincare": face, body, hair?), ask ONE short clarifying question, and still show what you found.
+- When something is not on Levromart, say so honestly ("😕 Nobody on Levromart sells X yet"), suggest the nearest real alternatives, and offer to post a request.
+- Understand corrections: "no, a backpack" or "I mean the black one" replaces the thing being looked for; "no" is never part of a product name.
+- Never put a [[NAV:...]] directive when you are only offering to take the person somewhere: it moves them at once. Add it only when they asked to go there ("take me there", "open it").
+
 CORE BEHAVIOUR:
-- Be fast, direct and useful. One or two short sentences for simple actions; a concise list for comparison requests.
+- Be fast, direct and useful.
 - Be interactive, not just transactional. When a request is ambiguous, incomplete, or benefits from a preference (budget, category, "for yourself or a gift", "buy or rent"), ask one short, specific clarifying question before acting, rather than guessing or dumping a generic list. Treat this as normal conversation, not an interrogation: one question at a time, phrased naturally ("Do you want to rent or buy?", "What's your budget?", "Would you like me to open that for you?").
 - When a vendor asks you to help add a product/service/package, don't just redirect silently: ask what they'd like to list first (name and price at minimum), acknowledge what they told you in your reply, then take them to the Add Product form with [[NAV:vendorProducts]] so they can finish uploading photos and confirming the remaining details there. You cannot create the listing yourself yet -- be upfront about that rather than implying it's done.
 - Never say "the smart assistant is unreachable", "the AI is unreachable", "the server is unreachable", or similar technical excuses to the customer.
@@ -831,11 +840,14 @@ async function transcribeAudio(body, res) {
 // straight from the live catalogue (no waiting for the language model), so the answer is complete, accurate and fast.
 // The language model still handles everything else (cart, orders, advice, chat).
 // ---------------------------------------------------------------------------------------------------------------------
-const DETAIL_WORDS = new Set("none cheapest cheaper lowest least most affordable budget priciest how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
-const NOT_PRODUCT_INTENT = /\b(cart|checkout|order|orders|wishlist|message|messages|chat with|settings|profile|password|account|payment|pay|refund|withdraw|complain|report|help me|how do i|how does|what is levromart|who are you|levi)\b/;
+const DETAIL_WORDS = new Set("farthest furthest far best top highest rated rating ratings review reviews reputation reputable trusted trust popular good great recommend recommended none cheapest cheaper lowest least most affordable budget priciest how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
+const NOT_PRODUCT_INTENT = /\b(take me|go to|open (it|that|the|their)|show me (their|the) (shop|store)|yes|yeah|sure|ok(ay)?|cart|checkout|order|orders|wishlist|message|messages|chat with|settings|profile|password|account|payment|pay|refund|withdraw|complain|report|help me|how do i|how does|what is levromart|who are you|levi)\b/;
 const FIND_INTENT = /\b(vendors?|sells?|selling|seller|sellers|shops?|stores?|price|prices|how much|cost|close|closest|nearest|near|nearby|far|distance|where (can|do) i|do you (have|sell)|any|need|want|looking for|find|get me|buy|rent|available|which)\b/;
+const CORRECTION = /^(?:no+|nope|nah|not that|not those|i mean|i meant|actually|rather|sorry|instead)\b[\s,.!:-]*/;
 function productTerm(text) {
-  const words = normalize(text).replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean)
+  let t = normalize(text).trim();
+  for (let i = 0; i < 3 && CORRECTION.test(t); i++) t = t.replace(CORRECTION, "");
+  const words = t.replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean)
     .filter((w) => !QUERY_FILLER.has(w) && !DETAIL_WORDS.has(w));
   return words.join(" ").trim();
 }
@@ -855,47 +867,109 @@ function distLabel(km) {
   const d = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
   return km > 5 ? `${d} away (about ${t.by_car_or_bike_minutes} min by car or bike)` : `${d} away (about ${t.walking_minutes} min on foot, ${t.by_car_or_bike_minutes} min by car or bike)`;
 }
+const CONCEPTS = [
+  [/skin ?care|skincare|skin products?/, ["skincare", "face cream", "serum", "lotion", "body cream", "moisturizer", "sunscreen", "cleanser", "toner", "black soap", "face", "skin"]],
+  [/hair ?care|haircare/, ["hair", "wig", "shampoo", "conditioner", "hair oil", "bundles"]],
+  [/gadgets?|electronics?|tech/, ["phone", "charger", "earpods", "power bank", "laptop", "headphones", "smart watch"]],
+  [/snacks?|small chops|munch/, ["chips", "chin chin", "cookies", "biscuits", "small chops", "popcorn", "snacks"]],
+  [/makeup|make up|cosmetics?/, ["lipstick", "lip gloss", "foundation", "powder", "eyeliner", "makeup"]],
+  [/footwear/, ["shoes", "sneakers", "slides", "sandals", "heels"]],
+  [/fragrances?|scents?/, ["perfume", "body spray", "oil perfume", "fragrance"]],
+  [/accessor(y|ies)/, ["jewelry", "watch", "bracelet", "necklace", "earrings", "cap", "belt"]],
+];
+const SINGULAR = (w) => w.replace(/(ies)$/, "y").replace(/(ses|xes|zes|ches|shes)$/, (m) => m.slice(0, -2)).replace(/([^s])s$/, "$1");
+// Products whose own NAME carries the words asked for (a "backpack" must not bring every handbag just because the category is
+// called "Bags & Backpacks"). Only when no name matches do the category matches stay.
+function nameMatches(results, term) {
+  const words = normalize(term).split(/\s+/).filter((w) => w.length >= 3).map(SINGULAR);
+  if (!words.length) return results;
+  const hit = results.filter((p) => { const n = normalize(p.name).split(/[^a-z0-9]+/).map(SINGULAR); return words.every((w) => n.some((x) => x === w || x.startsWith(w))); });
+  return hit.length ? hit : results;
+}
+function stars(v) { const r = Number(v.avg_rating || 0), n = Number(v.review_count || 0); return n > 0 ? `⭐ ${r.toFixed(1)} (${n} review${n === 1 ? "" : "s"})` : "new shop, no reviews yet"; }
+const EMOJI = [[/skin|cream|lotion|serum|soap|beauty|makeup|lip/, "🧴"], [/hair|wig|bundle/, "💇🏾‍♀️"], [/shoe|sneaker|slide|sandal/, "👟"], [/bag|backpack|purse/, "👜"], [/dress|gown|cloth|shirt|top|jean|wear|fashion/, "👗"], [/phone|iphone|charger|gadget|laptop|earpod|airpod|power/, "📱"], [/food|chips|snack|drink|juice|cake|shawarma|rice|meal/, "🍔"], [/perfume|scent|fragrance|spray/, "🌸"], [/book|stationery|pen/, "📚"], [/jewel|ring|necklace|watch|bracelet/, "💍"]];
+function emojiFor(term) { for (const [re, e] of EMOJI) if (re.test(term)) return e; return "🛍️"; }
 async function quickFind(messages, ctx) {
   const latest = String([...messages].reverse().find((m) => m?.role === "user")?.content || "");
   const low = normalize(latest);
   if (!low || NOT_PRODUCT_INTENT.test(low)) return null;
   const direct = productTerm(latest);
-  const short = low.split(/\s+/).length <= 3 && !/^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|help)\b/.test(low);
+  const short = low.split(/\s+/).length <= 4 && !/^(hi|hello|hey|thanks|thank you|ok|okay|yes|help)\b/.test(low);
   if (!FIND_INTENT.test(low) && !(direct && short)) return null;
   const term = direct || termFromConversation(messages.slice(0, -1));
   if (!term) return null;
-  const found = await searchProducts({ query: term, limit: 20, nearest: ctx.lat != null }, ctx);
-  if (!found.results?.length || !found.core_match) return null;
+  let found = await searchProducts({ query: term, limit: 20, nearest: ctx.lat != null }, ctx);
+  let results = found.core_match ? nameMatches((found.results || []).filter((p) => p.vendor), term) : [];
+  // a broad word ("skincare", "gadgets", "snacks") that no listing uses itself: gather what it means
+  if (!results.length) {
+    const words = CONCEPTS.find(([re]) => re.test(normalize(term)));
+    if (words) {
+      const seen = new Map();
+      for (const w of words[1]) {
+        const r = await searchProducts({ query: w, limit: 12, nearest: ctx.lat != null }, ctx).catch(() => null);
+        if (r && r.core_match) for (const p of r.results || []) if (p.vendor && !seen.has(p.id)) seen.set(p.id, p);
+        if (seen.size >= 20) break;
+      }
+      results = [...seen.values()];
+      found = { ...found, exact_match: true };
+    }
+  }
+  if (!results.length) return null;
+  if (!results.length) return null;
   const hasLoc = ctx.lat != null && ctx.lng != null;
-  const byVendor = new Map();
-  for (const p of found.results) {
-    const v = p.vendor; if (!v) continue;
-    if (!byVendor.has(v.id)) byVendor.set(v.id, { v, products: [] });
-    byVendor.get(v.id).products.push(p);
-  }
-  const rows = [...byVendor.values()];
+  const e = emojiFor(normalize(term));
   const priceOf = (p) => Number(p.discount_price ?? p.sale_price ?? p.rental_rate ?? Infinity);
-  const wantCheap = /\b(cheap|cheaper|cheapest|lowest|least|affordable|budget)\b/.test(low);
-  const wantPricey = /\b(expensive|priciest|highest price|most)\b/.test(low) && /\b(expensive|priciest)\b/.test(low);
-  if (wantCheap || wantPricey) {
-    const flat = found.results.filter((p) => p.vendor).sort((a, b) => wantCheap ? priceOf(a) - priceOf(b) : priceOf(b) - priceOf(a)).slice(0, 6);
-    const ls = flat.map((p, i) => `${i + 1}. ${p.name} ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)} from ${p.vendor.business_name}${hasLoc && Number.isFinite(p.vendor.distance_km) ? `, ${distLabel(p.vendor.distance_km)}` : ""}`);
-    return `${wantCheap ? "Cheapest" : "Most expensive"} ${term}, ${wantCheap ? "lowest" : "highest"} price first:\n${ls.join("\n")} [[PRODUCTS:${flat.slice(0, 5).map((p) => p.id).join(",")}]]`;
+  const line = (p) => `**${p.name}** · ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)}`;
+  const byVendor = new Map();
+  for (const p of results) { const v = p.vendor; if (!byVendor.has(v.id)) byVendor.set(v.id, { v, products: [] }); byVendor.get(v.id).products.push(p); }
+  let rows = [...byVendor.values()];
+  const dist = (r) => (Number.isFinite(r.v.distance_km) ? r.v.distance_km : Infinity);
+  const rep = (r) => Number(r.v.avg_rating || 0) * Math.log2(2 + Number(r.v.review_count || 0));
+
+  // one question about one shop: "which is the closest / farthest / best rated vendor that sells skincare?"
+  const wantFar = /\b(farthest|furthest|most far|far(th)?est)\b/.test(low);
+  const wantNear = /\b(closest|nearest|close to me|near me|nearby)\b/.test(low);
+  const wantBest = /\b(best|top|highest|most trusted|trusted|reputable|reputation|rated|reviews?)\b/.test(low) && !/\bbest price\b/.test(low);
+  const single = /\b(which|who|what)\b.*\b(is|vendor|shop|one)\b/.test(low) || /\bthe (closest|nearest|farthest|furthest|best)\b/.test(low);
+  if ((wantFar || wantNear) && !hasLoc) {
+    return `${e} I can tell you how far each shop is once your **location is on**. Turn it on and ask me again.\n\nMeanwhile, ${rows.length} shop${rows.length === 1 ? "" : "s"} sell ${term}: ${rows.slice(0, 6).map((r) => `**${r.v.business_name}**`).join(", ")}. [[PRODUCTS:${rows.map((r) => r.products[0].id).slice(0, 8).join(",")}]]`;
   }
-  rows.sort((a, b) => hasLoc ? (a.v.distance_km ?? Infinity) - (b.v.distance_km ?? Infinity) : Number(b.v.avg_rating || 0) - Number(a.v.avg_rating || 0));
-  const kinds = [...new Set(found.results.map((p) => normalize(p.name)))];
-  const lines = rows.slice(0, 8).map((r, i) => {
-    const d = hasLoc ? distLabel(r.v.distance_km) : "";
-    const items = r.products.slice(0, 4).map((p) => `${p.name} ${money(p.discount_price ?? p.sale_price ?? p.rental_rate)}`).join("; ");
-    return `${i + 1}. ${r.v.business_name}${r.v.city ? ` (${r.v.city})` : ""}${d ? `, ${d}` : ""}: ${items}`;
+  if (single && (wantFar || wantNear || wantBest)) {
+    rows.sort(wantBest ? (a, b) => rep(b) - rep(a) : wantFar ? (a, b) => dist(b) - dist(a) : (a, b) => dist(a) - dist(b));
+    const top = rows[0];
+    const what = wantBest ? "best-reviewed" : wantFar ? "farthest" : "closest";
+    const extra = [hasLoc && Number.isFinite(top.v.distance_km) ? `📍 ${distLabel(top.v.distance_km)}` : "", stars(top.v)].filter(Boolean).join("\n");
+    const others = rows.slice(1, 4).map((r, i) => `${i + 2}. **${r.v.business_name}**${hasLoc && Number.isFinite(r.v.distance_km) ? ` · ${distLabel(r.v.distance_km)}` : ""} · ${stars(r.v)}`);
+    return `${e} The **${what}** shop that sells ${term} is **${top.v.business_name}**${top.v.city ? ` (${top.v.city})` : ""}.\n${extra}\n\n**What they have:**\n${top.products.slice(0, 4).map((p) => "- " + line(p)).join("\n")}${others.length ? `\n\n**Next on the list:**\n${others.join("\n")}` : ""}\n\nWant me to take you to **${top.v.business_name}**? [[PRODUCTS:${top.products.slice(0, 4).map((p) => p.id).join(",")}]]`;
+  }
+
+  // cheapest / most expensive
+  const wantCheap = /\b(cheap|cheaper|cheapest|lowest|least|affordable|budget)\b/.test(low);
+  const wantPricey = /\b(expensive|priciest)\b/.test(low);
+  if (wantCheap || wantPricey) {
+    const flat = results.slice().sort((a, b) => wantCheap ? priceOf(a) - priceOf(b) : priceOf(b) - priceOf(a)).slice(0, 8);
+    const ls = flat.map((p, i) => `${i + 1}. ${line(p)} from **${p.vendor.business_name}**${hasLoc && Number.isFinite(p.vendor.distance_km) ? ` · ${distLabel(p.vendor.distance_km)}` : ""}`);
+    return `${e} **${wantCheap ? "Cheapest" : "Most expensive"} ${term}**, ${wantCheap ? "lowest" : "highest"} price first:\n\n${ls.join("\n")} [[PRODUCTS:${flat.map((p) => p.id).join(",")}]]`;
+  }
+
+  // the full answer: every shop that sells it (closest first), then one pick from each shop, then more
+  rows.sort((a, b) => hasLoc ? dist(a) - dist(b) : rep(b) - rep(a));
+  const shops = rows.slice(0, 8).map((r, i) => {
+    const d = hasLoc && Number.isFinite(r.v.distance_km) ? ` · 📍 ${distLabel(r.v.distance_km)}` : "";
+    return `${i + 1}. **${r.v.business_name}**${r.v.city ? ` (${r.v.city})` : ""}${d}\n   ${stars(r.v)} · ${r.products.length} item${r.products.length === 1 ? "" : "s"}${(() => { const ps = r.products.map(priceOf).filter(Number.isFinite); return ps.length ? ` from ${money(Math.min(...ps))}` : ""; })()}`;
   });
-  const near = found.exact_match ? "" : `I could not find an exact "${term}", but these are the closest matches. `;
-  const head = near + (rows.length === 1 ? `Only one vendor on Levromart sells ${term}:` : `${rows.length} vendors on Levromart sell ${term}${hasLoc ? ", closest first" : ""}:`);
-  let tail = "";
-  if (!hasLoc && /\b(close|closest|nearest|near|far|distance|away)\b/.test(low)) tail = "\nTurn on your location and I will show how far each one is.";
-  else if (kinds.length >= 3) tail = `\nI found ${kinds.length} different kinds. Tell me which one you want and I will narrow it down.`;
-  const ids = found.results.slice(0, 5).map((p) => p.id);
-  return `${head}\n${lines.join("\n")}${tail} [[PRODUCTS:${ids.join(",")}]]`;
+  const picks = [];
+  for (const r of rows) picks.push(r.products[0]);
+  for (const r of rows) for (const p of r.products.slice(1)) if (picks.length < 12) picks.push(p);
+  const exactNote = found.exact_match ? "" : `I couldn't find an exact "${term}", so these are the closest matches. `;
+  const head = `${e} ${exactNote}**${rows.length} shop${rows.length === 1 ? "" : "s"} on Levromart sell${rows.length === 1 ? "s" : ""} ${term}**${hasLoc ? ", closest first" : ""}:`;
+  // several different kinds in the results: ask which one they mean (face or body, potato or plantain...)
+  const cats = [...new Set(results.map((p) => p.category).filter(Boolean))];
+  let ask = "";
+  if (cats.length >= 2) ask = `\n\n🤔 **Which kind do you want?** ${cats.slice(0, 4).join(", ")}${cats.length > 4 ? " or something else" : ""}? Tell me and I'll narrow it down.`;
+  else if (!hasLoc && /\b(close|closest|nearest|near|far|distance|away)\b/.test(low)) ask = "\n\n📍 Turn on your location and I'll show how far each shop is.";
+  else if (rows.length > 1) ask = "\n\nAsk me **which is closest**, **which is cheapest** or **which has the best reviews**, and I'll pick one for you.";
+  return `${head}\n\n${shops.join("\n")}${ask}\n\n🛒 **One pick from each shop${picks.length > rows.length ? ", then more" : ""}:** [[PRODUCTS:${picks.map((p) => p.id).join(",")}]]`;
 }
 
 // Words people use for the same thing, so a search that finds nothing tries what they most likely mean.
@@ -913,7 +987,7 @@ const RELATED = [
   [/drink|juice|smoothie|water/, ["juice", "drinks", "water"]],
   [/charger|cable|power ?bank/, ["charger", "power bank", "cable"]],
 ];
-function relatedTerms(term) {
+function altTerms(term) {
   const t = normalize(term);
   const out = [];
   for (const [re, words] of RELATED) if (re.test(t)) for (const w of words) if (w !== t && !out.includes(w)) out.push(w);
@@ -946,7 +1020,7 @@ async function liveDataAnswer(latest, messages, ctx) {
       return `These shops match "${term}":\n${lines.join("\n")}`;
     }
     // nothing for those exact words: try what the person most likely means (a water bottle may be listed as a flask)
-    for (const alt of relatedTerms(term)) {
+    for (const alt of altTerms(term)) {
       const more = await searchEverything({ query: alt, nearest: hasLoc }, ctx).catch(() => null);
       const ps = ((more && more.products) || []).filter((p) => p.vendor);
       if (ps.length) {
@@ -1162,3 +1236,6 @@ async function callGemini(apiKey, model, contents, systemInstruction, withTools)
   }
   throw lastErr || new Error("Gemini request failed.");
 }
+
+// for the unit test (api/chat.test.js style checks): the quick catalogue answers, without the network
+module.exports._quickFind = quickFind;

@@ -99,8 +99,11 @@ function syncSystemBarColor() {
 syncSystemBarColor();
 /* Android: the browser's speech recogniser beeps on every restart, so record short WAV clips
    (cut at natural pauses) and transcribe them on the server. Same interface as SpeechRecognition. */
+// Android beeps on every restart, and the iPhone's own recogniser often hears nothing in an installed app: both send short
+// clips to the server for transcription instead.
+const LM_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 function lmChunkSttAvailable() {
-  return /Android/i.test(navigator.userAgent) && !!(navigator.mediaDevices?.getUserMedia && (window.AudioContext || window.webkitAudioContext));
+  return (/Android/i.test(navigator.userAgent) || LM_IOS) && !!(navigator.mediaDevices?.getUserMedia && (window.AudioContext || window.webkitAudioContext));
 }
 class LmChunkRecognizer {
   constructor() { this.lang = "en"; this.continuous = true; this.interimResults = true; this.maxAlternatives = 1; this._chunks = []; this._queue = Promise.resolve(); this._active = false; this._buf = []; this._spoke = false; this._t0 = 0; this._lastVoice = 0; }
@@ -114,6 +117,7 @@ class LmChunkRecognizer {
     let ctx;
     try { ctx = new AC({ sampleRate: 16000 }); } catch (_) { ctx = new AC(); }
     this._stream = stream; this._ctx = ctx;
+    try { if (ctx.state === "suspended") await ctx.resume(); } catch (_) {}
     this._src = ctx.createMediaStreamSource(stream);
     this._proc = ctx.createScriptProcessor(4096, 1, 1);
     this._mute = ctx.createGain(); this._mute.gain.value = 0;
@@ -156,7 +160,7 @@ class LmChunkRecognizer {
         const j = await r.json().catch(() => ({}));
         if (this._aborted) return;
         if (j.text) { this._chunks.push(j.text); this.onresult?.({ results: this._chunks.map((t) => { const x = [{ transcript: t }]; x.isFinal = true; return x; }) }); }
-        else if (!r.ok) this.onerror?.({ error: "network" });
+        else if (!r.ok) this.onerror?.({ error: r.status === 401 ? "not-allowed-session" : "network" });
       } catch (_) { if (!this._aborted) this.onerror?.({ error: "network" }); }
     });
   }
@@ -218,7 +222,7 @@ let aiChatLastVoiceTranscript = "";
 let aiChatLastInputVoice = false;
 function initAiChatMic() {
   const btn = byId("aiChatMicBtn");
-  if (btn && AiSpeechRecognition) btn.classList.remove("hidden");
+  if (btn && (AiSpeechRecognition || lmChunkSttAvailable())) btn.classList.remove("hidden");
 }
 function updateAiVoiceStatus() {
   const status = byId("aiVoiceStatus");
@@ -246,7 +250,7 @@ function toggleAiChatMic(evt) {
   evt?.preventDefault?.();
   evt?.stopPropagation?.();
   try { document.activeElement?.blur?.(); } catch (_) {}
-  if (!AiSpeechRecognition) return;
+  if (!AiSpeechRecognition && !lmChunkSttAvailable()) return;
   // Tapping the mic means "let me talk". Stop Levi's speech immediately so
   // the browser never has Levi's TTS competing with the microphone.
   if (("speechSynthesis" in window) && speechSynthesis.speaking) stopAiSpeaking();
@@ -258,7 +262,7 @@ function toggleAiChatMic(evt) {
   if (!aiChatWant) { aiChatWant = true; aiChatVoiceBase = String(byId("aiChatInput")?.value || "").trim(); }
   aiChatRecognizer = lmNewRecognizer();
   const aiRecThis = aiChatRecognizer;
-  aiChatRecognizer.lang = "en-NG";
+  aiChatRecognizer.lang = LM_IOS ? "en-US" : "en-NG";   // the iPhone has no Nigerian-English recogniser: it heard nothing
   aiChatRecognizer.interimResults = true;
   aiChatRecognizer.continuous = true;
   aiChatRecognizer.maxAlternatives = 1;
@@ -293,6 +297,8 @@ function toggleAiChatMic(evt) {
     // No app-generated audio/beeps. Normal no-speech/abort lifecycle events
     // are silent; only actual recognition failures get a visual toast.
     if (e.error === "not-allowed" || e.error === "service-not-allowed") aiChatWant = false;
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") { showToast("Allow the microphone for Levromart in your phone's settings, then try again.", "error"); return; }
+    if (e.error === "not-allowed-session") { showToast("Please log in again to talk to Levi.", "error"); return; }
     if (e.error !== "aborted" && e.error !== "no-speech") {
       showToast("Couldn't hear that, try again.", "error");
     }
@@ -394,7 +400,7 @@ function msgVoiceVoiceInterimForInput() {
 }
 
 function startMsgVoiceRecognition() {
-  if (!AiSpeechRecognition) return;
+  if (!AiSpeechRecognition && !lmChunkSttAvailable()) return;
 
   const input = byId("chatInput");
   // Preserve whatever is already in the compose box. Every new mic session
@@ -483,7 +489,7 @@ function startMsgVoiceRecognition() {
 
 function toggleMsgMic(evt) {
   evt?.stopPropagation?.();
-  if (!AiSpeechRecognition) return;
+  if (!AiSpeechRecognition && !lmChunkSttAvailable()) return;
 
   if (("speechSynthesis" in window) && speechSynthesis.speaking) {
     try { speechSynthesis.cancel(); } catch (_) {}
@@ -543,7 +549,9 @@ async function cancelMsgVoiceRecording() {
   renderMsgVoiceState();
 }
 async function leviOfflineFallback(text) {
-  const q = leviNormaliseText(text);
+  // "no, a backpack" / "I mean the black one": the correction word is not part of what they want
+  let q = leviNormaliseText(text);
+  for (let i = 0; i < 3; i++) q = q.replace(/^(?:no+|nope|nah|not that|i mean|i meant|actually|rather|sorry|instead)\b[\s,.!:-]*/, "");
   if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(q)) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
     return `Hi${name ? `, ${name}` : ''}. I'm Levi. I can still help with Levromart navigation, your cart, wishlist, orders, products, vendors, and requests right now.`;

@@ -451,15 +451,38 @@ async function lvOpenProfileShare(kind, targetId) {
     }
     return new Promise((r, j) => { try { out.toBlob((bl) => (bl ? r(bl) : j(new Error("empty"))), "image/png"); } catch (err) { j(err); } });
   };
+  // The share picture is made as soon as the sheet opens (and again when the colour changes), so tapping Share opens the
+  // phone's share sheet at once. iPhone only allows the share sheet straight after a tap: waiting for the picture made it
+  // slow there, and WhatsApp closed again. On iPhone the picture goes alone (the code in it opens the shop); elsewhere the
+  // link goes with it.
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let ready = null, readyKey = "", making = false;
+  const prep = async () => {
+    const key = colours.join("|");
+    if (making || (ready && readyKey === key) || !document.body.contains(m)) return;
+    making = true;
+    try {
+      const blob = await buildCard(true).catch(() => buildCard(false));
+      const f = new File([blob], "levromart-qr.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { ready = f; readyKey = key; }
+    } catch (_) {} finally { making = false; }
+  };
+  if (navigator.share) {
+    setTimeout(prep, 250);
+    const watch = setInterval(() => { if (!document.body.contains(m)) { clearInterval(watch); return; } if (readyKey !== colours.join("|")) prep(); }, 700);
+  }
   m.querySelector(".lvqr-actions").addEventListener("click", async (e) => {
     const b = e.target.closest(".lvqr-act"); if (!b) return;
     const act = b.dataset.act;
     if (act === "share") {
       if (navigator.share) {
-        // the QR card picture and the link go out together (WhatsApp, Telegram...); just the link where pictures cannot be shared
-        let files = null;
-        try { const blob = await buildCard(true).catch(() => buildCard(false)); const f = new File([blob], "levromart-qr.png", { type: "image/png" }); if (navigator.canShare && navigator.canShare({ files: [f] })) files = [f]; } catch (_) {}
-        try { await navigator.share(files ? { files, title: name, text: `${text}: ${link}` } : { title: name, text, url: link }); } catch (_) {}
+        const f = ready && readyKey === colours.join("|") ? ready : null;
+        const data = f ? (isIOS ? { files: [f] } : { files: [f], title: name, text: `${text}: ${link}` }) : { title: name, text, url: link };
+        try { await navigator.share(data); }
+        catch (err) {
+          // the picture could not go with this app: send the link instead (still from this same tap where allowed)
+          if (f && err && err.name !== "AbortError") { try { await navigator.share({ title: name, text, url: link }); } catch (_) {} }
+        }
         return;
       }
     }

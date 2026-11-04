@@ -226,6 +226,9 @@ document.addEventListener("click", (e) => {
   const panel = byId("aiChatPanel");
   if (!panel || panel.classList.contains("hidden")) return;
   if (e.target.closest("#aiChatPanel, #aiChatFab")) return;
+  // a pop-up Levi opened (cancel recording, clear cart, sheets, toasts) is part of Levi: it must not close the chat
+  if (e.target.closest(".modal, #confirmModal, #textPromptModal, .toast, #toastContainer, .lv-cm, .lvw-sheet-wrap")) return;
+  if (!document.body.contains(e.target)) return;   // the tapped button was removed by its own action (a dialog closing)
   panel.classList.add("hidden");
   syncLeviFabVisibility();
 });
