@@ -6343,3 +6343,26 @@ html:root:root[data-theme="dark"] body .fp2-btn{background:rgba(99,102,241,.22)!
 :root[data-theme="dark"] .lv-loc-logo{background:#34d399}
 #veUseLocationBtn .fa-spinner{animation:lvLocSpin .9s linear infinite!important;width:1em;height:1em;background:currentColor;-webkit-mask:url(/levromart-badge.png) center/contain no-repeat;mask:url(/levromart-badge.png) center/contain no-repeat}
 #veUseLocationBtn .fa-spinner::before{content:""!important}
+
+/* Edit business profile: slim Storefront / Pause pills, a branded header, the logo overlapping it on the left like the
+   profile page, and boxed fields */
+html:root:root body #app .dash-actions:has(+ .ve-card){display:flex!important;gap:8px!important;justify-content:flex-end;margin:0 auto .6rem!important}
+html:root:root body #app .dash-actions:has(+ .ve-card) .quick-action{flex:none!important;flex-direction:row!important;gap:7px!important;width:auto!important;min-height:0!important;height:36px!important;padding:0 14px!important;border-radius:999px!important;font-size:.8rem!important;font-weight:800!important;box-shadow:none!important}
+html:root:root body #app .dash-actions:has(+ .ve-card) .quick-action-icon{width:auto!important;height:auto!important;border:0!important;background:none!important;font-size:.85rem!important;margin:0!important}
+html:root:root body #app .ve-card .vendor-cover-editor .storefront-cover{height:150px!important;background-color:#0b3d2e;background-image:linear-gradient(135deg,#0b3d2e 0%,#15803d 55%,#22c55e 100%)}
+html:root:root body #app .ve-card .vendor-cover-editor .storefront-cover.has-custom-cover{background-color:transparent}
+html:root:root body #app .ve-card .storefront-cover-empty{color:rgba(255,255,255,.85)!important;font-weight:700}
+html:root:root body #app .ve-card .vendor-cover-editor>p{display:none}
+html:root:root body #app .ve-card .vendor-edit-avatar-area{display:flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:flex-end!important;gap:12px;margin:-58px 0 14px 14px!important;text-align:left!important;position:relative;z-index:2}
+html:root:root body #app .ve-card .vendor-edit-avatar-wrap{margin:0!important}
+html:root:root body #app .ve-card .vendor-edit-avatar-wrap .avatar-circle,html:root:root body #app .ve-card .vendor-edit-avatar-wrap>div:first-child{border:4px solid var(--card,#fff)!important;box-shadow:0 6px 18px -8px rgba(0,0,0,.35)}
+html:root:root body #app .ve-card .vendor-edit-avatar-area>p{display:none!important}
+html:root:root body #app .ve-card label{font-size:.76rem!important;font-weight:700!important;margin:12px 0 5px!important;color:#6b7280}
+html:root:root:root body #app .ve-card.lv-flat input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),html:root:root:root body #app .ve-card.lv-flat select,html:root:root:root body #app .ve-card.lv-flat textarea{border:1.5px solid #e5e7eb!important;border-bottom:1.5px solid #e5e7eb!important;width:100%;box-sizing:border-box;border-radius:12px!important;background:#fff!important;padding:11px 12px!important;font-size:.95rem!important;box-shadow:none!important}
+html:root:root body #app .ve-card input:focus,html:root:root body #app .ve-card select:focus,html:root:root body #app .ve-card textarea:focus{border-color:#16a34a!important;outline:none!important;box-shadow:0 0 0 3px rgba(22,163,74,.14)!important}
+html:root:root:root[data-theme="dark"] body #app .ve-card.lv-flat input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),html:root:root[data-theme="dark"] body #app .ve-card.lv-flat select,html:root:root[data-theme="dark"] body #app .ve-card.lv-flat textarea{border-bottom-color:#30363d!important;background:#161b22!important;border-color:#30363d!important;color:#f3f4f6!important}
+html:root:root[data-theme="dark"] body #app .ve-card label{color:#9ca3af}
+/* student verification: an Edit pen on the verified card */
+.lv-sv .sv-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lv-sv .sv-head h4{margin:0}
+html:root:root body .lv-sv .sv-edit{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #d1d5db;border-radius:999px;background:transparent;color:inherit;font-size:.76rem;font-weight:800;cursor:pointer}

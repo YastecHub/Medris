@@ -1751,7 +1751,7 @@ async function setVendorRequestPref(v){
       return '<button type="button" class="face-btn '+(done?'done':'')+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Selfie taken':'Take your selfie')+'</b><small>'+(done?'Tap to retake':'Step 4 · a clear selfie, in good light')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
     }
     function paint(){
-      if(row&&row.status==="approved"){ box.innerHTML='<h4>Student verification</h4>'+stBadge()+'<p class="sub">'+(row.not_student?'Your account has been verified. A "Verified seller" badge shows on your store.':'Your student details have been verified. A "Verified student" badge shows on your store.')+'</p>'; if(cb) cb(); return; }
+      if(row&&row.status==="approved"&&!box.__svEdit){ box.innerHTML='<div class="sv-head"><h4>Student verification</h4><button type="button" class="sv-edit" data-sv-edit="1" aria-label="Edit your verification"><i class="fa-solid fa-pen"></i> Edit</button></div>'+stBadge()+'<p class="sub">'+(row.not_student?'Your account has been verified. A "Verified seller" badge shows on your store.':'Your student details have been verified. A "Verified student" badge shows on your store.')+'</p>'; if(cb) cb(); return; }
       var r=row||{};
       var ns=notStu||!!r.not_student; notStu=ns;
       box.innerHTML='<h4>'+(ns?'Seller verification':'Student verification')+'</h4><p class="sub">'+(ns?'Tell us you are not a student and our team will review your account. Your documents are only seen by Levromart admins.':'Show customers you\'re a real student. Your documents are only seen by Levromart admins.')+'</p>'+stBadge()
@@ -1821,6 +1821,11 @@ async function setVendorRequestPref(v){
     }
     var cur=null;
     box.addEventListener("click",function(e){
+      if(e.target.closest("[data-sv-edit]")){
+        // changing verified details sends them to Levromart for a fresh check
+        Promise.resolve(window.showConfirmDialog?window.showConfirmDialog("Change your verification details? The new details go to Levromart for review, and your badge is checked again.",{title:"Edit verification",okLabel:"Edit details",cancelLabel:"Go back"}):confirm("Edit your verification details?")).then(function(ok){ if(ok){ box.__svEdit=true; paint(); } });
+        return;
+      }
       if(e.target.closest("[data-face]")){ doFace(); return; }
       var f=e.target.closest("[data-f]"); if(f){ cur=f.dataset.f; document.getElementById("svFile")||0; box.querySelector("#svFile").click(); return; }
       if(e.target.closest("[data-go]")) submit(e.target.closest("[data-go]"));
