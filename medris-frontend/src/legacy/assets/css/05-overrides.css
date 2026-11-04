@@ -6296,3 +6296,42 @@ html:root:root body #lvCs .product-comment-compose-row textarea,
 html:root:root body .product-comment-compose-row textarea#productCommentInput,
 html:root:root body .product-comment-compose-row textarea#packageCommentInput{border-radius:12px!important;min-height:44px!important;max-height:160px!important;padding:11px 13px!important;line-height:1.4!important;overflow-y:auto!important}
 html:root:root body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{top:.6rem;bottom:-1.6rem}
+
+/* Followers page (fp2) */
+html body #app .fp2 .fp-head{gap:10px}
+.fp2-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 4px}
+.fp2-stat{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:16px;text-align:center}
+.fp2-stat i{font-size:.85rem;margin-bottom:2px}
+.fp2-stat b{font-size:1.15rem;font-weight:800;line-height:1.1}
+.fp2-stat small{font-size:.64rem;font-weight:700;opacity:.8;white-space:nowrap}
+.fp2-stat.g{background:#dcfce7;color:#166534}.fp2-stat.o{background:#ffedd5;color:#9a3412}.fp2-stat.p{background:#f3e8ff;color:#6b21a8}.fp2-stat.b{background:#dbeafe;color:#1e40af}
+:root[data-theme="dark"] .fp2-stat.g{background:rgba(34,197,94,.15);color:#86efac}:root[data-theme="dark"] .fp2-stat.o{background:rgba(249,115,22,.15);color:#fdba74}
+:root[data-theme="dark"] .fp2-stat.p{background:rgba(168,85,247,.16);color:#d8b4fe}:root[data-theme="dark"] .fp2-stat.b{background:rgba(59,130,246,.16);color:#93c5fd}
+html body #app .fp2 .fp-tabs{display:flex;gap:8px;border:0!important;margin:12px 0 6px;overflow-x:auto;scrollbar-width:none}
+html body #app .fp2 .fp-tab{flex:none;padding:7px 14px!important;border-radius:999px!important;border:1px solid var(--border,#e5e7eb)!important;background:transparent!important;font-size:.82rem;font-weight:700;color:inherit}
+html body #app .fp2 .fp-tab::after{display:none!important}
+html body #app .fp2 .fp-tab.active{background:#111827!important;border-color:#111827!important;color:#fff!important}
+:root[data-theme="dark"] body #app .fp2 .fp-tab.active{background:#f9fafb!important;border-color:#f9fafb!important;color:#111827!important}
+html body #app .fp2 .fp-tab b{opacity:.65;margin-left:2px}
+.fp2-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--border,#eef2f7);cursor:default}
+.fp2-row[role="link"]{cursor:pointer}
+.fp2-ring{flex:none;display:inline-grid;place-items:center;padding:2.5px;border-radius:50%;background:transparent}
+.fp2-ring.shop{background:linear-gradient(135deg,#f59e0b,#ec4899,#8b5cf6)}
+.fp2-ring.new{background:linear-gradient(135deg,#22c55e,#14b8a6)}
+.fp2-ring>*{border:2.5px solid var(--bg,#fff);border-radius:50%}
+:root[data-theme="dark"] .fp2-ring>*{border-color:#0f1115}
+.fp2-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fp2-copy strong{font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp2-new{font-style:normal;margin-left:4px;padding:1px 6px;border-radius:999px;background:#22c55e;color:#fff;font-size:.6rem;font-weight:800;vertical-align:middle}
+.fp2-sub{font-size:.76rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp2-sub i{font-size:.68rem;color:#8b5cf6}
+:root[data-theme="dark"] .fp2-sub{color:#9ca3af}
+.fp2-copy .fn-tag{align-self:flex-start;margin-top:2px}
+html:root:root body .fp2-btn{flex:none;height:32px;padding:0 13px;border:0;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:.76rem;font-weight:800;cursor:pointer}
+:root[data-theme="dark"] .fp2-btn{background:rgba(99,102,241,.2);color:#c7d2fe}
+.fp2-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:40px 16px;text-align:center}
+.fp2-empty span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dcfce7,#e0e7ff);color:#15803d;font-size:1.5rem}
+.fp2-empty small{color:#6b7280}
+html:root:root body #app .fp2 .fp-tabs .fp-tab.active,html:root:root body #app .fp2 .fp-tabs .fp-tab.active b{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root[data-theme="dark"] body #app .fp2 .fp-tabs .fp-tab.active,html:root:root[data-theme="dark"] body #app .fp2 .fp-tabs .fp-tab.active b{color:#111827!important;-webkit-text-fill-color:#111827!important}
+html:root:root[data-theme="dark"] body .fp2-btn{background:rgba(99,102,241,.22)!important;color:#c7d2fe!important}

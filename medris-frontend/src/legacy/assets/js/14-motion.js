@@ -4440,3 +4440,50 @@ window.lvAskCancel = async function (orderId) {
   // a push notification that opens the app with a comment in its link
   window.lvFocusComment = function (parent, reply) { focus = { parent: parent ? String(parent) : null, reply: reply ? String(reply) : null, at: Date.now() }; focusTick(); };
 })();
+
+/* ===== Followers page, livelier: a summary strip, ringed avatars (gradient for shops), "New" for the last 7 days,
+   pill tabs, and a "View shop" button on shops ===== */
+(function () {
+  "use strict";
+  var page0 = window.renderVendorFollowersPage;
+  if (typeof page0 === "function" && !page0.__fp2) {
+    var page1 = async function () {
+      var html = String(await page0.apply(this, arguments));
+      return html.replace('<div class="fp-page">', '<div class="fp-page fp2">').replace('<div class="fp-tabs"', '<div class="fp2-hero" id="fp2Hero"></div><div class="fp-tabs"');
+    };
+    page1.__fp2 = true; window.renderVendorFollowersPage = page1;
+  }
+  var DAY = 864e5;
+  window.fpRender = function () {
+    var st = window.__fp || { rows: [] }, rows = st.rows || [], tab = st.tab, q = st.q;
+    var vend = rows.filter(function (r) { return r.is_vendor; }), cust = rows.filter(function (r) { return !r.is_vendor; });
+    var fresh = rows.filter(function (r) { return r.followed_at && Date.now() - new Date(r.followed_at) < 7 * DAY; }).length;
+    var hero = document.getElementById("fp2Hero");
+    if (hero) hero.innerHTML = [[rows.length, "Followers", "fa-user-group", "g"], [fresh, "New this week", "fa-bolt", "o"], [vend.length, "Shops", "fa-store", "p"], [cust.length, "Customers", "fa-user", "b"]]
+      .map(function (x) { return '<div class="fp2-stat ' + x[3] + '"><i class="fa-solid ' + x[2] + '"></i><b>' + x[0] + "</b><small>" + x[1] + "</small></div>"; }).join("");
+    var tabs = document.getElementById("fpTabs");
+    if (tabs) tabs.innerHTML = [["all", "All", rows.length], ["vendors", "Shops", vend.length], ["customers", "Customers", cust.length]]
+      .map(function (x) { return '<button type="button" role="tab" class="fp-tab' + (tab === x[0] ? " active" : "") + '" aria-selected="' + (tab === x[0]) + '" onclick="fpTab(\'' + x[0] + '\')">' + x[1] + " <b>" + x[2] + "</b></button>"; }).join("");
+    var c = document.getElementById("fpCount"); if (c) c.textContent = "";
+    var list = tab === "vendors" ? vend : tab === "customers" ? cust : rows;
+    if (q) list = list.filter(function (r) { return ((r.name || "") + " " + (r.business_name || "") + " " + (r.city || "") + " " + (r.sector_name || "")).toLowerCase().indexOf(q) >= 0; });
+    var box = document.getElementById("fpList"); if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<div class="fp2-empty"><span><i class="fa-solid fa-user-group"></i></span><strong>' + (q ? "No one matches “" + esc(q) + "”" : tab === "vendors" ? "No shops follow you yet" : tab === "customers" ? "No customers follow you yet" : "No followers yet") + "</strong><small>" + (q ? "Try another name." : "Share your shop's QR code so people can follow you.") + "</small></div>";
+      return;
+    }
+    box.innerHTML = list.map(function (r) {
+      var name = r.name || "Levromart user";
+      var isNew = r.followed_at && Date.now() - new Date(r.followed_at) < 7 * DAY;
+      var when = r.followed_at ? new Date(r.followed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+      var sub = r.is_vendor ? [r.sector_name, r.city].filter(Boolean).join(" · ") || "Shop" : "Customer";
+      var go = r.is_vendor && r.vendor_id ? "navigate('storefront',{vendorId:'" + esc(r.vendor_id) + "'})" : "";
+      var tagHtml = typeof fpTag === "function" ? fpTag(r) : "";
+      return '<div class="fp2-row"' + (go ? ' role="link" tabindex="0" onclick="' + go + '"' : "") + ">" +
+        '<span class="fp2-ring ' + (r.is_vendor ? "shop" : isNew ? "new" : "") + '">' + profileAvatarHtml(r.avatar_url, name, "3.1rem") + "</span>" +
+        '<div class="fp2-copy"><strong>' + esc(name) + (isNew ? ' <em class="fp2-new">New</em>' : "") + "</strong>" +
+        '<span class="fp2-sub">' + (r.is_vendor ? '<i class="fa-solid fa-store"></i> ' : "") + esc(sub) + (when ? " · since " + esc(when) : "") + "</span>" + tagHtml + "</div>" +
+        (go ? '<button type="button" class="fp2-btn" onclick="event.stopPropagation();' + go + '">View shop</button>' : "") + "</div>";
+    }).join("");
+  };
+})();
