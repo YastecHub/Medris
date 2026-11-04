@@ -4466,6 +4466,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 #aiChatMessages .ai-chat-msg-user-copy:hover,#aiChatMessages .ai-chat-msg-user-copy:active{color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 9%,transparent) !important;opacity:1 !important;}
 
 /* splash: the circle between the two arcs blinks while the app opens */
-.lv-sp-blink{position:absolute;left:50%;top:50%;width:21%;height:21%;margin:-10.5% 0 0 -10.5%;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgb(30,141,95) 62%,rgba(30,141,95,0) 100%);animation:lvSpBlink 1.5s ease-in-out infinite}
+#levromartSplash .lv-sp-blink{display:block;z-index:3;position:absolute;left:50%;top:50%;width:21%;height:21%;margin:-10.5% 0 0 -10.5%;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgb(30,141,95) 62%,rgba(30,141,95,0) 100%);animation:lvSpBlink 1.5s ease-in-out infinite}
 @keyframes lvSpBlink{0%,38%,100%{opacity:0}46%,62%{opacity:1}70%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.lv-sp-blink{animation:none;opacity:0}}
+/* the blink is the one splash motion that also runs in the "calm" motion setting */
+html[data-levro-motion] #levromartSplash .lv-sp-blink{animation:lvSpBlink 1.5s ease-in-out infinite!important}
+@media (prefers-reduced-motion:reduce){html[data-levro-motion] #levromartSplash .lv-sp-blink{animation:none!important;opacity:0}}
