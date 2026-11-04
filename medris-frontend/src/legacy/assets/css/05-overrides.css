@@ -6977,3 +6977,12 @@ html[data-theme="black"]:root body #aiChatPanel .ai-chat-input-row textarea{back
 .lvw-chips.lvw-fchips .lvw-chip{flex:0 0 auto;padding:6px 11px;font-size:.78rem;white-space:nowrap}
 .lvw-tabs{grid-template-columns:1fr 1fr}
 .lvwh-page{padding:.2rem 0 5rem}
+
+/* history page: money in / money out totals and period chips */
+.lwh-sum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.lwh-sum-c{border-radius:16px;padding:12px 14px;background:rgba(128,128,128,.1)}
+.lwh-sum-c small{display:block;font-weight:700;opacity:.7;font-size:.76rem}
+.lwh-sum-c b{font-size:1.15rem;font-weight:800}
+.lwh-sum-c.in b{color:#0b8a5f}.lwh-sum-c.out b{color:#d93025}
+.lwh-periods{display:flex;gap:6px}.lwh-periods button{border:0;background:transparent;color:inherit;opacity:.6;font:inherit;font-size:.8rem;font-weight:800;padding:4px 2px;margin-right:10px;border-bottom:2px solid transparent;cursor:pointer}
+.lwh-periods button.on{opacity:1;border-bottom-color:#16a06a}
