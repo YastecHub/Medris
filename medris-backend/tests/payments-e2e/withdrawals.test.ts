@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- response bodies are checked field by field */
 import { describe, expect, it } from "vitest";
+import { resetWithdrawalSchemaCache } from "../../src/database/repositories/withdrawals.repository.js";
 import { api, handOver, json, newOrder, payOrder, rowOf, runJob, useWorld } from "./harness.js";
 
 // Migration 0017: completed orders leave the money waiting; the shop withdraws it. Money paid 24h+ ago goes at once,
@@ -24,6 +25,27 @@ describe("withdrawals", () => {
     await w.db.query(`update public.vendor_payouts set status = 'success' where status in ('on_hold','pending')`);
     await w.db.query(`delete from public.disputes`);
   };
+
+  it("before migration 0033 (no wallet columns yet) shops still see their money and withdraw it to the bank", async () => {
+    await clean();
+    const old = await done(5000, 60);
+    await w.db.query(`alter table public.withdrawal_requests rename column destination to destination_later`);
+    resetWithdrawalSchemaCache();
+    try {
+      const s = await call("get_withdrawal_summary", w.vendor.token);
+      expect(s.status).toBe(200);
+      expect(Number(s.data.instant_kobo)).toBeGreaterThan(0);
+      expect(s.data.open_wallet_request).toBeNull();
+      const r = await call("request_withdrawal", w.vendor.token);
+      expect(r.status).toBe(200);
+      expect(Number(r.data.sent_kobo)).toBeGreaterThan(0);
+      expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [old])).toMatchObject({ status: "pending" });
+      expect((await call("admin_list_withdrawals", w.admin.token)).status).toBe(200);
+    } finally {
+      await w.db.query(`alter table public.withdrawal_requests rename column destination_later to destination`);
+      resetWithdrawalSchemaCache();
+    }
+  });
 
   it("completing an order leaves the money waiting, nothing is sent", async () => {
     await clean();
