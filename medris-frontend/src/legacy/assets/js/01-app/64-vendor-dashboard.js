@@ -142,14 +142,15 @@ async function renderVendorDashboard() {
   // ---------- 4. Seller hub: listings overview, management tools, more options ----------
   const hubRow = (icon, title, sub, value, onclick) => `<button type="button" class="vh-row" onclick="${onclick}"><span class="vh-row-ico">${String(icon).charAt(0) === "<" ? icon : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span><span class="vh-row-copy"><strong>${title}</strong>${sub ? `<small>${sub}</small>` : ""}</span>${value ? `<span class="vh-row-val">${value}</span>` : ""}<i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   const goTab = (tab) => `try{localStorage.setItem('levromart-vendor-listing-tab','${tab}')}catch(_){};navigate('vendorProducts')`;
-  const hubStat = (icon, n, label, tab) => `<button type="button" class="vh-stat" onclick="${goTab(tab)}"><span class="vh-stat-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><span><b>${n}</b><small>${label}</small></span><i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
+  const hubStat = (icon, n, label, tab) => `<button type="button" class="vh-stat vh-stat-${tab}" onclick="${goTab(tab)}"><span class="vh-stat-ico">${String(icon).charAt(0) === "<" ? icon : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span><span><b>${n}</b><small>${label}</small></span><i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   html += `<hr class="vendor-profile-divider" />
   <div class="vh-hub">
-    <span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
+    <div class="vh-hero"><div class="vh-hero-copy"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
     <h2 class="vh-title">My Listings</h2>
-    <p class="vh-sub">Manage your products, services and packages in one place.</p>
-    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button>
-    <div class="vh-stats">${hubStat("fa-box", hubProducts, "Products", "products")}${hubStat("fa-hand-holding-heart", hubServices, "Services", "services")}${hubStat("fa-box-open", hubPackages, "Packages", "packages")}</div>
+    <p class="vh-sub">Manage your products, services and packages in one place.</p></div>
+    <img class="vh-hero-art" src="/icons3d/1f6cd-fe0f.webp" alt="" aria-hidden="true">
+    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button></div>
+    <div class="vh-stats">${hubStat('<img class="vh-3d" src="/icons3d/1f4e6.webp" alt="" loading="lazy" decoding="async">', hubProducts, "Products", "products")}${hubStat('<img class="vh-3d" src="/icons3d/1f6e0-fe0f.webp" alt="" loading="lazy" decoding="async">', hubServices, "Services", "services")}${hubStat('<img class="vh-3d" src="/icons3d/1f381.webp" alt="" loading="lazy" decoding="async">', hubPackages, "Packages", "packages")}</div>
     <div class="vh-section-head"><h3><i class="fa-solid fa-layer-group"></i> My listings</h3><button type="button" onclick="${goTab("all")}">Manage all <i class="fa-solid fa-chevron-right"></i></button></div>
     <div class="vh-tabs" role="tablist">
       <button type="button" role="tab" onclick="${goTab("products")}"><i class="fa-solid fa-box"></i> Products <em>${hubProducts}</em></button>
@@ -159,8 +160,8 @@ async function renderVendorDashboard() {
     <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${hubDiscarded ? ` (${hubDiscarded})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="navigate('vendorProducts').then(()=>setTimeout(()=>toggleVendorDiscarded(null,true),250))" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>
     <h3 class="vh-group">Management tools</h3>
     <div class="vh-list">
-      ${hubRow("fa-list-check", "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
-      ${hubRow("fa-calendar-days", "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4dd.webp" alt="" loading="lazy" decoding="async">', "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4c8.webp" alt="" loading="lazy" decoding="async">', "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
     </div>
     <h3 class="vh-group">Reviews &amp; ratings</h3>
     ${lvRatingCardHtml(v)}
@@ -168,9 +169,9 @@ async function renderVendorDashboard() {
     ${lvHoursCardHtml(v)}
     <h3 class="vh-group">More options</h3>
     <div class="vh-list">
-      ${hubRow("fa-comments", "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
-      ${hubRow("fa-lightbulb", "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
-      ${hubRow("fa-headset", "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4ac.webp" alt="" loading="lazy" decoding="async">', "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f4a1.webp" alt="" loading="lazy" decoding="async">', "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/1f6ce-fe0f.webp" alt="" loading="lazy" decoding="async">', "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
     </div>
     <div class="vh-list vh-list-single">${hubRow(window.LV_SETTINGS_SVG, "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
   </div>`;

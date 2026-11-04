@@ -6389,3 +6389,34 @@ html:root:root[data-theme="dark"] body #app .sg-top .sg-chip-new,html:root:root[
 html:root:root[data-theme="dark"] body #app .sg-top .sg-chip-done{background:rgba(34,197,94,.16)!important;color:#86efac!important}
 html:root:root[data-theme="dark"] body #app .sg-top .sg-av{background:rgba(139,92,246,.2);color:#ddd6fe}
 html:root:root[data-theme="dark"] body #app .sg-top .sg-who span{color:#9ca3af}
+
+/* Seller dashboard "My Listings", refreshed: a branded header card with the Add button, colour tiles with 3D icons,
+   3D icons on every tool row */
+html:root:root body #app .vh-hub .vh-hero{position:relative;overflow:hidden;padding:16px 16px 14px;border-radius:22px;background:linear-gradient(135deg,#0b3d2e 0%,#15803d 60%,#22c55e 100%);color:#fff;margin:4px 0 14px}
+html:root:root body #app .vh-hub .vh-hero-copy{position:relative;z-index:1;max-width:72%}
+html:root:root body #app .vh-hub .vh-hero .vl-eyebrow{color:rgba(255,255,255,.85)!important}
+html:root:root body #app .vh-hub .vh-hero .vh-title{color:#fff!important;margin:2px 0 4px!important;font-size:1.6rem!important}
+html:root:root body #app .vh-hub .vh-hero .vh-sub{color:rgba(255,255,255,.85)!important;font-size:.82rem!important;margin:0 0 12px!important}
+html:root:root body #app .vh-hub .vh-hero-art{position:absolute;right:-6px;top:6px;width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 10px 16px rgba(0,0,0,.3));pointer-events:none}
+html:root:root body #app .vh-hub .vh-hero .vl-add{position:relative;z-index:1;width:100%;height:46px!important;border-radius:14px!important;background:#fff!important;color:#0b3d2e!important;font-weight:800!important;box-shadow:0 8px 18px -10px rgba(0,0,0,.5)!important;border:0!important}
+html:root:root body #app .vh-hub .vh-stats{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+html:root:root body #app .vh-hub .vh-stat{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:6px!important;padding:12px!important;border-radius:18px!important;border:0!important;box-shadow:none!important;text-align:left}
+html:root:root body #app .vh-hub .vh-stat .vh-chev{display:none!important}
+html:root:root body #app .vh-hub .vh-stat-ico{width:40px!important;height:40px!important;border-radius:12px!important;background:rgba(255,255,255,.7)!important;display:grid!important;place-items:center!important;border:0!important}
+html:root:root body #app .vh-hub .vh-3d{width:30px;height:30px;object-fit:contain}
+html:root:root body #app .vh-hub .vh-stat b{display:block;font-size:1.4rem!important;line-height:1.1}
+html:root:root body #app .vh-hub .vh-stat small{font-size:.74rem!important;font-weight:700;opacity:.8}
+html:root:root body #app .vh-hub .vh-stat-products{background:#dcfce7!important;color:#14532d!important}
+html:root:root body #app .vh-hub .vh-stat-services{background:#ffedd5!important;color:#7c2d12!important}
+html:root:root body #app .vh-hub .vh-stat-packages{background:#f3e8ff!important;color:#581c87!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-products{background:rgba(34,197,94,.14)!important;color:#bbf7d0!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-services{background:rgba(249,115,22,.14)!important;color:#fed7aa!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-packages{background:rgba(168,85,247,.16)!important;color:#e9d5ff!important}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-ico{background:rgba(255,255,255,.08)!important}
+html:root:root body #app .vh-hub .vh-row-ico{width:40px!important;height:40px!important;border-radius:12px!important;background:#f1f5f9!important;display:grid!important;place-items:center!important;flex:none}
+html:root:root[data-theme="dark"] body #app .vh-hub .vh-row-ico{background:rgba(255,255,255,.07)!important}
+html:root:root body #app .vh-hub .vh-row-ico .vh-3d{width:26px;height:26px}
+html:root:root body #app .vh-hub .vh-tabs button{border-radius:999px!important}
+html:root:root body #app .vh-hub .vl-discarded{border-radius:16px!important}
+html:root:root body #app .vh-hub .vh-hero .vl-add,html:root:root body #app .vh-hub .vh-hero .vl-add *{color:#0b3d2e!important;-webkit-text-fill-color:#0b3d2e!important}
+html:root:root body #app .vh-hub .vh-hero .vl-add{background-image:none!important;display:flex!important;align-items:center;justify-content:center;gap:8px;font-size:.95rem!important}
