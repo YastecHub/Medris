@@ -6215,3 +6215,63 @@ html:root:root body #app .contact-us-help .vl-add{border-radius:999px!important}
 /* Comment box: a straight box that grows with the text (not an oval pill) */
 html:root:root .product-comment-compose-row{align-items:flex-end!important}
 html:root:root .product-comment-compose-row textarea{border-radius:10px!important;min-height:42px!important;max-height:160px!important;padding:10px 12px!important;line-height:1.4!important;resize:none!important;overflow-y:auto!important;height:auto}
+
+/* Wallet card, shorter: balance and @tag on one line, two slim buttons (no History button: the strip below is the history) */
+html:root:root body .lvw-card.lvw3{padding:13px 14px 0}
+.lvw3 .lw-balrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.lvw3 .lw-bal{font-size:1.65rem}
+html:root:root body .lvw3 .lw-balrow .lw-tag{margin-top:0;align-self:center}
+html:root:root body .lvw3 .lw-add{min-height:32px;padding:0 12px;font-size:.78rem}
+.lvw3 .lw-earn{margin-top:10px;padding:8px 10px}
+html:root:root body .lvw3 .lw-acts.lw-acts2{grid-template-columns:1fr 1fr;gap:8px;margin:11px 0 10px}
+html:root:root body .lvw3 .lw-acts.lw-acts2 button{flex-direction:row;justify-content:center;gap:7px;height:36px;border-radius:12px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.18);font-size:.8rem;font-weight:800;letter-spacing:.01em}
+html:root:root body .lvw3 .lw-acts.lw-acts2 button i{font-size:.82rem;opacity:.95}
+html:root:root body .lvw3 .lw-acts.lw-acts2 button:active{transform:scale(.97);background:rgba(255,255,255,.24)}
+html:root:root body .lvw-card.lvw3 .lvw-strip{height:36px}
+.lvw3 .lvw-note{margin-top:8px}
+
+/* Admin: Levromart's own wallet (commission) */
+.aw-card.lwa{padding:10px}
+.lwa-card{padding:14px;border-radius:16px;background:linear-gradient(135deg,#0b3d2e,#15803d);color:#fff}
+.lwa-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.lwa-top small{display:block;font-size:.74rem;opacity:.85}
+.lwa-bal{display:block;font-size:1.6rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;color:#fff}
+html:root:root body .lwa-wd{flex:none;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:0;border-radius:999px;background:#fff;color:#0b3d2e;font-weight:800;font-size:.78rem;cursor:pointer}
+html:root:root body .lwa-wd:disabled{opacity:.5;cursor:default}
+.lwa-bankrow{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.18);font-size:.76rem}
+.lwa-bankrow span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html:root:root body .lwa-bankrow button{flex:none;padding:3px 10px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:transparent;color:#fff;font-size:.72rem;font-weight:800;cursor:pointer}
+.lwa-wait{margin-top:8px;font-size:.74rem;padding:6px 10px;border-radius:10px;background:rgba(250,204,21,.18);color:#fef9c3}
+.lwa-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.lwa-tiles>div{padding:7px 6px;border-radius:10px;background:rgba(255,255,255,.12);text-align:center;min-width:0}
+.lwa-tiles small{display:block;font-size:.64rem;opacity:.8}
+.lwa-tiles b{display:block;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lwa-hist{display:flex;flex-direction:column}
+.lwa-day{margin:10px 2px 4px;font-size:.72rem;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.lwa-bank{margin:6px 0;padding:6px 10px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-size:.74rem;font-weight:700}
+.lwa-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #f1f5f9}
+.lwa-ic{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:.8rem}
+.lwa-ic.in{background:#dcfce7;color:#15803d}.lwa-ic.out{background:#e0e7ff;color:#4338ca}.lwa-ic.wait{background:#fef3c7;color:#b45309}
+.lwa-ic.fail{background:#fee2e2;color:#b91c1c}.lwa-ic.back{background:#f1f5f9;color:#475569}
+.lwa-mid{flex:1;min-width:0;display:flex;flex-direction:column}
+.lwa-mid b{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lwa-mid small{font-size:.7rem;color:#6b7280}
+.lwa-amt{font-weight:800;font-size:.84rem;white-space:nowrap}
+.lwa-amt.in{color:#15803d}.lwa-amt.out{color:#4338ca}.lwa-amt.wait{color:#b45309}.lwa-amt.fail{color:#b91c1c;text-decoration:line-through}.lwa-amt.back{color:#475569}
+.lwa-pwlabel{display:block;font-size:.78rem;font-weight:700;margin:6px 0 4px}
+html:root:root body .lwa-pw{display:block;width:100%;height:44px;margin:0 0 10px;padding:0 12px;border:1.5px solid #d1d5db;border-radius:12px;background:#fff;color:#111827;font-size:.95rem}
+.lwa-found{display:flex;flex-direction:column;gap:2px;margin:0 0 10px;padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}
+.lwa-found span{font-size:.76rem;color:#4b5563}
+:root[data-theme="dark"] .lwa-day{color:#9ca3af}
+:root[data-theme="dark"] .lwa-row{border-color:rgba(255,255,255,.07)}
+:root[data-theme="dark"] .lwa-mid small{color:#9ca3af}
+:root[data-theme="dark"] .lwa-bank{background:rgba(59,130,246,.15);color:#93c5fd}
+:root[data-theme="dark"] .lwa-ic.in{background:rgba(34,197,94,.16);color:#4ade80}:root[data-theme="dark"] .lwa-amt.in{color:#4ade80}
+:root[data-theme="dark"] .lwa-ic.out{background:rgba(99,102,241,.18);color:#a5b4fc}:root[data-theme="dark"] .lwa-amt.out{color:#a5b4fc}
+:root[data-theme="dark"] .lwa-ic.back{background:rgba(255,255,255,.08);color:#cbd5e1}:root[data-theme="dark"] .lwa-amt.back{color:#cbd5e1}
+html:root:root[data-theme="dark"] body .lwa-pw{background:#1f2937;border-color:#374151;color:#f9fafb}
+:root[data-theme="dark"] .lwa-found{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3)}
+:root[data-theme="dark"] .lwa-found span{color:#cbd5e1}
+.lvw3 .lw-earn b small{font-size:.7rem;font-weight:600;opacity:.8;margin-right:2px}
+html:root:root body .lvw3 .lw-earn button{min-height:30px}
+html:root:root body .lwa-more{margin:10px auto 2px;padding:6px 14px;border:1px solid #d1d5db;border-radius:999px;background:transparent;color:inherit;font-size:.76rem;font-weight:700;cursor:pointer}
