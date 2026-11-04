@@ -2870,25 +2870,12 @@ window.lvAskCancel = async function (orderId) {
   };
 })();
 
-/* ===== Header search: the hint types itself out ("Search for products", "Search for vendors near you", ...) =====
-   The visible bar is the button .header-search-row (its text is a span); the real input opens when it is tapped. */
+/* ===== Header search: a plain, steady hint (it no longer cycles through words) ===== */
 (function () {
-  var PHRASES = ["Search for products", "Search for vendors near you", "Search for services", "Search for things to rent", "Search for food & drinks"];
-  var i = 0, n = 0, dir = 1;
-  try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (_) {}
-  function tick() {
-    var el = document.querySelector(".header-search-row > span");
-    if (!el || document.hidden) { setTimeout(tick, 1000); return; }
-    var p = PHRASES[i];
-    n += dir;
-    el.textContent = p.slice(0, n) + (n > 0 ? "" : "Search…");
-    var wait = 70;
-    if (dir > 0 && n >= p.length) { dir = -1; wait = 1600; }
-    else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % PHRASES.length; wait = 400; }
-    else if (dir < 0) wait = 28;
-    setTimeout(tick, wait);
-  }
-  setTimeout(tick, 1200);
+  var HINT = "Search products, vendors and services";
+  function set() { var el = document.querySelector(".header-search-row > span"); if (el && el.textContent !== HINT) el.textContent = HINT; }
+  setInterval(function () { if (!document.hidden) set(); }, 1200);
+  setTimeout(set, 300);
 })();
 
 /* ===== New accounts: a skippable "Set up your profile" page (photo + name), like WhatsApp ===== */
@@ -6087,14 +6074,5 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var list = st === "all" ? A.orders : A.orders.filter(function (o) { return o.status === st; });
     filtering = true; try { host.innerHTML = window.orderListHtml(list, A.isCust, A.src); } finally { filtering = false; }
     try { currentViewParams.status = st; window.__orderListOrders = list; } catch (_) {}
-  }, true);
-  // the side panel opens on touch, not after the finger lifts
-  var openedAt = 0;
-  document.addEventListener("pointerdown", function (e) {
-    if (e.pointerType === "mouse" || !e.target.closest || !e.target.closest("#avatarBtn")) return;
-    openedAt = Date.now(); try { openProfileOrShop(); } catch (_) {}
-  }, true);
-  document.addEventListener("click", function (e) {
-    if (Date.now() - openedAt < 700 && e.target.closest && e.target.closest("#avatarBtn")) { e.stopImmediatePropagation(); e.preventDefault(); }
   }, true);
 })();

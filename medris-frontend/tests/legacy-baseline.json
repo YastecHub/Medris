@@ -1,12 +1,12 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "56b494063ab93add4e937f41ee541b1a3eece57ec6db0b4453fdd2462d1b8671",
+    "index.html": "7a78fdaf975cb4c0669bd2984085def1c95aa22349e6737be49c0250036a85aa",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "105f2dff9e78540ad4fafd89c6450dcd539b1034c45cf5b6b867fec8db3fdf41",
     "assets/css/04-shell.css": "ee55c3fa57d56111b3e6e69997cadc9cbd9eea62b4dfb0f4917a7fc69917353f",
-    "assets/css/05-overrides.css": "3fa7741332dade0ffac20f45008d6007ea6bf3216198af63739d1ed328318748",
+    "assets/css/05-overrides.css": "d0ab369af7f26fb4b70b31bb3257c011e012a957ff7dcd2f441ba36906c84c74",
     "assets/js/01-app.js": "790627007cc05c14521de5990212190044f8ed80798b2c4490acd033c7f6f7d9",
     "assets/js/02-levromart-legal-consent-final-js.js": "be98e78bcda9fe58a6f75cc4b2ced9bab14bb66073c7fcf9b37f2527536f7eb6",
     "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "bef5a81c2aeeb2959367765fa2ff00791279ff411d1c09518d7ff3aa5906e7a0",
@@ -20,8 +20,8 @@
     "assets/js/11-levromart-global-broken-image-fallback.js": "386a13d33fd705122356e8f733fc0f0605158322c36a458df64a5208daff538d",
     "assets/js/12-lv-onboarding-auth-js.js": "9fced36356175e104d10654aa9acc034da9e0c12cfc55045eadb77df9676b230",
     "assets/js/13-face-verify.js": "c6bb25b5fdc1e402431ec5cf0e529fd613a3164440df54c84c4e4125a66334e4",
-    "assets/js/14-motion.js": "043e2ff8b838f67dd925d17de09fc5c214756825447df294f502a9691fe5e769",
+    "assets/js/14-motion.js": "32bdfc753497cd0dd23fed59c90d6f4f0cba566d7eef5bb3de743141818d8bdd",
     "assets/js/15-autosave.js": "8e2bfd6570edb21f584bfa2a2ff848f34c173beb09e5e7dd9b622555c69b5582",
-    "sw.js": "b1bc89a20b27009ca2c207102873113db5c3f46cdbe11aecfe03d5c62e6a99c6"
+    "sw.js": "1d1a85758b448fc1e0fb6450abac6767a2beb594a4ce07f0e5c4f5e10903d220"
   }
 }
