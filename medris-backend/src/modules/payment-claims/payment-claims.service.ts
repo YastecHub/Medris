@@ -92,7 +92,7 @@ export class PaymentClaimsService {
    * transfer (a delivery deposit confirms the order; a final payment completes it or starts the buyer's 48-hour
    * confirmation) and tells both sides. Runs inside the caller's transaction; the payment row must already be paid.
    */
-  async applyConfirmedCardPayment(tx: Tx, orderId: string, reference: string): Promise<void> {
+  async applyConfirmedCardPayment(tx: Tx, orderId: string, reference: string, paidWith = "Paystack"): Promise<void> {
     const claims = new PaymentClaimsRepository(tx);
     const o = await claims.order(orderId);
     const type = await claims.paymentTypeByReference(reference);
@@ -107,7 +107,7 @@ export class PaymentClaimsService {
       userId: o.buyer_id,
       type: "payment_confirmed",
       title: "Payment received",
-      body: `Your ${label} was paid with Paystack.${after.complete ? " The order is now complete and ready for review." : after.await ? " The vendor will now get your order ready and mark it out for delivery." : ""}`,
+      body: `Your ${label} was paid with ${paidWith}.${after.complete ? " The order is now complete and ready for review." : after.await ? " The vendor will now get your order ready and mark it out for delivery." : ""}`,
       targetView: "orderDetail",
       targetParams: { orderId, reviewEligible: after.complete },
       actorId: null,

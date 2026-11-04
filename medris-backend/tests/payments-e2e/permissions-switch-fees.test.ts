@@ -79,6 +79,7 @@ describe("who may do what, the on/off switch, and Levromart's own fees", () => {
       expect(w.paystack.callsTo("POST", "/transfer")).toHaveLength(1);
       const paid2 = await newOrder(w, 1000);
       const ref2 = await payOrder(w, paid2);
+      await w.db.query(`update public.wallet_accounts set frozen = true where user_id = $1`, [w.buyer.id]); // so the refund goes to the card (see refunds-and-disputes)
       const r = await json(await api.post(w, `/admin/orders/${paid2}/refund`, w.admin.token, { reason: "switch is off" }, w.appOff));
       expect(r.status).toBe(200);
       await runJob(w, "paystack-refunds");

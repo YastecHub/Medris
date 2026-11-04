@@ -100,6 +100,8 @@ const L = {
   suggestions: per("suggestions-write", 20),
   withdrawals: per("withdrawals-write", 20),
   refundAccount: per("refund-account-write", 20, 3_600_000),
+  wallet: per("wallet-write", 20),
+  walletSearch: per("wallet-search", 60),
 };
 
 /* ------------------------------------------------------------------ table */
@@ -468,7 +470,19 @@ export const RPC: Record<string, RpcEntry> = {
   get_setup_status: { run: (s, me) => s.setupStatus.status(me) },
   // Withdrawals
   get_withdrawal_summary: { run: (s, me) => setup("Withdrawals", s.withdrawals.summary(me)) },
-  request_withdrawal: { run: (s, me) => setup("Withdrawals", s.withdrawals.request(me)), limit: L.withdrawals },
+  request_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.request(me, str(a.p_destination) ?? "bank")), limit: L.withdrawals },
+  // The Levromart wallet (migration 0033)
+  get_levro_wallet: { run: (s, me) => s.wallet.summary(me) },
+  get_levro_wallet_history: { run: (s, me, a) => s.wallet.history(me, str(a.p_before)) },
+  find_wallet_people: { run: (s, me, a) => s.wallet.find(me, str(a.p_query)), limit: L.walletSearch },
+  set_wallet_handle: { run: (s, me, a) => s.wallet.changeHandle(me, str(a.p_handle)), limit: L.wallet },
+  wallet_send: { run: (s, me, a) => s.wallet.send(me, { toHandle: str(a.p_to), amountKobo: num(a.p_amount_kobo), note: str(a.p_note), key: str(a.p_key) }), limit: L.wallet },
+  wallet_topup: { run: (s, me, a) => s.wallet.topup(me, num(a.p_amount_kobo), s.config.appOrigin), limit: L.wallet },
+  wallet_withdraw: { run: (s, me, a) => s.wallet.withdraw(me, num(a.p_amount_kobo)), limit: L.withdrawals },
+  wallet_pay_order: { run: (s, me, a) => s.wallet.payOrder(me, str(a.p_order_id)), limit: L.checkout },
+  admin_wallets: { run: (s, me, a) => s.wallet.adminList(me, str(a.p_query)) },
+  admin_decide_wallet_withdrawal: { run: (s, me, a) => s.wallet.decideWithdrawal(me, str(a.p_id), str(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
+  admin_set_wallet_frozen: { run: (s, me, a) => s.wallet.adminFreeze(me, str(a.p_user_id), bool(a.p_frozen), str(a.p_reason)), limit: L.adminUsers },
   admin_list_withdrawals: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.adminList(me, str(a.p_status))) },
   admin_decide_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason))), limit: L.withdrawals },
   admin_reopen_dispute: { run: (s, me, a) => setup("Reopening disputes", s.withdrawals.reopenDispute(me, id(a.p_dispute_id), str(a.p_note))), limit: L.withdrawals },

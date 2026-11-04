@@ -79,14 +79,18 @@ export class PaymentsAdminRepository {
     const r = await jsonRow<Totals>(
       this.db,
       sql`select
+            -- money that really came in through Paystack: card order payments and wallet top-ups (an order paid from a wallet is
+            -- money that already came in as a top-up, so it is not counted twice)
             (select coalesce(sum(amount_kobo), 0) from public.paystack_transactions
-              where status in ('success', 'partially_refunded', 'refunded') and purpose in ('order_payment', 'order_balance') and paid_at >= now() - make_interval(days => ${days}))::text as collected_kobo,
+              where status in ('success', 'partially_refunded', 'refunded') and purpose in ('order_payment', 'order_balance', 'wallet_topup')
+                and channel is distinct from 'wallet' and paid_at >= now() - make_interval(days => ${days}))::text as collected_kobo,
             (select coalesce(sum(amount_kobo), 0) from public.paystack_refunds
               where status in ('processing', 'processed') and created_at >= now() - make_interval(days => ${days}))::text as refunded_kobo,
             (select coalesce(sum(amount_kobo), 0) from public.vendor_payouts
               where status in ('success', 'paid_manually') and updated_at >= now() - make_interval(days => ${days}))::text as paid_out_kobo,
-            (select coalesce(sum(commission_kobo), 0) from public.vendor_payouts
-              where status in ('success', 'paid_manually') and updated_at >= now() - make_interval(days => ${days}))::text as commission_kobo`,
+            -- Levromart's commission earned on orders paid through Levromart (card or wallet), counted when the order completes
+            (select coalesce(round(sum(c.amount) * 100), 0) from public.commission_charges c
+              where c.status = 'paid' and c.payment_id is not null and c.paid_at >= now() - make_interval(days => ${days}))::text as commission_kobo`,
     );
     return r as Totals;
   }

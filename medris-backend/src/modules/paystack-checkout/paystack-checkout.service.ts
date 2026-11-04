@@ -103,6 +103,9 @@ export class PaystackCheckoutService {
       if (!PAYABLE_STATES.includes(o.status)) throw badRequest("This order can no longer be paid online.");
       const due = await claims.outstanding(o);
       if (due === "none" || due.expected == null || !(Number(due.expected) > 0)) throw badRequest("There is nothing left to pay on this order.");
+      // a refundable deposit exists only for rentals; on a sale, deposit_amount holds the price already paid (migration 0022),
+      // so it must never be asked for a second time
+      if (due.type === "deposit" && o.order_type !== "rental") throw badRequest("There is nothing left to pay on this order.");
 
       // outstanding() keeps naming the balance after it has been paid, so ask whether this very payment is already done
       if (await claims.paid(orderId, [due.type])) throw badRequest("There is nothing left to pay on this order.");

@@ -539,6 +539,28 @@ async function deleteAccount(body, res) {
     }
   }
 
+  // Money in the Levromart wallet (or on its way to the bank) belongs to the person: it must be withdrawn or used before the
+  // account can be deleted, otherwise it would be lost (migration 0033; the check is skipped if the wallet is not set up yet).
+  const walletResponse = await fetch(
+    `${supabaseUrl}/rest/v1/wallet_accounts?user_id=eq.${encodeURIComponent(uid)}&select=balance_kobo`,
+    { headers: svcHeaders }
+  );
+  if (walletResponse.ok) {
+    const rows = await readJson(walletResponse);
+    const kobo = Number((Array.isArray(rows) && rows[0] && rows[0].balance_kobo) || 0);
+    if (kobo > 0) {
+      return res.status(400).json({ error: `You still have ₦${(kobo / 100).toLocaleString()} in your Levromart wallet. Withdraw it or use it before deleting your account.` });
+    }
+    const pendingResponse = await fetch(
+      `${supabaseUrl}/rest/v1/wallet_withdrawals?user_id=eq.${encodeURIComponent(uid)}&status=in.(requested,processing)&select=id`,
+      { headers: svcHeaders }
+    );
+    const pending = pendingResponse.ok ? await readJson(pendingResponse) : [];
+    if (Array.isArray(pending) && pending.length) {
+      return res.status(400).json({ error: "A withdrawal from your wallet is still on its way. Please wait until it reaches your bank, then try again." });
+    }
+  }
+
   // Capture conversations before the SQL wipe so their storage attachments
   // can also be removed.
   let conversationIds = [];

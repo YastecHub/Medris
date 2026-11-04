@@ -5,7 +5,7 @@ import { jsonReturning, jsonRow, jsonRows } from "../json.js";
 export interface LedgerTransaction {
   id: string;
   reference: string;
-  purpose: "order_payment" | "order_balance" | "listing_fee" | "commission";
+  purpose: "order_payment" | "order_balance" | "listing_fee" | "commission" | "wallet_topup";
   order_id: string | null;
   vendor_id: string | null;
   amount_kobo: string; // bigint comes back as text
@@ -202,9 +202,23 @@ export class PaystackLedgerRepository {
       values (${a.reference}, ${a.purpose}, ${a.orderId}, ${a.vendorId}, ${a.payerUserId}, ${a.amountKobo})`);
   }
 
+  /** A wallet top-up attempt (migration 0033): no order; what the wallet will get is kept with it. */
+  async insertTopupAttempt(a: { reference: string; payerUserId: string; amountKobo: number; netKobo: number }): Promise<void> {
+    await this.db.execute(sql`
+      insert into public.paystack_transactions (reference, purpose, payer_user_id, amount_kobo, raw_last_event)
+      values (${a.reference}, 'wallet_topup', ${a.payerUserId}, ${a.amountKobo}, jsonb_build_object('topup', jsonb_build_object('net_kobo', ${a.netKobo}::bigint)))`);
+  }
+
+  /** What a top-up puts in the wallet, as recorded when it started (null when it is not a top-up). */
+  async topupNetKobo(reference: string): Promise<number | null> {
+    const r = await jsonRow<{ k: string | null }>(this.db, sql`select (raw_last_event -> 'topup' ->> 'net_kobo') as k from public.paystack_transactions where reference = ${reference} and purpose = 'wallet_topup'`);
+    const n = Number(r?.k);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  }
+
   async storeAuthorization(reference: string, authorization: { authorization_url: string; access_code: string }): Promise<void> {
     await this.db.execute(sql`
-      update public.paystack_transactions set raw_last_event = jsonb_build_object('initialize', ${JSON.stringify(authorization)}::jsonb)
+      update public.paystack_transactions set raw_last_event = coalesce(raw_last_event, '{}'::jsonb) || jsonb_build_object('initialize', ${JSON.stringify(authorization)}::jsonb)
       where reference = ${reference}`);
   }
 
