@@ -6479,3 +6479,153 @@ html:root:root body #aiChatPanel .lvthink-row{display:flex}
 html:root:root body #aiChatPanel .lvthink{display:inline-flex;align-items:center;gap:.6rem;padding:.35rem .2rem;font-size:.9rem;font-weight:600;color:color-mix(in srgb,var(--lvl-ink) 70%,transparent)}
 html:root:root body #aiChatPanel .lvthink-mark{width:26px;height:26px;flex:none;background:#0f9d6b;-webkit-mask:url(/levromart-badge.png) center/contain no-repeat;mask:url(/levromart-badge.png) center/contain no-repeat;animation:lvLocSpin .9s linear infinite}
 html[data-theme="dark"]:root body #aiChatPanel .lvthink-mark{background:#34d399}
+
+
+/* the Black theme looks like Dark everywhere it was styled for Dark (wallet, orders, followers, edit profile, Levi…) */
+:root[data-theme="black"] .lw-sheet .lw-l{color:#cbd5e1}
+:root[data-theme="black"] .lw-amt,:root[data-theme="black"] .lw-to,:root[data-theme="black"] .lw-in{background:#2d333b;border-color:rgba(255,255,255,.1)}
+:root[data-theme="black"] .lw-amt input,:root[data-theme="black"] .lw-to input,:root[data-theme="black"] .lw-in{color:#e9ebed}
+:root[data-theme="black"] .lw-person,:root[data-theme="black"] .lw-pay,:root[data-theme="black"] .lw-chips button{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
+:root[data-theme="black"] .lw-bank{background:#2d333b}:root[data-theme="black"] .lw-list li{border-color:rgba(255,255,255,.06)}
+:root[data-theme="black"] .lw-amt.out{color:#e9ebed}
+:root[data-theme="black"] .aw-card{background:#22272e;border-color:rgba(255,255,255,.08)}
+:root[data-theme="black"] .aw-tiles>div,:root[data-theme="black"] .aw-range,:root[data-theme="black"] .aw-search{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
+:root[data-theme="black"] .aw-range button.on{background:#22272e;color:#e9ebed}
+:root[data-theme="black"] .aw-held b,:root[data-theme="black"] .aw-row b{color:#e9ebed}:root[data-theme="black"] .aw-row{border-color:rgba(255,255,255,.06)}
+:root[data-theme="black"]:root:root:root body #app#app #settings-page .settings-inline-btn:not(.active){background:#2d333b!important;color:#e9ebed!important;border-color:rgba(255,255,255,.12)!important}
+:root[data-theme="black"] body #app .sr-empty2 .sr-chip{background:#22272e;border-color:rgba(255,255,255,.12);color:#e9ebed}
+html:root:root[data-theme="black"] body #app#app .vmpage .vmp-bottom,html:root:root body #app#app .vmpage[data-style="night"] .vmp-bottom{background:linear-gradient(to top,rgba(20,24,28,.6) 0%,rgba(20,24,28,.25) 45%,rgba(20,24,28,0) 100%)!important}
+:root[data-theme="black"] body #app .contact-us-row:nth-child(1) .contact-us-row-icon{background:rgba(234,67,53,.15)!important}
+:root[data-theme="black"] body #app .contact-us-row:nth-child(2) .contact-us-row-icon{background:rgba(22,163,74,.15)!important}
+:root[data-theme="black"] body #app .contact-us-row:nth-child(3) .contact-us-row-icon{background:rgba(26,115,232,.15)!important}
+:root[data-theme="black"] .lwa-day{color:#9ca3af}
+:root[data-theme="black"] .lwa-row{border-color:rgba(255,255,255,.07)}
+:root[data-theme="black"] .lwa-mid small{color:#9ca3af}
+:root[data-theme="black"] .lwa-bank{background:rgba(59,130,246,.15);color:#93c5fd}
+:root[data-theme="black"] .lwa-ic.in{background:rgba(34,197,94,.16);color:#4ade80}:root[data-theme="black"] .lwa-amt.in{color:#4ade80}
+:root[data-theme="black"] .lwa-ic.out{background:rgba(99,102,241,.18);color:#a5b4fc}:root[data-theme="black"] .lwa-amt.out{color:#a5b4fc}
+:root[data-theme="black"] .lwa-ic.back{background:rgba(255,255,255,.08);color:#cbd5e1}:root[data-theme="black"] .lwa-amt.back{color:#cbd5e1}
+html:root:root[data-theme="black"] body .lwa-pw{background:#1f2937;border-color:#374151;color:#f9fafb}
+:root[data-theme="black"] .lwa-found{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3)}
+:root[data-theme="black"] .lwa-found span{color:#cbd5e1}
+html:root:root[data-theme="black"] body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{border-color:rgba(255,255,255,.14)}
+:root[data-theme="black"] .lv-cr-tag.seller{background:rgba(34,197,94,.18);color:#86efac}
+:root[data-theme="black"] .lv-cr-tag.author{background:rgba(99,102,241,.2);color:#c7d2fe}
+:root[data-theme="black"] .fp2-stat.g{background:rgba(34,197,94,.15);color:#86efac}:root[data-theme="black"] .fp2-stat.o{background:rgba(249,115,22,.15);color:#fdba74}
+:root[data-theme="black"] .fp2-stat.p{background:rgba(168,85,247,.16);color:#d8b4fe}:root[data-theme="black"] .fp2-stat.b{background:rgba(59,130,246,.16);color:#93c5fd}
+:root[data-theme="black"] body #app .fp2 .fp-tab.active{background:#f9fafb!important;border-color:#f9fafb!important;color:#111827!important}
+:root[data-theme="black"] .fp2-ring>*{border-color:#0f1115}
+:root[data-theme="black"] .fp2-sub{color:#9ca3af}
+:root[data-theme="black"] .fp2-btn{background:rgba(99,102,241,.2);color:#c7d2fe}
+html:root:root[data-theme="black"] body #app .fp2 .fp-tabs .fp-tab.active,html:root:root[data-theme="black"] body #app .fp2 .fp-tabs .fp-tab.active b{color:#111827!important;-webkit-text-fill-color:#111827!important}
+html:root:root[data-theme="black"] body .fp2-btn{background:rgba(99,102,241,.22)!important;color:#c7d2fe!important}
+:root[data-theme="black"] .lv-loc-logo{background:#34d399}
+html:root:root:root[data-theme="black"] body #app .ve-card.lv-flat input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),html:root:root[data-theme="black"] body #app .ve-card.lv-flat select,html:root:root[data-theme="black"] body #app .ve-card.lv-flat textarea{border-bottom-color:#30363d!important;background:#161b22!important;border-color:#30363d!important;color:#f3f4f6!important}
+html:root:root[data-theme="black"] body #app .ve-card label{color:#9ca3af}
+html:root:root[data-theme="black"] body #app .sg-top .sg-chip{background:rgba(255,255,255,.08);color:#cbd5e1}
+html:root:root[data-theme="black"] body #app .sg-top .sg-chip-new,html:root:root[data-theme="black"] body #app .sg-head .sg-head-badge{background:rgba(239,68,68,.18)!important;color:#fca5a5!important}
+html:root:root[data-theme="black"] body #app .sg-top .sg-chip-done{background:rgba(34,197,94,.16)!important;color:#86efac!important}
+html:root:root[data-theme="black"] body #app .sg-top .sg-av{background:rgba(139,92,246,.2);color:#ddd6fe}
+html:root:root[data-theme="black"] body #app .sg-top .sg-who span{color:#9ca3af}
+html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-products{background:rgba(34,197,94,.14)!important;color:#bbf7d0!important}
+html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-services{background:rgba(249,115,22,.14)!important;color:#fed7aa!important}
+html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-packages{background:rgba(168,85,247,.16)!important;color:#e9d5ff!important}
+html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-ico{background:rgba(255,255,255,.08)!important}
+html:root:root[data-theme="black"] body #app .vh-hub .vh-row-ico{background:rgba(255,255,255,.07)!important}
+html:root:root body #app .vh-hub .vh-stat-products,html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-products{background:linear-gradient(160deg,#17845a 0%,#014a2e 100%)!important}
+html:root:root body #app .vh-hub .vh-stat-services,html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-services{background:linear-gradient(160deg,#e7891f 0%,#7e4114 100%)!important}
+html:root:root body #app .vh-hub .vh-stat-packages,html:root:root[data-theme="black"] body #app .vh-hub .vh-stat-packages{background:linear-gradient(160deg,#775c96 0%,#392651 100%)!important}
+html:root:root:root[data-theme="black"] body #app#app .orders-icon-btn.lvo-pill{background:#1c222b!important;border-color:rgba(255,255,255,.12)!important;color:#e5e7eb!important;-webkit-text-fill-color:#e5e7eb!important;box-shadow:none!important}
+html:root:root:root[data-theme="black"] body #app#app .orders-icon-btn.lvo-pill i{color:#4ade80!important;-webkit-text-fill-color:#4ade80!important}
+html:root:root:root[data-theme="black"] body #app#app .lvo-empty{background:#161b22!important;border-color:rgba(255,255,255,.08)!important;box-shadow:none!important;color:#e5e7eb!important}
+html:root:root:root[data-theme="black"] body #app#app .lvo-empty strong{color:#f3f4f6!important;-webkit-text-fill-color:#f3f4f6!important}
+html:root:root:root[data-theme="black"] body #app#app .lvo-empty>span:not(.lvo-empty-ico){color:#9ca3af!important;-webkit-text-fill-color:#9ca3af!important}
+html:root:root:root[data-theme="black"] body #app#app .lvo-empty .lvo-empty-ico{background:rgba(255,255,255,.06)!important}
+html:root:root:root[data-theme="black"] body #app#app .lvo-empty .lvo-btn{background:#16a34a!important;color:#fff!important;-webkit-text-fill-color:#fff!important;box-shadow:none!important}
+html:root:root[data-theme="black"] body #app .vmpage .vmp-locate.is-loading::after{background:#34d399}
+html[data-theme="black"]:root body #aiChatPanel .lvthink-mark{background:#34d399}
+/* Edit profile, student verification and every edit form: fields follow the theme (no white boxes in Dark / Black) */
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app :is(.ve-card,.lv-sv,.ep-page,.ps-page,.ep-card,.card.lv-flat) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),select,textarea),
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body .lv-sv :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){background:#161b22!important;border:1.5px solid #30363d!important;border-bottom:1.5px solid #30363d!important;color:#f3f4f6!important;-webkit-text-fill-color:#f3f4f6!important;border-radius:12px!important;box-shadow:none!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app :is(.ve-card,.lv-sv,.ep-page,.ps-page) :is(input,textarea)::placeholder{color:#6b7280!important;-webkit-text-fill-color:#6b7280!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app :is(.ve-card,.lv-sv,.ep-page,.ps-page) :is(input,select,textarea):focus{border-color:#22c55e!important;box-shadow:0 0 0 3px rgba(34,197,94,.18)!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body .lv-sv :is(.up button,.face-btn,.sv-nostudent,.sv-nomatric,.sv-nodocs){background:#161b22!important;border-color:#30363d!important;color:#e5e7eb!important}
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body .lv-sv .sv-edit{border-color:#30363d!important;color:#e5e7eb!important}
+
+/* Comment threads: the reply line is a thin, faint guide (not a thick white bar) */
+html:root:root body .comment-replies-dropdown>.product-comment-row::before,
+html:root:root body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{border-width:1px!important;border-color:rgba(127,127,127,.22)!important}
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body .comment-replies-dropdown>.product-comment-row::before,
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body .comment-replies-dropdown>.product-comment-row:not(:last-child)::after{border-color:rgba(255,255,255,.12)!important}
+html:root:root body .comment-replies-dropdown::before,html:root:root body .comment-replies-dropdown::after,html:root:root body .comment-replies-dropdown .lv-thread-line,html:root:root body .comment-replies-dropdown>.cr-line{display:none!important}
+
+
+/* My Listings page (from the menu): the same header and 3D tiles as the shop dashboard */
+html body #app .vl2 .vh-stats{gap:.5rem!important}
+html body #app .vl2 .vh-stat{border-radius:16px!important;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;background:var(--card)!important}
+html body #app .vl2 .vh-tabs{display:flex!important;gap:.45rem!important;overflow-x:auto!important;scrollbar-width:none!important}
+html body #app .vl2 .vh-tabs button{border-radius:999px!important;padding:.45rem .8rem!important;background:color-mix(in srgb,var(--text) 5%,var(--card))!important;border:0!important;white-space:nowrap!important}
+html body #app .vl2 .vh-tabs em{font-style:normal;font-weight:800;margin-left:.25rem;padding:.05rem .45rem;border-radius:999px;background:var(--card)}
+html:root:root body #app .vl2 .vh-hero{position:relative;overflow:hidden;padding:16px 16px 14px;border-radius:22px;background:linear-gradient(135deg,#0b3d2e 0%,#15803d 60%,#22c55e 100%);color:#fff;margin:4px 0 14px}
+html:root:root body #app .vl2 .vh-hero-copy{position:relative;z-index:1;max-width:72%}
+html:root:root body #app .vl2 .vh-hero .vl-eyebrow{color:rgba(255,255,255,.85)!important}
+html:root:root body #app .vl2 .vh-hero .vh-title{color:#fff!important;margin:2px 0 4px!important;font-size:1.6rem!important}
+html:root:root body #app .vl2 .vh-hero .vh-sub{color:rgba(255,255,255,.85)!important;font-size:.82rem!important;margin:0 0 12px!important}
+html:root:root body #app .vl2 .vh-hero-art{position:absolute;right:-6px;top:6px;width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 10px 16px rgba(0,0,0,.3));pointer-events:none}
+html:root:root body #app .vl2 .vh-hero .vl-add{position:relative;z-index:1;width:100%;height:46px!important;border-radius:14px!important;background:#fff!important;color:#0b3d2e!important;font-weight:800!important;box-shadow:0 8px 18px -10px rgba(0,0,0,.5)!important;border:0!important}
+html:root:root body #app .vl2 .vh-stats{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+html:root:root body #app .vl2 .vh-stat{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:6px!important;padding:12px!important;border-radius:18px!important;border:0!important;box-shadow:none!important;text-align:left}
+html:root:root body #app .vl2 .vh-stat .vh-chev{display:none!important}
+html:root:root body #app .vl2 .vh-stat-ico{width:40px!important;height:40px!important;border-radius:12px!important;background:rgba(255,255,255,.7)!important;display:grid!important;place-items:center!important;border:0!important}
+html:root:root body #app .vl2 .vh-3d{width:30px;height:30px;object-fit:contain}
+html:root:root body #app .vl2 .vh-stat b{display:block;font-size:1.4rem!important;line-height:1.1}
+html:root:root body #app .vl2 .vh-stat small{font-size:.74rem!important;font-weight:700;opacity:.8}
+html:root:root body #app .vl2 .vh-stat-products{background:#dcfce7!important;color:#14532d!important}
+html:root:root body #app .vl2 .vh-stat-services{background:#ffedd5!important;color:#7c2d12!important}
+html:root:root body #app .vl2 .vh-stat-packages{background:#f3e8ff!important;color:#581c87!important}
+html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-products{background:rgba(34,197,94,.14)!important;color:#bbf7d0!important}
+html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-services{background:rgba(249,115,22,.14)!important;color:#fed7aa!important}
+html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-packages{background:rgba(168,85,247,.16)!important;color:#e9d5ff!important}
+html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-ico{background:rgba(255,255,255,.08)!important}
+html:root:root body #app .vl2 .vh-row-ico{width:40px!important;height:40px!important;border-radius:12px!important;background:#f1f5f9!important;display:grid!important;place-items:center!important;flex:none}
+html:root:root[data-theme="dark"] body #app .vl2 .vh-row-ico{background:rgba(255,255,255,.07)!important}
+html:root:root body #app .vl2 .vh-row-ico .vh-3d{width:26px;height:26px}
+html:root:root body #app .vl2 .vh-tabs button{border-radius:999px!important}
+html:root:root body #app .vl2 .vl-discarded{border-radius:16px!important}
+html:root:root body #app .vl2 .vh-hero .vl-add,html:root:root body #app .vl2 .vh-hero .vl-add *{color:#0b3d2e!important;-webkit-text-fill-color:#0b3d2e!important}
+html:root:root body #app .vl2 .vh-hero .vl-add{background-image:none!important;display:flex!important;align-items:center;justify-content:center;gap:8px;font-size:.95rem!important}
+html:root:root body #app .vl2 .vh-hero{background:linear-gradient(120deg,#00402a 0%,#029f50 70%,#01b75f 100%)!important}
+html:root:root body #app .vl2 .vh-hero-art{right:4px!important;top:8px!important;width:118px!important;height:auto!important}
+html:root:root body #app .vl2 .vh-stat{position:relative!important;overflow:hidden!important;min-height:132px!important;justify-content:flex-end!important;padding:12px!important;color:#fff!important}
+html:root:root body #app .vl2 .vh-stat-ico{position:absolute!important;top:6px!important;right:4px!important;width:76%!important;height:auto!important;background:none!important;border-radius:0!important;display:block!important}
+html:root:root body #app .vl2 .vh-stat .vh-3d{width:100%!important;height:auto!important;max-height:84px;object-fit:contain;object-position:right top;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25))}
+html:root:root body #app .vl2 .vh-stat>span:not(.vh-stat-ico){position:relative;z-index:1}
+html:root:root body #app .vl2 .vh-stat b,html:root:root body #app .vl2 .vh-stat small{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important;text-shadow:0 1px 6px rgba(0,0,0,.25)}
+html:root:root body #app .vl2 .vh-stat b{font-size:1.5rem!important}
+html:root:root body #app .vl2 .vh-stat small{font-size:.8rem!important;font-weight:800!important}
+html:root:root body #app .vl2 .vh-stat-products,html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-products{background:linear-gradient(160deg,#17845a 0%,#014a2e 100%)!important}
+html:root:root body #app .vl2 .vh-stat-services,html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-services{background:linear-gradient(160deg,#e7891f 0%,#7e4114 100%)!important}
+html:root:root body #app .vl2 .vh-stat-packages,html:root:root[data-theme="dark"] body #app .vl2 .vh-stat-packages{background:linear-gradient(160deg,#775c96 0%,#392651 100%)!important}
+html:root:root body #app .vl2 .vh-stat{height:136px!important;min-height:0!important;max-height:136px!important;display:block!important}
+html:root:root body #app .vl2 .vh-stat>span:not(.vh-stat-ico){position:absolute!important;left:12px;bottom:10px;z-index:1;display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:0!important}
+html:root:root body #app .vl2 .vh-stat .vh-3d,html:root:root body #app .vl2 .vh-hero-art{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+html:root:root body #app .vl2 .vh-stat-ico{top:8px!important;right:6px!important;width:80%!important}
+html:root:root[data-theme="black"] body #app .vl2 .vh-stat-products{background:rgba(34,197,94,.14)!important;color:#bbf7d0!important}
+html:root:root[data-theme="black"] body #app .vl2 .vh-stat-services{background:rgba(249,115,22,.14)!important;color:#fed7aa!important}
+html:root:root[data-theme="black"] body #app .vl2 .vh-stat-packages{background:rgba(168,85,247,.16)!important;color:#e9d5ff!important}
+html:root:root[data-theme="black"] body #app .vl2 .vh-stat-ico{background:rgba(255,255,255,.08)!important}
+html:root:root[data-theme="black"] body #app .vl2 .vh-row-ico{background:rgba(255,255,255,.07)!important}
+html:root:root body #app .vl2 .vh-stat-products,html:root:root[data-theme="black"] body #app .vl2 .vh-stat-products{background:linear-gradient(160deg,#17845a 0%,#014a2e 100%)!important}
+html:root:root body #app .vl2 .vh-stat-services,html:root:root[data-theme="black"] body #app .vl2 .vh-stat-services{background:linear-gradient(160deg,#e7891f 0%,#7e4114 100%)!important}
+html:root:root body #app .vl2 .vh-stat-packages,html:root:root[data-theme="black"] body #app .vl2 .vh-stat-packages{background:linear-gradient(160deg,#775c96 0%,#392651 100%)!important}
+html:root:root body #app .vl2 .vl-head.vh-hero{display:block!important;border:0!important}
+html:root:root body #app .vl2 .vl-tabs{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;border:0!important;margin:0 0 12px!important;overflow:visible!important}
+html:root:root body #app .vl2 .vl-tabs .vl2-all{grid-column:1/-1;display:inline-flex!important;align-items:center;justify-content:center;gap:8px;height:40px;border-radius:999px!important;border:1px solid var(--border,#e5e7eb)!important;background:transparent!important;font-weight:800;font-size:.86rem;color:inherit}
+html:root:root body #app .vl2 .vl-tabs .vl2-all em{font-style:normal;opacity:.6}
+html:root:root body #app .vl2 .vl-tabs .vl2-all.active{background:#111827!important;border-color:#111827!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vl2 .vl-tabs .vl2-all.active{background:#f9fafb!important;border-color:#f9fafb!important;color:#111827!important;-webkit-text-fill-color:#111827!important}
+html:root:root body #app .vl2 .vl-tabs .vh-stat::after{display:none!important}
+html:root:root body #app .vl2 .vl-tabs .vh-stat.active{outline:3px solid #22c55e;outline-offset:2px}
+html:root:root body #app .vl2 .vl-tabs .vh-stat{border-bottom:0!important}
+html:root:root body #app .vl2 .vl-tabs .vl2-all{flex-direction:row!important}
+html:root:root body #app .vl2 .vl-tabs .vl2-all>*{display:inline!important;margin:0!important}

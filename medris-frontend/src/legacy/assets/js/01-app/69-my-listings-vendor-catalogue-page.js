@@ -190,15 +190,20 @@ async function renderVendorProducts() {
   const vlProducts = products.filter((x) => !x.is_service).length;
   const vlServices = products.filter((x) => x.is_service).length;
   const vlPackages = pkgResult.packages.length;
-  let html = `<div class="vl-page"><div class="vl-head">
-    <div class="vl-head-top"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span></div>
-    <div class="vl-head-row"><div class="vl-head-copy"><h2>My Listings</h2><p>Manage your products, services and packages in one place.</p></div>
-      </div>
-  </div>
-  <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add Listing</button>`;
+  // the same branded header as the shop dashboard: the bags, and a white Add button inside it
+  let html = `<div class="vl-page vl2"><div class="vl-head vh-hero">
+    <div class="vh-hero-copy"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
+    <h2 class="vh-title">My Listings</h2><p class="vh-sub">Manage your products, services and packages in one place.</p></div>
+    <img class="vh-hero-art" src="/icons3d/vh-bags.webp" alt="" aria-hidden="true">
+    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button>
+  </div>`;
   if (v.verification_status !== "verified") html += `<p class="vl-note"><i class="fa-solid fa-circle-info"></i> Listings won't appear publicly until your vendor account is verified.</p>`;
 
-  const vlTab = (tab, icon, label, n) => `<button type="button" data-tab="${tab}" role="tab" onclick="switchVendorListingTab('${tab}')"><i class="fa-solid ${icon}" aria-hidden="true"></i><span>${label}</span><em>${n}</em></button>`;
+  // the tabs are the colour tiles with the 3D pictures (All is a slim pill above them)
+  const VL3D = { products: "vh-products", services: "vh-services", packages: "vh-packages" };
+  const vlTab = (tab, icon, label, n) => VL3D[tab]
+    ? `<button type="button" data-tab="${tab}" role="tab" class="vh-stat vh-stat-${tab}" onclick="switchVendorListingTab('${tab}')"><span class="vh-stat-ico"><img class="vh-3d" src="/icons3d/${VL3D[tab]}.webp" alt="" loading="lazy" decoding="async"></span><span><b>${n}</b><small>${label}</small></span></button>`
+    : `<button type="button" data-tab="${tab}" role="tab" class="vl2-all" onclick="switchVendorListingTab('${tab}')"><i class="fa-solid ${icon}" aria-hidden="true"></i><span>${label}</span><em>${n}</em></button>`;
   html += `<div class="vl-tabs" id="vendorProductsTypeTabs" role="tablist" aria-label="Listing type">${vlTab("all", "fa-table-cells-large", "All Listings", vlProducts + vlServices + vlPackages)}${vlTab("products", "fa-box", "Products", vlProducts)}${vlTab("services", "fa-hand-holding-heart", "Services", vlServices)}${vlTab("packages", "fa-box-open", "Packages", vlPackages)}</div>
   <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${removedProducts.length ? ` (${removedProducts.length})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="toggleVendorDiscarded(event,true)" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>`;
 
