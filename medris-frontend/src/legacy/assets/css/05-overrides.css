@@ -7071,3 +7071,10 @@ html:root body .notif-item .notif-copy>br{display:none!important}
 html:root body .notif-item .notif-copy>strong{display:block!important;margin:0!important}
 html:root body .notif-item .avatar-circle,html:root body .notif-item .lv-admin-ico,html:root body .notif-item>img{width:2.15rem!important;height:2.15rem!important;min-width:2.15rem;flex:none!important;object-fit:cover}
 html:root body .notif-item{align-items:flex-start!important}
+
+/* one tick only: the blue one, right after the name (the green seal never sits beside it) */
+html:root body .storefront-name-row:has(.lv-nsv) .vendor-inline-verified,html:root body .storefront-name-row:has(.lv-nsv) .lv-svi{display:none!important}
+html:root body .storefront-profile-name .lv-nsv{margin:0 0 0 .1rem!important;font-size:.95rem}
+html:root body .storefront-profile-name{gap:.25rem!important}
+/* the green tick (verified students) is as small as the blue one */
+:root:root:root:root body i.vendor-inline-verified,:root:root:root:root body i.lv-svi,:root:root:root:root body i.lv-cr-vtick,:root:root:root:root body i.sr-verified,:root:root:root:root body i.od-verified,:root:root:root:root body .lcl-v i,:root:root:root:root body .vd-verified i,:root:root:root:root body .verified-tick i,:root:root:root:root body .vendor-card-verified-badge i{width:.9em!important;height:.9em!important}
