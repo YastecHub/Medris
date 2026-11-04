@@ -4247,19 +4247,25 @@ window.lvAskCancel = async function (orderId) {
       '<div class="aw-tiles"><div><small>Earned and held in Paystack</small><b>' + naira(held * 100) + '</b><span>Yours to withdraw from the Paystack balance</span></div><div><small>Still owed by shops</small><b>' + naira(owed * 100) + "</b><span>Sales not paid through Levromart</span></div></div>" +
       (days7.length ? '<div class="aw-days">' + days7.map(function (d) { return '<div><small>' + d + "</small><b>" + naira(byDay[d] * 100) + "</b></div>"; }).join("") + "</div>" : "") + "</div>";
   }
-  async function walletsHtml() {
-    var r = await sb.rpc("admin_wallets", { p_query: q || null });
-    if (r.error || !r.data) return '<div class="aw-card aw-off"><b><i class="fa-solid fa-wallet"></i> Wallets</b><p>Not switched on yet. Your engineer needs to apply migration 0033 and redeploy the backend.</p></div>';
-    var d = r.data, waiting = (d.withdrawals || []).filter(function (x) { return x.status === "requested"; });
-    return '<div class="aw-card"><div class="aw-h"><b><i class="fa-solid fa-wallet"></i> Wallets</b><span class="aw-held">Held for people: <b>' + naira(d.held_kobo) + "</b></span></div>" +
-      '<p class="aw-note">This money belongs to people\'s wallets and must always stay in the Paystack balance.</p>' +
-      (waiting.length ? '<div class="aw-sub">Withdrawals to check (' + waiting.length + ")</div>" + waiting.map(function (x) {
-        return '<div class="aw-row"><div><b>' + naira(x.amount_kobo) + ' · @' + esc(x.handle || "") + '</b><small>' + esc(x.name || "") + " · " + esc(when(x.created_at)) + '</small><small class="aw-why"><i class="fa-solid fa-shield-halved"></i> ' + esc(x.review_reason || "Needs a check") + '</small><small>To ' + esc(x.bank_name || "") + " ···" + esc(x.account_last4 || "") + " (" + esc(x.account_name || "") + ")</small></div>" +
+  var AWD = null;
+  async function loadWallets() { var r = await sb.rpc("admin_wallets", { p_query: q || null }); AWD = (r.error || !r.data) ? null : r.data; return AWD; }
+  function waitingHtml() {
+    var d = AWD; if (!d) return "";
+    var waiting = (d.withdrawals || []).filter(function (x) { return x.status === "requested"; });
+    return '<div class="aw-card"><div class="aw-h"><b><i class="fa-solid fa-user-clock"></i> Wallet withdrawals to check (' + waiting.length + ')</b></div>' +
+      (waiting.length ? waiting.map(function (x) {
+        return '<div class="aw-row"><div><b>' + naira(x.amount_kobo) + ' · @' + esc(x.handle || "") + '</b><small>' + esc(x.name || "") + " · " + esc(when(x.created_at)) + '</small><small class="aw-why"><i class="fa-solid fa-shield-halved"></i> ' + esc(x.review_reason || "Needs a check") + '</small></div>' +
           '<div class="aw-acts"><button class="btn btn-sm" onclick="lvAwDecide(\'' + esc(x.id) + '\',\'approve\')">Approve</button><button class="btn btn-sm btn-danger" onclick="lvAwDecide(\'' + esc(x.id) + '\',\'reject\')">Reject</button></div></div>';
-      }).join("") : '<p class="aw-note"><i class="fa-solid fa-circle-check"></i> No wallet withdrawal is waiting.</p>') +
-      '<div class="aw-sub">Find a wallet</div><input class="aw-search" placeholder="@tag or name" value="' + esc(q) + '" onkeydown="if(event.key===\'Enter\')lvAwSearch(this.value)">' +
-      (d.wallets || []).slice(0, 12).map(function (x) {
-        return '<div class="aw-row"><div><b>@' + esc(x.handle) + ' · ' + naira(x.balance_kobo) + '</b><small>' + esc(x.name || "") + " · " + esc(x.role || "") + (x.frozen ? ' · <span class="aw-hold">On hold' + (x.frozen_reason ? ": " + esc(x.frozen_reason) : "") + "</span>" : "") + "</small></div>" +
+      }).join("") : '<p class="aw-note"><i class="fa-solid fa-circle-check"></i> No wallet withdrawal is waiting.</p>') + "</div>";
+  }
+  function walletsHtml() {
+    var d = AWD;
+    if (!d) return '<div class="aw-card aw-off"><b><i class="fa-solid fa-wallet"></i> Wallets</b><p>Not switched on yet. Your engineer needs to apply migration 0033 and redeploy the backend.</p></div>';
+    return '<div class="aw-card"><div class="aw-h"><b><i class="fa-solid fa-wallet"></i> People\'s wallets</b><span class="aw-held">Held for people: <b>' + naira(d.held_kobo) + "</b></span></div>" +
+      '<p class="aw-note">This money belongs to people\'s wallets and must always stay in the Paystack balance.</p>' +
+      '<input class="aw-search" placeholder="Find a wallet: @tag or name" value="' + esc(q) + '" onkeydown="if(event.key===\'Enter\')lvAwSearch(this.value)">' +
+      (d.wallets || []).slice(0, 20).map(function (x) {
+        return '<div class="aw-row"><div><b>@' + esc(x.handle) + ' · ' + naira(x.balance_kobo) + '</b><small>' + esc(x.name || "") + " · " + esc(x.role || "") + (x.frozen ? ' · <span class="aw-hold">On hold' + (x.frozen_reason ? ": " + esc(x.frozen_reason) : "") + '</span>' : "") + '</small></div>' +
           '<div class="aw-acts">' + (x.frozen ? '<button class="btn btn-sm" onclick="lvAwFreeze(\'' + esc(x.user_id) + '\',false)">Release</button>' : '<button class="btn btn-sm btn-danger" onclick="lvAwFreeze(\'' + esc(x.user_id) + '\',true)">Put on hold</button>') + "</div></div>";
       }).join("") + "</div>";
   }
@@ -4319,7 +4325,7 @@ window.lvAskCancel = async function (orderId) {
       '</div>' +
       "</div>" +
       (d.can_manage ? "" : '<p class="aw-note"><i class="fa-solid fa-lock"></i> Only the super admin can withdraw or change the payout account.</p>') +
-      '<div class="aw-sub">History</div><div class="lwa-tabs">' + [["all", "All"], ["commission", "Commission"], ["listing", "Listing fees"], ["fees", "Transaction fees"], ["withdrawals", "Withdrawals"]].map(function (t) { return '<button type="button" class="' + (lwTab === t[0] ? "on" : "") + '" onclick="lvLwTab(\'' + t[0] + '\')">' + t[1] + "</button>"; }).join("") + '</div><div class="lwa-hist">' + historyHtml(d.entries || []) + "</div></div>";
+      '<button type="button" class="lwa-histbtn" onclick="navigate(\'adminWalletHistory\')"><i class="fa-solid fa-clock-rotate-left"></i><span>Transaction history</span><i class="fa-solid fa-chevron-right"></i></button></div>';
   }
   function pwSheet(title, text, okLabel) {
     return new Promise(function (resolve) {
@@ -4391,9 +4397,57 @@ window.lvAskCancel = async function (orderId) {
 
   async function paint() {
     var box = document.getElementById("lvAwBox"); if (!box) return;
-    var own = await levromartWalletHtml().catch(function () { return null; });
-    var parts = await Promise.all([Promise.resolve(own || ""), walletsHtml().catch(function () { return ""; }), own ? Promise.resolve("") : commissionHtml().catch(function () { return ""; })]);
-    if (document.getElementById("lvAwBox")) document.getElementById("lvAwBox").innerHTML = parts[0] + (parts[1] ? '<details class="aw-fold"><summary><i class="fa-solid fa-wallet"></i> People\'s wallets (find, put on hold)</summary>' + parts[1] + "</details>" : "") + parts[2];
+    var res = await Promise.all([levromartWalletHtml().catch(function () { return null; }), loadWallets().catch(function () { return null; })]);
+    var own = res[0];
+    var earn = document.getElementById("lvAwBox"), wl = document.getElementById("lvAwWallets"), wt = document.getElementById("lvAwWaiting");
+    if (earn) earn.innerHTML = own || "";
+    if (earn && !own) commissionHtml().then(function (h) { var e = document.getElementById("lvAwBox"); if (e) e.innerHTML = h; }).catch(function () {});
+    if (wl) wl.innerHTML = walletsHtml();
+    if (wt) wt.innerHTML = waitingHtml();
+    var n = AWD ? (AWD.withdrawals || []).filter(function (x) { return x.status === "requested"; }).length : 0;
+    var badge = document.getElementById("lvApxBadge"); if (badge) { badge.textContent = n > 9 ? "9+" : String(n); badge.hidden = !n; }
+  }
+  var apxTab = "earn";
+  window.lvApxTab = function (t) {
+    apxTab = t;
+    document.querySelectorAll("#lvApxTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
+    document.querySelectorAll(".apx-panel").forEach(function (p) { p.hidden = p.dataset.p !== t; });
+  };
+  // Levromart's transaction history: a page of its own, by month, with a tab for each kind of money
+  window.renderAdminWalletHistory = async function () {
+    var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
+    setTimeout(loadHistoryPage, 30);
+    return nav + '<div class="lvw-page"><div class="lvw-page-head"><button type="button" class="lvw-back" onclick="navigate(\'adminPayments\')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2>Transaction history</h2></div><div id="lvAwHist"><p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p></div></div>';
+  };
+  async function loadHistoryPage() {
+    var host = document.getElementById("lvAwHist"); if (!host) return;
+    var r = await sb.rpc("get_levromart_wallet");
+    if (r.error || !r.data) { host.innerHTML = '<p class="aw-note">Levromart\'s wallet is not switched on yet.</p>'; return; }
+    var all = (r.data.entries || []).slice();
+    for (var pg = 0; pg < 40 && all.length >= 50 * (pg + 1); pg++) {
+      var more = await sb.rpc("get_levromart_wallet_history", { p_before: all[all.length - 1].created_at });
+      var have = {}; all.forEach(function (e) { have[e.id] = 1; });
+      var next = ((more && more.data) || []).filter(function (e) { return !have[e.id]; });
+      if (!next.length) break; all = all.concat(next);
+    }
+    var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() }, month = { y: cur.y, m: cur.m }, kind = "all";
+    var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    host.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lvAhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><b id="lvAhMonth"></b><button type="button" id="lvAhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lvAhSum"></div><div class="lwa-tabs">' + [["all", "All"], ["commission", "Commission"], ["listing", "Listing fees"], ["fees", "Transaction fees"], ["withdrawals", "Withdrawals"]].map(function (t) { return '<button type="button" data-k="' + t[0] + '" class="' + (t[0] === "all" ? "on" : "") + '">' + t[1] + "</button>"; }).join("") + '</div><div class="lwa-hist" id="lvAhList"></div>';
+    function paintH() {
+      var inM = all.filter(function (e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m; });
+      var tin = 0, tout = 0; inM.forEach(function (e) { var a = Number(e.amount_kobo); if (e.kind === "withdrawal" && (e.withdrawal_status === "failed" || e.withdrawal_status === "reversed")) return; if (a > 0) tin += a; else tout += -a; });
+      host.querySelector("#lvAhMonth").textContent = MONTHS[month.m] + " " + month.y;
+      host.querySelector("#lvAhNext").disabled = month.y === cur.y && month.m === cur.m;
+      host.querySelector("#lvAhSum").innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + naira(tin) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + naira(tout) + "</b></div>";
+      var rows = kind === "all" ? inM : inM.filter(function (e) { return LW_KINDS[kind].indexOf(e.kind) >= 0; });
+      lwAll = true; var saveTab = lwTab; lwTab = "all";
+      host.querySelector("#lvAhList").innerHTML = rows.length ? historyHtml(rows) : '<p class="aw-note" style="text-align:center;padding:1rem 0">Nothing this month.</p>';
+      lwTab = saveTab;
+    }
+    host.querySelector("#lvAhPrev").onclick = function () { month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paintH(); };
+    host.querySelector("#lvAhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paintH(); };
+    host.querySelector(".lwa-tabs").onclick = function (e) { var b = e.target.closest("[data-k]"); if (!b) return; kind = b.dataset.k; host.querySelectorAll(".lwa-tabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); paintH(); };
+    paintH();
   }
   window.lvAwRange = function (r) { range = r; paint(); };
   window.lvAwSearch = function (v) { q = String(v || "").trim(); paint(); };
@@ -4416,10 +4470,14 @@ window.lvAskCancel = async function (orderId) {
   if (typeof orig === "function" && !orig.__aw) {
     // Levromart's own wallet comes first, then the payment lists
     var w = async function () {
-      var html = String(await orig.apply(this, arguments)); setTimeout(paint, 60);
+      var html = String(await orig.apply(this, arguments)); setTimeout(function () { paint(); window.lvApxTab(apxTab); }, 60);
       var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
-      var box = '<div id="lvAwBox" class="aw-box"></div><h3 class="ap-h">Payments to check</h3>';
-      return nav && html.indexOf(nav) === 0 ? nav + box + html.slice(nav.length) : html + box;
+      var rest = nav && html.indexOf(nav) === 0 ? html.slice(nav.length) : html;
+      var tabs = '<div class="apx-tabs" id="lvApxTabs"><button type="button" data-t="earn" class="on" onclick="lvApxTab(\'earn\')">Earnings</button><button type="button" data-t="wallets" onclick="lvApxTab(\'wallets\')">Wallets</button><button type="button" data-t="check" onclick="lvApxTab(\'check\')">To check <i class="apx-badge" id="lvApxBadge" hidden></i></button></div>';
+      var panels = '<div class="apx-panel" data-p="earn"><div id="lvAwBox" class="aw-box"></div></div>' +
+        '<div class="apx-panel" data-p="wallets" hidden><div id="lvAwWallets" class="aw-box"></div></div>' +
+        '<div class="apx-panel" data-p="check" hidden><div id="lvAwWaiting" class="aw-box"></div><h3 class="ap-h">Payments to check</h3>' + rest + '</div>';
+      return nav + tabs + panels;
     };
     w.__aw = true; window.renderAdminPayments = w;
   }

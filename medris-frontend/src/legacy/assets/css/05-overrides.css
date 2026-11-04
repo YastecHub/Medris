@@ -6994,3 +6994,23 @@ html[data-theme="black"]:root body #aiChatPanel .ai-chat-input-row textarea{back
 .lwh-monthbar button:disabled{opacity:.3;cursor:default}
 /* the old "buyer reported a bank transfer" cards are gone once Levromart takes every payment itself */
 html[data-lv-paystack="on"] .payment-confirmation-card,html[data-lv-paystack="on"] .payment-reported-customer-card,html[data-lv-paystack="on"] .payment-waiting-card,html[data-lv-paystack="on"] .service-payment-confirm-card{display:none!important}
+
+/* ===== Admin Payments page: tabs, and a compact Levromart wallet ===== */
+.apx-tabs{display:flex;gap:6px;padding:4px;border-radius:14px;background:rgba(128,128,128,.12);margin:12px 0}
+.apx-tabs button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;border:0;border-radius:11px;background:transparent;color:inherit;opacity:.7;font:inherit;font-weight:800;font-size:.86rem;cursor:pointer}
+.apx-tabs button.on{background:var(--card,#fff);opacity:1;box-shadow:0 2px 8px -3px rgba(0,0,0,.25)}
+:root[data-theme="dark"] .apx-tabs button.on,:root[data-theme="black"] .apx-tabs button.on{background:#2d333b}
+.apx-badge{font-style:normal;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#dc2626;color:#fff;font-size:.68rem;display:inline-flex;align-items:center;justify-content:center}
+.apx-badge[hidden]{display:none}
+.apx-panel[hidden]{display:none}
+.aw-card.lwa{padding:0;border:0;background:transparent}
+.aw-card .lwa-card{padding:12px 14px}
+.lwa-bal{font-size:1.35rem}
+.lwa-src{grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.lwa-src>div{padding:7px 8px;border-radius:11px}
+.lwa-src small{font-size:.62rem}
+.lwa-src b{font-size:.84rem;margin:1px 0 0}
+.lwa-src em{display:none}
+.lwa-histbtn{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding:12px 14px;border:1px solid rgba(128,128,128,.25);border-radius:14px;background:var(--card,#fff);color:inherit;font:inherit;font-weight:800;cursor:pointer;text-align:left}
+.lwa-histbtn span{flex:1}.lwa-histbtn i:first-child{color:#16a06a}
+:root[data-theme="dark"] .lwa-histbtn,:root[data-theme="black"] .lwa-histbtn{background:#22272e}

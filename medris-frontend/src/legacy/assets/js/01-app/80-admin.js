@@ -12,6 +12,7 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
   "adminInventory",
   "adminUsers",
   "adminPayments",
+  "adminWalletHistory",
   "adminR2Migration",
   "adminR2Optimize"
 ]);
