@@ -261,7 +261,7 @@
   function paystackOn() {
     if (onCache !== null && Date.now() - onAt < 60000) return Promise.resolve(onCache);
     if (!window.levroData || !window.levroData.payments) return Promise.resolve(false);
-    return window.levroData.payments.config().then(function (r) { onCache = !!(r && r.data && r.data.paystackCheckout); onAt = Date.now(); window.__lvPaystackKnownOn = onCache; return onCache; }, function () { return false; });
+    return window.levroData.payments.config().then(function (r) { onCache = !!(r && r.data && r.data.paystackCheckout); onAt = Date.now(); window.__lvPaystackKnownOn = onCache; try { document.documentElement.setAttribute("data-lv-paystack", onCache ? "on" : "off"); } catch (_) {} return onCache; }, function () { return false; });
   }
   window.lvPaystackOn = paystackOn;
   function closeModal() { var m = document.getElementById("lvPayModal"); if (m) m.remove(); }
@@ -1100,19 +1100,37 @@
   };
 })();
 
-/* ===== A refresh never leaves you on the old version =====
-   The app opens instantly from a saved copy and checks for a newer one in the background. When a newer one is found in the
-   first seconds, and nothing has been touched yet, the page reloads itself once, so you never see the old look (or a mix of
-   old and new) after an update. */
+/* ===== The app never stays on an old version =====
+   The installed app asks, every time it is opened or brought back, whether a newer version exists and switches to it by itself
+   (at once, or the moment you stop typing). It never keeps running old screens, such as old payment flows. */
 (function () {
   "use strict";
-  var touched = false;
-  ["pointerdown", "keydown", "touchstart"].forEach(function (t) { addEventListener(t, function () { touched = true; }, { once: true, capture: true, passive: true }); });
-  try {
-    navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", function (e) {
-      if (e.data && e.data.type === "LV_APP_UPDATED" && !touched && performance.now() < 20000) location.reload();
-    });
-  } catch (_) {}
+  function myVersion() { var s = document.querySelector('script[src*="01-app.js"]'); var m = s && /[?&]v=(\d+)/.exec(s.getAttribute("src") || ""); return m ? m[1] : null; }
+  var mine = myVersion(), reloading = false;
+  function typing() { var a = document.activeElement; return !!a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && String(a.value || "").length > 0; }
+  function go() {
+    if (reloading) return;
+    var k = "lv-reloaded-for"; try { if (sessionStorage.getItem(k) === String(Date.now() - (Date.now() % 60000))) return; sessionStorage.setItem(k, String(Date.now() - (Date.now() % 60000))); } catch (_) {}
+    if (typing()) { var t = setInterval(function () { if (!typing()) { clearInterval(t); go(); } }, 2000); return; }
+    reloading = true;
+    try { navigator.serviceWorker.getRegistration().then(function (r) { r && r.update(); }).catch(function () {}); } catch (_) {}
+    location.reload();
+  }
+  async function check() {
+    if (!mine || document.hidden || !navigator.onLine) return;
+    try {
+      var r = await fetch("/?lvcheck=" + Date.now(), { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+      var t = await r.text(), m = /01-app\.js\?v=(\d+)/.exec(t);
+      if (m && m[1] !== mine && Number(m[1]) > Number(mine)) go();
+    } catch (_) {}
+  }
+  try { navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", function (e) { if (e.data && e.data.type === "LV_APP_UPDATED") go(); }); } catch (_) {}
+  try { navigator.serviceWorker && navigator.serviceWorker.addEventListener("controllerchange", function () { setTimeout(check, 300); }); } catch (_) {}
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+  window.addEventListener("online", check);
+  window.addEventListener("pageshow", function (e) { if (e.persisted) check(); });
+  setTimeout(check, 1500);
+  setInterval(check, 180000);
 })();
 
 /* ===== Maps follow the app theme: dark mode gives a dark map, light mode a light map (you can still pick another style on the map) ===== */
@@ -4118,19 +4136,26 @@ window.lvAskCancel = async function (orderId) {
     if (!(target && target.nodeType === 1)) return navigate("walletHistory");
     var body = target;
     var r = await sb.rpc("get_levro_wallet_history", {});
-    var all = (r && r.data) || [], filter = "all", term = "", period = "all", more = all.length >= 50;
+    var all = (r && r.data) || [], filter = "all", term = "";
+    var now0 = new Date(), cur = { y: now0.getFullYear(), m: now0.getMonth() }, month = { y: cur.y, m: cur.m };
     if (!all.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
-    body.innerHTML = '<div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-periods">' + [["all", "All time"], ["month", "This month"], ["last", "Last month"]].map(function (c) { return '<button type="button" data-p="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div><button type="button" class="lwh-more" id="lwhMore" hidden>Load more</button>';
-    function inPeriod(e) {
-      if (period === "all") return true;
-      var d = new Date(e.created_at), n = new Date(), a = new Date(n.getFullYear(), n.getMonth() - (period === "last" ? 1 : 0), 1), b = new Date(n.getFullYear(), n.getMonth() - (period === "last" ? 0 : -1), 1);
-      return d >= a && d < b;
+    // every transaction is loaded up front, so each month is complete (no "load more")
+    for (var pg = 0; pg < 40 && all.length >= 50 * (pg + 1); pg++) {
+      var q = await sb.rpc("get_levro_wallet_history", { p_before: all[all.length - 1].created_at });
+      var have = {}; all.forEach(function (e) { have[e.id] = 1; });
+      var next = ((q && q.data) || []).filter(function (e) { return !have[e.id]; });
+      if (!next.length) break; all = all.concat(next);
     }
+    var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    body.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lwhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><b id="lwhMonth"></b><button type="button" id="lwhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div>';
+    function inPeriod(e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m; }
     function paint() {
       var inP = all.filter(inPeriod), tin = 0, tout = 0;
       inP.forEach(function (e) { var a = Number(e.amount_kobo); if (a > 0) tin += a; else tout += -a; });
+      body.querySelector("#lwhMonth").textContent = MONTHS[month.m] + " " + month.y;
+      body.querySelector("#lwhNext").disabled = month.y === cur.y && month.m === cur.m;
       var sum = body.querySelector("#lwhSum");
-      if (sum) sum.innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + esc(short(tin)) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + esc(short(tout)) + "</b></div>";
+      sum.innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + esc(short(tin)) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + esc(short(tout)) + "</b></div>";
       var rows = inP.filter(function (e) {
         var amt = Number(e.amount_kobo);
         if (filter === "in" && amt <= 0) return false; if (filter === "out" && amt >= 0) return false;
@@ -4138,9 +4163,7 @@ window.lvAskCancel = async function (orderId) {
         return (entryTitle(e) + " " + (e.note || "") + " " + (e.counterparty_name || "") + " " + (e.bank_name || "")).toLowerCase().indexOf(term) > -1;
       });
       var host = body.querySelector("#lwhList");
-      if (!rows.length) { host.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-magnifying-glass"></i><strong>Nothing found</strong></div>'; }
-      else host.innerHTML = render(rows);
-      var mb = body.querySelector("#lwhMore"); mb.hidden = !more;
+      host.innerHTML = rows.length ? render(rows) : '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>' + (term || filter !== "all" ? "Nothing found" : "No transactions this month") + '</strong></div>';
     }
     function render(rows) {
       var banks = rows.filter(function (e) { return e.kind === "withdrawal" && e.bank_name; }).slice().reverse(), firstBank = banks.length ? banks[0].bank_name + banks[0].account_last4 : null;
@@ -4159,17 +4182,9 @@ window.lvAskCancel = async function (orderId) {
       return '<div class="lw-hist">' + h + "</ul></div>";
     }
     body.querySelector(".lwh-chips").onclick = function (e) { var b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; body.querySelectorAll(".lwh-chips button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
-    body.querySelector(".lwh-periods").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; period = b.dataset.p; body.querySelectorAll(".lwh-periods button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
+    body.querySelector("#lwhPrev").onclick = function () { month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paint(); };
+    body.querySelector("#lwhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paint(); };
     body.querySelector(".lwh-search").oninput = function () { term = this.value.trim().toLowerCase(); paint(); };
-    body.querySelector("#lwhMore").onclick = async function () {
-      var btn = this; btn.disabled = true; btn.textContent = "Loading…";
-      var q = await sb.rpc("get_levro_wallet_history", { p_before: all[all.length - 1].created_at });
-      var have = {}; all.forEach(function (e) { have[e.id] = 1; });
-      var next = ((q && q.data) || []).filter(function (e) { return !have[e.id]; });
-      all = all.concat(next); more = next.length >= 50; btn.disabled = false; btn.textContent = "Load more";
-      if (!next.length) { more = false; if (typeof showToast === "function") showToast("That is everything.", "info"); }
-      paint();
-    };
     paint();
   };
 

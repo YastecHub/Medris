@@ -6986,3 +6986,11 @@ html[data-theme="black"]:root body #aiChatPanel .ai-chat-input-row textarea{back
 .lwh-sum-c.in b{color:#0b8a5f}.lwh-sum-c.out b{color:#d93025}
 .lwh-periods{display:flex;gap:6px}.lwh-periods button{border:0;background:transparent;color:inherit;opacity:.6;font:inherit;font-size:.8rem;font-weight:800;padding:4px 2px;margin-right:10px;border-bottom:2px solid transparent;cursor:pointer}
 .lwh-periods button.on{opacity:1;border-bottom-color:#16a06a}
+
+/* history page: month bar */
+.lwh-monthbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.lwh-monthbar b{font-size:1.02rem;font-weight:800}
+.lwh-monthbar button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(128,128,128,.14);color:inherit;cursor:pointer}
+.lwh-monthbar button:disabled{opacity:.3;cursor:default}
+/* the old "buyer reported a bank transfer" cards are gone once Levromart takes every payment itself */
+html[data-lv-paystack="on"] .payment-confirmation-card,html[data-lv-paystack="on"] .payment-reported-customer-card,html[data-lv-paystack="on"] .payment-waiting-card,html[data-lv-paystack="on"] .service-payment-confirm-card{display:none!important}
