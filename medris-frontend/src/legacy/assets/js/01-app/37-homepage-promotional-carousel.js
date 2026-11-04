@@ -263,13 +263,15 @@ function initHomepageCarousel() {
   viewport.addEventListener("pointerdown", (e) => {
     if (e.pointerType !== "mouse") return;
     down = true; moved = false; sx = e.clientX; sl = viewport.scrollLeft; hold();
-    try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
+    // the pointer is captured only once it really drags: capturing on touch made a simple tap land on the carousel
+    // instead of the banner, so the banner did not open
+    viewport.__pid = e.pointerId;
   });
   viewport.addEventListener("pointermove", (e) => {
     if (!down) return;
     const dx = e.clientX - sx;
     if (!moved && Math.abs(dx) < 6) return;
-    if (!moved) { moved = true; viewport.classList.add("dragging"); }
+    if (!moved) { moved = true; viewport.classList.add("dragging"); try { viewport.setPointerCapture(viewport.__pid); } catch (_) {} }
     viewport.scrollLeft = sl - dx;
   }, { passive: true });
   const stop = () => {
