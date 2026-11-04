@@ -148,15 +148,10 @@ async function renderVendorDashboard() {
     <div class="vh-hero"><div class="vh-hero-copy"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
     <h2 class="vh-title">My Listings</h2>
     <p class="vh-sub">Manage your products, services and packages in one place.</p></div>
-    <img class="vh-hero-art" src="/icons3d/1f6cd-fe0f.webp" alt="" aria-hidden="true">
+    <img class="vh-hero-art" src="/icons3d/vh-bags.webp" alt="" aria-hidden="true">
     <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button></div>
-    <div class="vh-stats">${hubStat('<img class="vh-3d" src="/icons3d/1f4e6.webp" alt="" loading="lazy" decoding="async">', hubProducts, "Products", "products")}${hubStat('<img class="vh-3d" src="/icons3d/1f6e0-fe0f.webp" alt="" loading="lazy" decoding="async">', hubServices, "Services", "services")}${hubStat('<img class="vh-3d" src="/icons3d/1f381.webp" alt="" loading="lazy" decoding="async">', hubPackages, "Packages", "packages")}</div>
+    <div class="vh-stats">${hubStat('<img class="vh-3d" src="/icons3d/vh-products.webp" alt="" loading="lazy" decoding="async">', hubProducts, "Products", "products")}${hubStat('<img class="vh-3d" src="/icons3d/vh-services.webp" alt="" loading="lazy" decoding="async">', hubServices, "Services", "services")}${hubStat('<img class="vh-3d" src="/icons3d/vh-packages.webp" alt="" loading="lazy" decoding="async">', hubPackages, "Packages", "packages")}</div>
     <div class="vh-section-head"><h3><i class="fa-solid fa-layer-group"></i> My listings</h3><button type="button" onclick="${goTab("all")}">Manage all <i class="fa-solid fa-chevron-right"></i></button></div>
-    <div class="vh-tabs" role="tablist">
-      <button type="button" role="tab" onclick="${goTab("products")}"><i class="fa-solid fa-box"></i> Products <em>${hubProducts}</em></button>
-      <button type="button" role="tab" onclick="${goTab("services")}"><i class="fa-solid fa-hand-holding-heart"></i> Services <em>${hubServices}</em></button>
-      <button type="button" role="tab" onclick="${goTab("packages")}"><i class="fa-solid fa-box-open"></i> Packages <em>${hubPackages}</em></button>
-    </div>
     <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${hubDiscarded ? ` (${hubDiscarded})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="navigate('vendorProducts').then(()=>setTimeout(()=>toggleVendorDiscarded(null,true),250))" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>
     <h3 class="vh-group">Management tools</h3>
     <div class="vh-list">
