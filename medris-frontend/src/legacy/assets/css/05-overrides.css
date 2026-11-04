@@ -7160,3 +7160,10 @@ html:root:root:root body .lvdp button.on{background:#16a06a!important;color:#fff
 /* choosing a place on the shop map: touching the map moves the map, never the page */
 #veLocationMap,#veLocationMap .leaflet-container{touch-action:none!important;overscroll-behavior:contain}
 html{overflow-anchor:none}
+
+/* ===== Blue tick = verified seller, everywhere a seller's name is shown (green stays for students) ===== */
+html:root:root:root:root body .lv-nsv,html:root:root:root:root body i.lv-nsv::before{color:#1d9bf0!important;-webkit-text-fill-color:#1d9bf0!important}
+/* every "verified vendor" seal that used to be green is drawn blue */
+:root:root:root:root:root body i.vendor-inline-verified,:root:root:root:root:root body i.sr-verified,:root:root:root:root:root body i.lv-cr-vtick,:root:root:root:root:root body i.od-verified,:root:root:root:root:root body i.lv-svi.fa-circle-check,:root:root:root:root:root body .vd-verified i,:root:root:root:root:root body .verified-tick i,:root:root:root:root:root body .vendor-card-verified-badge i{filter:hue-rotate(62deg) saturate(1.25)}
+/* the student mark (graduation cap) keeps its green */
+:root:root:root:root:root body i.lv-svi.fa-user-graduate{filter:none}
