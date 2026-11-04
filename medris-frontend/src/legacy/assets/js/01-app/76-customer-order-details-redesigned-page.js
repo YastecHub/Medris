@@ -113,6 +113,7 @@ function customerOrderTopHtml(order, ctx) {
   // ---- header
   let h = `<div class="od-header"><button type="button" class="od-back" onclick="${actionBack}" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
     <div class="od-header-title"><strong>Order Details</strong><span>${esc(shortId)}</span></div>
+    ${["pending", "confirmed", "handed_over"].includes(order.status) ? `<button type="button" class="od-bell" onclick="remindOrderVendor('${esc(order.id)}',this)" aria-label="Remind the shop" title="Remind the shop"><i class="fa-solid fa-bell"></i></button>` : ""}
     <div class="od-menu-wrap"><button type="button" class="od-more" onclick="toggleOrderDetailMenu(event)" aria-label="More"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button><button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
   // ---- status card

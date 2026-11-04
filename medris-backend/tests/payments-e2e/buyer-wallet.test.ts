@@ -6,7 +6,7 @@ import { api, shopRefunds, json, newOrder, payOrder, rowOf, runJob, sendWebhook,
 describe("the buyer's refunds wallet", () => {
   const w = useWorld();
   const call = async (name: string, token: string, body: Record<string, unknown> = {}) => json(await api.post(w, `/rpc/${name}`, token, body));
-  const save = (token: string) => call("save_refund_account", token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada" });
+  const save = (token: string) => call("save_refund_account", token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada", p_password: "right-password-123" });
 
   it("a refund lands in the Levromart wallet, whether or not the buyer saved a bank account (migration 0033)", async () => {
     const o = await newOrder(w, 5000, "confirmed", w.buyer2.id);
@@ -21,8 +21,10 @@ describe("the buyer's refunds wallet", () => {
   });
 
   it("the name must match; then the account is saved without the full number", async () => {
-    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Somebody Else" })).status).toBe(400);
-    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "12", p_confirmed_name: "Obi Ada" })).status).toBe(400);
+    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Somebody Else", p_password: "right-password-123" })).status).toBe(400);
+    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada" })).status).toBe(400); // no password
+    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada", p_password: "nope" })).status).toBe(403);
+    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "12", p_confirmed_name: "Obi Ada", p_password: "right-password-123" })).status).toBe(400);
     expect((await save(w.buyer.token)).status).toBe(200);
     const s = await call("get_refund_wallet", w.buyer.token);
     expect(s.data).toMatchObject({ has_account: true, available_kobo: "0" });

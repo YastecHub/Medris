@@ -34,3 +34,14 @@ export function grossUpForBuyerFees(netKobo: number, fees = PAYSTACK_LOCAL_FEES)
 }
 
 export { koboToNaira };
+
+/**
+ * Paystack's fee for sending money out to a Nigerian bank account (a transfer): ₦10 up to ₦5,000, ₦25 up to ₦50,000, ₦50 above.
+ * The shop that withdraws bears it (founder's decision). Check against the Paystack dashboard before go-live; change it here only.
+ */
+export function paystackTransferFeeKobo(amountKobo: number): number {
+  if (amountKobo <= 0) return 0;
+  if (amountKobo <= 500_000) return 1_000;
+  if (amountKobo <= 5_000_000) return 2_500;
+  return 5_000;
+}

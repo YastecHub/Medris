@@ -169,6 +169,9 @@ function handleHomeCarouselSlideClick(event, index) {
         navigate(deepView, {}, true);
         return;
       }
+      // an in-app link to a page that no longer exists must never open a blank tab or do nothing: go to Home
+      navigate("home", {}, true);
+      return;
     }
     window.open(target.href, "_blank", "noopener,noreferrer");
   } catch (_) {}

@@ -241,8 +241,12 @@ function showCommissionPaywall(owedAmount) {
 
 async function navigate(view, params = {}, pushHistory = true) {
   if (await levroCommissionGate(view)) return;
-  const __isSlideRoute = ["requestEquipment", "myEquipmentRequests"].includes(view);
-  const __previousIsSlideRoute = ["requestEquipment", "myEquipmentRequests"].includes(currentView);
+  // every change of page slides: forwards (from the right) to go on, backwards (from the left) to go back; between the bottom
+  // tabs it follows their order (Home, Vendors, Request, Notifications, Orders)
+  const __TAB = { home: 0, vendors: 1, vendorsMap: 1, requestEquipment: 2, vendorRequests: 2, notifications: 3, buyerOrders: 4, vendorOrders: 4 };
+  const __isSlideRoute = view !== currentView;
+  const __previousIsSlideRoute = false;
+  const __slideDir = view in __TAB && currentView in __TAB ? (__TAB[view] >= __TAB[currentView] ? 1 : -1) : pushHistory === false ? -1 : 1;
   // Leaving the notification surface commits the unread items that were
   // visible during this visit. This covers Back, bottom-nav taps, links, and
   // any other route transition that does not pass through closeAllPanels().
@@ -681,6 +685,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     }
   }
   if (__isSlideRoute || __previousIsSlideRoute) {
+    app.style.setProperty("--lv-slide-x", __slideDir * 30 + "px");
     app.classList.add("lv-page-slide-transition");
     app.dataset.routeTransition = "request";
   } else {

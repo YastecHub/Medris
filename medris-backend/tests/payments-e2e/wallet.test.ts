@@ -148,7 +148,7 @@ describe("the Levromart wallet", () => {
     await w.db.query(`delete from public.buyer_payout_accounts where user_id = $1`, [w.buyer.id]);
     await fund(w.buyer.id, 500000, 1); // money that only just arrived: it can still go to the bank
     expect((await call("wallet_withdraw", w.buyer.token, { p_amount_kobo: 100000 })).status).toBe(400); // no bank account
-    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada" })).status).toBe(200);
+    expect((await call("save_refund_account", w.buyer.token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada", p_password: "right-password-123" })).status).toBe(200);
     // a brand-new bank account: it goes at once, nothing waits for an admin
     const first = await call("wallet_withdraw", w.buyer.token, { p_amount_kobo: 100000 });
     expect(first.status).toBe(200);
