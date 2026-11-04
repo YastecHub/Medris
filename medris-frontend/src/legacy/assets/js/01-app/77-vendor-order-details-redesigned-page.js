@@ -789,7 +789,7 @@ async function remindOrderVendor(orderId,button){
   orderReminderBusy.add(orderId);if(button)button.disabled=true;
   try{
     const {data:order,error}=await sb.from('orders').select('id,buyer_id,status,vendor_id,vendor:vendors(user_id)').eq('id',orderId).eq('buyer_id',session.user.id).single();if(error)throw error;
-    if(order.status!=='pending'||!order.vendor?.user_id)throw new Error('This order no longer needs a reminder.');
+    if(!['pending','confirmed','handed_over'].includes(order.status)||!order.vendor?.user_id)throw new Error('This order no longer needs a reminder.');
     const {error:sendError}=await sb.rpc('send_order_reminder',{p_order_id:order.id});if(sendError)throw sendError;
     unlockNotificationAudio();
     if(audioCtx?.state==='running')playReminderChime();

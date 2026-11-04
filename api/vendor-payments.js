@@ -289,7 +289,8 @@ async function createSubaccount(
   {
     accessToken,
     bankCode,
-    accountNumber
+    accountNumber,
+    password
   },
   res
 ) {
@@ -333,6 +334,23 @@ async function createSubaccount(
     });
 
     return;
+  }
+
+  // adding or changing the payout account needs the account password again
+  {
+    const pwRes = password && me.email
+      ? await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: me.email, password: String(password) })
+        }).catch(() => null)
+      : null;
+    if (!pwRes || !pwRes.ok) {
+      res.status(403).json({
+        error: password ? "That password is not right." : "Enter your account password to add or change your payout account."
+      });
+      return;
+    }
   }
 
   const vendorRes = await fetch(

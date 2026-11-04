@@ -6933,3 +6933,18 @@ html:root body i.vendor-inline-verified{color:#1d9bf0!important}
 .lvw-padd{border:0;border-radius:999px;background:#16a06a;color:#fff;font:inherit;font-size:.78rem;font-weight:800;padding:7px 8px;cursor:pointer}
 .lvw-padd.done{background:#0b6b4a}.lvw-padd:disabled{opacity:.8}
 :root[data-theme="dark"] .lvw-pcard,:root[data-theme="black"] .lvw-pcard{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.06)}
+
+/* the small reminder bell at the top right of a buyer's order (pending, confirmed, out for delivery) */
+.od-header{position:relative}
+.od-bell{width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;margin-left:auto;margin-right:2px;flex:0 0 auto}
+.od-bell:active{transform:scale(.92)}.od-bell:disabled{opacity:.5}
+
+/* wallet: history filters and recent recipients */
+.lwh-tools{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.lwh-chips{display:flex;gap:6px}.lwh-chips button{border:1.5px solid rgba(128,128,128,.35);background:transparent;color:inherit;border-radius:999px;padding:6px 12px;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer}
+.lwh-chips button.on{background:#16a06a;border-color:#16a06a;color:#fff}
+.lwh-search{width:100%;padding:.6rem .8rem;border-radius:12px;border:1.5px solid rgba(128,128,128,.35);background:transparent;color:inherit;font:inherit}
+.lwh-more{display:block;margin:12px auto;border:0;background:rgba(22,160,106,.12);color:#0b8a5f;font:inherit;font-weight:800;border-radius:999px;padding:8px 18px;cursor:pointer}
+.lw-ben{margin:2px 0 8px}.lw-ben small{display:block;opacity:.7;font-weight:700;margin-bottom:4px}
+.lw-ben div{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.lw-ben button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:inherit;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;max-width:64px}
+.lw-ben button span{width:40px;height:40px;border-radius:50%;background:rgba(22,160,106,.15);color:#0b8a5f;display:flex;align-items:center;justify-content:center;font-weight:800}

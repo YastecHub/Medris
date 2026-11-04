@@ -1,3 +1,4 @@
+import { paystackTransferFeeKobo } from "../../src/integrations/paystack/fees.js";
 import { describe, expect, it } from "vitest";
 import { grossUpForBuyerFees, nairaToKobo, paystackFeeOn } from "../../src/integrations/paystack/index.js";
 import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, withdraw, handOver } from "./harness.js";
@@ -18,7 +19,7 @@ describe("money arithmetic, pay after delivery, secrets in logs", () => {
   // paid (naira), commission (naira), refunded (kobo)  ->  what the vendor is sent (kobo), worked out here with whole numbers
   const cases: Array<[string, number, number, number]> = [
     ["₦999 listing-sized order", 999, 0, 0],
-    ["₦0.10 + ₦0.20 style fractions", 0.1 + 0.2, 0.01, 0],
+    ["₦30 + ₦0.10 + ₦0.20 style fractions", 30 + 0.1 + 0.2, 0.01, 0],
     ["a large order with a part refund", 1234567.89, 61728.39, 5],
     ["commission on a round order", 5000, 150, 0],
   ];
@@ -34,7 +35,8 @@ describe("money arithmetic, pay after delivery, secrets in logs", () => {
       if (commission) await w.db.query(`insert into public.commission_charges (vendor_id, order_id, amount, status) values ($1, $2, $3, 'owed')`, [w.vendor.shop, orderId, commission.toFixed(2)]);
       await withdraw(w, orderId);
       await runJob(w, "vendor-payouts");
-      const expected = nairaToKobo(Number(paid.toFixed(2))) - nairaToKobo(commission) - refundKobo;
+      const owed = nairaToKobo(Number(paid.toFixed(2))) - nairaToKobo(commission) - refundKobo;
+      const expected = owed - paystackTransferFeeKobo(owed); // the shop bears Paystack's transfer fee
       const sent = w.paystack.callsTo("POST", "/transfer").at(-1)!.body as { amount: number };
       expect(sent.amount).toBe(expected);
       expect(Number.isInteger(sent.amount)).toBe(true);

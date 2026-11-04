@@ -1,3 +1,4 @@
+import { paystackTransferFeeKobo } from "../../src/integrations/paystack/fees.js";
 import { describe, expect, it } from "vitest";
 import { grossUpForBuyerFees } from "../../src/integrations/paystack/index.js";
 import { api, json, newOrder, rowOf, runJob, sendWebhook, startPayment, useWorld, withdraw, handOver } from "./harness.js";
@@ -44,7 +45,7 @@ describe("an order paid in full through Paystack (end to end)", () => {
     expect((await runJob(w, "vendor-payouts")).status).toBe(200);
     const transfers = w.paystack.callsTo("POST", "/transfer");
     expect(transfers).toHaveLength(1);
-    expect(transfers[0]!.body).toMatchObject({ amount: 500000 - commissionKobo, recipient: "RCP_e2e" }); // what was paid minus the commission
+    expect(transfers[0]!.body).toMatchObject({ amount: 500000 - commissionKobo - paystackTransferFeeKobo(500000 - commissionKobo), recipient: "RCP_e2e" }); // what was paid minus the commission
 
     // 5. Paystack says the transfer went through
     const payout = await rowOf<{ transfer_reference: string }>(w, `select transfer_reference from public.vendor_payouts where order_id = $1`, [orderId]);

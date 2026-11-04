@@ -5,6 +5,8 @@ import { NotificationWriter } from "../../database/repositories/notification-wri
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, koboToNaira, maskAccount } from "../../integrations/paystack/index.js";
 import { badRequest, forbidden, notReadyIfMissing, serviceUnavailable } from "../../shared/errors/app-error.js";
 import { sameAccountName } from "../payout-accounts/payout-accounts.service.js";
+import { passwordMatches, PasswordCheckUnavailable } from "../../integrations/password-check.js";
+import { WalletRepository } from "../../database/repositories/wallet.repository.js";
 
 /** Paystack does not send less than this. */
 export const MIN_REFUND_WITHDRAWAL_KOBO = 10_000;
@@ -34,7 +36,10 @@ export async function applyRefundTransferEvent(tx: Tx, reference: string, to: "s
  * in the wallet (by the refund worker) instead of going back to the card, and they withdraw it to that account when they like.
  */
 export class BuyerWalletService {
-  constructor(private readonly db: () => DataContext) {}
+  constructor(
+    private readonly db: () => DataContext,
+    private readonly checkPassword: (userId: string, email: string, password: string) => Promise<boolean> = passwordMatches,
+  ) {}
 
   /** What the wallet screen shows. */
   async summary(me: Identity | null) {
@@ -59,8 +64,21 @@ export class BuyerWalletService {
   }
 
   /** The buyer confirms the account name Paystack gave; it is checked again here and saved as a transfer recipient. */
-  async saveAccount(me: Identity | null, input: { bankCode: string; accountNumber: string; confirmedAccountName: string }) {
+  async saveAccount(me: Identity | null, input: { bankCode: string; accountNumber: string; confirmedAccountName: string; password?: string | null }) {
     if (!me) throw forbidden("Please log in to continue.");
+    // adding or changing the account money is sent to needs the account password again
+    const pw = String(input.password ?? "");
+    if (!pw) throw badRequest("Enter your account password to add or change your account.");
+    const email = await this.ready(() => this.db().asService((tx) => new WalletRepository(tx).emailOf(me.userId)));
+    if (!email) throw badRequest("Your account has no sign-in email, so the password cannot be checked.");
+    let ok: boolean;
+    try {
+      ok = await this.checkPassword(me.userId, email, pw);
+    } catch (err) {
+      if (err instanceof PasswordCheckUnavailable) throw serviceUnavailable("We could not check your password right now. Please try again in a moment.");
+      throw err;
+    }
+    if (!ok) throw forbidden("That password is not right.");
     if (!/^\d{10}$/.test(input.accountNumber)) throw badRequest("Enter a valid 10-digit account number.");
     const client = getPaystackClient();
     let bankName = "";

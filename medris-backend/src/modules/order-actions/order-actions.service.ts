@@ -212,15 +212,21 @@ export class OrderActionsService {
     if (!me) throw forbidden("Authentication required.");
     return this.db().onBehalfOf(me, async (tx) => {
       const orders = new OrderActionsRepository(tx);
-      const o = await orders.pendingOrderOf(orderId, me.userId);
+      const o = await orders.remindableOrderOf(orderId, me.userId);
       if (!o) throw badRequest("This order no longer needs a reminder.");
+      if (o.recent) throw badRequest("You already sent a reminder a moment ago. Please wait a few minutes before sending another.");
       const owner = await orders.liveVendorOwner(o.vendor_id);
       if (!owner) throw badRequest("Vendor not found.");
       const id = await orders.notify({
         userId: owner,
         type: "order_reminder",
         title: "Order reminder",
-        body: "A customer is waiting for you to accept or decline their order.",
+        body:
+          o.status === "pending"
+            ? "A customer is waiting for you to accept or decline their order."
+            : o.status === "confirmed"
+              ? "A customer is waiting for you to get their order ready and hand it over."
+              : "A customer is waiting for their order to arrive. Please update the delivery.",
         targetParams: { orderId: o.id, vendorId: o.vendor_id },
         vendorId: o.vendor_id,
         category: "order",

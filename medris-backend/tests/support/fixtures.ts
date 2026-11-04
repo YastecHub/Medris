@@ -1,3 +1,4 @@
+import { BuyerWalletService } from "../../src/modules/buyer-wallet/buyer-wallet.service.js";
 import { SignJWT } from "jose";
 import { loadConfig, type AppConfig } from "../../src/config/app-config.js";
 import { createApp } from "../../src/app.js";
@@ -58,6 +59,7 @@ export function buildTestApp(testDb: TestDatabase, options: { env?: Record<strin
     sessions: createSessionService(config, data),
     google: null,
     rateLimiter: new RateLimiter(),
+    buyerWallet: new BuyerWalletService(data, async (_u, _e, pw) => pw === "right-password-123"),
     ...options.services,
   };
   return asFetch(createApp({ services }));

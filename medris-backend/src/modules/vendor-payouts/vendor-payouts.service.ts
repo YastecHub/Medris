@@ -1,6 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
+import { paystackTransferFeeKobo } from "../../integrations/paystack/fees.js";
 import { BALANCE_TOO_LOW, VendorPayoutsRepository, type PayoutWork } from "../../database/repositories/vendor-payouts.repository.js";
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, koboToNaira } from "../../integrations/paystack/index.js";
 import { conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
@@ -97,7 +98,9 @@ export class VendorPayoutsService {
     const paid = await repo.paidKobo(p.order_id);
     const commission = await repo.commissionKobo(p.order_id);
     const refunded = await repo.refundedKobo(p.order_id);
-    const amount = paid - commission - refunded;
+    const owed = paid - commission - refunded;
+    // the shop bears Paystack's fee for sending the money to its bank
+    const amount = owed - paystackTransferFeeKobo(owed);
     if (amount <= 0) {
       await repo.hold(p.id, "Nothing is left to pay out after commission and refunds.");
       await notify.notifyAdmins("Payout is ₦0", "A payout has nothing left after commission and refunds. Check the order.", "orderDetail", { orderId: p.order_id }, null);

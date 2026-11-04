@@ -228,7 +228,6 @@ describe("parity: order actions", () => {
   describe("send_order_reminder / set_order_buyer_location", () => {
     for (const [label, who, order] of [
       ["a pending order", () => buyer, "pending"],
-      ["a confirmed order", () => buyer, "confirmed"],
       ["not the buyer", () => owner, "pending"],
       ["signed out", () => null, "pending"],
     ] as const) {
@@ -236,6 +235,18 @@ describe("parity: order actions", () => {
         same(runOriginal(db, me(who()), "send_order_reminder", { p_order_id: o[order] }), runIsolated(db, (ctx) => port(ctx).remind(me(who()), o[order]!).then((r) => r.id))),
       );
     }
+    // intentionally different from the old SQL function: a buyer may also remind the shop about a confirmed or out-for-delivery order
+    it("reminder: a confirmed order can now be reminded about, once every 10 minutes", async () => {
+      const first = await runIsolated(db, async (ctx) => {
+        const svc = port(ctx);
+        const a = await svc.remind(me(buyer), o.confirmed!).then((r) => !!r.id, () => false);
+        const b = await svc.remind(me(buyer), o.confirmed!).then(() => "sent", (e: Error) => e.message);
+        return { a, b };
+      });
+      const r = (first as { result?: { a: boolean; b: string } }).result;
+      expect(r?.a).toBe(true);
+      expect(String(r?.b)).toMatch(/already sent a reminder/);
+    });
     const locations: [string, Who, string, number | null, number | null][] = [
       ["a pending delivery order", () => buyer, "pendingDelivery", 6.45, 3.39],
       ["a pickup order", () => buyer, "pending", 6.45, 3.39],

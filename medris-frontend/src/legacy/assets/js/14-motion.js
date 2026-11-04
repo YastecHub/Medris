@@ -2068,8 +2068,9 @@
     if (!canInst) { appr = askAmt; inst = 0; }
     var h = '<div class="lvw-wd">';
     if (s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> ' + esc(s.blocked) + "</p>";
-    h += '<div class="lvw-wd-row"><span>Sent to your bank right now</span><b>' + NOW(inst) + '</b></div><small>Earnings are released 24 hours after payment.</small>' +
-      '<div class="lvw-wd-row"><span>Needs Levromart\'s approval</span><b>' + NOW(appr) + '</b></div><small>Not released yet: earnings are released 24 hours after payment, so a buyer who reports a scam can still be refunded.</small>';
+    h += '<div class="lvw-wd-row"><span>You can withdraw now</span><b>' + NOW(inst) + '</b></div><small>Money from product payments that reached your account more than 24 hours ago.</small>' +
+      '<div class="lvw-wd-row"><span>Came in during the last 24 hours</span><b>' + NOW(appr) + '</b></div><small>Money from product payments that came in during the last 24 hours. It is released after 24 hours so a buyer who reports a scam can still be refunded. You can ask Levromart to release it sooner.</small>' +
+      '<small>Paystack\'s charge for sending money to your bank is taken from each payout.</small>';
     if (held > 0) h += '<div class="lvw-wd-row lvw-wd-held"><span>On hold (disputed order)</span><b>' + NOW(held) + '</b></div><small>This stays held until the dispute is settled. The rest of your money is not affected.</small>';
     if (s.open_request) h += '<p class="lvw-sheet-msg"><i class="fa-solid fa-user-clock"></i> You already have a request of ' + NOW(Number(s.open_request.amount_kobo)) + ' waiting for approval.</p>';
     if (s.recent_bank_change != null && !s.blocked) h += '<p class="lvw-sheet-msg lvw-sheet-warn"><i class="fa-solid fa-shield-halved"></i> You changed your bank account recently, so Levromart checks every withdrawal first. It can still be approved.</p>';
@@ -2392,7 +2393,8 @@ window.lvAskCancel = async function (orderId) {
           go.textContent = "Yes, this is my account";
           return;
         }
-        var s = await sb.rpc("save_refund_account", { p_bank_code: sel.value, p_account_number: num.value.trim(), p_confirmed_name: found.accountName });
+        var pwd = await window.lvAskPassword(); if (!pwd) return;
+        var s = await sb.rpc("save_refund_account", { p_bank_code: sel.value, p_account_number: num.value.trim(), p_confirmed_name: found.accountName, p_password: pwd });
         if (s.error) {
           // the name was confirmed with the bank, so keep the account safe on the person's login and finish saving it later
           var bname = (list.find(function (x) { return x.code === sel.value; }) || {}).name || found.bankName || "";
@@ -4006,6 +4008,17 @@ window.lvAskCancel = async function (orderId) {
       '<label class="lw-l">Note (optional)</label><input id="lwNote" class="lw-in" maxlength="140" placeholder="What is it for?">' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwSendGo">Continue</button>');
     var to = m.querySelector("#lwTo"), sugg = m.querySelector("#lwSugg");
+    // people sent to before (beneficiaries): one tap fills the tag in
+    try {
+      var seenB = {}, ben = [];
+      (d.entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seenB[e.counterparty_handle]) { seenB[e.counterparty_handle] = 1; ben.push(e); } });
+      if (ben.length && !prefill) {
+        var bx = document.createElement("div"); bx.className = "lw-ben";
+        bx.innerHTML = '<small>Recent</small><div>' + ben.slice(0, 6).map(function (e) { return '<button type="button" data-h="' + esc(e.counterparty_handle) + '"><span>' + esc(String(e.counterparty_name || e.counterparty_handle).slice(0, 1).toUpperCase()) + '</span>' + esc(String(e.counterparty_name || "@" + e.counterparty_handle).split(" ")[0]) + '</button>'; }).join("") + '</div>';
+        bx.onclick = function (ev) { var b = ev.target.closest("[data-h]"); if (!b) return; to.value = b.dataset.h; search(); };
+        sugg.parentNode.insertBefore(bx, sugg);
+      }
+    } catch (_) {}
     function paintPick() { sugg.innerHTML = pick ? '<div class="lw-person on">' + (pick.avatar_url ? '<img src="' + esc(pick.avatar_url) + '" alt="">' : '<span>' + esc(String(pick.name || pick.handle).slice(0, 1).toUpperCase()) + "</span>") + '<div><b>' + esc(pick.name || "") + '</b><small>@' + esc(pick.handle) + '</small></div><i class="fa-solid fa-circle-check"></i></div>' : ""; }
     async function search() {
       var q = to.value.trim().replace(/^@/, "").toLowerCase(); pick = null;
@@ -4095,9 +4108,23 @@ window.lvAskCancel = async function (orderId) {
     var m = sheet("Transaction history", '<p class="muted" style="text-align:center">Loading…</p>', "lw-tall");
     var r = await sb.rpc("get_levro_wallet_history", {});
     var body = m.querySelector(".lvw-sheet-body"); if (!body) return;
-    var rows = (r && r.data) || [];
-    if (!rows.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
-    var banks = rows.filter(function (e) { return e.kind === "withdrawal" && e.bank_name; }).slice().reverse(), firstBank = banks.length ? banks[0].bank_name + banks[0].account_last4 : null;
+    var all = (r && r.data) || [], filter = "all", term = "", more = all.length >= 50;
+    if (!all.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
+    body.innerHTML = '<div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div><button type="button" class="lwh-more" id="lwhMore" hidden>Show older</button>';
+    function paint() {
+      var rows = all.filter(function (e) {
+        var amt = Number(e.amount_kobo);
+        if (filter === "in" && amt <= 0) return false; if (filter === "out" && amt >= 0) return false;
+        if (!term) return true;
+        return (entryTitle(e) + " " + (e.note || "") + " " + (e.counterparty_name || "") + " " + (e.bank_name || "")).toLowerCase().indexOf(term) > -1;
+      });
+      var host = body.querySelector("#lwhList");
+      if (!rows.length) { host.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-magnifying-glass"></i><strong>Nothing found</strong></div>'; }
+      else host.innerHTML = render(rows);
+      var mb = body.querySelector("#lwhMore"); mb.hidden = !more;
+    }
+    function render(rows) {
+      var banks = rows.filter(function (e) { return e.kind === "withdrawal" && e.bank_name; }).slice().reverse(), firstBank = banks.length ? banks[0].bank_name + banks[0].account_last4 : null;
     var h = "", day = "", seenBank = firstBank;
     rows.slice().reverse().forEach(function (e) { if (e.kind === "withdrawal" && e.bank_name) { var b = e.bank_name + e.account_last4; if (b !== seenBank) { e.__newBank = true; seenBank = b; } } });
     rows.forEach(function (e) {
@@ -4110,7 +4137,17 @@ window.lvAskCancel = async function (orderId) {
         (e.kind === "withdrawal" && e.bank_name ? " · " + esc(e.bank_name) + " ···" + esc(e.account_last4 || "") : "") + (st ? " · " + ({ requested: "Waiting for Levromart's check", processing: "On its way", success: "Sent", failed: "Not sent", reversed: "Returned", rejected: "Not approved" }[st] || st) : "") +
         (e.note && e.kind !== "order_payment" && e.kind !== "withdrawal" ? " · " + esc(e.note) : "") + '</small></div><b class="lw-amt ' + (amt > 0 ? "in" : cls === "wait" ? "wait" : "out") + '">' + (amt > 0 ? "+" : "−") + short(Math.abs(amt)) + "</b></li>";
     });
-    body.innerHTML = '<div class="lw-hist">' + h + "</ul></div>";
+      return '<div class="lw-hist">' + h + "</ul></div>";
+    }
+    body.querySelector(".lwh-chips").onclick = function (e) { var b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; body.querySelectorAll(".lwh-chips button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
+    body.querySelector(".lwh-search").oninput = function () { term = this.value.trim().toLowerCase(); paint(); };
+    body.querySelector("#lwhMore").onclick = async function () {
+      var btn = this; btn.disabled = true; btn.textContent = "Loading…";
+      var q = await sb.rpc("get_levro_wallet_history", { p_before: all[all.length - 1].created_at });
+      var next = (q && q.data) || [];
+      all = all.concat(next); more = next.length >= 50; btn.disabled = false; btn.textContent = "Show older"; paint();
+    };
+    paint();
   };
 
   // paying for an order: choose the wallet (no fee) or Paystack
@@ -5209,6 +5246,26 @@ window.lvAskCancel = async function (orderId) {
       try { var box = document.getElementById("aiChatMessages"); box.scrollTop = box.scrollHeight; } catch (_) {}
     }, 350);
   }
+  // "how far is <shop> from me" / "how long would delivery from <shop> take"
+  async function distanceAnswer(text) {
+    var q = String(text || "");
+    var m = q.match(/\b(?:from|to|is|at|for)\s+([A-Za-z0-9&'’.\- ]{3,50}?)\s*(?:\?|\.|!|$|from me|to me|away|take|long|far)/i);
+    var guess = m && m[1] ? m[1].replace(/\b(the|shop|store|vendor|my|me|delivery|distance)\b/gi, "").trim() : "";
+    var ctx = window.__lvLastVendorName || "";
+    var name = guess.length >= 3 ? guess : ctx;
+    if (!name) return "Which shop do you mean? Tell me its name, for example *How far is Dayo Stores from me?*";
+    var r = await sb.from("vendors").select("id,business_name,lat,lng,city").ilike("business_name", "%" + name.replace(/[%_]/g, "") + "%").limit(1);
+    var v = r && r.data && r.data[0];
+    if (!v) return "I could not find a shop called **" + name + "**. Check the spelling, or search for it on the Vendors page.";
+    window.__lvLastVendorName = v.business_name;
+    var loc = null; try { loc = typeof buyerLocation !== "undefined" ? buyerLocation : null; } catch (_) {}
+    if (v.lat == null || v.lng == null) return "**" + v.business_name + "** has not pinned its location yet" + (v.city ? " (it is in " + v.city + ")" : "") + ", so I cannot work out the distance.";
+    if (!loc || loc.lat == null) return "Switch on your location (Settings → Location) and I will tell you how far **" + v.business_name + "** is" + (v.city ? ". It is in " + v.city : "") + ".";
+    var km = haversineKm(loc.lat, loc.lng, v.lat, v.lng), road = km * 1.3;
+    var mins = function (speed, extra) { return Math.max(5, Math.round(road / speed * 60 + (extra || 0))); };
+    var dist = typeof formatDistanceKm === "function" ? formatDistanceKm(km) : km.toFixed(1) + " km";
+    return "**" + v.business_name + "** is about **" + dist + "** from you in a straight line, roughly " + road.toFixed(1) + " km by road.\n\n- Delivery by bike or car: about **" + mins(22, 10) + " minutes** once the shop hands it over\n- Walking: about **" + mins(5) + " minutes**\n\nThese are estimates; traffic and how soon the shop has the order ready change the real time.";
+  }
   // ---- plugging into Levi ----
   var orig = window.resolveLeviLocalAction;
   if (typeof orig === "function" && !orig.__lvVendor) {
@@ -5221,6 +5278,7 @@ window.lvAskCancel = async function (orderId) {
       if (isVendor() && /\b(add|create|list|upload|post|sell)\b[\s\S]{0,30}\b(product|item|listing|service|something|this)\b|\bnew (product|listing)\b/.test(q) && !/\bcart\b/.test(q)) {
         return { handled: true, reply: "Sure, I'll help you list it.", afterReply: start };
       }
+      if (/\b(how far|distance|how long|how many (minutes|km|kilomet)|delivery time|how soon|far from me|close to me)\b/.test(q) && /\b(shop|store|vendor|deliver|delivery|from me|away|far|distance|take|long)\b/.test(q)) return { handled: true, reply: await distanceAnswer(text) };
       if (/\b(what('s| is| are)?|which)\b[\s\S]{0,20}\b(selling|sells|trending|popular|in demand|hot)\b|\bbest[- ]?sell/.test(q)) return { handled: true, reply: await insights(false) };
       if (isVendor() && /\bhow('s| is)\b[\s\S]{0,20}\bmy (shop|store|sales|business|market)\b|\bmy (sales|stats|performance)\b/.test(q)) return { handled: true, reply: await insights(true) };
       return orig.apply(this, arguments);
@@ -5654,4 +5712,38 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     return Math.floor(diff / 86400) + "d ago";
   };
   try { timeAgo = window.timeAgo; } catch (_) {}
+})();
+
+/* ===== Adding or changing a payout account asks for the account password (shops and refund accounts) ===== */
+(function () {
+  "use strict";
+  var realFetch = window.fetch;
+  if (typeof realFetch !== "function" || realFetch.__lvPw) return;
+  function askPassword() {
+    return new Promise(function (resolve) {
+      var m = document.createElement("div"); m.className = "lvw-sheet-wrap";
+      m.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-grab" aria-hidden="true"></div><div class="lvw-sheet-head"><h3>Confirm it is you</h3></div><div class="lvw-sheet-body"><p class="lvw-sheet-msg">Enter your account password to add or change your payout account.</p><input type="password" id="lvPayPw" autocomplete="current-password" placeholder="Your password" style="width:100%;padding:.8rem;border-radius:12px;border:1.5px solid rgba(128,128,128,.4);font:inherit;background:transparent;color:inherit;margin:.4rem 0 .8rem"><button type="button" class="btn lvw-wd-go" id="lvPayGo">Continue</button><button type="button" class="btn" id="lvPayNo" style="width:100%;margin-top:.5rem;background:transparent;color:#d93025;border:1.5px solid #d93025">Cancel</button></div></div>';
+      document.body.appendChild(m);
+      var done = function (v) { m.remove(); resolve(v); };
+      m.querySelector("#lvPayGo").onclick = function () { var v = m.querySelector("#lvPayPw").value; if (v) done(v); };
+      m.querySelector("#lvPayNo").onclick = function () { done(null); };
+      setTimeout(function () { try { m.querySelector("#lvPayPw").focus(); } catch (_) {} }, 80);
+    });
+  }
+  window.lvAskPassword = askPassword;
+  window.fetch = async function (input, init) {
+    try {
+      var url = typeof input === "string" ? input : (input && input.url) || "";
+      if (/\/api\/vendor-payments/.test(url) && init && typeof init.body === "string" && init.body.indexOf("create-subaccount") > -1) {
+        var b = JSON.parse(init.body);
+        if (b.action === "create-subaccount" && !b.password) {
+          var pw = await askPassword();
+          if (!pw) return new Response(JSON.stringify({ error: "Cancelled. Your payout account was not changed." }), { status: 400, headers: { "Content-Type": "application/json" } });
+          b.password = pw; init = Object.assign({}, init, { body: JSON.stringify(b) });
+        }
+      }
+    } catch (_) {}
+    return realFetch.call(this, input, init);
+  };
+  window.fetch.__lvPw = true;
 })();

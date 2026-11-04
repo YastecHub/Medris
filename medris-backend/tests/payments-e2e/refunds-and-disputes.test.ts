@@ -1,3 +1,4 @@
+import { paystackTransferFeeKobo } from "../../src/integrations/paystack/fees.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, useWorld, withdraw, handOver } from "./harness.js";
 
@@ -134,7 +135,7 @@ describe("refunds, disputes, chargebacks and cancellations", () => {
     await sendWebhook(w, "refund.processed", { transaction_reference: reference });
     await completeAndPayOut(w, orderId);
     const commission = Math.round(Number((await rowOf(w, `select coalesce(sum(amount), 0)::text as c from public.commission_charges where order_id = $1`, [orderId]))?.c ?? 0) * 100);
-    expect(w.paystack.callsTo("POST", "/transfer")[0]!.body).toMatchObject({ amount: 400000 - 100025 - commission });
+    expect(w.paystack.callsTo("POST", "/transfer")[0]!.body).toMatchObject({ amount: 400000 - 100025 - commission - paystackTransferFeeKobo(400000 - 100025 - commission) });
   });
 
   it.todo("resolving a dispute in the buyer's favour offers 'Refund via Paystack' on the dispute screen (issue #99: button not built; admins use the Payments screen)");
