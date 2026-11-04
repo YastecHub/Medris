@@ -2020,7 +2020,7 @@ async function setVendorRequestPref(v){
       var sfl=document.querySelector(".storefront-meta .sf-loc");
       if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); sfl.dataset.lvc="1"; if(xs){ var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML=(rr.logo?'<span class="sf-camp-ico"><img src="/campus-logos/'+e2(rr.id)+'.webp" alt=""></span>':'<i class="fa-solid fa-graduation-cap"></i>')+' '+e2(shortName(rr)); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
-      if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=x2.student_verified?chipFor({campus_id:null,student_verified:true},false):null; if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } else if(x2.non_student_verified){ var c3=document.createElement("span"); c3.className="lv-nsv-pill"; c3.innerHTML='<i class="fa-solid fa-store"></i> Verified seller'; row.appendChild(c3); } } }
+      if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=x2.student_verified?chipFor({campus_id:null,student_verified:true},false):null; if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } else if(x2.non_student_verified){ var c3=document.createElement("i"); c3.className="fa-solid fa-circle-check lv-nsv"; c3.title="Verified seller"; c3.setAttribute("aria-label","Verified seller"); c3.style.marginLeft=".45rem"; row.appendChild(c3); } } }
   }
   var failTimer=null;
   function armFailsafe(){ clearTimeout(failTimer); failTimer=setTimeout(revealAll,1500); }

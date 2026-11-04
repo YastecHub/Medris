@@ -325,6 +325,8 @@ async function lvOpenProfileShare(kind, targetId) {
   }
   pic = lvSharpPic(pic);
   const initials = String(isProduct ? byName : name).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "L";
+  // what the light watermark behind the card is made of: the real Levromart mark, the shop's picture or initials, and a few of its products
+  window.__lvQrWm = { kind: isProduct ? "product" : isMap ? "map" : "shop", pic, initials, products: (isProduct ? [cover] : products || []).filter(Boolean).slice(0, 4) };
   let centrePic = pic;   // the code carries the shop's (or the person's) own picture in its middle
   const storeKey = "lv-qr-gradient:" + (isProduct ? "p:" + targetId : isMap ? "m:" + targetId : isShop ? targetId : "me");
   let gi = null;
