@@ -102,6 +102,7 @@ const L = {
   refundAccount: per("refund-account-write", 20, 3_600_000),
   wallet: per("wallet-write", 20),
   walletSearch: per("wallet-search", 60),
+  platformWallet: per("platform-wallet-write", 12),
 };
 
 /* ------------------------------------------------------------------ table */
@@ -482,6 +483,14 @@ export const RPC: Record<string, RpcEntry> = {
   wallet_pay_order: { run: (s, me, a) => s.wallet.payOrder(me, str(a.p_order_id)), limit: L.checkout },
   admin_wallets: { run: (s, me, a) => s.wallet.adminList(me, str(a.p_query)) },
   admin_decide_wallet_withdrawal: { run: (s, me, a) => s.wallet.decideWithdrawal(me, str(a.p_id), str(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
+  // Levromart's own wallet: the commission (migration 0035)
+  get_levromart_wallet: { run: (s, me) => s.platformWallet.summary(me) },
+  get_levromart_wallet_history: { run: (s, me, a) => s.platformWallet.history(me, str(a.p_before)) },
+  set_levromart_payout_account: {
+    run: (s, me, a) => s.platformWallet.setAccount(me, { bankCode: str(a.p_bank_code), accountNumber: str(a.p_account_number), confirmedName: str(a.p_confirmed_name), password: str(a.p_password) }),
+    limit: L.platformWallet,
+  },
+  withdraw_levromart_commission: { run: (s, me, a) => s.platformWallet.withdraw(me, num(a.p_amount_kobo), str(a.p_password)), limit: L.platformWallet },
   admin_set_wallet_frozen: { run: (s, me, a) => s.wallet.adminFreeze(me, str(a.p_user_id), bool(a.p_frozen), str(a.p_reason)), limit: L.adminUsers },
   admin_list_withdrawals: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.adminList(me, str(a.p_status))) },
   admin_decide_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason))), limit: L.withdrawals },
