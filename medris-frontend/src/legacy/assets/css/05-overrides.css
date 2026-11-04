@@ -6936,6 +6936,13 @@ html:root body i.vendor-inline-verified{color:#1d9bf0!important}
 
 /* the small reminder bell at the top right of a buyer's order (pending, confirmed, out for delivery) */
 .od-header{position:relative}
+.od-bell-wrap{position:relative;margin-left:auto;margin-right:2px;flex:0 0 auto;display:inline-flex}
+.od-bell-wrap .od-bell{margin:0;animation:lvBellRing 3.2s ease-in-out 1s infinite;transform-origin:50% 12%}
+.od-bell-tip{position:absolute;top:calc(100% + 9px);right:0;white-space:nowrap;background:#111;color:#fff;font-size:.74rem;font-weight:700;padding:5px 10px;border-radius:9px;box-shadow:0 6px 18px rgba(0,0,0,.28);pointer-events:none;z-index:6;opacity:0;transform:translateY(-10px);animation:lvTipDrop 5.5s ease .8s 1 both}
+.od-bell-tip::before{content:"";position:absolute;top:-5px;right:14px;width:10px;height:10px;background:#111;transform:rotate(45deg);border-radius:2px}
+@keyframes lvBellRing{0%,60%,100%{transform:rotate(0)}66%{transform:rotate(16deg)}72%{transform:rotate(-14deg)}78%{transform:rotate(10deg)}84%{transform:rotate(-8deg)}90%{transform:rotate(0)}}
+@keyframes lvTipDrop{0%{opacity:0;transform:translateY(-10px)}10%,80%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){.od-bell-wrap .od-bell,.od-bell-tip{animation:none}.od-bell-tip{display:none}}
 .od-bell{width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;margin-left:auto;margin-right:2px;flex:0 0 auto}
 .od-bell:active{transform:scale(.92)}.od-bell:disabled{opacity:.5}
 

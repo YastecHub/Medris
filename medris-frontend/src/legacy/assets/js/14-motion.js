@@ -3963,14 +3963,14 @@ window.lvAskCancel = async function (orderId) {
 
   window.lvW3Add = async function () {
     var d = await load(false); if (!d) return showToast("Your wallet is not available right now.", "error");
-    var m = sheet("Add money", '<p class="lw-hint">Add money with your card, bank transfer or USSD through Paystack. Paystack\'s small fee is added on top.</p>' + amountField("lwAddAmt") +
+    var m = sheet("Add money", '<p class="lw-hint">Add money with your card, bank transfer or USSD through Paystack.</p>' + amountField("lwAddAmt") +
       '<div class="lw-chips">' + [500, 1000, 2000, 5000, 10000].map(function (n) { return '<button type="button" data-n="' + n + '">₦' + n.toLocaleString("en-NG") + "</button>"; }).join("") + "</div>" +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwAddGo">Continue</button>');
     m.addEventListener("click", function (e) { var c = e.target.closest("[data-n]"); if (c) { document.getElementById("lwAddAmt").value = c.dataset.n; } });
     m.querySelector("#lwAddGo").onclick = async function () {
       var amt = readAmount("lwAddAmt"), b = this;
       if (amt < 10000) return err(m, "The smallest amount is ₦100.");
-      var pin = await window.lvPinGate({ title: "Add money", rows: [["Amount into your wallet", short(amt), 1], ["Paystack's fee", "added on the next screen"]], cta: "Continue to Paystack" });
+      var pin = await window.lvPinGate({ title: "Add money", rows: [["Amount into your wallet", short(amt), 1]], cta: "Continue to Paystack" });
       if (!pin) return;
       b.disabled = true; b.textContent = "Opening Paystack…";
       var r = await sb.rpc("wallet_topup", { p_amount_kobo: amt, p_pin: pin });
@@ -4099,7 +4099,7 @@ window.lvAskCancel = async function (orderId) {
     var shop = typeof vendor !== "undefined" && vendor;
     sheet("How your wallet works", '<ul class="lvw-how">' +
       '<li><b>One wallet.</b> Money you add, money people send you, refunds' + (shop ? " and your shop earnings" : "") + ' all land here. Your @tag is how people send you money.</li>' +
-      '<li><b>Add money.</b> With your card, bank transfer or USSD through Paystack. Paystack\'s small fee is added on top.</li>' +
+      '<li><b>Add money.</b> With your card, bank transfer or USSD through Paystack.</li>' +
       '<li><b>Pay for orders.</b> Choose "Levromart wallet" when you pay: no Paystack screens, quick and easy to track. The shop gets its share the usual way.</li>' +
       '<li><b>Transfer.</b> Send money to anyone by their @tag. Check the name before you send: transfers cannot be undone.</li>' +
       (shop ? '<li><b>Shop earnings.</b> When a buyer confirms an order, your share (the sale minus Levromart\'s 3% commission) is ready. Earnings are released 24 hours after the payment. This protects you and your buyers: if a buyer reports a scam in that time, the money can still be refunded. A refund comes out of your share.</li>' : '<li><b>Refunds.</b> If an order is cancelled or a problem is settled in your favour, the refund comes into your wallet. It is paid out of the shop\'s share.</li>') +
@@ -4165,9 +4165,9 @@ window.lvAskCancel = async function (orderId) {
     var d = await load(true);
     if (!d || d.frozen) return paystackGo();
     var bal = Number(d.balance_kobo), need = Math.round(Number(total || 0) * 100), enough = need > 0 ? bal >= need : bal > 0;
-    var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? " · small fee" : " · not enough") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
+    var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? "" : " · not enough") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       (enough ? "" : '<button type="button" class="lw-link" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money to your wallet</button>') +
-      '<button type="button" class="lw-pay" id="lwPayCard"><span class="lw-pay-ic p"><i class="fa-solid fa-credit-card"></i></span><div><b>Card, bank transfer or USSD</b><small>Through Paystack · a small fee is added</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
+      '<button type="button" class="lw-pay" id="lwPayCard"><span class="lw-pay-ic p"><i class="fa-solid fa-credit-card"></i></span><div><b>Card, bank transfer or USSD</b><small>Through Paystack</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       '<p class="lw-err" hidden></p>');
     m.querySelector("#lwPayCard").onclick = function () { closeSheet(); paystackGo(); };
     var wb = m.querySelector("#lwPayWallet");
