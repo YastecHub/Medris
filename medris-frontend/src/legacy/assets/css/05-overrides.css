@@ -6683,3 +6683,9 @@ html:root:root body .lw-ico.wait:has(.fa-building-columns){background-image:url(
 html:root:root body .lvw-empty>i{display:block!important;width:110px;height:110px;margin:0 auto 6px;background:url(/icons3d/lv/empty-bank.webp) center/contain no-repeat;font-size:0!important;color:transparent!important}
 html:root:root body .lvw-empty>i::before{content:none!important}
 html:root:root body .lv-stat .lv-stat-ico img,html:root:root body .lv-stat .lv-stat-ico .lv3d{width:44px!important;height:44px!important;object-fit:contain}
+
+/* Orders: the Stats / History pill labels are light in Dark and Black (the label span was forced to near-black) */
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app#app .orders-icon-btn.lvo-pill:not(.on) span,
+html:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app#app .orders-icon-btn.lvo-pill:not(.on){color:#f3f4f6!important;-webkit-text-fill-color:#f3f4f6!important}
+/* My Listings tiles: the 3D pictures stand on the tile itself */
+html:root:root body #app :is(.vh-hub,.vl2) .vh-stat .vh-stat-ico,html:root:root body #app :is(.vh-hub,.vl2) .vh-stat .vh-3d{background:none!important;box-shadow:none!important}
