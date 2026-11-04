@@ -17,7 +17,7 @@ describe("the buyer's refunds wallet", () => {
     await runJob(w, "paystack-refunds");
     expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(0);
     expect(await rowOf(w, `select 1 as x from public.refund_credits where order_id = $1`, [o])).toBeFalsy();
-    expect((await call("get_levro_wallet", w.buyer2.token)).data.balance_kobo).toBe("500000");
+    expect((await call("get_levro_wallet", w.buyer2.token)).data.balance_kobo).toBe("485000");
   });
 
   it("the name must match; then the account is saved without the full number", async () => {

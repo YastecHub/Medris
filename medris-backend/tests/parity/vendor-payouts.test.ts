@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { VendorPayoutsService } from "../../src/modules/vendor-payouts/vendor-payouts.service.js";
 import { seedOrder, seedProduct, seedUser, seedVendor, setRole } from "../support/fixtures.js";
+import { paystackTransferFeeKobo } from "../../src/integrations/paystack/fees.js";
+/** What the shop is sent: the amount owed minus Paystack's transfer fee, which the shop bears. */
+const net = (k: number) => k - paystackTransferFeeKobo(k);
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
 
 describe("vendor payouts (issue #98)", () => {
@@ -94,9 +97,9 @@ describe("vendor payouts (issue #98)", () => {
     await service.run();
     const p = await only(orderId);
     expect(transfers).toHaveLength(1);
-    expect(transfers[0]).toMatchObject({ amount: 142547, recipient: "RCP_test", reference: p.transfer_reference });
+    expect(transfers[0]).toMatchObject({ amount: net(142547), recipient: "RCP_test", reference: p.transfer_reference });
     expect(p.status).toBe("processing"); // Paystack said "pending": the webhook finishes it
-    expect(p.amount_kobo).toBe("142547");
+    expect(p.amount_kobo).toBe(String(net(142547)));
     expect(p.commission_kobo).toBe("7503");
     const charge = await db.query<{ status: string }>(`select status from public.commission_charges where order_id = $1`, [orderId]);
     expect(charge[0]!.status).toBe("paid");
@@ -117,26 +120,26 @@ describe("vendor payouts (issue #98)", () => {
     // the shop withdraws: the payout takes the 3% once
     await db.query(`update public.vendor_payouts set status = 'pending', hold_reason = null where order_id = $1`, [orderId]);
     await service.run();
-    expect(transfers.at(-1)).toMatchObject({ amount: 500000 - 15000 });
+    expect(transfers.at(-1)).toMatchObject({ amount: net(500000 - 15000) });
   });
 
   it("FIX review #2: commission the shop already paid itself is not taken again from the payout", async () => {
     const orderId = await completedOrder(2000, 100);
     await db.query(`update public.commission_charges set status = 'paid', paid_at = now() where order_id = $1`, [orderId]); // paid through the commission checkout
     await service.run();
-    expect(transfers.at(-1)).toMatchObject({ amount: 200000 });
+    expect(transfers.at(-1)).toMatchObject({ amount: net(200000) });
   });
 
   it("FIX review #2: a payout retried after a failed transfer still takes the commission, once", async () => {
     const orderId = await completedOrder(2000, 100);
     transferAnswer = () => rejected("Recipient is invalid", 422);
     await service.run();
-    expect(transfers.at(-1)).toMatchObject({ amount: 190000 });
+    expect(transfers.at(-1)).toMatchObject({ amount: net(190000) });
     await db.query(`update public.vendor_payouts set updated_at = now() - interval '2 hours' where order_id = $1`, [orderId]);
     transferAnswer = () => ok({ transfer_code: "TRF_2", reference: "x", status: "pending" });
     await service.run(); // queued again
     await service.run(); // sent again
-    expect(transfers.at(-1)).toMatchObject({ amount: 190000 });
+    expect(transfers.at(-1)).toMatchObject({ amount: net(190000) });
   });
 
   it("FIX review #2: an order paid some other way still owes its commission as before", async () => {
@@ -168,7 +171,7 @@ describe("vendor payouts (issue #98)", () => {
     await db.query(`insert into public.paystack_transactions (reference, purpose, order_id, payer_user_id, amount_kobo, status) values ($1, 'order_payment', $2, $3, 200000, 'success')`, [ref, orderId, buyer]);
     await db.query(`insert into public.paystack_refunds (transaction_reference, order_id, amount_kobo, status) values ($1, $2, 30000, 'processed')`, [ref, orderId]);
     await service.run();
-    expect(transfers.at(-1)).toMatchObject({ amount: 200000 - 10000 - 30000 });
+    expect(transfers.at(-1)).toMatchObject({ amount: net(200000 - 10000 - 30000) });
   });
 
   it("two workers at once make one transfer", async () => {

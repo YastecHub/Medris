@@ -139,7 +139,7 @@ describe("the Levromart wallet", () => {
     expect((await shopRefunds(w, o)).status).toBe(200);
     await runJob(w, "paystack-refunds");
     expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(0);
-    expect(await balance(w.buyer2.token)).toBe(300000);
+    expect(await balance(w.buyer2.token)).toBe(291000);
   });
 
   it("withdrawals: no waiting after a bank change; the PIN and a fee (Paystack's) are all that is asked", async () => {

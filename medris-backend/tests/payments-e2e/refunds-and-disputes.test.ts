@@ -21,7 +21,7 @@ describe("refunds, disputes, chargebacks and cancellations", () => {
     await runJob(w, "paystack-refunds");
     await runJob(w, "paystack-refunds");
     expect(w.paystack.refunds).toHaveLength(1);
-    expect(w.paystack.callsTo("POST", "/refund")[0]!.body).toMatchObject({ transaction: reference, amount: 500000 }); // the order amount, not Paystack's fee
+    expect(w.paystack.callsTo("POST", "/refund")[0]!.body).toMatchObject({ transaction: reference, amount: 485000 }); // the order amount minus the 3% Levromart already took (not Paystack's fee)
     await sendWebhook(w, "refund.processed", { transaction_reference: reference, id: 12345 });
     expect((await refundRows(orderId))[0]!.status).toBe("processed");
     expect((await w.db.query(`select 1 from public.notifications where user_id = $1 and type = 'refund_started'`, [w.buyer.id])).length).toBeGreaterThan(0);
@@ -37,7 +37,7 @@ describe("refunds, disputes, chargebacks and cancellations", () => {
     const tooMuch = await doRefund(orderId, { amountNaira: 1500, reason: "too much" });
     expect(tooMuch.status).toBe(400);
     expect((await doRefund(orderId, { reason: "the rest" })).status).toBe(200);
-    expect((await refundRows(orderId)).map((x) => x.amount_kobo)).toEqual(["50050", "149950"]);
+    expect((await refundRows(orderId)).map((x) => x.amount_kobo)).toEqual(["50050", "143950"]);
   });
 
   it("a double click makes one refund", async () => {
@@ -124,7 +124,7 @@ describe("refunds, disputes, chargebacks and cancellations", () => {
     expect(res.status).toBe(200);
     await runJob(w, "paystack-refunds");
     expect(w.paystack.refunds).toHaveLength(1);
-    expect(w.paystack.callsTo("POST", "/refund")[0]!.body).toMatchObject({ amount: 180000 });
+    expect(w.paystack.callsTo("POST", "/refund")[0]!.body).toMatchObject({ amount: 174600 });
   });
 
   it("a partial refund, then completion: the payout is what was paid minus the refund minus commission, to the kobo", async () => {
