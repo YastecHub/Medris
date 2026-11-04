@@ -135,24 +135,27 @@
   function buildAdminInventoryHtml(products,stale=false){
     const all=[...(products||[])].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base",numeric:true}));
     window.__adminInventoryAll=all;
-    if(!["all","active","removed"].includes(window.__adminInventoryStatus)) window.__adminInventoryStatus="all";
+    if(!["all","active","suspended","removed"].includes(window.__adminInventoryStatus)) window.__adminInventoryStatus="all";
     const total=all.length;
     const active=all.filter(p=>String(p.status)==="active").length;
     const removed=all.filter(p=>String(p.status)==="removed").length;
+    const suspended=all.filter(p=>String(p.status)==="suspended").length;
     const sectors=[...new Map(all.map(p=>[p.sector_id,p.sector_name]).filter(([id,name])=>id&&name).map(([id,name])=>[id,{id,name}])).values()]
       .sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:"base"}));
     const monthCounts=new Map();
     all.forEach(p=>{const d=new Date(p.created_at);if(Number.isNaN(d.getTime()))return;const key=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;monthCounts.set(key,(monthCounts.get(key)||0)+1);});
     const monthRows=[...monthCounts.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([key,count])=>{const [y,m]=key.split("-");const label=new Date(Date.UTC(Number(y),Number(m)-1,1)).toLocaleString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});return `<tr><td>${esc(label)}</td><td class="num">${count}</td></tr>`;}).join("")||`<tr><td colspan="2" class="muted">No product records yet.</td></tr>`;
     const sectorOptions=sectors.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
-    const statusLabel=window.__adminInventoryStatus==="active"?"Active products":window.__adminInventoryStatus==="removed"?"Removed products":"All products";
+    const statusLabel=window.__adminInventoryStatus==="active"?"Active products":window.__adminInventoryStatus==="suspended"?"Suspended products":window.__adminInventoryStatus==="removed"?"Removed products":"All products";
     const visible=all.filter(p=>window.__adminInventoryStatus==="all" || String(p.status)===window.__adminInventoryStatus);
     return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
       ${stale?`<div class="muted" style="margin:.35rem 0;">Showing your most recent inventory snapshot.</div>`:""}
+      <div class="ai-tabs" role="tablist" aria-label="Inventory status">${[["all","All",total],["active","Active",active],["suspended","Suspended",suspended],["removed","Removed",removed]].map(t=>`<button type="button" role="tab" class="${window.__adminInventoryStatus===t[0]?"on":""}" aria-selected="${window.__adminInventoryStatus===t[0]}" onclick="setAdminInventoryStatus('${t[0]}');document.querySelectorAll('.ai-tabs button').forEach(b=>{const on=b===this;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)})">${t[1]} <span>${t[2]}</span></button>`).join("")}</div>
       <div class="admin-inventory-controls">
         <select id="adminInventoryStatusSelect" class="admin-inventory-status-select" onchange="setAdminInventoryStatus(this.value)" aria-label="Inventory status">
           <option value="all" ${window.__adminInventoryStatus==="all"?"selected":""}>All products: ${total}</option>
           <option value="active" ${window.__adminInventoryStatus==="active"?"selected":""}>Active: ${active}</option>
+          <option value="suspended" ${window.__adminInventoryStatus==="suspended"?"selected":""}>Suspended: ${suspended}</option>
           <option value="removed" ${window.__adminInventoryStatus==="removed"?"selected":""}>Removed: ${removed}</option>
         </select>
         <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
@@ -618,7 +621,7 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
   };
 
   window.setAdminInventoryStatus=function(status){
-    window.__adminInventoryStatus=["all","active","removed"].includes(status)?status:"all";
+    window.__adminInventoryStatus=["all","active","suspended","removed"].includes(status)?status:"all";
     filterAdminInventory();
     const statusSel=document.getElementById('adminInventoryStatusSelect');
     if(statusSel) statusSel.value=window.__adminInventoryStatus;
@@ -637,7 +640,7 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
     const tbody=document.querySelector("#adminInventoryTable tbody");
     if(tbody) tbody.innerHTML=renderAdminInventoryRows(filtered);
     const count=document.getElementById("adminInventoryCount");
-    if(count){const label=status==="active"?"active products":status==="removed"?"removed products":"products";count.textContent=`Showing ${filtered.length} ${label} of ${all.filter(p=>status==="all"||String(p.status||"")===status).length}`;}
+    if(count){const label=status==="active"?"active products":status==="suspended"?"suspended products":status==="removed"?"removed products":"products";count.textContent=`Showing ${filtered.length} ${label} of ${all.filter(p=>status==="all"||String(p.status||"")===status).length}`;}
   };
 })();
 

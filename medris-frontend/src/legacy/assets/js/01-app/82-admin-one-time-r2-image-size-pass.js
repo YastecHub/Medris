@@ -403,7 +403,8 @@ async function renderAdminPanel(status) {
         ${deleted
           ? `<button type="button" class="btn btn-sm ad-btn ad-approve" onclick="restoreAdminVendor('${esc(v.id)}');return false;"><i class="fa-solid fa-rotate-left"></i> Restore</button>
              <button type="button" class="btn btn-sm ad-btn ad-delete" onclick="permanentlyDeleteAdminVendor('${esc(v.id)}');return false;"><i class="fa-solid fa-trash-can"></i> Delete permanently</button>`
-          : `${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm ad-btn ad-approve vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}"><i class="fa-solid fa-circle-check"></i> Approve</button>` : ""}
+          : `${v.verification_status === "verified" ? `<button type="button" class="btn btn-sm ad-btn ad-unverify" onclick="adminUnverifyVendor('${esc(v.id)}','${esc(status)}',this.closest('details')?.dataset?.name||'');return false;"><i class="fa-solid fa-rotate-left"></i> Unverify</button>` : ""}
+             ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm ad-btn ad-approve vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}"><i class="fa-solid fa-circle-check"></i> Approve</button>` : ""}
              ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm ad-btn ad-reject vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}"><i class="fa-solid fa-circle-xmark"></i> Reject</button>` : ""}
              ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm ad-btn ad-delete vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete</button>` : ""}`}
       </div>
