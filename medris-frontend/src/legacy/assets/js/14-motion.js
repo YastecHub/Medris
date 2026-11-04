@@ -4629,3 +4629,53 @@ window.lvAskCancel = async function (orderId) {
     if (twin && document.contains(twin)) setTimeout(function () { try { twin.click(); } catch (_) {} }, 0);
   }, true);
 })();
+
+/* ===== Levromart 3D icon set (public/icons3d/lv): one registry, used by notifications, empty states, the seller dashboard's
+   statistics and tools, and the wallet / transaction lists. The pictures stand on the page itself (no coloured boxes). ===== */
+(function () {
+  "use strict";
+  var NAMES = ["order-cancelled", "order-confirmed", "order-reminder", "new-order", "new-listing", "points", "vendor-of-week", "order-completed", "handed-over", "dispute",
+    "withdrawal-approved", "withdrawal-rejected", "payout-sent", "moved-up", "general", "empty-orders", "empty-vendors", "empty-cart", "empty-bank", "empty-messages", "empty-notifications",
+    "manage-listings", "monthly-listing", "reviews", "working-hours", "requests", "suggestions", "support", "settings", "tx-all", "tx-pending", "tx-ready", "tx-onway", "tx-paid",
+    "stat-orders", "stat-followers", "stat-views", "stat-wishlist"];
+  window.LV3D = {}; NAMES.forEach(function (n) { window.LV3D[n] = "/icons3d/lv/" + n + ".webp"; });
+  window.lv3dIcon = function (name, size, alt) {
+    var src = window.LV3D[name]; if (!src) return "";
+    var s = size || 48;
+    return '<img class="lv3di" src="' + src + '" width="' + s + '" height="' + s + '" alt="' + (alt ? esc(alt) : "") + '"' + (alt ? "" : ' aria-hidden="true"') + ' decoding="async">';
+  };
+  // empty states drawn by lvIllus (orders, cart, messages)
+  var illus0 = window.lvIllus;
+  window.lvIllus = function (kind, px) {
+    var map = { box: "empty-orders", cart: "empty-cart", chat: "empty-messages" };
+    if (map[kind]) return window.lv3dIcon(map[kind], Math.max(96, Math.round((px || 64) * 1.6)));
+    return typeof illus0 === "function" ? illus0.apply(this, arguments) : "";
+  };
+  // the seller dashboard's statistic tiles (lv3d by emoji code)
+  var STAT = { "1f6d2": "stat-orders", "1f48e": "monthly-listing", "1f4e6": "new-listing", "1f465": "stat-followers", "1f4c8": "stat-views", "1f381": "stat-wishlist" };
+  var lv3d0 = window.lv3d;
+  if (typeof lv3d0 === "function") window.lv3d = function (c, cls) { return STAT[c] ? '<img class="lv3d ' + (cls || "") + '" src="' + window.LV3D[STAT[c]] + '" alt="" aria-hidden="true" decoding="async">' : lv3d0.apply(this, arguments); };
+  // notifications: the picture that matches what happened (anything else keeps its old icon)
+  function pick(n) {
+    var T = String(n && n.type || ""), t = String(n && n.title || "") + " " + String(n && n.body || "");
+    if (/cancel/.test(T) || (T === "order_status_changed" && /cancel/i.test(t))) return "order-cancelled";
+    if (T === "order_status_changed") return /complet/i.test(t) ? "order-completed" : /confirm/i.test(t) ? "order-confirmed" : /hand|deliver/i.test(t) ? "handed-over" : /dispute/i.test(t) ? "dispute" : null;
+    var M = { order_reminder: "order-reminder", new_order: "new-order", order_placed: "new-order", payment_confirmed: "order-confirmed", payment_received: "tx-paid",
+      new_dispute: "dispute", dispute_reopened: "dispute", dispute_resolved: "order-completed", points: "points", points_winner: "vendor-of-week", vendor_of_the_week: "vendor-of-week",
+      vendor_follow: "stat-followers", vendor_follow_update: "new-listing", stock_alert: "new-listing", new_listing: "new-listing", new_review: "reviews", new_message: "requests",
+      withdrawal_approved: "withdrawal-approved", withdrawal_rejected: "withdrawal-rejected", payout_failed: "withdrawal-rejected", payout_sent: "payout-sent", refund_sent: "payout-sent",
+      wallet_withdrawal_sent: "payout-sent", wallet_withdrawal_rejected: "withdrawal-rejected", wallet_withdrawal_failed: "withdrawal-rejected", wallet_received: "tx-paid",
+      payout_on_hold: "tx-pending", payment_unresolved_24h: "tx-pending", product_wishlisted: "stat-wishlist", leaderboard_up: "moved-up", rank_up: "moved-up" };
+    if (M[T]) return M[T];
+    if (/leaderboard|moved up|rank/i.test(t) && /point|leader|rank/i.test(T + t)) return "moved-up";
+    if (/^withdraw/.test(T)) return /reject|not approved|declin/i.test(t) ? "withdrawal-rejected" : "withdrawal-approved";
+    if (/^payout|^refund/.test(T)) return "payout-sent";
+    return null;
+  }
+  var ni0 = window.notificationSystemIconHtml;
+  if (typeof ni0 === "function" && !ni0.__lv3d) {
+    var ni1 = function (n) { var k = pick(n); return k ? '<span class="notification-system-icon notif-type-icon lv3d-n">' + window.lv3dIcon(k, 44) + "</span>" : ni0.apply(this, arguments); };
+    ni1.__lv3d = true; window.notificationSystemIconHtml = ni1;
+    try { notificationSystemIconHtml = ni1; } catch (_) {}
+  }
+})();

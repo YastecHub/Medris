@@ -840,13 +840,38 @@ async function transcribeAudio(body, res) {
 // straight from the live catalogue (no waiting for the language model), so the answer is complete, accurate and fast.
 // The language model still handles everything else (cart, orders, advice, chat).
 // ---------------------------------------------------------------------------------------------------------------------
-const DETAIL_WORDS = new Set("farthest furthest far best top highest rated rating ratings review reviews reputation reputable trusted trust popular good great recommend recommended none cheapest cheaper lowest least most affordable budget priciest how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
+const DETAIL_WORDS = new Set("something anything else another given give show send naira k between from under below above over less than budget range farthest furthest far best top highest rated rating ratings review reviews reputation reputable trusted trust popular good great recommend recommended none cheapest cheaper lowest least most affordable budget priciest how much cost costs price prices priced expensive cheap cheaper cheapest close closer far distance away km kilometer kilometers kilometres minutes minute time long take takes walk walking drive driving deliver delivery location locate located whats what's which one it this that she he they them her his their its product products item items sells sell vendor vendors list all other others more also too there here is are does do much many please thanks thank okay ok yes no".split(" "));
 const NOT_PRODUCT_INTENT = /\b(take me|go to|open (it|that|the|their)|show me (their|the) (shop|store)|yes|yeah|sure|ok(ay)?|cart|checkout|order|orders|wishlist|message|messages|chat with|settings|profile|password|account|payment|pay|refund|withdraw|complain|report|help me|how do i|how does|what is levromart|who are you|levi)\b/;
 const FIND_INTENT = /\b(vendors?|sells?|selling|seller|sellers|shops?|stores?|price|prices|how much|cost|close|closest|nearest|near|nearby|far|distance|where (can|do) i|do you (have|sell)|any|need|want|looking for|find|get me|buy|rent|available|which)\b/;
 const CORRECTION = /^(?:no+|nope|nah|not that|not those|i mean|i meant|actually|rather|sorry|instead)\b[\s,.!:-]*/;
+// "from 5k to 10k", "between 5000 and 10000", "under 10k", "above ₦5,000", "5k-10k": a price range in naira
+function nairaOf(v) { const m = /^(\d+(?:\.\d+)?)(k|m)?$/.exec(String(v).replace(/[₦,\s]|naira|ngn/gi, "")); if (!m) return null; return Math.round(Number(m[1]) * (m[2] === "k" ? 1000 : m[2] === "m" ? 1e6 : 1)); }
+const NUM = "₦?\\s?\\d[\\d,]*(?:\\.\\d+)?\\s?(?:k|m)?(?:\\s?naira)?";
+function priceRange(text) {
+  const t = normalize(text);
+  let m = new RegExp(`(?:from|between)?\\s*(${NUM})\\s*(?:to|and|-|–)\\s*(${NUM})`).exec(t);
+  if (m) { const a = nairaOf(m[1]), b = nairaOf(m[2]); if (a != null && b != null) return { min: Math.min(a, b), max: Math.max(a, b), text: m[0] }; }
+  m = new RegExp(`(?:under|below|less than|not more than|max(?:imum)?|budget(?: of| is)?|within|at most|up to)\\s*(${NUM})`).exec(t);
+  if (m) { const b = nairaOf(m[1]); if (b != null) return { min: 0, max: b, text: m[0] }; }
+  m = new RegExp(`(?:above|over|more than|at least|from|min(?:imum)?)\\s*(${NUM})`).exec(t);
+  if (m) { const a = nairaOf(m[1]); if (a != null) return { min: a, max: Infinity, text: m[0] }; }
+  return null;
+}
+// "something to stand my phone" -> "phone stand"; "something for my hair" -> "hair"
+function rephrase(t) {
+  let m = /\bsomething (?:to|that can|that will|i can use to) (\w+) (?:my|the|a|your) (\w+)/.exec(t);
+  if (m) return t.replace(m[0], `${m[2]} ${m[1]}`);
+  m = /\bsomething for (?:my|the|a) (\w+(?: \w+)?)/.exec(t);
+  if (m) return t.replace(m[0], m[1]);
+  return t;
+}
+const FOLLOWUP = /^(?:can you |please |pls )?(?:give(?:n)?|show|send|find|get)?\s*(?:me\s*)?(?:an?other(?: one)?|more|some more|others|other ones|something else|next|different ones?)\b/;
 function productTerm(text) {
   let t = normalize(text).trim();
   for (let i = 0; i < 3 && CORRECTION.test(t); i++) t = t.replace(CORRECTION, "");
+  if (FOLLOWUP.test(t)) return "";
+  const pr = priceRange(t); if (pr) t = t.replace(pr.text, " ");
+  t = rephrase(t);
   const words = t.replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean)
     .filter((w) => !QUERY_FILLER.has(w) && !DETAIL_WORDS.has(w));
   return words.join(" ").trim();
@@ -880,6 +905,25 @@ const CONCEPTS = [
 const SINGULAR = (w) => w.replace(/(ies)$/, "y").replace(/(ses|xes|zes|ches|shes)$/, (m) => m.slice(0, -2)).replace(/([^s])s$/, "$1");
 // Products whose own NAME carries the words asked for (a "backpack" must not bring every handbag just because the category is
 // called "Bags & Backpacks"). Only when no name matches do the category matches stay.
+function lastRange(messages) {
+  const users = messages.filter((m) => m?.role === "user").slice(0, -1).reverse();
+  for (const m of users.slice(0, 3)) { const r = priceRange(m.content); if (r) return r; }
+  return null;
+}
+// products whose name carries every word asked for (plural / singular both count)
+// other words shops use for the same thing (one way only: a "backpack" request never brings handbags)
+const SAME = { perfume: ["parfum", "fragrance", "cologne", "scent", "eau", "oud", "spray"], stand: ["holder", "tripod", "mount", "dock"], gown: ["dress", "maxi"], dress: ["gown"], sneaker: ["shoe", "trainer", "kick"], shoe: ["sneaker", "slide", "sandal", "heel", "loafer", "boot"],
+  phone: ["iphone", "samsung", "tecno", "infinix", "redmi", "android"], laptop: ["macbook", "notebook", "hp", "dell", "lenovo"], bag: ["handbag", "backpack", "purse", "tote", "crossbody"], wig: ["hair", "bundle", "frontal", "closure"], cream: ["lotion", "moisturizer", "moisturiser", "butter"], chip: ["crisp"], watch: ["smartwatch", "wristwatch"], earpod: ["airpod", "earbud", "headphone", "headset"], charger: ["adapter", "cable", "powerbank"] };
+// products whose name (or, failing that, description) carries every word asked for, or a word shops use for it
+function nameHits(results, term) {
+  const words = normalize(term).split(/\s+/).filter((w) => w.length >= 3).map(SINGULAR);
+  if (!words.length) return results;
+  const has = (toks, w) => [w, ...(SAME[w] || [])].some((v) => toks.some((x) => x === v || (v.length >= 4 && x.startsWith(v)) || (v.length >= 5 && x.includes(v))));
+  const split = (t) => normalize(t || "").split(/[^a-z0-9]+/).filter(Boolean).map(SINGULAR);
+  const byName = results.filter((p) => { const n = split(p.name); return words.every((w) => has(n, w)); });
+  if (byName.length) return byName;
+  return results.filter((p) => { const n = split(`${p.name} ${p.description || ""}`); return words.every((w) => has(n, w)); });
+}
 function nameMatches(results, term) {
   const words = normalize(term).split(/\s+/).filter((w) => w.length >= 3).map(SINGULAR);
   if (!words.length) return results;
@@ -894,12 +938,20 @@ async function quickFind(messages, ctx) {
   const low = normalize(latest);
   if (!low || NOT_PRODUCT_INTENT.test(low)) return null;
   const direct = productTerm(latest);
+  const followup = FOLLOWUP.test(low.replace(CORRECTION, ""));
+  const range = priceRange(low) || (followup ? lastRange(messages) : null);
   const short = low.split(/\s+/).length <= 4 && !/^(hi|hello|hey|thanks|thank you|ok|okay|yes|help)\b/.test(low);
-  if (!FIND_INTENT.test(low) && !(direct && short)) return null;
+  const corrected = CORRECTION.test(low);
+  if (!FIND_INTENT.test(low) && !(direct && short) && !followup && !range && !(corrected && direct)) return null;
   const term = direct || termFromConversation(messages.slice(0, -1));
   if (!term) return null;
-  let found = await searchProducts({ query: term, limit: 20, nearest: ctx.lat != null }, ctx);
-  let results = found.core_match ? nameMatches((found.results || []).filter((p) => p.vendor), term) : [];
+  // "give me another": leave out what was already shown
+  const shownBefore = followup ? normalize(messages.filter((m) => m?.role === "assistant").slice(-2).map((m) => String(m.content || "")).join(" ")) : "";
+  let found = await searchProducts({ query: term, limit: 40, nearest: ctx.lat != null }, ctx);
+  let results = found.core_match ? (found.results || []).filter((p) => p.vendor) : [];
+  // what the person asked for must be in the product's own name ("phone stand" is not an iPhone)
+  let exactName = true;
+  if (results.length) { const hit = nameHits(results, term); if (hit.length) results = hit; else exactName = false; }
   // a broad word ("skincare", "gadgets", "snacks") that no listing uses itself: gather what it means
   if (!results.length) {
     const words = CONCEPTS.find(([re]) => re.test(normalize(term)));
@@ -907,7 +959,7 @@ async function quickFind(messages, ctx) {
       const seen = new Map();
       for (const w of words[1]) {
         const r = await searchProducts({ query: w, limit: 12, nearest: ctx.lat != null }, ctx).catch(() => null);
-        if (r && r.core_match) for (const p of r.results || []) if (p.vendor && !seen.has(p.id)) seen.set(p.id, p);
+        if (r && r.core_match) { const own = nameHits((r.results || []).filter((p) => p.vendor), w); const strict = own.length < (r.results || []).length || normalize(w).split(/\s+/).length > 1 ? own : (r.results || []); for (const p of strict) if (p.vendor && !seen.has(p.id) && own.includes(p)) seen.set(p.id, p); }
         if (seen.size >= 20) break;
       }
       results = [...seen.values()];
@@ -916,6 +968,22 @@ async function quickFind(messages, ctx) {
   }
   if (!results.length) return null;
   if (!results.length) return null;
+  if (shownBefore) { const fresh = results.filter((p) => !shownBefore.includes(normalize(p.name))); if (fresh.length) results = fresh; else return `${emojiFor(normalize(term))} That's everything on Levromart for **${term}** right now; I've shown you all of it. Want me to look for something similar, or post a request so shops can offer you one?`; }
+  const priceOfP = (p) => Number(p.discount_price ?? p.sale_price ?? p.rental_rate ?? NaN);
+  let rangeNote = "";
+  if (range) {
+    const inRange = results.filter((p) => { const v = priceOfP(p); return Number.isFinite(v) && v >= range.min && v <= range.max; });
+    const label = range.max === Infinity ? `above ${money(range.min)}` : range.min ? `between ${money(range.min)} and ${money(range.max)}` : `under ${money(range.max)}`;
+    if (inRange.length) { results = inRange; rangeNote = ` ${label}`; }
+    else {
+      const near = results.slice().sort((a, b) => Math.abs(priceOfP(a) - (range.max === Infinity ? range.min : range.max)) - Math.abs(priceOfP(b) - (range.max === Infinity ? range.min : range.max))).slice(0, 6);
+      return `${emojiFor(normalize(term))} I couldn't find **${term}** ${label} on Levromart right now.\n\n**Closest prices I found:**\n${near.map((p, i) => `${i + 1}. **${p.name}** · ${money(priceOfP(p))} from **${p.vendor.business_name}**`).join("\n")}\n\nWant me to stretch the budget, or post a request so shops can offer you one? [[PRODUCTS:${near.map((p) => p.id).join(",")}]]`;
+    }
+  }
+  if (!exactName) {
+    const alt = results.slice(0, 6);
+    return `😕 I couldn't find a **${term}** on Levromart yet.\n\n**You may also like:**\n${alt.map((p, i) => `${i + 1}. **${p.name}** · ${money(priceOfP(p))} from **${p.vendor.business_name}**`).join("\n")}\n\nNot quite it? I can post a request for "${term}" so shops that have one can send you offers. [[PRODUCTS:${alt.map((p) => p.id).join(",")}]]`;
+  }
   const hasLoc = ctx.lat != null && ctx.lng != null;
   const e = emojiFor(normalize(term));
   const priceOf = (p) => Number(p.discount_price ?? p.sale_price ?? p.rental_rate ?? Infinity);
@@ -961,8 +1029,8 @@ async function quickFind(messages, ctx) {
   const picks = [];
   for (const r of rows) picks.push(r.products[0]);
   for (const r of rows) for (const p of r.products.slice(1)) if (picks.length < 12) picks.push(p);
-  const exactNote = found.exact_match ? "" : `I couldn't find an exact "${term}", so these are the closest matches. `;
-  const head = `${e} ${exactNote}**${rows.length} shop${rows.length === 1 ? "" : "s"} on Levromart sell${rows.length === 1 ? "s" : ""} ${term}**${hasLoc ? ", closest first" : ""}:`;
+  const exactNote = "";   // only real matches reach here (anything looser was answered as "you may also like" above)
+  const head = `${e} ${exactNote}**${rows.length} shop${rows.length === 1 ? "" : "s"} on Levromart sell${rows.length === 1 ? "s" : ""} ${term}${rangeNote}**${hasLoc ? ", closest first" : ""}:`;
   // several different kinds in the results: ask which one they mean (face or body, potato or plantain...)
   const cats = [...new Set(results.map((p) => p.category).filter(Boolean))];
   let ask = "";
@@ -1040,6 +1108,9 @@ async function liveDataAnswer(latest, messages, ctx) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+  // Levi always answers within ~35 s (the app gives up at 45 s and the server at 60 s): after that it answers from the live
+  // catalogue instead of waiting for the AI model.
+  const deadline = Date.now() + 35000;
   try {
     const body = JSON.parse(await readBody(req));
     const { messages, accessToken, lat, lng, currentView, currentViewParams, lastRenderError, mode } = body || {};
@@ -1143,7 +1214,10 @@ module.exports = async function handler(req, res) {
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       let apiRes;
-      try { apiRes = await callGemini(GEMINI_API_KEY, MODEL, currentContents, toolSystemPrompt(), true); }
+      try {
+        if (deadline - Date.now() < 4000) throw new Error("out of time");
+        apiRes = await callGemini(GEMINI_API_KEY, MODEL, currentContents, toolSystemPrompt(), true, deadline);
+      }
       catch (modelErr) {
         // every AI model failed (busy, retired or out of quota): answer from the live catalogue instead of a generic line
         console.error("[levi] all models failed, answering from live data:", String(modelErr && modelErr.message || modelErr).slice(0, 200));
@@ -1194,9 +1268,9 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function geminiOnce(apiKey, model, body) {
+async function geminiOnce(apiKey, model, body, ms = 12000) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => controller.abort(), Math.max(1500, ms));
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
@@ -1209,7 +1283,7 @@ async function geminiOnce(apiKey, model, body) {
     return data;
   } finally { clearTimeout(timer); }
 }
-async function callGemini(apiKey, model, contents, systemInstruction, withTools) {
+async function callGemini(apiKey, model, contents, systemInstruction, withTools, deadline = Date.now() + MODEL_BUDGET_MS) {
   const body = {
     system_instruction: { parts: [{ text: systemInstruction }] },
     contents,
@@ -1221,17 +1295,18 @@ async function callGemini(apiKey, model, contents, systemInstruction, withTools)
   let lastErr = null;
   const started = Date.now();
   for (const m of chain) {
-    if (Date.now() - started > MODEL_BUDGET_MS) break;   // out of time: the caller answers from the live catalogue instead
+    if (Date.now() - started > MODEL_BUDGET_MS || deadline - Date.now() < 2500) break;   // out of time: the caller answers from the live catalogue instead
+    const left = Math.min(11000, deadline - Date.now() - 1000);
     try {
       const thinking = /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: "low" };
-      const out = await geminiOnce(apiKey, m, { ...body, generationConfig: { ...body.generationConfig, thinkingConfig: thinking } });
+      const out = await geminiOnce(apiKey, m, { ...body, generationConfig: { ...body.generationConfig, thinkingConfig: thinking } }, left);
       goodModel = m; return out;
     } catch (err) {
       lastErr = err;
       console.error("[levi] model failed:", m, String(err && err.message || err).slice(0, 200));
       // only a model that rejects the thinking setting is retried (once, without it); a busy or missing model moves straight on
       if (!/think|budget|level|invalid|argument/i.test(String(err && err.message))) continue;
-      try { const out = await geminiOnce(apiKey, m, body); goodModel = m; return out; } catch (err2) { lastErr = err2; }
+      try { const out = await geminiOnce(apiKey, m, body, Math.min(11000, deadline - Date.now() - 1000)); goodModel = m; return out; } catch (err2) { lastErr = err2; }
     }
   }
   throw lastErr || new Error("Gemini request failed.");

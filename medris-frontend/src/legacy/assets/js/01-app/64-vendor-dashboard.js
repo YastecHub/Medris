@@ -155,20 +155,20 @@ async function renderVendorDashboard() {
     <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${hubDiscarded ? ` (${hubDiscarded})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="navigate('vendorProducts').then(()=>setTimeout(()=>toggleVendorDiscarded(null,true),250))" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>
     <h3 class="vh-group">Management tools</h3>
     <div class="vh-list">
-      ${hubRow('<img class="vh-3d" src="/icons3d/1f4dd.webp" alt="" loading="lazy" decoding="async">', "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
-      ${hubRow('<img class="vh-3d" src="/icons3d/1f4c8.webp" alt="" loading="lazy" decoding="async">', "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/lv/manage-listings.webp" alt="" loading="lazy" decoding="async">', "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
+      ${hubRow('<img class="vh-3d" src="/icons3d/lv/monthly-listing.webp" alt="" loading="lazy" decoding="async">', "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
     </div>
-    <h3 class="vh-group">Reviews &amp; ratings</h3>
+    <h3 class="vh-group"><img class="vh-gico" src="/icons3d/lv/reviews.webp" alt="" aria-hidden="true">Reviews &amp; ratings</h3>
     ${lvRatingCardHtml(v)}
-    <h3 class="vh-group">Working hours</h3>
+    <h3 class="vh-group"><img class="vh-gico" src="/icons3d/lv/working-hours.webp" alt="" aria-hidden="true">Working hours</h3>
     ${lvHoursCardHtml(v)}
     <h3 class="vh-group">More options</h3>
     <div class="vh-list">
-      ${hubRow('<img class="vh-3d" src="/icons3d/1f4ac.webp" alt="" loading="lazy" decoding="async">', "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
-      ${hubRow('<img class="vh-3d" src="/icons3d/1f4a1.webp" alt="" loading="lazy" decoding="async">', "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
-      ${hubRow('<img class="vh-3d" src="/icons3d/1f6ce-fe0f.webp" alt="" loading="lazy" decoding="async">', "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/lv/requests.webp" alt="" loading="lazy" decoding="async">', "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/lv/suggestions.webp" alt="" loading="lazy" decoding="async">', "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
+      ${hubRow('<img class="vh-3d" src="/icons3d/lv/support.webp" alt="" loading="lazy" decoding="async">', "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
     </div>
-    <div class="vh-list vh-list-single">${hubRow(window.LV_SETTINGS_SVG, "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
+    <div class="vh-list vh-list-single">${hubRow('<img class="vh-3d" src="/icons3d/lv/settings.webp" alt="" loading="lazy" decoding="async">', "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
   </div>`;
 
   return html;

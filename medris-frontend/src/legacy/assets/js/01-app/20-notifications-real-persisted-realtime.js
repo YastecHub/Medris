@@ -286,7 +286,7 @@ async function renderNotifPanel(opts = {}) {
           <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
-    : `<p class="muted" style="padding:0.4rem;">${emptyMsg}</p>`;
+    : `<div class="lv3d-empty"><img src="/icons3d/lv/empty-notifications.webp" alt="" aria-hidden="true" width="120" height="120" decoding="async"><strong>No notifications yet</strong><span>${emptyMsg} We'll let you know when something new happens.</span></div>`;
 
   panel.innerHTML = `${topBar}${markAllBar}<div class="notif-list-scroll">${list}</div>`;
   // Keep unread styling visible while the notification surface is open; leaving the surface commits these IDs as read.
