@@ -96,11 +96,11 @@ function vendorOrderTopHtml(order, ctx) {
     return ["pending", "cancelled"].includes(st) ? "Not paid yet" : "Customer pays in the app";
   })();
   const itemsSubtotal = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
-  h += `<section class="od-card"><h3>Order Summary</h3><div class="od-pay-grid">
+  h += `<section class="od-card od-card-slim"><div class="od-pay-row">
     ${order.delivery_fee > 0 ? `<div><span class="od-muted">${isRental ? "Rental cost" : "Items"}</span><b>${naira(itemsSubtotal)}</b></div><div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
     <div><span class="od-muted">Total</span><b class="od-price">${naira(order.total_amount)}</b></div>
-    ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
-    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
+    ${isRental && order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
+    ${paid.length ? `<div><span class="od-muted">Status</span><b class="od-paid-chip"><i class="fa-solid fa-circle-check"></i> Paid</b></div>` : ""}</div></section>`;
   // ---- delivery / pickup
   if (isDelivery) {
     const hasPin = order.buyer_lat != null && order.buyer_lng != null;
