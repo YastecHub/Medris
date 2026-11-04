@@ -64,6 +64,13 @@ export class PlatformWalletService {
             month_kobo: String(await repo.listingFeesKobo(30)),
             all_kobo: String(await repo.listingFeesKobo(null)),
           },
+          // fees on wallet payments, transfers and withdrawals (migration 0037)
+          transaction_fees: {
+            today_kobo: String(await repo.transactionFeesKobo(1)),
+            week_kobo: String(await repo.transactionFeesKobo(7)),
+            month_kobo: String(await repo.transactionFeesKobo(30)),
+            all_kobo: String(await repo.transactionFeesKobo(null)),
+          },
           withdrawn_kobo: String(await repo.withdrawnKobo()),
           account: account
             ? {

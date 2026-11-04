@@ -5,6 +5,7 @@ import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.se
 import { CancellationsService } from "./modules/cancellations/cancellations.service.js";
 import { BuyerWalletService } from "./modules/buyer-wallet/buyer-wallet.service.js";
 import { WalletService } from "./modules/wallet/wallet.service.js";
+import { WalletPinService } from "./modules/wallet/wallet-pin.service.js";
 import { PlatformWalletService } from "./modules/platform-wallet/platform-wallet.service.js";
 import { ProductSuspensionService } from "./modules/setup-status/product-suspension.service.js";
 import { SetupStatusService } from "./modules/setup-status/setup-status.service.js";
@@ -105,6 +106,7 @@ export interface AppServices {
   productSuspension: ProductSuspensionService;
   buyerWallet: BuyerWalletService;
   wallet: WalletService;
+  walletPin: WalletPinService;
   platformWallet: PlatformWalletService;
   cancellations: CancellationsService;
   refunds: RefundsService;
@@ -153,6 +155,8 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
   const rateLimiter = overrides.rateLimiter ?? new RateLimiter();
   const responseCache = overrides.responseCache !== undefined ? overrides.responseCache : config.responseCache.enabled ? new ResponseCache() : null;
 
+  const walletPin = overrides.walletPin ?? new WalletPinService(data);
+
   return {
     config,
     logger,
@@ -182,11 +186,12 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     paystackWebhook: overrides.paystackWebhook ?? new PaystackWebhookService(data),
     payoutAccounts: overrides.payoutAccounts ?? new PayoutAccountsService(data),
     vendorPayouts: overrides.vendorPayouts ?? new VendorPayoutsService(data),
-    withdrawals: overrides.withdrawals ?? new WithdrawalsService(data),
+    withdrawals: overrides.withdrawals ?? new WithdrawalsService(data, walletPin),
     setupStatus: overrides.setupStatus ?? new SetupStatusService(data),
     productSuspension: overrides.productSuspension ?? new ProductSuspensionService(data),
     buyerWallet: overrides.buyerWallet ?? new BuyerWalletService(data),
-    wallet: overrides.wallet ?? new WalletService(data, config.paystack.checkoutEnabled),
+    wallet: overrides.wallet ?? new WalletService(data, config.paystack.checkoutEnabled, walletPin),
+    walletPin,
     platformWallet: overrides.platformWallet ?? new PlatformWalletService(data),
     refunds: overrides.refunds ?? new RefundsService(data),
     cancellations: overrides.cancellations ?? new CancellationsService(data),

@@ -6831,3 +6831,38 @@ html body .lv-mapfab::before,html body .lv-mapfab::after,html body .lv-mapfab .m
 html:root:root body .notif-item img.lv-admin-ico{width:36px;height:36px;border-radius:0;background:none;flex:none}
 /* verified seller (not a student): just the blue tick, no label */
 html:root:root body .lv-nsv-pill{display:none!important}
+
+
+/* ===== Wallet PIN sheet ===== */
+.lvpin-wrap{position:fixed;inset:0;z-index:2147483640;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,.55)}
+.lvpin{width:100%;max-width:480px;max-height:94dvh;overflow:auto;background:#fff;color:#0f172a;border-radius:24px 24px 0 0;padding:10px 20px calc(env(safe-area-inset-bottom,0px) + 18px);animation:lvpinUp .22s ease-out}
+@keyframes lvpinUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+:root:is([data-theme="dark"],[data-theme="black"]) .lvpin{background:#1c2128;color:#f3f4f6}
+.lvpin-grab{width:42px;height:4px;border-radius:4px;background:rgba(100,116,139,.4);margin:2px auto 12px}
+.lvpin-ico{display:flex;justify-content:center;margin:4px 0 2px}
+.lvpin-t{margin:6px 0 4px;text-align:center;font-size:1.15rem;font-weight:900}
+.lvpin-s{margin:6px 0 10px;text-align:center;font-size:.86rem;opacity:.75;line-height:1.45}
+.lvpin-note{margin:10px 2px 0;text-align:center;font-size:.78rem;opacity:.7}
+.lvpin-person{display:flex;justify-content:center;margin:8px 0}
+.lvpin-av{width:52px;height:52px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#16a06a;color:#fff;font-weight:900;font-size:1.3rem}
+.lvpin-rows{margin:10px 0;border-radius:16px;background:rgba(100,116,139,.09);padding:4px 14px}
+.lvpin-row{display:flex;justify-content:space-between;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px solid rgba(100,116,139,.15);font-size:.86rem}
+.lvpin-row:last-child{border-bottom:0}
+.lvpin-row span{opacity:.7}
+.lvpin-row b{text-align:right;font-weight:800;word-break:break-word}
+.lvpin-row.strong{font-size:.98rem}
+.lvpin-row.strong span{opacity:1;font-weight:800}
+.lvpin-dots{display:flex;justify-content:center;gap:14px;margin:10px 0 14px}
+.lvpin-dots i{width:15px;height:15px;border-radius:50%;border:2px solid rgba(100,116,139,.55);transition:background .1s,transform .1s}
+.lvpin-dots i.on{background:#16a06a;border-color:#16a06a;transform:scale(1.1)}
+.lvpin-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto}
+.lvpin-keys button{height:54px;border:0;border-radius:16px;background:rgba(100,116,139,.12);color:inherit;font-size:1.35rem;font-weight:800;touch-action:manipulation}
+.lvpin-keys button:active{background:rgba(22,160,106,.25)}
+.lvpin-shake{animation:lvpinShake .35s}
+@keyframes lvpinShake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.lvpin-go{display:block;width:100%;margin-top:14px;border:0;border-radius:999px;padding:14px;background:#16a06a;color:#fff!important;-webkit-text-fill-color:#fff!important;font-weight:900;font-size:1rem}
+.lvpin-go:disabled{opacity:.4}
+.lvpin-back{display:block;width:100%;margin-top:8px;border:1.5px solid rgba(100,116,139,.4);border-radius:999px;padding:12px;background:transparent;color:inherit;font-weight:800}
+.lvpin-link{display:block;margin:12px auto 0;border:0;background:none;color:#64748b;font-weight:700;text-decoration:underline}
+.lvpin-err{margin:8px 0 0;text-align:center;color:#dc2626;font-size:.84rem;font-weight:700}
+.lvpin-in{width:100%;margin:6px 0;padding:13px 14px;border-radius:14px;border:1.5px solid rgba(100,116,139,.4);background:transparent;color:inherit;font-size:1rem}

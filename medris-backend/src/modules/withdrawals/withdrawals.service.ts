@@ -1,6 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
+import { WalletPinService } from "../wallet/wallet-pin.service.js";
 import { WithdrawalsRepository } from "../../database/repositories/withdrawals.repository.js";
 import { koboToNaira } from "../../integrations/paystack/index.js";
 import { creditWalletEarnings } from "../wallet/wallet.service.js";
@@ -10,8 +11,6 @@ import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/a
 export const MIN_WITHDRAWAL_KOBO = 10_000;
 /** Money paid for at least this long ago is sent the moment the shop asks; newer money waits for an admin. */
 export const INSTANT_AFTER_MS = 24 * 60 * 60 * 1000;
-/** After the bank account is added or changed, no withdrawal to the bank can be asked for this long (a stolen login cannot empty the shop at once). The first one after it is checked by an admin. */
-export const BANK_CHANGE_WAIT_HOURS = 24;
 /** A shop can ask for amounts under the minimum this many times in 24 hours (stops spamming). */
 export const SMALL_REQUESTS_PER_DAY = 3;
 
@@ -24,7 +23,13 @@ const naira = (kobo: number | string) => "₦" + koboToNaira(Number(kobo)).toLoc
  *   - an order with an open dispute is never released - the rest of the shop's money is unaffected.
  */
 export class WithdrawalsService {
-  constructor(private readonly db: () => DataContext) {}
+  private readonly pins: WalletPinService;
+  constructor(
+    private readonly db: () => DataContext,
+    pins?: WalletPinService,
+  ) {
+    this.pins = pins ?? new WalletPinService(db);
+  }
 
   /** What the wallet shows: how much can go now, how much needs approval, how much a dispute holds, and the history. */
   async summary(me: Identity | null) {
@@ -39,7 +44,7 @@ export class WithdrawalsService {
         to_wallet_now_kobo: toWallet.instant.total,
         to_wallet_approval_kobo: toWallet.approval.total,
         open_wallet_request: await repo.openRequest(vendor.id, "wallet"),
-        bank_wait_hours: this.bankWait(vendor),
+        bank_wait_hours: null as number | null, // no waiting after a bank change any more: the PIN is the safeguard
         min_kobo: MIN_WITHDRAWAL_KOBO,
         instant_kobo: plan.instant.total,
         approval_kobo: plan.approval.total,
@@ -47,7 +52,7 @@ export class WithdrawalsService {
         has_dispute: plan.disputedOrders.length > 0,
         disputed_order_ids: plan.disputedOrders,
         blocked: this.blocked(vendor),
-        recent_bank_change: this.recentChange(vendor),
+        recent_bank_change: null as number | null,
         open_request: await repo.openRequest(vendor.id),
         recent: await repo.recent(vendor.id),
       };
@@ -60,8 +65,9 @@ export class WithdrawalsService {
    * To the bank only: nothing for 24 hours after the bank account was added or changed, and the first withdrawal after
    * that is always checked by an admin.
    */
-  async request(me: Identity | null, destination: string | null = "bank") {
+  async request(me: Identity | null, destination: string | null = "bank", pin?: string | null) {
     if (!me) throw forbidden("Please log in to continue.");
+    await this.pins.require(me.userId, pin);
     if (destination === "wallet") return this.toWallet(me);
     return this.db().onBehalfOf(me, async (tx) => {
       const repo = new WithdrawalsRepository(tx);
@@ -69,10 +75,10 @@ export class WithdrawalsService {
       if (!vendor) throw forbidden("Only shops can withdraw.");
       const blocked = this.blocked(vendor);
       if (blocked) throw badRequest(blocked);
-      const wait = this.bankWait(vendor);
-      if (wait != null) throw badRequest(`For your safety, you can withdraw to your bank ${wait} hour${wait === 1 ? "" : "s"} from now: your bank account was added or changed less than 24 hours ago. You can still move your money into your Levromart wallet.`);
-      const firstAfterChange = !(await repo.bankWithdrawnSince(vendor.id, vendor.payout_verified_at!));
-      const plan = await this.plan(repo, vendor.id, false, firstAfterChange);
+      // the PIN is the safeguard now: changing the bank account does not hold a withdrawal back. Only money paid in the last
+      // 24 hours waits for an admin (see plan()).
+      const firstAfterChange = false;
+      const plan = await this.plan(repo, vendor.id, false, false);
       const open = await repo.openRequest(vendor.id);
       const canInstant = plan.instant.total >= MIN_WITHDRAWAL_KOBO;
       // anything that cannot be sent at once (new money, a small amount, a recently changed bank account) is asked of an admin
@@ -229,20 +235,10 @@ export class WithdrawalsService {
     });
   }
 
-  /** Hours left before the shop may withdraw to its bank after adding or changing the account (null when it may). */
-  private bankWait(v: { verified_age_hours: number | null }): number | null {
-    return v.verified_age_hours != null && v.verified_age_hours < BANK_CHANGE_WAIT_HOURS ? Math.max(1, Math.ceil(BANK_CHANGE_WAIT_HOURS - v.verified_age_hours)) : null;
-  }
-
-  /** Hours since the bank account was last changed, while that is recent (otherwise null). */
-  private recentChange(v: { verified_age_hours: number | null }): number | null {
-    return v.verified_age_hours != null && v.verified_age_hours < BANK_CHANGE_WAIT_HOURS ? Math.max(0, Math.floor(v.verified_age_hours)) : null;
-  }
 
   private async plan(repo: WithdrawalsRepository, vendorId: string, toWallet = false, firstAfterChange = false) {
     const buckets = await repo.buckets(vendorId);
-    const v = await repo.vendorById(vendorId);
-    const recent = !toWallet && (firstAfterChange || this.recentChange(v ?? { verified_age_hours: null }) != null);
+    const recent = !toWallet && firstAfterChange;
     const cutoff = Date.now() - INSTANT_AFTER_MS;
     const group = () => ({ total: 0, orderIds: [] as string[], payoutIds: [] as string[] });
     const instant = group();

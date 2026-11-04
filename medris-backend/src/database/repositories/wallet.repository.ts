@@ -32,6 +32,7 @@ export interface WalletWithdrawal {
   amount_kobo: string;
   status: string;
   review_reason: string | null;
+  fee_kobo: string;
   transfer_reference: string;
   recipient_code: string | null;
   bank_name: string | null;
@@ -40,7 +41,7 @@ export interface WalletWithdrawal {
   reject_reason: string | null;
   created_at: string;
 }
-export type Kind = "topup" | "transfer_in" | "transfer_out" | "order_payment" | "refund_in" | "refund_out" | "earnings_in" | "withdrawal" | "withdrawal_return";
+export type Kind = "topup" | "transfer_in" | "transfer_out" | "order_payment" | "refund_in" | "refund_out" | "earnings_in" | "withdrawal" | "withdrawal_return" | "fee" | "fee_return";
 
 /** The Levromart wallet (migration 0033): balances, the ledger, transfers and bank withdrawals. Service role only. */
 export class WalletRepository {
@@ -210,21 +211,21 @@ export class WalletRepository {
     );
   }
 
-  async insertWithdrawal(w: { userId: string; amountKobo: number; status: "requested" | "processing"; reviewReason: string | null; reference: string; account: WithdrawalAccount }): Promise<string> {
+  async insertWithdrawal(w: { userId: string; amountKobo: number; feeKobo: number; status: "requested" | "processing"; reviewReason: string | null; reference: string; account: WithdrawalAccount }): Promise<string> {
     const [row] = await jsonReturning<{ id: string }>(
       this.db,
-      sql`insert into public.wallet_withdrawals (user_id, amount_kobo, status, review_reason, transfer_reference, recipient_code, bank_name, account_name, account_last4)
-          values (${w.userId}, ${w.amountKobo}, ${w.status}, ${w.reviewReason}, ${w.reference}, ${w.account.recipient_code}, ${w.account.bank_name}, ${w.account.account_name}, ${w.account.last4}) returning id`,
+      sql`insert into public.wallet_withdrawals (user_id, amount_kobo, fee_kobo, status, review_reason, transfer_reference, recipient_code, bank_name, account_name, account_last4)
+          values (${w.userId}, ${w.amountKobo}, ${w.feeKobo}, ${w.status}, ${w.reviewReason}, ${w.reference}, ${w.account.recipient_code}, ${w.account.bank_name}, ${w.account.account_name}, ${w.account.last4}) returning id`,
     );
     return row!.id;
   }
 
   withdrawal(id: string): Promise<WalletWithdrawal | null> {
-    return jsonRow<WalletWithdrawal>(this.db, sql`select id, user_id, amount_kobo::text as amount_kobo, status, review_reason, transfer_reference, recipient_code, bank_name, account_name, account_last4, reject_reason, created_at from public.wallet_withdrawals where id = ${id} for update`);
+    return jsonRow<WalletWithdrawal>(this.db, sql`select id, user_id, amount_kobo::text as amount_kobo, fee_kobo::text as fee_kobo, status, review_reason, transfer_reference, recipient_code, bank_name, account_name, account_last4, reject_reason, created_at from public.wallet_withdrawals where id = ${id} for update`);
   }
 
   withdrawalByReference(reference: string): Promise<WalletWithdrawal | null> {
-    return jsonRow<WalletWithdrawal>(this.db, sql`select id, user_id, amount_kobo::text as amount_kobo, status, review_reason, transfer_reference, recipient_code, bank_name, account_name, account_last4, reject_reason, created_at from public.wallet_withdrawals where transfer_reference = ${reference} for update`);
+    return jsonRow<WalletWithdrawal>(this.db, sql`select id, user_id, amount_kobo::text as amount_kobo, fee_kobo::text as fee_kobo, status, review_reason, transfer_reference, recipient_code, bank_name, account_name, account_last4, reject_reason, created_at from public.wallet_withdrawals where transfer_reference = ${reference} for update`);
   }
 
   async setWithdrawal(id: string, status: string, f: { error?: string | null; code?: string | null; decidedBy?: string | null; rejectReason?: string | null } = {}): Promise<void> {
