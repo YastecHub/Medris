@@ -4826,12 +4826,9 @@ window.lvAskCancel = async function (orderId) {
   document.addEventListener("touchmove", function (e) { if (!(e.target && e.target.closest && e.target.closest("#veLocationMap"))) keep = null; }, { capture: true, passive: true });
   document.addEventListener("wheel", mine, { capture: true, passive: true });
   document.addEventListener("keydown", mine, true);
-  window.addEventListener("scroll", function () {
-    if (!keep || Date.now() > keep.until) { keep = null; return; }
-    // a jump of more than a screen towards the top that the person did not make: put the page back
-    // any move of the page that the person did not make (they have not touched the screen outside the map) is put back, each time
-    if (Math.abs(keep.y - window.scrollY) > 24) { var y = keep.y; requestAnimationFrame(function () { window.scrollTo(0, y); }); }
-  }, { passive: true });
+  // the page is never pulled back by script any more (that fought the finger and made it tumble up and down);
+  // instead the map stops grabbing focus and keyboard handling, and touching it moves the map, not the page
+  setInterval(function () { try { if (typeof veMap !== "undefined" && veMap && veMap.keyboard && veMap.keyboard.enabled && veMap.keyboard.enabled()) veMap.keyboard.disable(); } catch (_) {} }, 1500);
   // the map itself should not grab focus (that is what makes iPhone scroll)
   document.addEventListener("focusin", function (e) {
     var m = e.target && e.target.closest && e.target.closest("#veLocationMap");

@@ -7144,3 +7144,19 @@ html:root body #app .od-tracker{padding:.8rem .6rem!important}
 html:root body #app .od-actions{gap:.5rem!important;margin:.2rem 0 .6rem!important}
 html:root body #app .od-btn{border-radius:14px!important;min-height:46px}
 html:root body #app .od-status{padding:.85rem .95rem!important}
+/* ===== No grey fills: My Listings and the history date picker are clean white with thin lines ===== */
+html:root:root:root body #app .vl2 .vl-tabs .vl2-all,html:root:root:root body #app .vl2 .vl-tabs .vl2-all.active{background:transparent!important;border:1.5px solid #16a06a!important;color:#0b8a5f!important;-webkit-text-fill-color:#0b8a5f!important;box-shadow:none!important}
+html:root:root:root body #app .vl2 .vl-select,html:root:root:root body #app .vl2 .vl-search,html:root:root:root body #app .vl2 .vl-search-row,html:root:root:root body #app .vl2 .vl-discarded,html:root:root:root body #app .vl2 .vl-note{background:transparent!important;border:1px solid rgba(128,128,128,.28)!important;box-shadow:none!important}
+html:root:root:root body #app .vl2 .vl-search input{background:transparent!important}
+html:root:root:root body .lwh-pick,html:root:root:root body .lwh-pick:active,html:root:root:root body .lwh-pick:focus{background:transparent!important;box-shadow:none!important;border:0!important}
+html:root:root:root body .lwh-monthbar button{background:transparent!important;border:1.5px solid rgba(128,128,128,.3)!important}
+html:root:root:root body .lwh-sum-c{background:transparent!important;border:1px solid rgba(128,128,128,.25)}
+html:root:root:root body .lwh-search,html:root:root:root body .lwh-chips button{background:transparent!important}
+html:root:root:root body .lvdp-ystep>button,html:root:root:root body .lvdp-x{background:transparent!important;border:1.5px solid rgba(128,128,128,.3)!important}
+html:root:root:root body .lvdp-months button,html:root:root:root body .lvdp-days button{background:transparent!important}
+html:root:root:root body .lvdp-month{background:transparent!important;border:1.5px solid #16a06a!important}
+html:root:root:root body .lvdp button.on{background:#16a06a!important;color:#fff!important}
+
+/* choosing a place on the shop map: touching the map moves the map, never the page */
+#veLocationMap,#veLocationMap .leaflet-container{touch-action:none!important;overscroll-behavior:contain}
+html{overflow-anchor:none}
