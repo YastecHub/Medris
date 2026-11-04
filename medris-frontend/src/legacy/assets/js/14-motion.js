@@ -4217,3 +4217,10 @@ window.lvAskCancel = async function (orderId) {
   }
   wrap(); setTimeout(wrap, 1500); setTimeout(wrap, 5000);
 })();
+
+/* Comment box grows with the text, up to about six lines */
+(function(){
+  function grow(t){try{t.style.height="auto";t.style.height=Math.min(t.scrollHeight+2,160)+"px";}catch(_){}}
+  document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="TEXTAREA"&&t.closest&&t.closest(".product-comment-compose-row"))grow(t);},true);
+  document.addEventListener("focusin",function(e){var t=e.target;if(t&&t.tagName==="TEXTAREA"&&t.closest&&t.closest(".product-comment-compose-row"))grow(t);},true);
+})();

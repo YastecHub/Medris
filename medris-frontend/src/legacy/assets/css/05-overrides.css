@@ -6188,3 +6188,30 @@ html:root:root body #app .sr-empty2 .sr-chip i{color:#7c3aed}
 html:root:root body #searchPageResults .lv-svr-row{min-height:7.4rem}
 html:root:root body #searchPageResults *{animation:none!important}
 html:root:root body #searchPageResults img{transition:none!important}
+
+/* ---- vendors map: the shop card and pictures sit lower (closer to the bottom of the phone) and the white fade is lighter ---- */
+html:root:root body #app#app .vmpage .vmp-bottom{padding-bottom:max(.2rem,calc(env(safe-area-inset-bottom,0px) * .35))!important;background:linear-gradient(to top,rgba(255,255,255,.62) 0%,rgba(255,255,255,.3) 45%,rgba(255,255,255,0) 100%)!important}
+html:root:root[data-theme="dark"] body #app#app .vmpage .vmp-bottom,html:root:root body #app#app .vmpage[data-style="night"] .vmp-bottom{background:linear-gradient(to top,rgba(20,24,28,.6) 0%,rgba(20,24,28,.25) 45%,rgba(20,24,28,0) 100%)!important}
+/* ---- profile pages: a crisp card under the banner instead of a heavy white blur ---- */
+html:root:root body #app .vendor-profile-header-card .vendor-profile-header-body{background:var(--card,#fff)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-top:0!important;margin-top:-18px!important}
+html:root:root body #app .vendor-profile-header-card .lv-profile-cover-glow{opacity:.35!important}
+
+/* ---- Contact us: a colour per channel, six social buttons in a tidy grid ---- */
+html:root:root body #app .contact-us-page h2{font-size:1.6rem;font-weight:850;letter-spacing:-.02em;margin:.4rem 0 .2rem}
+html:root:root body #app .contact-us-card{padding:6px!important;border-radius:22px!important}
+html:root:root body #app .contact-us-row{border-radius:16px}
+html:root:root body #app .contact-us-row-icon{width:46px!important;height:46px!important;border-radius:14px!important;display:grid!important;place-items:center!important;font-size:1.05rem!important}
+html:root:root body #app .contact-us-row:nth-child(1) .contact-us-row-icon{background:#fdecea!important;color:#ea4335!important}
+html:root:root body #app .contact-us-row:nth-child(2) .contact-us-row-icon{background:#e6f8ef!important;color:#16a34a!important}
+html:root:root body #app .contact-us-row:nth-child(3) .contact-us-row-icon{background:#e8f0fe!important;color:#1a73e8!important}
+html:root:root body #app .contact-us-socials{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+html:root:root body #app .contact-us-social-btn{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:12px 6px!important;border-radius:16px!important;min-height:0!important;font-size:.8rem!important;font-weight:700!important}
+html:root:root body #app .contact-us-social-logo{width:34px!important;height:34px!important;border-radius:10px!important;object-fit:cover!important}
+html:root:root body #app .contact-us-help .vl-add{border-radius:999px!important}
+:root[data-theme="dark"] body #app .contact-us-row:nth-child(1) .contact-us-row-icon{background:rgba(234,67,53,.15)!important}
+:root[data-theme="dark"] body #app .contact-us-row:nth-child(2) .contact-us-row-icon{background:rgba(22,163,74,.15)!important}
+:root[data-theme="dark"] body #app .contact-us-row:nth-child(3) .contact-us-row-icon{background:rgba(26,115,232,.15)!important}
+
+/* Comment box: a straight box that grows with the text (not an oval pill) */
+html:root:root .product-comment-compose-row{align-items:flex-end!important}
+html:root:root .product-comment-compose-row textarea{border-radius:10px!important;min-height:42px!important;max-height:160px!important;padding:10px 12px!important;line-height:1.4!important;resize:none!important;overflow-y:auto!important;height:auto}

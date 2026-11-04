@@ -538,9 +538,12 @@ function renderContactUs() {
     { logo: "/social-instagram.jpg", label: "Instagram", key: "instagram", href: "https://instagram.com/levromart" },
     { logo: "/social-tiktok.jpg", label: "TikTok", key: "tiktok", href: "https://tiktok.com/@levromart" },
     { logo: "/social-linkedin.png", label: "LinkedIn", key: "linkedin", href: "https://linkedin.com/company/levromart" },
+    { logo: "/social-x.svg", label: "X", key: "x", href: "https://x.com/levromart" },
+    { logo: "/social-substack.svg", label: "Substack", key: "substack", href: "https://levromart.substack.com" },
+    { logo: "/social-facebook.svg", label: "Facebook", key: "facebook", href: "https://facebook.com/levromart" },
   ];
   return `<div class="contact-us-page">
-    <h2><i class="fa-solid fa-address-book"></i> Contact us</h2>
+    <h2>Contact us</h2>
     <p class="muted contact-us-sub">We're happy to help. Reach us directly or find us on social media.</p>
     <div class="card contact-us-card">
       ${channels.map((c) => `<a class="contact-us-row" href="${c.href}"><span class="contact-us-row-icon"><i class="fa-solid ${c.icon}"></i></span><span class="contact-us-row-copy"><span class="contact-us-row-label">${esc(c.label)}</span><strong>${esc(c.value)}</strong></span><i class="fa-solid fa-chevron-right contact-us-row-arrow"></i></a>`).join("")}
