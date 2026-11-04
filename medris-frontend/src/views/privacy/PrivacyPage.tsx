@@ -14,15 +14,16 @@ export default function PrivacyPage() {
   return (
     <div className="legal-page">
       <h2>Privacy Policy</h2>
-      <p className="muted">Last updated: 2 November 2026</p>
+      <p className="muted">Last updated: 4 November 2026</p>
       <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
       <h3>1. What we collect</h3>
       <ul>
       <li><strong>Account data:</strong> name, email, phone, city, the school or campus you choose, and (for vendors) business details and verification documents such as a student ID card, biodata page, CAC document or, for sellers who are not students, another valid ID card.</li>
       <li><strong>Payout details (vendors):</strong> the bank name, account number and account name you add so we can pay you. Paystack also keeps them as a transfer recipient so withdrawals can be sent from Levromart's Paystack balance.</li>
-      <li><strong>Refund account (customers):</strong> the bank name, the account name and the last four digits of the account you add so we can pay refunds to you. We do not keep the full account number; the payment provider holds it as a transfer recipient. If the account cannot be saved straight away, the number is kept with your own login only until it can be saved, and is then removed.</li>
+      <li><strong>Bank account for withdrawals (customers):</strong> the bank name, the account name and the last four digits of the account you add so we can send money from your Levromart wallet to you. We do not keep the full account number; the payment provider holds it as a transfer recipient. If the account cannot be saved straight away, the number is kept with your own login only until it can be saved, and is then removed.</li>
       <li><strong>Withdrawal records (vendors):</strong> when you withdraw money from your wallet we keep the amount, the time, the orders it covers and the decision, including the reason if Levromart declined a request.</li>
+      <li><strong>Levromart wallet:</strong> your balance, your @tag, and every movement in and out of your wallet (top-ups, transfers with the other person's name and @tag and any note, refunds, order payments, earnings and withdrawals with the bank they went to). Other people see your name, photo and @tag only when they type your @tag to send you money; nobody can find you by your name alone. We keep these records for fraud prevention, disputes and the law.</li>
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
       <li><strong>Comments, likes and follows:</strong> comments and replies you post, what you like or follow, and your notification preferences for the vendors you follow. Comments and likes are visible to other users.</li>
@@ -44,6 +45,7 @@ export default function PrivacyPage() {
       <li><strong>Supabase:</strong> our database and file storage provider, which hosts the data described above.</li>
       <li><strong>Google Gemini:</strong> powers the in-app AI assistant; only the text of your chat messages is sent, never your account or order data.</li>
       <li>The vendor or buyer on an order you're part of, so they can fulfill/receive it.</li>
+      <li>The person you send money to, or who sends money to you, sees your name and @tag on that transfer.</li>
       <li><strong>Cloudflare:</strong> stores and serves public listing, banner and profile images.</li>
       <li><strong>Esri:</strong> supplies the map pictures shown on the vendor map (your device asks Esri for the map tiles it needs, so Esri can see your device's internet address).</li>
       <li><strong>Browser push services and call-connection servers:</strong> deliver notifications and help two devices connect for a voice call; they handle connection details, not call audio content.</li>
@@ -55,7 +57,7 @@ export default function PrivacyPage() {
     <p>Levromart saves some choices on your own phone or browser, such as your theme, product-card pattern, saved searches, and a saved copy of the app so it opens fast and works partly offline. You can clear these in your browser or phone settings; some features then reset to their defaults.</p>
 
     <h3>4. Your choices and rights</h3>
-      <p>You can edit your profile information from your account settings. You can delete your account yourself from your account settings (you confirm with your password). A vendor can only delete their account once every order is completed or cancelled and no commission is owed. Deleting your account permanently removes your profile, shop, listings, orders, messages and Levi chats from Levromart, and it cannot be undone; please withdraw any money left in your wallet or refunds wallet first. Paystack keeps its own records of payments and transfers as the law requires it to. You can also hide the Levi assistant, switch off location sharing and manage notifications in Settings.</p>
+      <p>You can edit your profile information from your account settings. You can delete your account yourself from your account settings (you confirm with your password). A vendor can only delete their account once every order is completed or cancelled and no commission is owed. Deleting your account permanently removes your profile, shop, listings, orders, messages and Levi chats from Levromart, and it cannot be undone; an account with money in its Levromart wallet cannot be deleted until the money is withdrawn or used. Paystack keeps its own records of payments and transfers as the law requires it to. You can also hide the Levi assistant, switch off location sharing and manage notifications in Settings.</p>
     <p>Under the Nigeria Data Protection Act 2023 you may ask to see, correct or delete your personal data, object to some uses of it, and complain to the Nigeria Data Protection Commission. Contact us through a support request and we will respond within a reasonable time. Levromart is meant for people aged 18 and over.</p>
 
       <h3>5. Security</h3>

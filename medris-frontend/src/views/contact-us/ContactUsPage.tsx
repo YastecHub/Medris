@@ -28,14 +28,15 @@ const SOCIALS = [
   { logo: "/social-instagram.jpg", label: "Instagram", key: "instagram", href: "https://instagram.com/levromart" },
   { logo: "/social-tiktok.jpg", label: "TikTok", key: "tiktok", href: "https://tiktok.com/@levromart" },
   { logo: "/social-linkedin.png", label: "LinkedIn", key: "linkedin", href: "https://linkedin.com/company/levromart" },
+  { logo: "/social-x.svg", label: "X", key: "x", href: "https://x.com/levromart" },
+  { logo: "/social-substack.svg", label: "Substack", key: "substack", href: "https://levromart.substack.com" },
+  { logo: "/social-facebook.svg", label: "Facebook", key: "facebook", href: "https://facebook.com/levromart" },
 ] as const;
 
 export default function ContactUsPage() {
   return (
     <div className="contact-us-page">
-      <h2>
-        <i className="fa-solid fa-address-book"></i> Contact us
-      </h2>
+      <h2>Contact us</h2>
       <p className="muted contact-us-sub">We're happy to help. Reach us directly or find us on social media.</p>
       <div className="card contact-us-card">
         {CHANNELS.map((c) => (

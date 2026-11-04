@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { api, completeAndPayOut, json, newOrder, payOrder, rowOf, runJob, sendWebhook, useWorld, withdraw, handOver } from "./harness.js";
 
 describe("refunds, disputes, chargebacks and cancellations", () => {
   const w = useWorld();
+  // Refunds normally go into the buyer's Levromart wallet (migration 0033; see wallet.test.ts). These tests cover the
+  // Paystack card refund, which is used when the buyer's wallet is on hold: so the buyers' wallets are put on hold here.
+  beforeEach(async () => {
+    await w.db.query(`update public.wallet_accounts set frozen = true where user_id in ($1, $2)`, [w.buyer.id, w.buyer2.id]);
+  });
   const refundRows = (orderId: string) => w.db.query<{ status: string; amount_kobo: string; attempt: number }>(`select status, amount_kobo::text, attempt from public.paystack_refunds where order_id = $1 order by attempt`, [orderId]);
   const doRefund = async (orderId: string, body: Record<string, unknown>, token = w.admin.token) => json(await api.post(w, `/admin/orders/${orderId}/refund`, token, body));
   const payoutOf = (orderId: string) => rowOf<{ id: string; status: string; hold_reason: string | null; amount_kobo: string }>(w, `select id, status, hold_reason, amount_kobo::text from public.vendor_payouts where order_id = $1`, [orderId]);

@@ -1,7 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
-import { BuyerWalletRepository } from "../../database/repositories/buyer-wallet.repository.js";
+import { creditWalletRefund, takeRefundFromShopWallet } from "../wallet/wallet.service.js";
 import { PaystackRefundsRepository } from "../../database/repositories/paystack-refunds.repository.js";
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, koboToNaira, nairaToKobo } from "../../integrations/paystack/index.js";
 import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
@@ -32,6 +32,7 @@ export class RefundsService {
       if (payout && PAID_OUT.includes(payout.status)) {
         throw conflict("The vendor has already been paid for this order. Getting money back from a vendor is done by hand: contact the vendor.");
       }
+      // the shop already moved this order's earnings into its wallet: the refund is taken back from that wallet first
       if (await repo.openRefund(orderId)) throw conflict("A refund for this order is already under way.");
 
       const payments = await repo.paidPayments(orderId);
@@ -42,6 +43,10 @@ export class RefundsService {
       if (!Number.isInteger(wanted) || wanted <= 0) throw badRequest("Enter an amount greater than zero.");
       if (wanted > refundable) throw badRequest(`You can refund at most ${naira(refundable)} on this order.`);
 
+      if (payout && payout.status === "to_wallet") {
+        const ok = await takeRefundFromShopWallet(tx, order.vendor_user_id ?? "", orderId, wanted, `refund_out:${orderId}:${await repo.nextAttempt(orderId)}`);
+        if (!ok) throw conflict("The shop already moved this order's money into its wallet and has spent it. Getting it back is done by hand: contact the shop.");
+      }
       let attempt = await repo.nextAttempt(orderId);
       let remaining = wanted;
       for (const p of room) {
@@ -76,15 +81,15 @@ export class RefundsService {
         const repo = new PaystackRefundsRepository(tx);
         const next = await repo.nextPending();
         if (!next) return null;
-        // a buyer with a refunds wallet gets the money there; everyone else gets it back on the card
+        // every refund goes into the buyer's Levromart wallet (migration 0033); only if the wallet cannot be used does it go back to the card
         const toWallet = await tx
-          .transaction((sp) => new BuyerWalletRepository(sp).creditRefund({ id: next.id, order_id: next.order_id, buyer_id: next.buyer_id, amount_kobo: next.amount_kobo }))
+          .transaction((sp) => creditWalletRefund(sp, { id: next.id, order_id: next.order_id, buyer_id: next.buyer_id, amount_kobo: next.amount_kobo }))
           .catch((err: unknown) => {
             console.error("[paystack-refunds] refunds wallet not usable, refunding to the card:", err instanceof Error ? err.message : err);
             return false;
           });
         if (toWallet) {
-          await new NotificationWriter(tx).create({ userId: next.buyer_id, type: "refund_in_wallet", title: "Refund added to your wallet", body: `${naira(next.amount_kobo)} is in your refunds wallet. Open your wallet to withdraw it.`, targetView: "buyerProfile", actorId: null });
+          await new NotificationWriter(tx).create({ userId: next.buyer_id, type: "refund_in_wallet", title: "Refund added to your wallet", body: `${naira(next.amount_kobo)} is in your Levromart wallet. You can use it, send it or withdraw it to your bank.`, targetView: "levroWallet", actorId: null });
           return { work: next, toWallet: true };
         }
         // claim: flip to `processing` and commit before the call, so a second worker cannot send the same refund

@@ -11,6 +11,7 @@ export interface Bucket {
   order_id: string;
   paid_at: string | null;
   net_kobo: string;
+  commission_kobo: number;
   disputed: boolean;
 }
 /** A type (not an interface) so it fits the API's `Record<string, unknown>` response schema. */
@@ -27,6 +28,7 @@ export type WithdrawalRow = {
   reject_reason: string | null;
   decided_at: string | null;
   created_at: string;
+  destination?: string;
 };
 
 /** Withdrawals (migration 0017): the money waiting per order, and the requests for it. Service role only. */
@@ -44,6 +46,7 @@ export class WithdrawalsRepository {
                    - ${payoutCommissionKobo(sql`p.order_id`)}
                    - coalesce((select sum(r.amount_kobo) from public.paystack_refunds r where r.order_id = p.order_id and r.status <> 'failed'), 0)
                  )::text as net_kobo,
+                 (${payoutCommissionKobo(sql`p.order_id`)})::bigint as commission_kobo,
                  exists (select 1 from public.disputes d where d.order_id = p.order_id and d.status = 'open') as disputed
           from public.vendor_payouts p join public.orders o on o.id = p.order_id
           where p.vendor_id = ${vendorId} and p.status = 'on_hold' and p.hold_reason = ${WAITING_REASON} and p.withdrawal_id is null
@@ -58,11 +61,11 @@ export class WithdrawalsRepository {
     return jsonRows(this.db, sql`select distinct d.order_id from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = ${vendorId} and d.status = 'open'`);
   }
 
-  openRequest(vendorId: string): Promise<WithdrawalRow | null> {
+  openRequest(vendorId: string, destination: "bank" | "wallet" = "bank"): Promise<WithdrawalRow | null> {
     return jsonRow<WithdrawalRow>(
       this.db,
       sql`select w.id, w.vendor_id, null::text as business_name, null::uuid as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at
-          from public.withdrawal_requests w where w.vendor_id = ${vendorId} and w.status = 'requested' for update`,
+          from public.withdrawal_requests w where w.vendor_id = ${vendorId} and w.status = 'requested' and w.destination = ${destination} for update`,
     );
   }
 
@@ -74,12 +77,12 @@ export class WithdrawalsRepository {
     );
   }
 
-  async insertRequest(vendorId: string, kind: "instant" | "approval", orderIds: string[], amountKobo: number, hasDispute: boolean): Promise<string> {
+  async insertRequest(vendorId: string, kind: "instant" | "approval", orderIds: string[], amountKobo: number, hasDispute: boolean, destination: "bank" | "wallet" = "bank"): Promise<string> {
     const status = kind === "instant" ? "approved" : "requested";
     const [row] = await jsonReturning<{ id: string }>(
       this.db,
-      sql`insert into public.withdrawal_requests (vendor_id, status, kind, order_ids, amount_kobo, has_dispute, decided_at)
-          values (${vendorId}, ${status}, ${kind}, ${sql.raw(`'{${orderIds.join(",")}}'`)}::uuid[], ${amountKobo}, ${hasDispute}, ${kind === "instant" ? sql`now()` : sql`null`}) returning id`,
+      sql`insert into public.withdrawal_requests (vendor_id, status, kind, order_ids, amount_kobo, has_dispute, decided_at, destination)
+          values (${vendorId}, ${status}, ${kind}, ${sql.raw(`'{${orderIds.join(",")}}'`)}::uuid[], ${amountKobo}, ${hasDispute}, ${kind === "instant" ? sql`now()` : sql`null`}, ${destination}) returning id`,
     );
     return row!.id;
   }
@@ -107,6 +110,29 @@ export class WithdrawalsRepository {
     return rows.length;
   }
 
+  /** Whether money already went to the bank since the payout account was saved (the first time after a change is checked by an admin). */
+  async bankWithdrawnSince(vendorId: string, since: string): Promise<boolean> {
+    return (await jsonRow(this.db, sql`select 1 as x from public.withdrawal_requests where vendor_id = ${vendorId} and destination = 'bank' and status = 'approved' and coalesce(decided_at, created_at) >= ${since}::timestamptz limit 1`)) !== null;
+  }
+
+  /** The waiting rows of a request that may be released now (an order with an open dispute stays held). */
+  attachedBuckets(requestId: string): Promise<{ payout_id: string; order_id: string; net_kobo: string; commission_kobo: number }[]> {
+    return jsonRows(
+      this.db,
+      sql`select p.id as payout_id, p.order_id,
+                 greatest(0,
+                   coalesce((select round(sum(pay.amount) * 100) from public.payments pay where pay.order_id = p.order_id and pay.status = 'paid' and pay.method = 'card' and pay.provider_reference like 'lvm\_ord\_%' and pay.payment_type::text <> 'deposit'), 0)
+                   - ${payoutCommissionKobo(sql`p.order_id`)}
+                   - coalesce((select sum(r.amount_kobo) from public.paystack_refunds r where r.order_id = p.order_id and r.status <> 'failed'), 0)
+                 )::text as net_kobo,
+                 (${payoutCommissionKobo(sql`p.order_id`)})::bigint as commission_kobo
+          from public.vendor_payouts p
+          where p.withdrawal_id = ${requestId} and p.status = 'on_hold'
+            and not exists (select 1 from public.disputes d where d.order_id = p.order_id and d.status = 'open')
+          for update of p`,
+    );
+  }
+
   /** A rejected request puts its money back in the shop's waiting pile. */
   async detach(requestId: string): Promise<void> {
     await this.db.execute(sql`update public.vendor_payouts set withdrawal_id = null where withdrawal_id = ${requestId} and status = 'on_hold'`);
@@ -115,7 +141,7 @@ export class WithdrawalsRepository {
   byId(id: string): Promise<WithdrawalRow | null> {
     return jsonRow<WithdrawalRow>(
       this.db,
-      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at
+      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, w.destination
           from public.withdrawal_requests w join public.vendors v on v.id = w.vendor_id where w.id = ${id} for update of w`,
     );
   }
@@ -128,7 +154,7 @@ export class WithdrawalsRepository {
   adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string; account_changed_at: string | null })[]> {
     return jsonRows(
       this.db,
-      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at,
+      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, w.destination,
                  (select count(*)::int from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open') as disputes,
                  coalesce((select array_agg(distinct d.order_id) from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open'), '{}') as dispute_orders,
                  v.account_name, v.bank_name, v.created_at as shop_since,

@@ -4,6 +4,7 @@ import { RefundsService } from "./modules/refunds/refunds.service.js";
 import { VendorPayoutsService } from "./modules/vendor-payouts/vendor-payouts.service.js";
 import { CancellationsService } from "./modules/cancellations/cancellations.service.js";
 import { BuyerWalletService } from "./modules/buyer-wallet/buyer-wallet.service.js";
+import { WalletService } from "./modules/wallet/wallet.service.js";
 import { ProductSuspensionService } from "./modules/setup-status/product-suspension.service.js";
 import { SetupStatusService } from "./modules/setup-status/setup-status.service.js";
 import { WithdrawalsService } from "./modules/withdrawals/withdrawals.service.js";
@@ -102,6 +103,7 @@ export interface AppServices {
   setupStatus: SetupStatusService;
   productSuspension: ProductSuspensionService;
   buyerWallet: BuyerWalletService;
+  wallet: WalletService;
   cancellations: CancellationsService;
   refunds: RefundsService;
   vendorFees: VendorFeesService;
@@ -182,6 +184,7 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     setupStatus: overrides.setupStatus ?? new SetupStatusService(data),
     productSuspension: overrides.productSuspension ?? new ProductSuspensionService(data),
     buyerWallet: overrides.buyerWallet ?? new BuyerWalletService(data),
+    wallet: overrides.wallet ?? new WalletService(data, config.paystack.checkoutEnabled),
     refunds: overrides.refunds ?? new RefundsService(data),
     cancellations: overrides.cancellations ?? new CancellationsService(data),
     paymentsAdmin: overrides.paymentsAdmin ?? new PaymentsAdminService(data),

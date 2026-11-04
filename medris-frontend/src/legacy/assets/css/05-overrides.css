@@ -6060,3 +6060,158 @@ html:root:root body .lvpd-open{width:100%;min-height:46px;border-radius:999px;fo
 :root[data-theme="dark"] .lvpd-kv code{background:#2d333b}
 :root[data-theme="dark"] .lvpd-strong{background:rgba(16,185,129,.14)}:root[data-theme="dark"] .lvpd-strong span,:root[data-theme="dark"] .lvpd-strong b{color:#6ee7b7}
 :root[data-theme="dark"] .lvpd-meth{color:#cbd5e1}
+
+/* ---- the Levromart wallet (lvw3 / lw-) ---- */
+html:root:root body .lvw-card.lvw3{padding:16px 16px 0}
+.lvw3 .lw-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.lvw3 .lw-col{min-width:0;display:flex;flex-direction:column;gap:2px}
+.lvw3 .lw-label{display:flex;align-items:center;gap:6px;font-size:.78rem;opacity:.85}
+html:root:root body .lvw3 .lw-ic{width:24px;height:24px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:.74rem;display:grid;place-items:center;cursor:pointer}
+.lvw3 .lw-bal{font-size:1.85rem;font-weight:800;letter-spacing:-.02em;line-height:1.15;white-space:nowrap;color:#fff}
+html:root:root body .lvw3 .lw-tag{align-self:flex-start;margin-top:2px;padding:3px 9px;border:0;border-radius:999px;background:rgba(0,0,0,.18);color:#fff;font-size:.72rem;font-weight:700;cursor:pointer}
+html:root:root body .lvw3 .lw-tag i{opacity:.75;margin-left:3px}
+html:root:root body .lvw3 .lw-add{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 13px;border:0;border-radius:999px;background:#fff;color:#0b3d2e;font-weight:800;font-size:.8rem;cursor:pointer;box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
+html[data-lvw-theme] body .lvw3 .lw-add{color:#1f2937}
+.lvw3 .lw-earn{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.12)}
+.lvw3 .lw-earn>div{display:flex;flex-direction:column;min-width:0}
+.lvw3 .lw-earn small{font-size:.68rem;opacity:.8}.lvw3 .lw-earn b{font-size:.92rem;color:#fff}
+html:root:root body .lvw3 .lw-earn button{flex:none;min-height:32px;padding:0 12px;border:1.5px solid rgba(255,255,255,.7);border-radius:999px;background:transparent;color:#fff;font-weight:800;font-size:.76rem;cursor:pointer}
+html:root:root body .lvw3 .lw-earn button:disabled{opacity:.45;cursor:default}
+.lvw3 .lw-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 12px}
+html:root:root body .lvw3 .lw-acts button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:0;border:0;background:transparent;color:#fff;font-size:.74rem;font-weight:700;cursor:pointer}
+.lvw3 .lw-acts span{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.16);font-size:.95rem}
+.lvw3 .lw-acts button:active span{transform:scale(.94)}
+.lw-sheet .lw-l{display:block;margin:12px 0 6px;font-size:.78rem;font-weight:800;color:#374151}
+.lw-amt{display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:14px;border:1.5px solid #e5e7eb;background:#f9fafb}
+.lw-amt span{font-size:1.3rem;font-weight:800;color:#6b7280}
+.lw-amt input{flex:1;min-width:0;height:54px;border:0;background:transparent;font-size:1.5rem;font-weight:800;outline:none;color:#111827}
+.lw-to{display:flex;align-items:center;gap:4px;padding:0 14px;border-radius:14px;border:1.5px solid #e5e7eb;background:#f9fafb}
+.lw-to span{font-weight:800;color:#16a34a}.lw-to input{flex:1;height:48px;border:0;background:transparent;font-size:1rem;outline:none;color:#111827}
+.lw-in{width:100%;height:46px;padding:0 14px;border-radius:14px;border:1.5px solid #e5e7eb;background:#f9fafb;font-size:.95rem}
+.lw-hint{margin:6px 2px 0;font-size:.76rem;color:#6b7280;line-height:1.4}
+.lw-warn{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#fff4e0;color:#92400e;font-size:.8rem;line-height:1.4}
+.lw-err{margin:10px 0 0;padding:9px 12px;border-radius:12px;background:#fdecec;color:#b91c1c;font-size:.82rem}
+.lw-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.lw-chips button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-weight:700;font-size:.8rem;cursor:pointer}
+html:root:root body .lw-go{width:100%;min-height:50px;margin-top:16px;border-radius:999px;font-weight:800;font-size:.95rem}
+.lw-sugg{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lw-person{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px solid #eceff3;background:#fff;text-align:left;cursor:pointer;width:100%}
+.lw-person.on{border-color:#16a34a;background:#f0fdf4}
+.lw-person img,.lw-person>span{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;background:#e6f8ef;color:#047857;font-weight:800}
+.lw-person div{flex:1;min-width:0;display:flex;flex-direction:column}.lw-person b{font-size:.88rem}.lw-person small{font-size:.74rem;color:#6b7280}
+.lw-person>i{color:#16a34a}
+.lw-bank{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:#f6f7f9}
+.lw-bank>span{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e8f0fe;color:#1a73e8}
+.lw-bank div{display:flex;flex-direction:column}.lw-bank small{font-size:.76rem;color:#6b7280}
+.lw-done{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:10px 0 4px}
+.lw-done>span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#16a34a;color:#fff;font-size:1.6rem;margin-bottom:6px}
+.lw-done b{font-size:1.3rem}.lw-done p{margin:0;color:#6b7280}
+.lw-pay{width:100%;display:flex;align-items:center;gap:12px;padding:14px;margin-top:10px;border-radius:16px;border:1.5px solid #e5e7eb;background:#fff;text-align:left;cursor:pointer}
+.lw-pay:disabled{opacity:.55;cursor:default}
+.lw-pay div{flex:1;display:flex;flex-direction:column}.lw-pay b{font-size:.95rem}.lw-pay small{font-size:.76rem;color:#6b7280}
+.lw-pay-ic{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:1rem;color:#fff}
+.lw-pay-ic.w{background:linear-gradient(145deg,#0b3d2e,#139a6a)}.lw-pay-ic.p{background:#0ba4db}
+.lw-link{margin:8px 2px 0;padding:0;border:0;background:none;color:#16a34a;font-weight:800;font-size:.84rem;cursor:pointer}
+.lw-tall .lvw-sheet{max-height:88vh}
+.lw-day{position:sticky;top:-1px;z-index:1;margin:12px 0 4px;padding:6px 2px;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#6b7280;background:inherit}
+.lw-list{list-style:none;margin:0;padding:0}
+.lw-list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f3f5}
+.lw-list li:last-child{border-bottom:0}
+.lw-ico{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:.85rem}
+.lw-ico.in{background:#e6f8ef;color:#047857}.lw-ico.out{background:#fdecec;color:#b91c1c}.lw-ico.pay{background:#f1ecff;color:#6d28d9}.lw-ico.bank{background:#e8f0fe;color:#1a73e8}.lw-ico.wait{background:#fff4e0;color:#b45309}
+.lw-li{flex:1;min-width:0;display:flex;flex-direction:column}
+.lw-li strong{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lw-li small{font-size:.72rem;color:#6b7280}
+.lw-amt.in{color:#047857}.lw-amt.out{color:#111827}.lw-amt.wait{color:#b45309}
+b.lw-amt{font-size:.9rem;white-space:nowrap}
+.lw-bankhead{justify-content:center;gap:6px!important;margin:6px 0;padding:8px 10px!important;border-radius:10px;background:#e8f0fe;color:#174ea6;font-size:.76rem;border-bottom:0!important}
+:root[data-theme="dark"] .lw-sheet .lw-l{color:#cbd5e1}
+:root[data-theme="dark"] .lw-amt,:root[data-theme="dark"] .lw-to,:root[data-theme="dark"] .lw-in{background:#2d333b;border-color:rgba(255,255,255,.1)}
+:root[data-theme="dark"] .lw-amt input,:root[data-theme="dark"] .lw-to input,:root[data-theme="dark"] .lw-in{color:#e9ebed}
+:root[data-theme="dark"] .lw-person,:root[data-theme="dark"] .lw-pay,:root[data-theme="dark"] .lw-chips button{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
+:root[data-theme="dark"] .lw-bank{background:#2d333b}:root[data-theme="dark"] .lw-list li{border-color:rgba(255,255,255,.06)}
+:root[data-theme="dark"] .lw-amt.out{color:#e9ebed}
+html:root:root body .lw-to input,html:root:root body .lw-amt input{border:0!important;box-shadow:none!important;padding:0!important;background:transparent!important;outline:none!important}
+/* ---- admin: wallets + commission (aw-) ---- */
+.aw-box{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.aw-card{padding:14px;border-radius:18px;border:1px solid #e5e7eb;background:#fff}
+.aw-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.aw-h b{font-size:.95rem}.aw-h i{color:#16a34a;margin-right:4px}
+.aw-held{font-size:.8rem;color:#6b7280}.aw-held b{color:#111827}
+.aw-note{margin:6px 0 0;font-size:.78rem;color:#6b7280}
+.aw-sub{margin:14px 0 6px;font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#6b7280}
+.aw-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid #f1f3f5}
+.aw-row>div:first-child{display:flex;flex-direction:column;min-width:0}
+.aw-row b{font-size:.88rem}.aw-row small{font-size:.74rem;color:#6b7280}
+.aw-why{color:#b45309!important}.aw-hold{color:#b91c1c;font-weight:700}
+.aw-acts{display:flex;gap:6px;flex:none}
+.aw-search{width:100%;height:42px;padding:0 12px;border-radius:12px;border:1px solid #e5e7eb;background:#f9fafb}
+.aw-range{display:flex;gap:4px;padding:3px;border-radius:12px;background:#f1f3f5}
+.aw-range button{min-height:28px;padding:0 10px;border:0;border-radius:9px;background:transparent;font-size:.74rem;font-weight:700;color:#4b5563;cursor:pointer}
+.aw-range button.on{background:#fff;color:#111827;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.aw-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.aw-tiles>div{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:14px;background:#f6f7f9}
+.aw-tiles small{font-size:.7rem;color:#6b7280}.aw-tiles b{font-size:1.15rem}.aw-tiles span{font-size:.68rem;color:#9ca3af}
+.aw-tiles>div:first-child{background:#e6f8ef}.aw-tiles>div:first-child b{color:#047857}
+.aw-days{display:flex;gap:6px;overflow-x:auto;margin-top:10px}
+.aw-days>div{flex:none;display:flex;flex-direction:column;padding:8px 10px;border-radius:10px;border:1px solid #eceff3}
+.aw-days small{font-size:.66rem;color:#6b7280}.aw-days b{font-size:.8rem}
+.aw-off p{font-size:.8rem;color:#6b7280;margin:6px 0 0}
+:root[data-theme="dark"] .aw-card{background:#22272e;border-color:rgba(255,255,255,.08)}
+:root[data-theme="dark"] .aw-tiles>div,:root[data-theme="dark"] .aw-range,:root[data-theme="dark"] .aw-search{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
+:root[data-theme="dark"] .aw-range button.on{background:#22272e;color:#e9ebed}
+:root[data-theme="dark"] .aw-held b,:root[data-theme="dark"] .aw-row b{color:#e9ebed}:root[data-theme="dark"] .aw-row{border-color:rgba(255,255,255,.06)}
+
+/* ---- button colours: the dangerous choice is red, the safe way out is green ---- */
+:root:root:root:root:root:root body .lm-actions .lf-cancel,:root:root:root:root:root:root body .lf-page .lm-actions .lf-cancel{background:#dc2626!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;box-shadow:none!important}
+:root:root:root:root:root:root body #confirmModalCancel.lv-safe,:root:root:root:root:root:root body #textPromptModalCancel.lv-safe{background:#16a34a!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#16a34a!important}
+:root:root:root:root:root:root body #confirmModalCancel.lv-safe i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+:root:root:root:root:root:root body #confirmModalOk.btn-danger{background:#dc2626!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#dc2626!important}
+
+/* ---- settings: flat on/off buttons (no purple, no glassy bulge) ---- */
+html:root:root:root:root body #app#app #settings-page .settings-inline-btn{background:#fff!important;background-image:none!important;color:#374151!important;border:1.5px solid #e5e7eb!important;box-shadow:none!important;text-shadow:none!important;border-radius:999px!important;filter:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transform:none!important;font-weight:700!important}
+html:root:root:root:root body #app#app #settings-page .settings-inline-btn.active{background:#16a34a!important;background-image:none!important;color:#fff!important;border-color:#16a34a!important}
+html:root:root:root:root body #app#app #settings-page .settings-inline-btn::before,html:root:root:root:root body #app#app #settings-page .settings-inline-btn::after{display:none!important}
+:root[data-theme="dark"]:root:root:root body #app#app #settings-page .settings-inline-btn:not(.active){background:#2d333b!important;color:#e9ebed!important;border-color:rgba(255,255,255,.12)!important}
+
+/* ---- search: nothing found (3D art, two small chips instead of two big green buttons) ---- */
+html:root:root body #app .search-page-empty.sr-empty2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:26px 18px 18px;margin:8px 0 14px;border-radius:22px;background:linear-gradient(180deg,rgba(124,58,237,.06),rgba(124,58,237,0));border:0}
+html:root:root body #app .sr-empty2 .sr-empty-art{width:92px;height:92px;object-fit:contain;filter:drop-shadow(0 10px 16px rgba(0,0,0,.18));margin-bottom:4px;animation:lvPromoFloat2 4s ease-in-out infinite}
+@keyframes lvPromoFloat2{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+html:root:root body #app .sr-empty2 strong{font-size:1.05rem;font-weight:800;color:inherit}
+html:root:root body #app .sr-empty2 p{margin:0;font-size:.86rem;line-height:1.45;color:#6b7280;max-width:300px}
+html:root:root body #app .sr-empty2 .search-empty-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+html:root:root body #app .sr-empty2 .sr-chip{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;color:#111827;font-weight:700;font-size:.84rem;box-shadow:none;cursor:pointer;width:auto}
+html:root:root body #app .sr-empty2 .sr-chip i{color:#7c3aed}
+:root[data-theme="dark"] body #app .sr-empty2 .sr-chip{background:#22272e;border-color:rgba(255,255,255,.12);color:#e9ebed}
+@media (prefers-reduced-motion:reduce){html:root:root body #app .sr-empty2 .sr-empty-art{animation:none}}
+/* search: no movement while results arrive */
+html:root:root body #searchPageResults .lv-svr-row{min-height:7.4rem}
+html:root:root body #searchPageResults *{animation:none!important}
+html:root:root body #searchPageResults img{transition:none!important}
+
+/* ---- vendors map: the shop card and pictures sit lower (closer to the bottom of the phone) and the white fade is lighter ---- */
+html:root:root body #app#app .vmpage .vmp-bottom{padding-bottom:max(.2rem,calc(env(safe-area-inset-bottom,0px) * .35))!important;background:linear-gradient(to top,rgba(255,255,255,.62) 0%,rgba(255,255,255,.3) 45%,rgba(255,255,255,0) 100%)!important}
+html:root:root[data-theme="dark"] body #app#app .vmpage .vmp-bottom,html:root:root body #app#app .vmpage[data-style="night"] .vmp-bottom{background:linear-gradient(to top,rgba(20,24,28,.6) 0%,rgba(20,24,28,.25) 45%,rgba(20,24,28,0) 100%)!important}
+/* ---- profile pages: a crisp card under the banner instead of a heavy white blur ---- */
+html:root:root body #app .vendor-profile-header-card .vendor-profile-header-body{background:var(--card,#fff)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-top:0!important;margin-top:-18px!important}
+html:root:root body #app .vendor-profile-header-card .lv-profile-cover-glow{opacity:.35!important}
+
+/* ---- Contact us: a colour per channel, six social buttons in a tidy grid ---- */
+html:root:root body #app .contact-us-page h2{font-size:1.6rem;font-weight:850;letter-spacing:-.02em;margin:.4rem 0 .2rem}
+html:root:root body #app .contact-us-card{padding:6px!important;border-radius:22px!important}
+html:root:root body #app .contact-us-row{border-radius:16px}
+html:root:root body #app .contact-us-row-icon{width:46px!important;height:46px!important;border-radius:14px!important;display:grid!important;place-items:center!important;font-size:1.05rem!important}
+html:root:root body #app .contact-us-row:nth-child(1) .contact-us-row-icon{background:#fdecea!important;color:#ea4335!important}
+html:root:root body #app .contact-us-row:nth-child(2) .contact-us-row-icon{background:#e6f8ef!important;color:#16a34a!important}
+html:root:root body #app .contact-us-row:nth-child(3) .contact-us-row-icon{background:#e8f0fe!important;color:#1a73e8!important}
+html:root:root body #app .contact-us-socials{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+html:root:root body #app .contact-us-social-btn{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:12px 6px!important;border-radius:16px!important;min-height:0!important;font-size:.8rem!important;font-weight:700!important}
+html:root:root body #app .contact-us-social-logo{width:34px!important;height:34px!important;border-radius:10px!important;object-fit:cover!important}
+html:root:root body #app .contact-us-help .vl-add{border-radius:999px!important}
+:root[data-theme="dark"] body #app .contact-us-row:nth-child(1) .contact-us-row-icon{background:rgba(234,67,53,.15)!important}
+:root[data-theme="dark"] body #app .contact-us-row:nth-child(2) .contact-us-row-icon{background:rgba(22,163,74,.15)!important}
+:root[data-theme="dark"] body #app .contact-us-row:nth-child(3) .contact-us-row-icon{background:rgba(26,115,232,.15)!important}
+
+/* Comment box: a straight box that grows with the text (not an oval pill) */
+html:root:root .product-comment-compose-row{align-items:flex-end!important}
+html:root:root .product-comment-compose-row textarea{border-radius:10px!important;min-height:42px!important;max-height:160px!important;padding:10px 12px!important;line-height:1.4!important;resize:none!important;overflow-y:auto!important;height:auto}

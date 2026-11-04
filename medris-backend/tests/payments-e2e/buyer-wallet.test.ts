@@ -8,14 +8,15 @@ describe("the buyer's refunds wallet", () => {
   const call = async (name: string, token: string, body: Record<string, unknown> = {}) => json(await api.post(w, `/rpc/${name}`, token, body));
   const save = (token: string) => call("save_refund_account", token, { p_bank_code: "057", p_account_number: "0123456789", p_confirmed_name: "Obi Ada" });
 
-  it("a buyer without an account is refunded on the card as before", async () => {
+  it("a refund lands in the Levromart wallet, whether or not the buyer saved a bank account (migration 0033)", async () => {
     const o = await newOrder(w, 5000, "confirmed", w.buyer2.id);
     const started = await startPayment(w, o, w.buyer2.token);
     await sendWebhook(w, "charge.success", w.paystack.completeCheckout(started.data.reference));
     expect((await call("buyer_cancel_order", w.buyer2.token, { p_order_id: o })).status).toBe(200);
     await runJob(w, "paystack-refunds");
-    expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(1);
+    expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(0);
     expect(await rowOf(w, `select 1 as x from public.refund_credits where order_id = $1`, [o])).toBeFalsy();
+    expect((await call("get_levro_wallet", w.buyer2.token)).data.balance_kobo).toBe("500000");
   });
 
   it("the name must match; then the account is saved without the full number", async () => {
@@ -27,40 +28,33 @@ describe("the buyer's refunds wallet", () => {
     expect(JSON.stringify(s.data)).not.toContain("0123456789");
   });
 
-  it("refunds go into the wallet, then are withdrawn to the bank", async () => {
-    w.paystack.reset();
-    const o = await newOrder(w, 5000);
+  // Refund money that was waiting in the old refunds wallet is moved into the Levromart wallet by migration 0033. The old
+  // withdrawal path is kept for any such money (an older backend still running during the switch); it is tested here.
+  const oldCredit = async (kobo: number) => {
+    const o = await newOrder(w, kobo / 100);
     await payOrder(w, o);
-    expect((await call("buyer_cancel_order", w.buyer.token, { p_order_id: o })).status).toBe(200);
-    await runJob(w, "paystack-refunds");
-    expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(0);
-    expect((await rowOf<any>(w, `select amount_kobo::text as k, status from public.refund_credits where order_id = $1`, [o]))).toMatchObject({ k: "500000", status: "available" });
-    expect((await rowOf<any>(w, `select status from public.paystack_refunds where order_id = $1`, [o])).status).toBe("processed");
-    await runJob(w, "paystack-refunds"); // a second run credits nothing twice
-    expect((await call("get_refund_wallet", w.buyer.token)).data.available_kobo).toBe("500000");
+    const ref = await rowOf<any>(w, `insert into public.paystack_refunds (transaction_reference, order_id, attempt, amount_kobo, reason, source, status)
+      select provider_reference, order_id, 1, $2, 'old', 'admin', 'processed' from public.payments where order_id = $1 and status = 'paid' limit 1 returning id`, [o, kobo]);
+    await w.db.query(`insert into public.refund_credits (buyer_id, order_id, refund_id, amount_kobo) values ($1, $2, $3, $4)`, [w.buyer.id, o, ref.id, kobo]);
+    return o;
+  };
 
-    // a freshly saved account can still withdraw; the admins are told that the account was changed recently
+  it("old refund money is withdrawn to the bank, and a failed transfer puts it back", async () => {
+    const o = await oldCredit(500000);
+    expect((await call("get_refund_wallet", w.buyer.token)).data.available_kobo).toBe("500000");
     expect((await call("withdraw_refunds", w.buyer2.token)).status).toBe(400); // no account
-    const ok = await call("withdraw_refunds", w.buyer.token);
-    expect(ok.status).toBe(200);
-    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and title = 'Refund withdrawal (bank account changed recently)'`, [w.admin.id])).toBeTruthy();
+    expect((await call("withdraw_refunds", w.buyer.token)).status).toBe(200);
     expect(w.paystack.callsTo("POST", "/transfer")).toHaveLength(1);
     expect((await call("withdraw_refunds", w.buyer.token)).status).toBe(400); // nothing left
-    const wd = await rowOf<any>(w, `select transfer_reference as ref, status from public.refund_withdrawals where buyer_id = $1`, [w.buyer.id]);
+    const wd = await rowOf<any>(w, `select transfer_reference as ref from public.refund_withdrawals where buyer_id = $1 and status = 'processing'`, [w.buyer.id]);
     expect(wd.ref).toMatch(/^lvm_bw_/);
     await sendWebhook(w, "transfer.success", { reference: wd.ref });
-    expect((await rowOf<any>(w, `select status from public.refund_withdrawals where buyer_id = $1`, [w.buyer.id])).status).toBe("success");
     expect((await rowOf<any>(w, `select status from public.refund_credits where order_id = $1`, [o])).status).toBe("sent");
-  });
-
-  it("a failed transfer puts the money back in the wallet", async () => {
-    const o = await newOrder(w, 3000);
-    await payOrder(w, o);
-    await call("buyer_cancel_order", w.buyer.token, { p_order_id: o });
-    await runJob(w, "paystack-refunds");
+    const o2 = await oldCredit(300000);
     expect((await call("withdraw_refunds", w.buyer.token)).status).toBe(200);
-    const wd = await rowOf<any>(w, `select transfer_reference as ref from public.refund_withdrawals where status = 'processing' and buyer_id = $1`, [w.buyer.id]);
-    await sendWebhook(w, "transfer.failed", { reference: wd.ref, reason: "Account closed" });
+    const wd2 = await rowOf<any>(w, `select transfer_reference as ref from public.refund_withdrawals where status = 'processing' and buyer_id = $1`, [w.buyer.id]);
+    await sendWebhook(w, "transfer.failed", { reference: wd2.ref, reason: "Account closed" });
     expect((await call("get_refund_wallet", w.buyer.token)).data.available_kobo).toBe("300000");
+    void o2;
   });
 });

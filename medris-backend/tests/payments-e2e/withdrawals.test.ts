@@ -19,6 +19,8 @@ describe("withdrawals", () => {
   }
   const clean = async () => {
     await w.db.query(`delete from public.withdrawal_requests`);
+    // this shop has already withdrawn to its current bank account once (the first withdrawal after a change is checked by an admin, tested below)
+    await w.db.query(`insert into public.withdrawal_requests (vendor_id, status, kind, order_ids, amount_kobo, decided_at, destination) values ($1, 'approved', 'instant', '{}', 1000000, now(), 'bank')`, [w.vendor.shop]);
     await w.db.query(`update public.vendor_payouts set status = 'success' where status in ('on_hold','pending')`);
     await w.db.query(`delete from public.disputes`);
   };
@@ -115,16 +117,22 @@ describe("withdrawals", () => {
     expect(JSON.stringify(r.body)).toContain("3 times a day");
   });
 
-  it("a recent bank change sends everything to an admin, who is shown the change", async () => {
+  it("after a bank change: no bank withdrawal for 24 hours, then the first one is checked by an admin", async () => {
     await clean();
     const o = await done(5000, 60);
+    // the shop's earlier withdrawal was to its old account (before the change)
+    await w.db.query(`update public.withdrawal_requests set decided_at = now() - interval '4 days', created_at = now() - interval '4 days' where vendor_id = $1 and status = 'approved'`, [w.vendor.shop]);
     await w.db.query(`update public.vendors set payout_verified_at = now() - interval '2 hours' where id = $1`, [w.vendor.shop]);
+    const blocked = await call("request_withdrawal", w.vendor.token);
+    expect(blocked.status).toBe(400);
+    expect(JSON.stringify(blocked.body)).toContain("For your safety");
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [o])).toMatchObject({ status: "on_hold" });
+    // a day later: the request is allowed, but the first one to the new account waits for an admin, who is told why
+    await w.db.query(`update public.vendors set payout_verified_at = now() - interval '25 hours' where id = $1`, [w.vendor.shop]);
     const r = await call("request_withdrawal", w.vendor.token);
     expect(r.status).toBe(200);
     expect(r.data).toMatchObject({ sent_kobo: 0 });
-    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [o])).toMatchObject({ status: "on_hold" });
-    const list = await call("admin_list_withdrawals", w.admin.token, { p_status: "requested" });
-    expect(list.data[0].account_changed_at).toBeTruthy();
+    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and body like '%first withdrawal to a new or changed bank account%'`, [w.admin.id])).toBeTruthy();
     await w.db.query(`update public.vendors set payout_verified_at = now() - interval '3 days' where id = $1`, [w.vendor.shop]);
   });
 

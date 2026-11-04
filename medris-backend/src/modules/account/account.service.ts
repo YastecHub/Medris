@@ -1,5 +1,6 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
+import { WalletRepository } from "../../database/repositories/wallet.repository.js";
 import { AccountDeletionRepository } from "../../database/repositories/account-deletion.repository.js";
 import { AccountRepository } from "../../database/repositories/account.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
@@ -176,6 +177,9 @@ export class AccountService {
     const uid = userId ?? me.userId;
     return this.db().onBehalfOf(me, async (tx) => {
       if (me.userId !== uid && !(await new AccessRepository(tx).isAdmin(me.userId))) throw forbidden("Not authorized to delete this account.");
+      // money in the wallet belongs to the person and would be lost: it must be withdrawn or used first (migration 0033)
+      const wallet = await tx.transaction(async (sp) => new WalletRepository(sp).account(uid)).catch(() => null);
+      if (wallet && Number(wallet.balance_kobo) > 0) throw badRequest("This account still has money in its Levromart wallet. Withdraw it or use it before deleting the account.");
       await new AccountDeletionRepository(tx).deleteEverything(uid);
       return { deleted: true as const, user_id: uid };
     });

@@ -1,5 +1,6 @@
 import { REFUND_TRANSFER_PREFIX, applyRefundTransferEvent } from "../buyer-wallet/buyer-wallet.service.js";
 import { notifyPayoutSent } from "../vendor-payouts/vendor-payouts.service.js";
+import { WALLET_TRANSFER_PREFIX, applyWalletTransferEvent, creditWalletTopup } from "../wallet/wallet.service.js";
 import crypto from "node:crypto";
 import { requireEnv } from "../../config/env.js";
 import type { DataContext } from "../../database/context.js";
@@ -155,6 +156,8 @@ export class PaystackWebhookService {
       });
       if (!first) return "duplicate: already settled";
     }
+    // a wallet top-up: the wallet gets what was recorded when it started (once), nothing else is settled
+    if (recorded?.purpose === "wallet_topup") return creditWalletTopup(tx, reference, (verified.metadata ?? {}) as Obj, Number(verified.amount));
     if (recorded?.order_id && (recorded.purpose === "order_payment" || recorded.purpose === "order_balance")) {
       await restoreCardPaymentRow(tx, recorded.order_id, reference, verified);
     }
@@ -185,6 +188,10 @@ export class PaystackWebhookService {
 
   private async transferEvent(tx: Tx, ledger: PaystackLedgerRepository, data: Obj, to: "success" | "failed" | "reversed"): Promise<string> {
     const reference = String(data.reference ?? "");
+    if (reference.startsWith(WALLET_TRANSFER_PREFIX)) {
+      const done = await applyWalletTransferEvent(tx, reference, to, String(data.reason ?? data.message ?? `Transfer ${to}`).slice(0, 300), data.transfer_code != null ? String(data.transfer_code) : null);
+      return done ?? "ignored: no wallet withdrawal with that reference";
+    }
     if (reference.startsWith(REFUND_TRANSFER_PREFIX)) {
       const done = await applyRefundTransferEvent(tx, reference, to, String(data.reason ?? data.message ?? `Transfer ${to}`).slice(0, 300));
       return done ?? "ignored: no refund withdrawal with that reference";
