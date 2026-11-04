@@ -101,6 +101,7 @@ const L = {
   withdrawals: per("withdrawals-write", 20),
   refundAccount: per("refund-account-write", 20, 3_600_000),
   wallet: per("wallet-write", 20),
+  walletPin: per("wallet-pin", 10, 15 * 60_000),
   walletSearch: per("wallet-search", 60),
   platformWallet: per("platform-wallet-write", 12),
 };
@@ -471,16 +472,20 @@ export const RPC: Record<string, RpcEntry> = {
   get_setup_status: { run: (s, me) => s.setupStatus.status(me) },
   // Withdrawals
   get_withdrawal_summary: { run: (s, me) => setup("Withdrawals", s.withdrawals.summary(me)) },
-  request_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.request(me, str(a.p_destination) ?? "bank")), limit: L.withdrawals },
+  request_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.request(me, str(a.p_destination) ?? "bank", str(a.p_pin))), limit: L.withdrawals },
   // The Levromart wallet (migration 0033)
   get_levro_wallet: { run: (s, me) => s.wallet.summary(me) },
   get_levro_wallet_history: { run: (s, me, a) => s.wallet.history(me, str(a.p_before)) },
   find_wallet_people: { run: (s, me, a) => s.wallet.find(me, str(a.p_query)), limit: L.walletSearch },
+  get_wallet_pin_status: { run: (s, me) => s.walletPin.status(me) },
+  set_wallet_pin: { run: (s, me, a) => s.walletPin.set(me, str(a.p_pin), str(a.p_pin_confirm)), limit: L.walletPin },
+  change_wallet_pin: { run: (s, me, a) => s.walletPin.change(me, { password: str(a.p_password), pin: str(a.p_pin), confirm: str(a.p_pin_confirm) }), limit: L.walletPin },
+  wallet_fee_quote: { run: async (s, _me, a) => s.wallet.quote(num(a.p_amount_kobo)) },
   set_wallet_handle: { run: (s, me, a) => s.wallet.changeHandle(me, str(a.p_handle)), limit: L.wallet },
-  wallet_send: { run: (s, me, a) => s.wallet.send(me, { toHandle: str(a.p_to), amountKobo: num(a.p_amount_kobo), note: str(a.p_note), key: str(a.p_key) }), limit: L.wallet },
-  wallet_topup: { run: (s, me, a) => s.wallet.topup(me, num(a.p_amount_kobo), s.config.appOrigin), limit: L.wallet },
-  wallet_withdraw: { run: (s, me, a) => s.wallet.withdraw(me, num(a.p_amount_kobo)), limit: L.withdrawals },
-  wallet_pay_order: { run: (s, me, a) => s.wallet.payOrder(me, str(a.p_order_id)), limit: L.checkout },
+  wallet_send: { run: (s, me, a) => s.wallet.send(me, { toHandle: str(a.p_to), amountKobo: num(a.p_amount_kobo), note: str(a.p_note), key: str(a.p_key), pin: str(a.p_pin) }), limit: L.wallet },
+  wallet_topup: { run: (s, me, a) => s.wallet.topup(me, num(a.p_amount_kobo), s.config.appOrigin, str(a.p_pin)), limit: L.wallet },
+  wallet_withdraw: { run: (s, me, a) => s.wallet.withdraw(me, num(a.p_amount_kobo), str(a.p_pin)), limit: L.withdrawals },
+  wallet_pay_order: { run: (s, me, a) => s.wallet.payOrder(me, str(a.p_order_id), str(a.p_pin)), limit: L.checkout },
   admin_wallets: { run: (s, me, a) => s.wallet.adminList(me, str(a.p_query)) },
   admin_decide_wallet_withdrawal: { run: (s, me, a) => s.wallet.decideWithdrawal(me, str(a.p_id), str(a.p_decision), str(a.p_reason)), limit: L.withdrawals },
   // Levromart's own wallet: the commission (migration 0035)

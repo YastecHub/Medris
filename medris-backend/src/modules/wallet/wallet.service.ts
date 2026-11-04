@@ -5,10 +5,13 @@ import { NotificationWriter } from "../../database/repositories/notification-wri
 import { PaymentClaimsRepository } from "../../database/repositories/payment-claims.repository.js";
 import { PaymentsRepository } from "../../database/repositories/orders.repository.js";
 import { PaystackLedgerRepository } from "../../database/repositories/paystack-ledger.repository.js";
+import { PlatformWalletRepository } from "../../database/repositories/platform-wallet.repository.js";
 import { WalletRepository, type WalletAccount } from "../../database/repositories/wallet.repository.js";
 import { PaystackRejected, PaystackUnavailable, PaystackUnknownOutcome, getPaystackClient, grossUpForBuyerFees, koboToNaira, nairaToKobo } from "../../integrations/paystack/index.js";
+import { paystackFeeOn } from "../../integrations/paystack/fees.js";
 import { badRequest, conflict, forbidden, notFound, notReadyIfMissing, serviceUnavailable } from "../../shared/errors/app-error.js";
 import { PaymentClaimsService } from "../payment-claims/payment-claims.service.js";
+import { WalletPinService } from "./wallet-pin.service.js";
 
 type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 
@@ -21,12 +24,22 @@ export const WALLET = {
   maxTopup: 20_000_000, // ₦200,000 per top-up
   maxBalanceForTopup: 200_000_000, // a top-up never takes a wallet above ₦2,000,000
   minWithdrawal: 10_000, // ₦100 (Paystack sends nothing smaller)
-  withdrawalsPerDay: 3,
-  /** After the bank account is added or changed, nothing can be withdrawn for this long (a stolen login cannot empty the wallet). */
-  bankChangeWaitHours: 24,
-  /** Money that arrived by top-up or transfer this recently needs an admin's check before it can go to a bank. */
-  freshMoneyHours: 24,
+  withdrawalsPerDay: 10,
 } as const;
+
+/**
+ * What Levromart charges on a wallet payment, transfer or withdrawal: exactly Paystack's local fee on that amount
+ * (1.5% + ₦100 from ₦2,500, at most ₦2,000; see integrations/paystack/fees.ts). It goes to Levromart's own wallet.
+ */
+export const walletFeeKobo = (amountKobo: number): number => (amountKobo > 0 ? paystackFeeOn(amountKobo) : 0);
+
+/** The most that can be sent to a bank from `balance` when the fee comes out of the same balance. */
+export function withdrawableKobo(balanceKobo: number): number {
+  let amount = balanceKobo - walletFeeKobo(balanceKobo);
+  while (amount > 0 && amount + walletFeeKobo(amount) > balanceKobo) amount--;
+  while (amount > 0 && amount + 1 + walletFeeKobo(amount + 1) <= balanceKobo) amount++;   // the fee grows in steps: use every kobo that fits
+  return Math.max(0, amount);
+}
 export const WALLET_TRANSFER_PREFIX = "lvm_ww_";
 export const WALLET_TOPUP_PREFIX = "lvm_top_";
 const naira = (kobo: number | string) => "₦" + koboToNaira(Number(kobo)).toLocaleString("en-NG", { maximumFractionDigits: 2 });
@@ -39,33 +52,52 @@ const RESERVED = new Set(["admin", "levromart", "levi", "support", "help", "offi
  * wallets involved, and writes a ledger line with the balance after it, so money can never be created, lost or spent twice.
  */
 export class WalletService {
+  private readonly pins: WalletPinService;
   constructor(
     private readonly db: () => DataContext,
     private readonly checkoutEnabled = true,
-  ) {}
+    pins?: WalletPinService,
+  ) {
+    this.pins = pins ?? new WalletPinService(db);
+  }
+
+  /** What Levromart would charge on this amount (for the breakdown shown before the PIN). */
+  quote(amountKobo: number | null) {
+    const a = Number(amountKobo);
+    if (!Number.isInteger(a) || a <= 0) throw badRequest("Enter an amount first.");
+    const fee = walletFeeKobo(a);
+    return { amount_kobo: String(a), fee_kobo: String(fee), total_kobo: String(a + fee) };
+  }
 
   /* ------------------------------------------------------------------ reading */
 
   async summary(me: Identity | null) {
     const user = need(me);
+    const pin = await this.pins.status(me).catch(() => ({ has_pin: false, locked_minutes: 0 }));
+    const out = await this.summaryRows(user.userId);
+    return { ...out, pin: { has_pin: pin.has_pin, locked_minutes: pin.locked_minutes } };
+  }
+
+  private async summaryRows(userId: string) {
+    const user = { userId };
     return this.ready(() =>
       this.db().asService(async (tx) => {
         const repo = new WalletRepository(tx);
         const w = await repo.ensure(user.userId);
         if (!w) throw notFound("Account not found.");
         const account = await repo.withdrawalAccount(user.userId);
-        const fresh = await repo.recentInflowKobo(user.userId, WALLET.freshMoneyHours);
         return {
           handle: w.handle,
           balance_kobo: w.balance_kobo,
           frozen: w.frozen,
           frozen_reason: w.frozen_reason,
-          // what can go to the bank without an admin's check right now
-          withdrawable_now_kobo: String(Math.max(0, Number(w.balance_kobo) - fresh)),
+          // the most that can go to the bank right now, with the withdrawal fee coming out of the same balance
+          withdrawable_now_kobo: String(withdrawableKobo(Number(w.balance_kobo))),
           account: account
             ? { bank_name: account.bank_name, account_name: account.account_name, last4: account.last4, source: account.source, changed_hours_ago: Math.floor(account.age_hours) }
             : null,
           limits: WALLET,
+          pin: null as { has_pin: boolean; locked_minutes: number } | null,
           entries: await repo.entries(user.userId, 40, null),
           withdrawals: await repo.recentWithdrawals(user.userId, 10),
         };
@@ -111,7 +143,7 @@ export class WalletService {
 
   /* ------------------------------------------------------------- sending money */
 
-  async send(me: Identity | null, input: { toHandle: string | null; amountKobo: number | null; note: string | null; key: string | null }) {
+  async send(me: Identity | null, input: { toHandle: string | null; amountKobo: number | null; note: string | null; key: string | null; pin?: string | null }) {
     const user = need(me);
     const handle = String(input.toHandle ?? "").trim().toLowerCase().replace(/^@/, "");
     const amount = Number(input.amountKobo);
@@ -120,6 +152,8 @@ export class WalletService {
     if (!HANDLE.test(handle)) throw badRequest("Choose who to send to by their @tag.");
     if (!Number.isInteger(amount) || amount < WALLET.minTransfer) throw badRequest(`The smallest amount you can send is ${naira(WALLET.minTransfer)}.`);
     if (amount > WALLET.maxTransfer) throw badRequest(`You can send at most ${naira(WALLET.maxTransfer)} at a time.`);
+    await this.pins.require(user.userId, input.pin);
+    const fee = walletFeeKobo(amount);
     return this.ready(() =>
       this.db().asService(async (tx) => {
         const repo = new WalletRepository(tx);
@@ -138,12 +172,15 @@ export class WalletService {
         if (!theirs) throw notFound("That wallet is not available.");
         if (mine.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
         if (theirs.frozen) throw badRequest("That wallet cannot receive money right now.");
-        if (Number(mine.balance_kobo) < amount) throw badRequest(`You do not have enough in your wallet. Your balance is ${naira(mine.balance_kobo)}.`);
+        if (Number(mine.balance_kobo) < amount + fee) throw badRequest(`You do not have enough in your wallet. You need ${naira(amount + fee)} (${naira(amount)} plus a ${naira(fee)} fee). Your balance is ${naira(mine.balance_kobo)}.`);
         if ((await repo.sentTodayKobo(user.userId)) + amount > WALLET.maxSentPerDay) throw badRequest(`You can send up to ${naira(WALLET.maxSentPerDay)} in 24 hours.`);
         const transferId = await repo.insertTransfer(user.userId, to.user_id, amount, note, key);
         if (!transferId) throw conflict("This transfer was already sent.");
         const after = await repo.move(user.userId, -amount, "transfer_out", { reference: "transfer:" + transferId, note, counterpartyId: to.user_id, transferId });
         if (after == null) throw badRequest("You do not have enough in your wallet.");
+        const afterFee = fee > 0 ? await repo.move(user.userId, -fee, "fee", { reference: "fee:transfer:" + transferId, note: "Transfer fee", transferId }) : after;
+        if (afterFee == null) throw badRequest("You do not have enough in your wallet.");
+        if (fee > 0) await new PlatformWalletRepository(tx).addFee({ amountKobo: fee, reference: "fee:transfer:" + transferId, note: "Transfer fee" });
         await repo.move(to.user_id, amount, "transfer_in", { reference: "transfer:" + transferId, note, counterpartyId: user.userId, transferId });
         const sender = await new WalletRepository(tx).account(user.userId);
         await new NotificationWriter(tx).create({
@@ -154,7 +191,7 @@ export class WalletService {
           targetView: "levroWallet",
           actorId: user.userId,
         });
-        return { transfer_id: transferId, amount_kobo: String(amount), balance_kobo: String(after), to: { handle: to.handle, name: to.name } };
+        return { transfer_id: transferId, amount_kobo: String(amount), fee_kobo: String(fee), balance_kobo: String(afterFee), to: { handle: to.handle, name: to.name } };
       }),
     );
   }
@@ -162,12 +199,13 @@ export class WalletService {
   /* ---------------------------------------------------------------- top-ups */
 
   /** Adds money with Paystack. The buyer pays Paystack's fee on top; the wallet gets the amount asked for. */
-  async topup(me: Identity | null, amountKobo: number | null, appOrigin: string) {
+  async topup(me: Identity | null, amountKobo: number | null, appOrigin: string, pin?: string | null) {
     const user = need(me);
     if (!this.checkoutEnabled) throw serviceUnavailable("Adding money is not available right now.");
     const net = Number(amountKobo);
     if (!Number.isInteger(net) || net < WALLET.minTopup) throw badRequest(`The smallest amount you can add is ${naira(WALLET.minTopup)}.`);
     if (net > WALLET.maxTopup) throw badRequest(`You can add at most ${naira(WALLET.maxTopup)} at a time.`);
+    await this.pins.require(user.userId, pin);
     const { grossKobo, feeKobo } = grossUpForBuyerFees(net);
     const reference = `${WALLET_TOPUP_PREFIX}${crypto.randomBytes(10).toString("hex")}`;
     const email = await this.ready(() =>
@@ -207,9 +245,10 @@ export class WalletService {
    * row with channel "wallet"), so everything after it is the same as for a card: the order moves on, Levromart's 3% commission
    * is kept when the order completes, and the shop's 97% goes to its earnings. No Paystack fee is charged.
    */
-  async payOrder(me: Identity | null, orderId: string | null) {
+  async payOrder(me: Identity | null, orderId: string | null, pin?: string | null) {
     const user = need(me);
     if (!orderId) throw badRequest("Order not found.");
+    await this.pins.require(user.userId, pin);
     return this.ready(() =>
       this.db().asService(async (tx) => {
         const claims = new PaymentClaimsRepository(tx);
@@ -235,17 +274,24 @@ export class WalletService {
         const [w] = await repo.lock([user.userId]);
         if (!w) throw notFound("Wallet not found.");
         if (w.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
-        if (Number(w.balance_kobo) < amount) throw badRequest(`Your wallet has ${naira(w.balance_kobo)}. You need ${naira(amount)} for this order.`);
+        const fee = walletFeeKobo(amount);
+        if (Number(w.balance_kobo) < amount + fee) throw badRequest(`Your wallet has ${naira(w.balance_kobo)}. You need ${naira(amount + fee)} (${naira(amount)} for the order plus a ${naira(fee)} fee).`);
         const reference = `lvm_ord_${orderId.replace(/-/g, "").slice(0, 8)}_w${crypto.randomBytes(8).toString("hex")}`;
         const after = await repo.move(user.userId, -amount, "order_payment", { reference, orderId, note: o.vendor_name ? `Paid ${o.vendor_name}` : "Order payment" });
         if (after == null) throw badRequest("You do not have enough in your wallet.");
+        let afterFee: number | null = after;
+        if (fee > 0) {
+          afterFee = await repo.move(user.userId, -fee, "fee", { reference: "fee:" + reference, orderId, note: "Wallet payment fee" });
+          if (afterFee == null) throw badRequest("You do not have enough in your wallet.");
+          await new PlatformWalletRepository(tx).addFee({ amountKobo: fee, reference: "fee:" + reference, note: "Wallet payment fee", vendorId: o.vendor_id, orderId });
+        }
         const purpose = due.type === "delivery_deposit_20" || !(o.delivery_method === "delivery" && o.payment_timing === "pay_after") ? "order_payment" : "order_balance";
         await ledger.insertAttempt({ reference, purpose, orderId, vendorId: o.vendor_id, payerUserId: user.userId, amountKobo: amount });
         await ledger.markTransactionSuccess(reference, { channel: "wallet", paidAt: new Date().toISOString() });
         await claims.insertCardPayment(orderId, due.type, String(due.expected), reference);
         await new PaymentsRepository(tx).markPaidByReference(reference, new Date().toISOString());
         await new PaymentClaimsService(this.db).applyConfirmedCardPayment(tx, orderId, reference, "your Levromart wallet");
-        return { reference, amount_kobo: String(amount), balance_kobo: String(after) };
+        return { reference, amount_kobo: String(amount), fee_kobo: String(fee), balance_kobo: String(afterFee) };
       }),
     );
   }
@@ -253,15 +299,14 @@ export class WalletService {
   /* ------------------------------------------------------------ withdrawals */
 
   /**
-   * Sends wallet money to the person's bank account. Safety rules:
-   *  - no withdrawal for 24 hours after the bank account was added or changed;
-   *  - the first withdrawal to a new or changed account waits for an admin;
-   *  - money that came by top-up or transfer in the last 24 hours waits for an admin (stops stolen cards being cashed out);
-   *  - at most 3 withdrawals a day.
-   * Money waiting for an admin is taken out of the balance at once, so it cannot be spent twice; a rejection puts it back.
+   * Sends wallet money to the person's bank account. The person's PIN is the safeguard: with it, they can withdraw at any
+   * time, also right after changing their bank account (nothing waits for an admin). A fee, exactly Paystack's local fee
+   * on the amount, is taken from the wallet on top of the amount sent, and goes to Levromart; it is given back if the bank
+   * transfer does not go through. `amountKobo` null means "everything", with the fee coming out of the same balance.
    */
-  async withdraw(me: Identity | null, amountKobo: number | null) {
+  async withdraw(me: Identity | null, amountKobo: number | null, pin?: string | null) {
     const user = need(me);
+    await this.pins.require(user.userId, pin);
     const plan = await this.ready(() =>
       this.db().asService(async (tx) => {
         const repo = new WalletRepository(tx);
@@ -271,34 +316,24 @@ export class WalletService {
         if (w.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
         const account = await repo.withdrawalAccount(user.userId);
         if (!account) throw badRequest("Add your bank account first, so we know where to send your money.");
-        if (account.age_hours < WALLET.bankChangeWaitHours) {
-          const wait = Math.ceil(WALLET.bankChangeWaitHours - account.age_hours);
-          throw badRequest(`For your safety, you can withdraw ${wait} hour${wait === 1 ? "" : "s"} from now: your bank account was added or changed less than 24 hours ago. This stops anyone who gets into your account from moving your money to their own bank.`);
-        }
         const balance = Number(w.balance_kobo);
-        const amount = amountKobo == null ? balance : Number(amountKobo);
+        const amount = amountKobo == null ? withdrawableKobo(balance) : Number(amountKobo);
         if (!Number.isInteger(amount) || amount < WALLET.minWithdrawal) throw badRequest(`The smallest withdrawal is ${naira(WALLET.minWithdrawal)}.`);
-        if (amount > balance) throw badRequest(`You have ${naira(balance)} in your wallet.`);
+        const fee = walletFeeKobo(amount);
+        if (amount + fee > balance) throw badRequest(`You have ${naira(balance)} in your wallet. This withdrawal needs ${naira(amount + fee)} (${naira(amount)} plus a ${naira(fee)} fee).`);
         if ((await repo.withdrawalsToday(user.userId)) >= WALLET.withdrawalsPerDay) throw badRequest(`You can withdraw ${WALLET.withdrawalsPerDay} times in 24 hours. Please try again tomorrow.`);
-        const fresh = await repo.recentInflowKobo(user.userId, WALLET.freshMoneyHours);
-        const firstToAccount = !(await repo.paidToAccountSince(user.userId, account.recipient_code, account.verified_at));
-        const review = firstToAccount
-          ? "First withdrawal to this bank account"
-          : amount > Math.max(0, balance - fresh)
-            ? "Includes money added or received in the last 24 hours"
-            : null;
         const reference = WALLET_TRANSFER_PREFIX + crypto.randomBytes(12).toString("hex");
-        const id = await repo.insertWithdrawal({ userId: user.userId, amountKobo: amount, status: review ? "requested" : "processing", reviewReason: review, reference, account });
+        const id = await repo.insertWithdrawal({ userId: user.userId, amountKobo: amount, feeKobo: fee, status: "processing", reviewReason: null, reference, account });
         const after = await repo.move(user.userId, -amount, "withdrawal", { reference: "withdrawal:" + id, withdrawalId: id, note: `To ${account.bank_name ?? "your bank"} ···${account.last4 ?? ""}` });
         if (after == null) throw badRequest("You do not have enough in your wallet.");
-        if (review) {
-          await new NotificationWriter(tx).notifyAdmins("Wallet withdrawal to check", `@${w.handle} asked to withdraw ${naira(amount)} (${review}).`, "adminPayments", { tab: "todo" }, user.userId);
+        if (fee > 0) {
+          if ((await repo.move(user.userId, -fee, "fee", { reference: "fee:withdrawal:" + id, withdrawalId: id, note: "Withdrawal fee" })) == null) throw badRequest("You do not have enough in your wallet.");
+          await new PlatformWalletRepository(tx).addFee({ amountKobo: fee, reference: "fee:withdrawal:" + id, note: "Withdrawal fee" });
         }
-        return { id, reference, amount, review, recipient: account.recipient_code };
+        return { id, reference, amount, fee, recipient: account.recipient_code };
       }),
     );
-    if (plan.review) return { status: "requested", amount_kobo: String(plan.amount), review_reason: plan.review };
-    return this.send_(plan.id, plan.reference, plan.amount, plan.recipient);
+    return { ...(await this.send_(plan.id, plan.reference, plan.amount, plan.recipient)), fee_kobo: String(plan.fee) };
   }
 
   /** Admin approves (the money is sent) or rejects (the money goes back into the wallet, with the reason). */
@@ -319,6 +354,7 @@ export class WalletService {
           await repo.lock([w.user_id]);
           await repo.setWithdrawal(w.id, "rejected", { decidedBy: user.userId, rejectReason: why });
           await repo.move(w.user_id, Number(w.amount_kobo), "withdrawal_return", { reference: "withdrawal_return:" + w.id, withdrawalId: w.id, note: "Withdrawal not approved: " + why });
+          await giveFeeBack(tx, w);
           await notify.create({ userId: w.user_id, type: "wallet_withdrawal_rejected", title: "Withdrawal not approved", body: `${naira(w.amount_kobo)} is back in your wallet. Reason: ${why}`, targetView: "levroWallet", actorId: null });
           await repo.logAdminAction(user.userId, "reject_wallet_withdrawal", w.user_id, naira(w.amount_kobo));
           return null;
@@ -466,6 +502,15 @@ export async function takeRefundFromShopWallet(tx: Tx, ownerUserId: string, orde
   return (await repo.move(ownerUserId, -amountKobo, "refund_out", { reference: refundRef, orderId, note: "Refunded to the buyer" })) != null;
 }
 
+/** A withdrawal that did not happen gives its fee back to the person, and takes it out of Levromart's wallet again. */
+async function giveFeeBack(tx: Tx, w: { id: string; user_id: string; fee_kobo: string }): Promise<void> {
+  const fee = Number(w.fee_kobo);
+  if (!(fee > 0)) return;
+  const repo = new WalletRepository(tx);
+  await repo.move(w.user_id, fee, "fee_return", { reference: "fee_return:withdrawal:" + w.id, withdrawalId: w.id, note: "Withdrawal fee given back" });
+  await new PlatformWalletRepository(tx).addFee({ amountKobo: -fee, reference: "fee_return:withdrawal:" + w.id, note: "Withdrawal fee given back" });
+}
+
 /** The outcome of a wallet withdrawal's bank transfer (Paystack's webhook, or the immediate answer). Null when not a wallet withdrawal. */
 export async function applyWalletTransferEvent(tx: Tx, reference: string, to: "success" | "failed" | "reversed", detail: string | null, code: string | null = null): Promise<string | null> {
   const repo = new WalletRepository(tx);
@@ -481,6 +526,7 @@ export async function applyWalletTransferEvent(tx: Tx, reference: string, to: "s
   } else {
     await repo.lock([w.user_id]);
     await repo.move(w.user_id, Number(w.amount_kobo), "withdrawal_return", { reference: "withdrawal_return:" + w.id, withdrawalId: w.id, note: "The bank transfer did not go through" });
+    await giveFeeBack(tx, w);
     await notify.create({ userId: w.user_id, type: "wallet_withdrawal_failed", title: "Withdrawal not sent", body: `Your withdrawal of ${naira(w.amount_kobo)} could not be sent. The money is back in your wallet.`, targetView: "levroWallet", actorId: null });
   }
   return to;

@@ -46,6 +46,21 @@ export class PlatformWalletRepository {
     return Number(r?.k ?? 0);
   }
 
+  /** Levromart's share of a wallet payment, transfer or withdrawal (migration 0037); a negative one takes a fee back. Each reference counts once. */
+  async addFee(f: { amountKobo: number; reference: string; note: string; vendorId?: string | null; orderId?: string | null }): Promise<void> {
+    await this.db.execute(sql`
+      insert into public.platform_wallet_entries (kind, amount_kobo, reference, note, vendor_id, order_id)
+      values (${f.amountKobo > 0 ? "transaction_fee" : "transaction_fee_return"}, ${f.amountKobo}, ${f.reference}, ${f.note}, ${f.vendorId ?? null}::uuid, ${f.orderId ?? null}::uuid)
+      on conflict do nothing`);
+  }
+
+  /** Fees from wallet payments, transfers and withdrawals over the last `days` days (net of fees given back); null = all time. */
+  async transactionFeesKobo(days: number | null): Promise<number> {
+    const since = days == null ? sql`true` : sql`created_at >= now() - make_interval(days => ${days})`;
+    const r = await jsonRow<{ k: string }>(this.db, sql`select coalesce(sum(amount_kobo), 0)::text as k from public.platform_wallet_entries where kind in ('transaction_fee', 'transaction_fee_return') and ${since}`);
+    return Number(r?.k ?? 0);
+  }
+
   /** Monthly listing fees (migration 0036, after Paystack's fee) over the last `days` days; null = all time. */
   async listingFeesKobo(days: number | null): Promise<number> {
     const since = days == null ? sql`true` : sql`created_at >= now() - make_interval(days => ${days})`;

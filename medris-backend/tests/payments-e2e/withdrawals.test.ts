@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- response bodies are checked field by field */
 import { describe, expect, it } from "vitest";
 import { resetWithdrawalSchemaCache } from "../../src/database/repositories/withdrawals.repository.js";
-import { api, handOver, json, newOrder, payOrder, rowOf, runJob, useWorld } from "./harness.js";
+import { api, rpcWithPin, handOver, json, newOrder, payOrder, rowOf, runJob, useWorld } from "./harness.js";
 
 // Migration 0017: completed orders leave the money waiting; the shop withdraws it. Money paid 24h+ ago goes at once,
 // newer money needs an admin (a rejection needs a reason), an order in dispute is held, the rest is not.
 describe("withdrawals", () => {
   const w = useWorld();
-  const call = async (name: string, token: string, body: Record<string, unknown> = {}) => json(await api.post(w, `/rpc/${name}`, token, body));
+  const call = rpcWithPin(w);
 
   /** A paid and completed order of `naira`; `hoursAgo` pretends it was paid that long ago. */
   async function done(naira: number, hoursAgo = 0) {
@@ -139,22 +139,23 @@ describe("withdrawals", () => {
     expect(JSON.stringify(r.body)).toContain("3 times a day");
   });
 
-  it("after a bank change: no bank withdrawal for 24 hours, then the first one is checked by an admin", async () => {
+  it("after a bank change nothing waits: the PIN is the safeguard; only money paid in the last 24 hours needs an admin", async () => {
     await clean();
     const o = await done(5000, 60);
-    // the shop's earlier withdrawal was to its old account (before the change)
+    // the bank account was changed two hours ago
     await w.db.query(`update public.withdrawal_requests set decided_at = now() - interval '4 days', created_at = now() - interval '4 days' where vendor_id = $1 and status = 'approved'`, [w.vendor.shop]);
     await w.db.query(`update public.vendors set payout_verified_at = now() - interval '2 hours' where id = $1`, [w.vendor.shop]);
-    const blocked = await call("request_withdrawal", w.vendor.token);
-    expect(blocked.status).toBe(400);
-    expect(JSON.stringify(blocked.body)).toContain("For your safety");
-    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [o])).toMatchObject({ status: "on_hold" });
-    // a day later: the request is allowed, but the first one to the new account waits for an admin, who is told why
-    await w.db.query(`update public.vendors set payout_verified_at = now() - interval '25 hours' where id = $1`, [w.vendor.shop]);
+    const summary = await call("get_withdrawal_summary", w.vendor.token);
+    expect(summary.data.bank_wait_hours).toBeNull();
+    expect(summary.data.recent_bank_change).toBeNull();
+    // no PIN, no money: the PIN is checked before anything else
+    const noPin = await json(await api.post(w, "/rpc/request_withdrawal", w.vendor.token, {}));
+    expect(noPin.status).toBe(403);
+    // with the PIN: old money goes straight to the sending queue, even right after the change and for a first withdrawal
     const r = await call("request_withdrawal", w.vendor.token);
     expect(r.status).toBe(200);
-    expect(r.data).toMatchObject({ sent_kobo: 0 });
-    expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and body like '%first withdrawal to a new or changed bank account%'`, [w.admin.id])).toBeTruthy();
+    expect(Number(r.data.sent_kobo)).toBeGreaterThan(0);
+    expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [o])).toMatchObject({ status: "pending" });
     await w.db.query(`update public.vendors set payout_verified_at = now() - interval '3 days' where id = $1`, [w.vendor.shop]);
   });
 

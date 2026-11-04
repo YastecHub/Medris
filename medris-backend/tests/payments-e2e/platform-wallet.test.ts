@@ -114,6 +114,17 @@ describe("Levromart's commission wallet", () => {
     expect(s.data.entries[0].kind).toBe("listing_fee");
   });
 
+  it("fees on wallet payments and transfers are Levromart's, shown apart from commission and listing fees (migration 0037)", async () => {
+    await superAdmin();
+    await w.db.query(`delete from public.platform_wallet_entries`);
+    await w.db.query(`insert into public.platform_wallet_entries (kind, amount_kobo, reference, note) values ('transaction_fee', 17500, 'fee:t1', 'Wallet payment fee'), ('transaction_fee', 1500, 'fee:t2', 'Transfer fee'), ('transaction_fee_return', -1500, 'fee_return:t2', 'Withdrawal fee given back')`);
+    const s = await call("get_levromart_wallet", w.admin.token);
+    expect(s.status).toBe(200);
+    expect(s.data.transaction_fees.all_kobo).toBe("17500"); // net of the fee that was given back
+    expect(s.data.commission.all_kobo).toBe("0");
+    expect(s.data.balance_kobo).toBe("17500");
+  });
+
   it("an admin who is not the super admin can look but cannot move the money", async () => {
     await w.db.query(`update public.users set is_super_admin = false where id = $1`, [w.admin.id]);
     const s = await call("get_levromart_wallet", w.admin.token);

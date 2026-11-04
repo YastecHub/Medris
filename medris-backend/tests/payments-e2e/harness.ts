@@ -145,3 +145,19 @@ export async function ageRows(w: World, table: string, where: string, interval: 
   });
   await w.db.query(`alter table public.${table} enable trigger user`);
 }
+
+
+/** Every wallet money movement asks for the person's PIN (migration 0037). The tests use one PIN for everybody. */
+export const TEST_PIN = "483920";
+const MONEY_RPCS = new Set(["wallet_send", "wallet_topup", "wallet_withdraw", "wallet_pay_order", "request_withdrawal"]);
+const hasPin = new Set<string>();
+/** An rpc caller that sets the person's PIN the first time and adds it to every money call. */
+export function rpcWithPin(w: World) {
+  return async (name: string, token: string, body: Record<string, unknown> = {}) => {
+    if (MONEY_RPCS.has(name) && !hasPin.has(token)) {
+      await json(await api.post(w, "/rpc/set_wallet_pin", token, { p_pin: TEST_PIN, p_pin_confirm: TEST_PIN }));
+      hasPin.add(token);
+    }
+    return json(await api.post(w, `/rpc/${name}`, token, MONEY_RPCS.has(name) && !("p_pin" in body) ? { ...body, p_pin: TEST_PIN } : body));
+  };
+}
