@@ -2196,7 +2196,9 @@
     var ico = document.createElement("div");
     ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "") + (opts.tone === "purple" ? " purple" : "");
     c.classList.toggle("lv-dlg-purple", opts.tone === "purple");
-    ico.innerHTML = '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
+    var three = /log ?out|sign ?out/i.test(String(opts.okLabel || "") + " " + String(opts.title || "")) ? "logout" : opts.danger ? "order-cancelled" : /pay|wallet|paystack|transfer|withdraw|send/i.test(String(opts.okLabel || "") + " " + String(opts.title || "")) ? "tx-paid" : "tx-ready";
+    ico.innerHTML = typeof window.lv3dIcon === "function" && !opts.icon ? window.lv3dIcon(three, 84) : '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
+    ico.classList.toggle("lv-dlg-3d", !!(typeof window.lv3dIcon === "function" && !opts.icon));
     c.insertBefore(ico, c.firstChild);
     var cancel = document.getElementById(prompt ? "textPromptModalCancel" : "confirmModalCancel");
     if (cancel) cancel.textContent = opts.cancelLabel || (opts.danger ? "Go back" : "Cancel");
@@ -3130,7 +3132,8 @@ window.lvAskCancel = async function (orderId) {
     if (fab || busy) return;
     var l = levi(), r = l && l.offsetWidth ? l.getBoundingClientRect() : null;
     var saved = null; try { saved = JSON.parse(localStorage.getItem(POS) || "null"); } catch (_) {}
-    var start = saved && Number.isFinite(saved.x) ? { x: saved.x, y: saved.y } : r ? { x: r.left + r.width / 2 - 30, y: r.top + r.height / 2 - 30 } : { x: innerWidth - 78, y: innerHeight - 190 };
+    // it appears exactly where Levi is right now (the saved spot is only used when Levi cannot be found)
+    var start = r ? { x: r.left + r.width / 2 - 30, y: r.top + r.height / 2 - 30 } : saved && Number.isFinite(saved.x) ? { x: saved.x, y: saved.y } : { x: innerWidth - 78, y: innerHeight - 190 };
     start = clampPos(start.x, start.y);
     fab = build(start.x, start.y, modeNow());
     document.body.appendChild(fab);
@@ -4662,7 +4665,7 @@ window.lvAskCancel = async function (orderId) {
     "withdrawal-approved", "withdrawal-rejected", "payout-sent", "moved-up", "general", "empty-orders", "empty-vendors", "empty-cart", "empty-bank", "empty-messages", "empty-notifications",
     "manage-listings", "monthly-listing", "reviews", "working-hours", "requests", "suggestions", "support", "settings", "tx-all", "tx-pending", "tx-ready", "tx-onway", "tx-paid",
     "stat-orders", "stat-followers", "stat-views", "stat-wishlist",
-    "out-of-stock", "cash", "diamond", "chart", "new-arrival", "store", "gift", "bars", "cart-list", "search", "map-pin"];
+    "out-of-stock", "cash", "diamond", "chart", "new-arrival", "store", "gift", "bars", "cart-list", "search", "map-pin", "admin", "logout"];
   window.LV3D = {}; NAMES.forEach(function (n) { window.LV3D[n] = "/icons3d/lv/" + n + ".webp"; });
   window.lv3dIcon = function (name, size, alt) {
     var src = window.LV3D[name]; if (!src) return "";
@@ -4692,6 +4695,7 @@ window.lvAskCancel = async function (orderId) {
       wallet_withdrawal_sent: "payout-sent", wallet_withdrawal_rejected: "withdrawal-rejected", wallet_withdrawal_failed: "withdrawal-rejected", wallet_received: "tx-paid",
       payout_on_hold: "tx-pending", payment_unresolved_24h: "tx-pending", product_wishlisted: "stat-wishlist", leaderboard_up: "moved-up", rank_up: "moved-up" };
     if (M[T]) return M[T];
+    if (/(now|are|you're|you are) (first|#1|number one|top)\b|first this week|#1 this week|this week'?s? winner/i.test(t)) return "vendor-of-week";
     if (/leaderboard|moved up|rank/i.test(t) && /point|leader|rank/i.test(T + t)) return "moved-up";
     if (/^withdraw/.test(T)) return /reject|not approved|declin/i.test(t) ? "withdrawal-rejected" : "withdrawal-approved";
     if (/^payout|^refund/.test(T)) return "payout-sent";
@@ -4867,6 +4871,7 @@ window.lvAskCancel = async function (orderId) {
   function saved() { try { return localStorage.getItem(KEY) || ""; } catch (_) { return ""; } }
   function paint(wrap, c) { if (c) wrap.style.setProperty("--primary", c); else wrap.style.removeProperty("--primary"); }
   var orig = window.buildRevenueChart;
+  return;   // the chart colour palette was removed on request
   if (typeof orig !== "function" || orig.__lvpal) return;
   var f = function () {
     var wrap = orig.apply(this, arguments);
@@ -4898,53 +4903,67 @@ window.lvAskCancel = async function (orderId) {
   try { buildRevenueChart = f; } catch (_) {}
 })();
 
-/* ===== Share cards: a light watermark behind the QR card. The Levromart mark here and there; map pins on a map card; tags and
-   bags on a product card. Drawn on screen and in the saved picture. ===== */
+/* ===== Share cards: a light watermark behind the QR card, made of the real Levromart mark, the shop's own picture (or its
+   initials) and a few of its products. Drawn on screen and in the saved picture. ===== */
 (function () {
   "use strict";
-  var MARK = '<path d="M8.6 17.4a7.4 7.4 0 0 1 0-10.8" fill="none" stroke-width="2.6" stroke-linecap="round"/><path d="M15.4 6.6a7.4 7.4 0 0 1 0 10.8" fill="none" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2.6" stroke="none"/>';
-  var PIN = '<path d="M12 21s-6.5-5.6-6.5-10.4a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z" stroke="none"/><circle cx="12" cy="10.6" r="2.4" fill="#fff" stroke="none"/>';
-  var TAG = '<path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.4 1.4 0 0 1 0 2l-6.1 6.1a1.4 1.4 0 0 1-2 0Z" stroke="none"/><circle cx="8" cy="8" r="1.6" fill="#fff" stroke="none"/>';
-  var BAG = '<path d="M5 8h14l-1 12.5H6Z" stroke="none"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke-width="1.8"/>';
-  function g(shape, x, y, s, r, col) { return '<g transform="translate(' + x + " " + y + ") rotate(" + r + ") scale(" + s + ') translate(-12 -12)" fill="' + col + '" stroke="' + col + '">' + shape + "</g>"; }
-  window.lvQrWatermarkSvg = function (kind, col) {
-    col = col || "#0f9d6b";
-    var extra = kind === "map" ? [PIN, PIN] : kind === "product" ? [TAG, BAG] : [MARK, MARK];
-    var body = g(MARK, 28, 30, 1.5, -12, col) + g(extra[0], 118, 22, 1.15, 14, col) + g(extra[1], 82, 92, 1.3, -8, col) + g(MARK, 150, 120, 1.05, 20, col) + g(extra[0], 22, 132, 1.05, 8, col);
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="176" height="160" viewBox="0 0 176 160">' + body + "</svg>";
+  function load(src) { return new Promise(function (res) { if (!src) return res(null); var i = new Image(); i.crossOrigin = "anonymous"; i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = src; }); }
+  function pinPath(x, cx, cy, r) { x.beginPath(); x.arc(cx, cy - r * 0.2, r * 0.78, Math.PI * 0.84, Math.PI * 2.16); x.lineTo(cx, cy + r); x.closePath(); }
+  function round(x, X, Y, W, H, R) { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); }
+  // one repeating tile; all pictures are drawn flat at full strength (the card applies the lightness)
+  window.lvQrWatermarkTile = async function (wm, col) {
+    var T = document.createElement("canvas"); T.width = 520; T.height = 460; var x = T.getContext("2d");
+    var badge = await load("/levromart-badge.png");
+    var pic = wm.pic ? await load(wm.pic) : null;
+    var prods = await Promise.all((wm.products || []).map(function (u) { return load(typeof lvThumb === "function" ? lvThumb(u, 200) : u); }));
+    function mark(cx, cy, s, r) {
+      if (!badge) return;
+      var o = document.createElement("canvas"); o.width = o.height = 200; var ox = o.getContext("2d");
+      ox.drawImage(badge, 0, 0, 200, 200); ox.globalCompositeOperation = "source-in"; ox.fillStyle = col; ox.fillRect(0, 0, 200, 200);
+      x.save(); x.translate(cx, cy); x.rotate(r * Math.PI / 180); x.drawImage(o, -s / 2, -s / 2, s, s); x.restore();
+    }
+    function circle(cx, cy, d, r, img) {
+      x.save(); x.translate(cx, cy); x.rotate(r * Math.PI / 180);
+      x.beginPath(); x.arc(0, 0, d / 2, 0, Math.PI * 2); x.closePath(); x.clip();
+      if (img) { var sc = Math.max(d / img.width, d / img.height); x.drawImage(img, -img.width * sc / 2, -img.height * sc / 2, img.width * sc, img.height * sc); }
+      else { x.fillStyle = col; x.fillRect(-d / 2, -d / 2, d, d); x.fillStyle = "#fff"; x.font = "800 " + Math.round(d * 0.4) + "px system-ui,sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(wm.initials || "L", 0, 2); }
+      x.restore();
+    }
+    function tile(cx, cy, d, r, img) {
+      x.save(); x.translate(cx, cy); x.rotate(r * Math.PI / 180); round(x, -d / 2, -d / 2, d, d, d * 0.2); x.clip();
+      if (img) { var sc = Math.max(d / img.width, d / img.height); x.drawImage(img, -img.width * sc / 2, -img.height * sc / 2, img.width * sc, img.height * sc); } else { x.fillStyle = col; x.fillRect(-d / 2, -d / 2, d, d); }
+      x.restore();
+    }
+    function pin(cx, cy, s, r) { x.save(); x.translate(cx, cy); x.rotate(r * Math.PI / 180); x.fillStyle = col; pinPath(x, 0, 0, s / 2); x.fill(); x.globalCompositeOperation = "destination-out"; x.beginPath(); x.arc(0, -s * 0.1, s * 0.15, 0, Math.PI * 2); x.fill(); x.restore(); }
+    // a loose, offset arrangement: the mark, the picture, products (or pins on a map card)
+    mark(80, 70, 92, -10);
+    circle(300, 62, 96, 8, pic);
+    if (wm.kind === "map") { pin(430, 190, 90, 10); pin(150, 270, 80, -8); }
+    else { tile(430, 190, 92, 9, prods[0]); tile(150, 270, 92, -9, prods[1] || prods[0]); }
+    mark(330, 320, 80, 14);
+    if (prods[2]) tile(60, 400, 78, 6, prods[2]); else if (wm.kind !== "map") circle(60, 400, 78, 6, pic);
+    if (prods[3]) tile(480, 400, 70, -8, prods[3]);
+    return T;
   };
-  window.lvQrWatermarkUrl = function (kind, col) { return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(window.lvQrWatermarkSvg(kind, col)); };
-  // on the saved picture: tiles the pattern lightly over the white card (X, Y, W, H, rounded R)
-  window.lvQrWatermark = function (x, kind, X, Y, W, H, R, col) {
-    return new Promise(function (done) {
-      var img = new Image();
-      img.onload = function () {
-        try {
-          x.save();
-          x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); x.clip();
-          x.globalAlpha = 0.07;
-          var tile = document.createElement("canvas"); tile.width = 352; tile.height = 320;
-          tile.getContext("2d").drawImage(img, 0, 0, 352, 320);
-          x.fillStyle = x.createPattern(tile, "repeat"); x.fillRect(X, Y, W, H);
-          x.restore();
-        } catch (_) {}
-        done();
-      };
-      img.onerror = function () { done(); };
-      img.src = window.lvQrWatermarkUrl(kind, col);
-    });
+  // the saved picture: tiles the pattern lightly over the white card
+  window.lvQrWatermark = async function (x, kind, X, Y, W, H, R, col) {
+    var wm = window.__lvQrWm; if (!wm) return;
+    try {
+      var T = await window.lvQrWatermarkTile(wm, col);
+      x.save(); round(x, X, Y, W, H, R); x.clip(); x.globalAlpha = 0.085;
+      x.fillStyle = x.createPattern(T, "repeat"); x.translate(X, Y); x.fillRect(0, 0, W, H); x.restore();
+    } catch (_) {}
   };
-  // on screen: the card body gets the same pattern (colour of the chosen gradient)
+  // on screen
+  var busy = false;
   new MutationObserver(function () {
-    var card = document.querySelector("#lvqrSheet .lvqr-card"); if (!card) return;
-    var body = card.querySelector(".lvqr-body"); if (!body) return;
-    var kind = card.classList.contains("is-map") ? "map" : card.classList.contains("is-product") ? "product" : "shop";
+    var card = document.querySelector("#lvqrSheet .lvqr-card"); if (!card || busy) return;
+    var body = card.querySelector(".lvqr-body"), wm = window.__lvQrWm; if (!body || !wm) return;
     var col = "#0f9d6b";
     try { var cs = getComputedStyle(card); col = (cs.getPropertyValue("--g2") || cs.getPropertyValue("--g1") || col).trim() || col; } catch (_) {}
-    var key = kind + col;
-    if (body.__wm === key) return; body.__wm = key;
-    body.style.setProperty("--lvqr-wm", 'url("' + window.lvQrWatermarkUrl(kind, col) + '")');
-    body.classList.add("lvqr-wm");
+    var key = wm.kind + col + (wm.pic || "") + wm.products.length;
+    if (body.__wm === key) return; body.__wm = key; busy = true;
+    window.lvQrWatermarkTile(wm, col).then(function (T) { body.style.setProperty("--lvqr-wm", 'url("' + T.toDataURL("image/png") + '")'); body.classList.add("lvqr-wm"); }).catch(function () {}).then(function () { busy = false; });
   }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
 })();
 
@@ -5195,7 +5214,7 @@ window.lvAskCancel = async function (orderId) {
     x.putImageData(a, 0, 0);
     // 4) framing: a wide or tall photo sits in the middle of a square on a soft, blurred copy of itself
     var out = c, ratio = w / h;
-    if (ratio > 1.25 || ratio < 0.8) {
+    if (false) {   // framing on a blurred square was removed: the photo keeps its own shape and edges
       var S = Math.max(w, h), o = document.createElement("canvas"); o.width = o.height = S;
       var ox = o.getContext("2d");
       ox.filter = "blur(28px) brightness(1.08) saturate(1.1)"; ox.drawImage(c, -S * 0.1, -S * 0.1, S * 1.2, S * 1.2); ox.filter = "none";
@@ -5267,4 +5286,46 @@ window.lvAskCancel = async function (orderId) {
   function mark(root) { (root.querySelectorAll ? root.querySelectorAll("img:not([data-nodrag])") : []).forEach(function (i) { i.setAttribute("draggable", "false"); i.setAttribute("data-nodrag", "1"); }); }
   mark(document);
   new MutationObserver(function (list) { list.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) { if (n.tagName === "IMG" && !n.dataset.nodrag) { n.setAttribute("draggable", "false"); n.dataset.nodrag = "1"; } else mark(n); } }); }); }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+
+/* ===== Small things: "Ask Levi" always opens Levi; the admin picture; suggestions above Levi's message bar ===== */
+window.lvOpenLevi = function () {
+  try {
+    if (typeof session !== "undefined" && !session) { if (typeof showLogin === "function") showLogin(); return; }
+    var p = document.getElementById("aiChatPanel");
+    if (p && p.classList.contains("hidden") && typeof toggleAiChat === "function") toggleAiChat();
+    else if (!p && typeof toggleAiChat === "function") toggleAiChat();
+    setTimeout(function () { var q = document.getElementById("aiChatPanel"); if (q && q.classList.contains("hidden") && typeof toggleAiChat === "function") toggleAiChat(); }, 60);
+  } catch (_) {}
+};
+window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico" src="/icons3d/lv/admin.webp" width="' + (px || 34) + '" height="' + (px || 34) + '" alt="Levromart team" decoding="async">'; };
+(function () {
+  "use strict";
+  var VENDOR = [["Add a product", "Add a product"], ["What's selling?", "What's selling on Levromart?"], ["How is my shop doing?", "How is my shop doing?"], ["Add to my cart", "Add to my cart"]];
+  var SHOPPER = [["Closest vendor", "Which vendor is closest to me?"], ["Add to my cart", "Add to my cart"], ["How many vendors sell this?", "How many vendors sell "], ["What's selling?", "What's selling on Levromart?"]];
+  function isVendor() { try { return typeof vendor !== "undefined" && !!vendor && !!vendor.id; } catch (_) { return false; } }
+  function strip() {
+    var panel = document.getElementById("aiChatPanel"); if (!panel || panel.classList.contains("hidden")) return;
+    var input = document.getElementById("aiChatInput"); if (!input) return;
+    var row = input.closest(".ai-chat-input-row, .ai-chat-form, form, div") || input.parentNode;
+    var host = row.parentNode; if (!host) return;
+    var el = document.getElementById("lvLeviSuggest");
+    var list = isVendor() ? VENDOR : SHOPPER;
+    var key = isVendor() ? "v" : "s";
+    if (el && el.dataset.k === key) return;
+    if (el) el.remove();
+    el = document.createElement("div"); el.id = "lvLeviSuggest"; el.className = "lvw-ph"; el.dataset.k = key;
+    list.forEach(function (s) {
+      var b = document.createElement("button"); b.type = "button"; b.textContent = s[0];
+      b.onclick = function () {
+        input.value = s[1]; input.focus();
+        if (!/ $/.test(s[1])) { try { sendAiChatMessage(); } catch (_) {} }
+      };
+      el.appendChild(b);
+    });
+    host.insertBefore(el, row);
+  }
+  new MutationObserver(function () { strip(); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+  setTimeout(strip, 1500);
 })();

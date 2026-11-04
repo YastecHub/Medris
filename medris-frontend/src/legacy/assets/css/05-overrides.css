@@ -6767,7 +6767,7 @@ html:root:root body #app .vrq-empty .lvo-btn{margin-top:10px}
 
 /* ===== QR card watermark ===== */
 #lvqrSheet .lvqr-body.lvqr-wm{position:relative;isolation:isolate}
-#lvqrSheet .lvqr-body.lvqr-wm::before{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--lvqr-wm);background-size:176px 160px;opacity:.08;pointer-events:none;border-radius:inherit}
+#lvqrSheet .lvqr-body.lvqr-wm::before{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--lvqr-wm);background-size:260px 230px;opacity:1;pointer-events:none;border-radius:inherit}
 
 /* ===== Order history: the same cards as the order list ===== */
 html:root:root body #app .lvo-hist-day{margin:6px 0 14px}
@@ -6798,3 +6798,36 @@ html:root:root body #app .lvo-hist-day{margin:6px 0 14px}
 /* ===== Pictures: no long-press menu, no selecting, no dragging; the 3D icons are decoration and ignore touches ===== */
 img,picture,canvas,video{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
 img.lv3di,img.lv3d,img.lv3d-ico,img.mf-3d,img.alc-3d,.lv3d-empty img,.lvo-empty img,.orders-empty-icon img,.lv-empty-illus img,.notification-system-icon img{pointer-events:none}
+
+
+/* ===== Batch A: contrast, safe areas, centred errors, 3D confirm pictures, Levi suggestions ===== */
+/* "Add money" amounts: readable on a light page and on a dark one */
+html:root:root body .lw-chips button{color:#0f172a!important;-webkit-text-fill-color:#0f172a!important;background:#eef2f1!important;border:1px solid rgba(15,23,42,.1)!important;font-weight:800}
+html:root:root:is([data-theme="dark"],[data-theme="black"]) body .lw-chips button{color:#f3f4f6!important;-webkit-text-fill-color:#f3f4f6!important;background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.14)!important}
+/* the cart's "Start shopping" button: white text on green in every theme */
+html:root:root body #app .cart-page .vd-empty .vl-add,html:root:root body #app .cart-page .vd-empty .vl-add *{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root body #app .cart-page .vd-empty .vl-add{background:#16a06a!important;border:0!important;border-radius:999px!important;padding:11px 20px!important;margin-top:8px}
+/* a failed load: 3D picture, text and "Try again" centred (not pushed to the left) */
+html:root:root body .lv-err-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:28px 16px;border:0!important;background:none!important}
+html:root:root body #app .cart-page > .btn,html:root:root body #app .cart-page > button.btn-outline{display:flex!important;align-items:center;justify-content:center;gap:8px;margin:10px auto!important;float:none!important}
+/* Add / edit listing: the header clears the phone's clock, Wi-Fi and battery */
+html:root:root body #productModal .lf-top,html:root:root body #packageModal .lf-top{padding-top:calc(env(safe-area-inset-top,0px) + 14px)!important}
+html:root:root body #productModal .modal-content,html:root:root body #packageModal .modal-content{padding-top:0!important}
+/* messages that confirm something always show above every sheet and drawer */
+html:root:root body #toastStack,html:root:root body .toast-stack{z-index:2147483647!important}
+/* confirm pop-ups: the 3D picture stands on its own (no pink circle behind it) */
+html:root:root body .lv-dlg-ico.lv-dlg-3d{background:none!important;box-shadow:none!important;width:auto!important;height:auto!important;margin-bottom:4px}
+html:root:root body .lv-dlg-ico.lv-dlg-3d img{display:block;margin:0 auto}
+/* Levi's floating search / map picture: no dark shadow behind it */
+html body .lv-mapfab .mf-3d{filter:none!important}
+html body .lv-mapfab,html body .lv-mapfab .mf-core{box-shadow:none!important;background:none!important}
+html body .lv-mapfab::before,html body .lv-mapfab::after,html body .lv-mapfab .mf-core::before,html body .lv-mapfab .mf-core::after{display:none!important}
+/* suggestions above Levi's message bar */
+.lvw-ph{display:flex;gap:7px;overflow-x:auto;padding:6px 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.lvw-ph::-webkit-scrollbar{display:none}
+.lvw-ph button{flex:none;border:1.5px solid rgba(22,160,106,.35);background:rgba(22,160,106,.08);color:#0b8a5f;font-weight:700;font-size:.78rem;padding:7px 12px;border-radius:999px;white-space:nowrap}
+:root:is([data-theme="dark"],[data-theme="black"]) .lvw-ph button{color:#6ee7b7;background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.35)}
+/* the admin picture in a notification */
+html:root:root body .notif-item img.lv-admin-ico{width:36px;height:36px;border-radius:0;background:none;flex:none}
+/* verified seller (not a student): just the blue tick, no label */
+html:root:root body .lv-nsv-pill{display:none!important}

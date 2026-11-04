@@ -71,7 +71,8 @@ function friendlyErrorText(err) {
 function errorStateHtml(err) {
   const { icon, text } = friendlyErrorText(err);
   const isNetwork = icon === "fa-wifi";
-  return `<div class="empty-state ${isNetwork ? "levromart-network-error-state" : ""}"><i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>${isNetwork ? "Network trouble" : text}</div>`;
+  const pic = typeof window.lv3dIcon === "function" ? window.lv3dIcon(isNetwork ? "tx-pending" : "out-of-stock", 96) : `<i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>`;
+  return `<div class="empty-state lv-err-state ${isNetwork ? "levromart-network-error-state" : ""}">${pic}<strong>${isNetwork ? "Network trouble" : text}</strong></div>`;
 }
 function updateHeaderNavActive() {
   document.querySelectorAll(".header-nav-link").forEach((el) => el.classList.toggle("active", el.dataset.view === currentView));
