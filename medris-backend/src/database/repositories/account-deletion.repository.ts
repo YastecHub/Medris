@@ -58,6 +58,8 @@ export class AccountDeletionRepository {
       await run(sql`delete from public.package_items where package_id = any(${packages})`);
       await run(sql`delete from public.vendor_packages where id = any(${packages})`);
     }
+    // the commission Levromart already collected stays in its own ledger (migration 0035)
+    await run(sql`select set_config('levromart.account_deletion', 'on', true)`);
     for (const table of ["commission_settlements", "commission_charges", "vendor_monthly_charges"]) await run(sql`delete from ${sql.raw(`public.${table}`)} where vendor_id = any(${vendors})`);
     await run(sql`delete from public.cart_items where buyer_id = ${uid}`);
     await run(sql`delete from public.products where vendor_id = any(${vendors})`);

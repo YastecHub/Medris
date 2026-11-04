@@ -1,5 +1,6 @@
 import { REFUND_TRANSFER_PREFIX, applyRefundTransferEvent } from "../buyer-wallet/buyer-wallet.service.js";
 import { notifyPayoutSent } from "../vendor-payouts/vendor-payouts.service.js";
+import { PLATFORM_TRANSFER_PREFIX, applyPlatformTransferEvent } from "../platform-wallet/platform-wallet.service.js";
 import { WALLET_TRANSFER_PREFIX, applyWalletTransferEvent, creditWalletTopup } from "../wallet/wallet.service.js";
 import crypto from "node:crypto";
 import { requireEnv } from "../../config/env.js";
@@ -188,6 +189,10 @@ export class PaystackWebhookService {
 
   private async transferEvent(tx: Tx, ledger: PaystackLedgerRepository, data: Obj, to: "success" | "failed" | "reversed"): Promise<string> {
     const reference = String(data.reference ?? "");
+    if (reference.startsWith(PLATFORM_TRANSFER_PREFIX)) {
+      const done = await applyPlatformTransferEvent(tx, reference, to, String(data.reason ?? data.message ?? `Transfer ${to}`).slice(0, 300), data.transfer_code != null ? String(data.transfer_code) : null);
+      return done ?? "ignored: no commission withdrawal with that reference";
+    }
     if (reference.startsWith(WALLET_TRANSFER_PREFIX)) {
       const done = await applyWalletTransferEvent(tx, reference, to, String(data.reason ?? data.message ?? `Transfer ${to}`).slice(0, 300), data.transfer_code != null ? String(data.transfer_code) : null);
       return done ?? "ignored: no wallet withdrawal with that reference";
