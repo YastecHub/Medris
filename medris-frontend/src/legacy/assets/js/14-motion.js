@@ -2222,7 +2222,7 @@
   function wrap() {
     var t = window.toggleProfilePanel;
     if (typeof t !== "function" || t.__lvSg) return;
-    var w = function () { var out = t.apply(this, arguments); setTimeout(refresh, 50); return out; };
+    var w = function () { var out = t.apply(this, arguments); setTimeout(refresh, 900); return out; };
     w.__lvSg = true; window.toggleProfilePanel = w;
   }
   wrap(); setTimeout(wrap, 1500);
@@ -6057,4 +6057,47 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     w.__lvg = true; window[name] = w;
   }
   ["updateOrderStatus", "confirmReceivedOrder", "remindOrderVendor", "vendorConfirmReportedPayment"].forEach(guard);
+})();
+
+/* ===== Orders: the status tabs switch at once; the side panel opens the moment the picture is touched ===== */
+(function () {
+  "use strict";
+  var FAST = ["all", "pending", "confirmed", "handed_over", "disputed"], filtering = false;
+  var base = window.orderListHtml;
+  if (typeof base === "function" && !base.__lvf) {
+    var w = function (orders, isCust, src) {
+      if (!filtering) {
+        try {
+          var p = (typeof currentViewParams !== "undefined" && currentViewParams) || {};
+          if ((p.status || "all") === "all" && (p.type || "all") === "all" && (p.payment || "all") === "all" && !p.dateFrom && !p.dateTo && Array.isArray(orders))
+            window.__lvOrderAll = { view: typeof currentView !== "undefined" ? currentView : "", persp: p.perspective || "", orders: orders, isCust: isCust, src: src };
+        } catch (_) {}
+      }
+      if ((!orders || !orders.length) && typeof navigator !== "undefined" && navigator.onLine === false)
+        return '<div class="lvo-empty lvo-offline"><span class="lvo-empty-ico"><i class="fa-solid fa-wifi"></i></span><strong>No internet connection</strong><span>Your orders could not be loaded. Check your network and try again.</span><button type="button" class="btn lvo-btn" onclick="try{refreshVisibleOrderView(true)}catch(e){location.reload()}"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>';
+      return base.apply(this, arguments);
+    };
+    w.__lvf = true; window.orderListHtml = w;
+    try { orderListHtml = w; } catch (_) {}
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target && e.target.closest && e.target.closest(".order-status-pill[data-status]"); if (!b) return;
+    var st = b.getAttribute("data-status"), A = window.__lvOrderAll, p = (typeof currentViewParams !== "undefined" && currentViewParams) || {};
+    if (!A || FAST.indexOf(st) < 0 || A.view !== (typeof currentView !== "undefined" ? currentView : "") || (A.persp || "") !== (p.perspective || "")) return;
+    var host = document.getElementById("orderListWrap"); if (!host) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    b.parentElement.querySelectorAll(".order-status-pill").forEach(function (x) { x.classList.toggle("active", x === b); });
+    var list = st === "all" ? A.orders : A.orders.filter(function (o) { return o.status === st; });
+    filtering = true; try { host.innerHTML = window.orderListHtml(list, A.isCust, A.src); } finally { filtering = false; }
+    try { currentViewParams.status = st; window.__orderListOrders = list; } catch (_) {}
+  }, true);
+  // the side panel opens on touch, not after the finger lifts
+  var openedAt = 0;
+  document.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" || !e.target.closest || !e.target.closest("#avatarBtn")) return;
+    openedAt = Date.now(); try { openProfileOrShop(); } catch (_) {}
+  }, true);
+  document.addEventListener("click", function (e) {
+    if (Date.now() - openedAt < 700 && e.target.closest && e.target.closest("#avatarBtn")) { e.stopImmediatePropagation(); e.preventDefault(); }
+  }, true);
 })();
