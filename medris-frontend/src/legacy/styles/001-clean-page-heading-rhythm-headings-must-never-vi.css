@@ -4464,3 +4464,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 #aiChatMessages .ai-chat-msg.user{margin-bottom:1.65rem !important;}
 #aiChatMessages .ai-chat-msg-user-copy{position:absolute !important;top:calc(100% + .28rem) !important;right:.28rem !important;width:1.25rem !important;height:1.25rem !important;padding:0 !important;border:0 !important;border-radius:7px !important;background:transparent !important;color:var(--text-muted) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;font-size:.7rem !important;opacity:.72 !important;cursor:pointer !important;}
 #aiChatMessages .ai-chat-msg-user-copy:hover,#aiChatMessages .ai-chat-msg-user-copy:active{color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 9%,transparent) !important;opacity:1 !important;}
+
+/* splash: the circle between the two arcs blinks while the app opens */
+.lv-sp-blink{position:absolute;left:50%;top:50%;width:21%;height:21%;margin:-10.5% 0 0 -10.5%;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgb(30,141,95) 62%,rgba(30,141,95,0) 100%);animation:lvSpBlink 1.5s ease-in-out infinite}
+@keyframes lvSpBlink{0%,38%,100%{opacity:0}46%,62%{opacity:1}70%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.lv-sp-blink{animation:none;opacity:0}}

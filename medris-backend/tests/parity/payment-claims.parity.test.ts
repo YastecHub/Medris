@@ -74,7 +74,9 @@ describe("parity: payment claims and disputes", () => {
   const port = (ctx: DataContext) => new PaymentClaimsService(() => ctx);
   const me = (id: string | null): Identity | null => (id ? identityOf(id) : null);
   async function same(original: Promise<RunOutcome>, ported: Promise<RunOutcome>, options?: CompareOptions) {
-    const { original: a, port: b } = comparable(await original, await ported, options);
+    const { original: a0, port: b } = comparable(await original, await ported, options);
+    // the old SQL still says "48 hours"; an order is now received automatically after 24 hours (migration 0040), and the port says so
+    const a = JSON.parse(JSON.stringify(a0).replace(/48 hours/g, "24 hours"));
     expect(b).toEqual(a);
     return a;
   }

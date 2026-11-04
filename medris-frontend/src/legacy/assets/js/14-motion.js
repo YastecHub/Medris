@@ -1113,24 +1113,25 @@
       document.body.appendChild(el);
       function done(v) { el.remove(); resolve(v); }
       function paint() {
-        var years = ""; for (var yy = cy; yy >= minY; yy--) years += '<button type="button" class="' + (yy === y ? "on" : "") + '" data-y="' + yy + '">' + yy + "</button>";
+        var yopts = ""; for (var yy = cy; yy >= Math.min(minY, cy - 15); yy--) yopts += '<option value="' + yy + '"' + (yy === y ? " selected" : "") + ">" + yy + "</option>";
+        var years = '<div class="lvdp-ystep"><button type="button" data-ystep="-1" aria-label="Previous year"' + (y <= Math.min(minY, cy - 15) ? " disabled" : "") + '><i class="fa-solid fa-chevron-left"></i></button><label class="lvdp-ysel"><select id="lvdpYear" aria-label="Year">' + yopts + '</select><i class="fa-solid fa-chevron-down"></i></label><button type="button" data-ystep="1" aria-label="Next year"' + (y >= cy ? " disabled" : "") + '><i class="fa-solid fa-chevron-right"></i></button></div>';
         var months = MS.map(function (n, i) { var off = y === cy && i > cm; return '<button type="button" class="' + (i === m ? "on" : "") + '"' + (off ? " disabled" : "") + ' data-m="' + i + '">' + n.slice(0, 3) + "</button>"; }).join("");
         var first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), marks = (opts.marks && opts.marks(y, m)) || {}, cells = "";
         for (var b = 0; b < first; b++) cells += "<i></i>";
         for (var k = 1; k <= days; k++) { var off2 = y === cy && m === cm && k > cd; cells += '<button type="button" class="' + (d === k ? "on " : "") + (marks[k] ? "mk" : "") + '"' + (off2 ? " disabled" : "") + ' data-d="' + k + '">' + k + "</button>"; }
         el.innerHTML = '<div class="lvw-sheet lvdp" role="dialog" aria-modal="true" aria-label="Pick a date"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
           '<div class="lvdp-head"><h3>Go to a date</h3><button type="button" class="lvdp-x" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>' +
-          '<div class="lvdp-lab">Year</div><div class="lvdp-years">' + years + "</div>" +
+          '<div class="lvdp-lab">Year</div>' + years +
           '<div class="lvdp-lab">Month</div><div class="lvdp-months">' + months + "</div>" +
           '<div class="lvdp-lab">Day <small>(dots = you have transactions)</small></div><div class="lvdp-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="lvdp-days">' + cells + "</div>" +
           '<div class="lvdp-acts"><button type="button" class="lvdp-month" data-whole>Show all of ' + MS[m] + " " + y + "</button></div></div>";
-        var on = el.querySelector(".lvdp-years .on"); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: "center", block: "nearest" }); } catch (_) {}
       }
+      el.addEventListener("change", function (e) { if (e.target && e.target.id === "lvdpYear") { y = +e.target.value; if (y === cy && m > cm) m = cm; d = null; paint(); } });
       el.addEventListener("click", function (e) {
         var t = e.target;
         if (t === el || (t.closest && t.closest("[data-x]"))) return done(null);
         var b = t.closest && t.closest("button"); if (!b || b.disabled) return;
-        if (b.dataset.y) { y = +b.dataset.y; if (y === cy && m > cm) m = cm; d = null; paint(); }
+        if (b.dataset.ystep) { y = Math.max(cy - 15, Math.min(cy, y + Number(b.dataset.ystep))); if (y === cy && m > cm) m = cm; d = null; paint(); }
         else if (b.dataset.m) { m = +b.dataset.m; d = null; paint(); }
         else if (b.dataset.d) { done({ y: y, m: m, d: +b.dataset.d }); }
         else if (b.hasAttribute("data-whole")) { done({ y: y, m: m, d: null }); }
@@ -2166,7 +2167,7 @@
   };
   window.lvWalletHow = function () {
     openSheet("How your wallet works",
-      '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 48 hours pass with no problem raised.</li>' +
+      '<ul class="lvw-how"><li><b>Pending.</b> The buyer has paid through Levromart. We hold the money until they confirm they received the order, or 24 hours pass with no problem raised.</li>' +
       '<li><b>Ready.</b> The order is complete. Tap <b>Withdraw</b> to send it to your bank. Earnings are released 24 hours after payment (this protects you and your buyers if a scam is reported). An order with a dispute is held until it is settled.</li>' +
       '<li><b>On its way.</b> Your money is being sent to your bank. Transfers usually arrive within minutes. Money from a very recent card payment goes out automatically the next business day.</li>' +
       '<li><b>Paid out.</b> The money has been sent to your bank account.</li>' +
@@ -3964,6 +3965,7 @@ window.lvAskCancel = async function (orderId) {
         var r = await sb.rpc("get_levro_wallet");
         if (r.error || !r.data) { if (r.error && /being set up|not ready/i.test(String(r.error.message || r.error.code || ""))) { W.off = true; W.offAt = Date.now(); } return W.data; }
         W.data = r.data; W.at = Date.now();
+        try { localStorage.setItem("lv-w3-cache:" + session.user.id, JSON.stringify(r.data)); } catch (_) {}
         try { if (W.data.pin) window.__lvHasPin = !!W.data.pin.has_pin; if (W.data.pin && !W.data.pin.has_pin && typeof window.lvPinNudge === "function") window.lvPinNudge(false); } catch (_) {}
         return W.data;
       } catch (_) { return W.data; }
@@ -3991,14 +3993,32 @@ window.lvAskCancel = async function (orderId) {
   }
 
   // the card; `kind` is "shop" (shop orders / dashboard) or "me" (everywhere else). `shop` is the shop's earnings (older card data).
+  window.lvCancelWdReq = async function (id) {
+    if (!(await showConfirmDialog("Take this request back? The money goes back to your waiting earnings, and you can ask again any time.", { title: "Cancel the request", okLabel: "Yes, cancel it", cancelLabel: "Keep it" }))) return;
+    var r = await sb.rpc("cancel_withdrawal_request", { p_request_id: id });
+    if (r.error) return showToast(r.error.message || "Could not cancel.", "error");
+    showToast("Request cancelled.", "success"); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
+    load(true).then(repaint);
+  };
   window.lvWalletCardHtml = function (kind, shop) {
-    var d = W.data; if (!d || W.off) { load(false).then(function (x) { if (x) repaint(); }); return null; }
+    var d = W.data;
+    // the last wallet this phone saw is shown at once, so reopening the app never flashes the older wallet card
+    if (!d) { try { var sv = localStorage.getItem("lv-w3-cache:" + session.user.id); if (sv) { d = W.data = JSON.parse(sv); W.at = 0; } } catch (_) {} }
+    if (!d || W.off) {
+      load(false).then(function (x) { if (x) repaint(); });
+      if (!W.off && signedIn()) return '<div class="lvw-card lvw2 lvw3 lvw-skel"><div class="lw-top"><div class="lw-col"><div class="lw-label">Available balance</div><div class="lw-balrow"><div class="lw-bal"><span class="lvw-skel-bar" style="width:8.5rem;height:1.7rem"></span></div></div></div></div><div class="lw-acts lw-acts2"><span class="lvw-skel-bar" style="height:2.6rem"></span><span class="lvw-skel-bar" style="height:2.6rem"></span></div></div>';
+      return null;
+    }
     var last = (d.entries || []).filter(function (e) { return e.kind !== "fee" && e.kind !== "fee_return"; })[0];
     var pendingWd = (d.withdrawals || []).filter(function (w) { return w.status === "requested"; });
     var earn = kind === "shop" && shop ? Number(shop.ready || 0) * 100 : 0, earnPending = kind === "shop" && shop ? Number(shop.pending || 0) * 100 : 0;
     var notes = "";
     if (d.frozen) notes += '<div class="lvw-note"><i class="fa-solid fa-lock"></i> <span>Your wallet is on hold' + (d.frozen_reason ? ": " + esc(d.frozen_reason) : "") + '. Contact support.</span></div>';
     if (pendingWd.length) notes += '<div class="lvw-note"><i class="fa-solid fa-hourglass-half"></i> <span><b>' + money(pendingWd.reduce(function (s, w) { return s + Number(w.amount_kobo); }, 0)) + '</b> withdrawal waiting for Levromart\'s check</span></div>';
+    // money the shop asked to move or withdraw that is still waiting for Levromart (it can be taken back)
+    if (kind === "shop" && shop && Array.isArray(shop.requests)) shop.requests.filter(function (q) { return q.status === "requested"; }).forEach(function (q) {
+      notes += '<div class="lvw-note"><i class="fa-solid fa-hourglass-half"></i> <span>Waiting for Levromart to confirm <b>' + money(q.amount_kobo) + '</b></span><button type="button" class="lvw-inline lvw-cancel-req" onclick="lvCancelWdReq(\'' + esc(q.id) + '\')">Cancel</button></div>';
+    });
     if (kind === "shop" && shop && shop.delayed > 0) notes += '<div class="lvw-note"><i class="fa-solid fa-calendar-day"></i> <span><b>' + money(shop.delayed * 100) + '</b> arrives in your bank next business day.</span></div>';
     return '<div class="lvw-card lvw2 lvw3">' +
       '<div class="lw-top"><div class="lw-col">' +
@@ -4087,18 +4107,31 @@ window.lvAskCancel = async function (orderId) {
       '<label class="lw-l">Note (optional)</label><input id="lwNote" class="lw-in" maxlength="140" placeholder="What is it for?">' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwSendGo">Continue</button>');
     var to = m.querySelector("#lwTo"), sugg = m.querySelector("#lwSugg");
-    // people sent to before (beneficiaries): one tap fills the tag in
+    // people sent to before (beneficiaries): their picture and first name; one tap fills the tag in, "View all" lists everyone
     try {
-      var seenB = {}, ben = [];
-      (d.entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seenB[e.counterparty_handle]) { seenB[e.counterparty_handle] = 1; ben.push(e); } });
+      var benList = function (entries) { var seenB = {}, out = []; (entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seenB[e.counterparty_handle]) { seenB[e.counterparty_handle] = 1; out.push(e); } }); return out; };
+      var ben = benList(d.entries);
+      var avatarOf = function (e) { return e.counterparty_avatar ? '<img src="' + esc(e.counterparty_avatar) + '" alt="" loading="lazy">' : esc(String(e.counterparty_name || e.counterparty_handle).slice(0, 1).toUpperCase()); };
       if (ben.length && !prefill) {
         var bx = document.createElement("div"); bx.className = "lw-ben";
-        bx.innerHTML = '<small>Recent</small><div>' + ben.slice(0, 6).map(function (e) { return '<button type="button" data-h="' + esc(e.counterparty_handle) + '"><span>' + esc(String(e.counterparty_name || e.counterparty_handle).slice(0, 1).toUpperCase()) + '</span>' + esc(String(e.counterparty_name || "@" + e.counterparty_handle).split(" ")[0]) + '</button>'; }).join("") + '</div>';
-        bx.onclick = function (ev) { var b = ev.target.closest("[data-h]"); if (!b) return; to.value = b.dataset.h; search(); };
+        bx.innerHTML = '<div class="lw-ben-h"><small>Recent</small><button type="button" data-all>View all</button></div><div>' + ben.slice(0, 6).map(function (e) { return '<button type="button" data-h="' + esc(e.counterparty_handle) + '"><span>' + avatarOf(e) + '</span>' + esc(String(e.counterparty_name || "@" + e.counterparty_handle).split(" ")[0]) + '</button>'; }).join("") + '</div>';
+        bx.onclick = async function (ev) {
+          var b = ev.target.closest("button"); if (!b) return;
+          if (b.hasAttribute("data-all")) {
+            var all = d.entries || [];
+            try { var more = await sb.rpc("get_levro_wallet_history", { p_before: (all[all.length - 1] || {}).created_at || null }); all = all.concat((more && more.data) || []); } catch (_) {}
+            var full = benList(all), sh = document.createElement("div"); sh.className = "lvw-sheet-wrap";
+            sh.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-grab"></div><div class="lvw-sheet-head"><h3>Beneficiaries</h3><button type="button" class="lvw-eye lvw-eye-dark" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body"><input class="lwh-search" type="search" placeholder="Search name or @tag" autocomplete="off"><div class="lw-benlist">' + full.map(function (e) { return '<button type="button" class="lw-benrow" data-h="' + esc(e.counterparty_handle) + '" data-s="' + esc(((e.counterparty_name || "") + " " + e.counterparty_handle).toLowerCase()) + '"><span>' + avatarOf(e) + '</span><b>' + esc(e.counterparty_name || "@" + e.counterparty_handle) + '</b><small>@' + esc(e.counterparty_handle) + '</small></button>'; }).join("") + '</div></div></div>';
+            document.body.appendChild(sh);
+            sh.querySelector(".lwh-search").oninput = function () { var t = this.value.trim().toLowerCase(); sh.querySelectorAll(".lw-benrow").forEach(function (r) { r.hidden = !!t && r.dataset.s.indexOf(t) < 0; }); };
+            sh.onclick = function (e2) { if (e2.target === sh || e2.target.closest("[data-x]")) return sh.remove(); var r = e2.target.closest(".lw-benrow"); if (r) { to.value = r.dataset.h; sh.remove(); search(); } };
+            return;
+          }
+          if (b.dataset.h) { to.value = b.dataset.h; search(); }
+        };
         sugg.parentNode.insertBefore(bx, sugg);
       }
     } catch (_) {}
-    function paintPick() { sugg.innerHTML = pick ? '<div class="lw-person on">' + (pick.avatar_url ? '<img src="' + esc(pick.avatar_url) + '" alt="">' : '<span>' + esc(String(pick.name || pick.handle).slice(0, 1).toUpperCase()) + "</span>") + '<div><b>' + esc(pick.name || "") + '</b><small>@' + esc(pick.handle) + '</small></div><i class="fa-solid fa-circle-check"></i></div>' : ""; }
     async function search() {
       var q = to.value.trim().replace(/^@/, "").toLowerCase(); pick = null;
       if (q.length < 2) { sugg.innerHTML = ""; return; }
@@ -4279,6 +4312,7 @@ window.lvAskCancel = async function (orderId) {
       if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + ". You have " + money(bal, true) + ".");
       var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Total from your wallet", short(need + fee), 1]], cta: "Pay " + short(need + fee) });
       if (!pin) return;
+      if (!(await showConfirmDialog("Pay " + short(need) + " for this order from your Levromart wallet?", { title: "Pay for this order", okLabel: "Yes, pay", cancelLabel: "No, go back" }))) return;
       wb.disabled = true;
       var r = await sb.rpc("wallet_pay_order", { p_order_id: orderId, p_pin: pin });
       if (r.error) { wb.disabled = false; return err(m, r.error.message || "Could not pay."); }
@@ -4536,7 +4570,7 @@ window.lvAskCancel = async function (orderId) {
   window.lvAwSearch = function (v) { q = String(v || "").trim(); paint(); };
   window.lvAwDecide = async function (id, how) {
     var reason = null;
-    if (how === "reject") { reason = await showTextPromptDialog("Reject withdrawal", "Why? The person will see this, and the money goes back into their wallet.", { okLabel: "Reject" }); if (!reason) return; }
+    if (how === "reject") { reason = await showTextPromptDialog("Reject withdrawal", "Why? The person will see this, and the money goes back into their wallet.", { okLabel: "Reject", required: true }); if (!reason) return; }
     else if (!(await showConfirmDialog("Send this money to their bank now?", { title: "Approve withdrawal", okLabel: "Approve", cancelLabel: "Go back" }))) return;
     var r = await sb.rpc("admin_decide_wallet_withdrawal", { p_id: id, p_decision: how, p_reason: reason });
     if (r.error) return showToast(r.error.message || "Could not save.", "error");
@@ -4557,7 +4591,7 @@ window.lvAskCancel = async function (orderId) {
       var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
       var rest = nav && html.indexOf(nav) === 0 ? html.slice(nav.length) : html;
       var tabs = '<div class="apx-tabs" id="lvApxTabs"><button type="button" data-t="main" class="on" onclick="lvApxTab(\'main\')">Levromart <i class="apx-badge" id="lvApxBadgeMain" hidden></i></button><button type="button" data-t="wallets" onclick="lvApxTab(\'wallets\')">People\'s wallets <i class="apx-badge" id="lvApxBadgeWallets" hidden></i></button></div>';
-      var panels = '<div class="apx-panel" data-p="main"><div id="lvAwBox" class="aw-box"></div><div id="lvAwWaiting" class="aw-box"></div><h3 class="ap-h">Payments to check</h3>' + rest + '</div>' +
+      var panels = '<div class="apx-panel" data-p="main"><div id="lvAwBox" class="aw-box"></div><div id="lvAwWaiting" class="aw-box"></div>' + rest + '</div>' +
         '<div class="apx-panel" data-p="wallets" hidden><div id="lvAwWallets" class="aw-box"></div></div>';
       return nav + tabs + panels;
     };
@@ -5850,7 +5884,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   }
   window.lvRefundDecide = async function (id, how) {
     var reason = null;
-    if (how === "decline") { reason = await showTextPromptDialog("Decline the refund", "Tell the buyer why. Levromart sees it too and decides.", { okLabel: "Decline", placeholder: "Why are you not refunding?" }); if (!reason) return; }
+    if (how === "decline") { reason = await showTextPromptDialog("Decline the refund", "Tell the buyer why. Levromart sees it too and decides.", { okLabel: "Decline", placeholder: "Why are you not refunding?", required: true }); if (!reason) return; }
     else if (!(await showConfirmDialog("Refund the buyer? The order is cancelled and what they paid for it goes back to their wallet, out of your share.", { title: "Refund the buyer", okLabel: "Refund", cancelLabel: "Go back" }))) return;
     var r = await sb.rpc("vendor_decide_cancellation", { p_request_id: id, p_decision: how, p_reason: reason });
     if (r.error) return showToast(r.error.message || "Could not save.", "error");
@@ -5977,4 +6011,50 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest(".lvw-help"); if (b) { seen = true; try { localStorage.setItem("lv-wallet-help-seen", "1"); } catch (_) {} mark(); } }, true);
   new MutationObserver(function () { clearTimeout(mark.t); mark.t = setTimeout(mark, 100); }).observe(document.body, { childList: true, subtree: true });
   mark();
+})();
+
+/* ===== Account page rows (My orders, Wishlist, Support, Settings…) use the 3D pictures ===== */
+(function () {
+  "use strict";
+  var base = window.lvLinkRow;
+  if (typeof base !== "function" || base.__lv3) return;
+  var MAP = [[/my orders|^orders$/i, "stat-orders"], [/wishlist/i, "stat-wishlist"], [/vendors you follow|following|followers/i, "stat-followers"], [/my details|edit profile|profile/i, "general"], [/location|city/i, "map-pin"],
+    [/request an item|^requests?$/i, "requests"], [/take a tour|tour/i, "new-arrival"], [/support|help/i, "support"], [/settings|privacy/i, "settings"], [/suggest/i, "suggestions"], [/leaderboard/i, "vendor-of-week"], [/earnings|wallet/i, "cash"], [/my shop|shop/i, "store"], [/listings/i, "manage-listings"], [/review/i, "reviews"]];
+  window.lvLinkRow = function (icon, label, value, onclick) {
+    var plain = String(label || "").replace(/&amp;/g, "&").replace(/<[^>]*>/g, "").trim(), three = null;
+    for (var i = 0; i < MAP.length; i++) if (MAP[i][0].test(plain)) { three = MAP[i][1]; break; }
+    if (three && typeof window.lv3dIcon === "function" && window.LV3D && window.LV3D[three]) icon = window.lv3dIcon(three, 30);
+    return base.call(this, icon, label, value, onclick);
+  };
+  window.lvLinkRow.__lv3 = true;
+})();
+
+/* ===== Orders stay honest on a weak connection =====
+   A slim bar says when there is no internet; an order action (mark out for delivery, confirm, I have received it) is refused
+   with a clear message instead of pretending, and after it succeeds the order lists are redrawn from fresh data. */
+(function () {
+  "use strict";
+  function bar() {
+    var b = document.getElementById("lvOfflineBar");
+    if (!b) { b = document.createElement("div"); b.id = "lvOfflineBar"; b.setAttribute("role", "alert"); b.innerHTML = '<i class="fa-solid fa-wifi"></i> No internet connection. What you see may be out of date.'; document.body.appendChild(b); }
+    b.classList.toggle("on", !navigator.onLine);
+  }
+  window.addEventListener("online", function () { bar(); try { if (typeof refreshVisibleOrderView === "function") refreshVisibleOrderView(true); } catch (_) {} });
+  window.addEventListener("offline", bar);
+  setTimeout(bar, 800);
+  function guard(name) {
+    var f = window[name]; if (typeof f !== "function" || f.__lvg) return;
+    var w = async function () {
+      if (!navigator.onLine) { try { showToast("No internet connection. Check your network and try again.", "error"); } catch (_) {} return; }
+      var r;
+      try { r = await f.apply(this, arguments); }
+      finally {
+        try { if (typeof __ordersTabCache !== "undefined") __ordersTabCache.clear(); } catch (_) {}
+        try { if (typeof refreshVisibleOrderView === "function") { refreshVisibleOrderView(true); setTimeout(function () { try { refreshVisibleOrderView(true); } catch (_) {} }, 1500); } } catch (_) {}
+      }
+      return r;
+    };
+    w.__lvg = true; window[name] = w;
+  }
+  ["updateOrderStatus", "confirmReceivedOrder", "remindOrderVendor", "vendorConfirmReportedPayment"].forEach(guard);
 })();

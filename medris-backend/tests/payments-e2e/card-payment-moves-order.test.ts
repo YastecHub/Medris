@@ -52,17 +52,17 @@ describe("apply_card_payment_to_order (a Paystack payment moves the order on)", 
     expect(await order(id)).toMatchObject({ status: "handed_over", awaiting: true });
   });
 
-  it("is received automatically after 48 hours, not after 24", async () => {
+  it("is received automatically after 24 hours", async () => {
     const id = await newOrder(w, 4000);
     await pending(id, "medris_testref5", 4000);
     await apply("medris_testref5", 400000);
     await api.post(w, `/orders/${id}/status`, w.vendor.token, { status: "handed_over" });
-    const completable = async () => (await w.db.query(`select o.id from public.orders o where o.id = $1 and o.awaiting_confirmation_since < now() - interval '48 hours'`, [id])).length;
-    await w.db.query(`update public.orders set awaiting_confirmation_since = now() - interval '30 hours' where id = $1`, [id]);
+    const completable = async () => (await w.db.query(`select o.id from public.orders o where o.id = $1 and o.awaiting_confirmation_since < now() - interval '24 hours'`, [id])).length;
+    await w.db.query(`update public.orders set awaiting_confirmation_since = now() - interval '10 hours' where id = $1`, [id]);
     expect(await completable()).toBe(0);
     const fn = await rowOf<{ n: number }>(w, `select public.auto_complete_eligible_orders() as n`);
-    expect(fn?.n).toBe(0); // 30 hours: still inside the window
-    await w.db.query(`update public.orders set awaiting_confirmation_since = now() - interval '49 hours' where id = $1`, [id]);
+    expect(fn?.n).toBe(0); // 10 hours: still inside the window
+    await w.db.query(`update public.orders set awaiting_confirmation_since = now() - interval '25 hours' where id = $1`, [id]);
     const fn2 = await rowOf<{ n: number }>(w, `select public.auto_complete_eligible_orders() as n`);
     expect(fn2?.n).toBeGreaterThanOrEqual(1);
     expect((await order(id))?.status).toBe("completed");

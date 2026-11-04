@@ -37,7 +37,7 @@ export default function PrivacyPage() {
       </ul>
 
       <h3>2. How we use it</h3>
-      <p>To run the marketplace: process orders and payments (including recording the order amount, the 3% commission Levromart keeps from the moment an order is paid, and the shop's 97% share), verify vendors, let a customer and a vendor message and call each other once an order is accepted (a vendor sees the customer's name only after accepting, and phone numbers are not shown to the other party), send order, call and commission-reminder notifications, improve search relevance, and make marketplace/package recommendations that are relevant to your activity. We do not sell your personal data to third parties.</p>
+      <p>To run the marketplace: process orders and payments (including recording the order amount, the 3% commission Levromart keeps from the moment an order is paid, and the shop's 97% share; a refund can only be requested within 24 hours of the order and never includes the 3% commission), verify vendors, let a customer and a vendor message and call each other once an order is accepted (a vendor sees the customer's name only after accepting, and phone numbers are not shown to the other party), send order, call and commission-reminder notifications, improve search relevance, and make marketplace/package recommendations that are relevant to your activity. We do not sell your personal data to third parties.</p>
 
       <h3>3. Who it's shared with</h3>
       <ul>

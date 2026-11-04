@@ -243,7 +243,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     ordersTabCached(`vo:${vendor.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") })),
     ordersTabCached(`vs2:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, order_type, delivery_method, awaiting_confirmation_since, payments(payment_type,status)").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
   ]);
-  // Delivered and paid, just waiting out the buyer's 48-hour window: for the vendor it counts as Completed,
+  // Delivered and paid, just waiting out the buyer's 24-hour window: for the vendor it counts as Completed,
   // so it stops mixing with the orders still needing their attention. A dispute moves it to Disputed as usual.
   // A slow or failed load must never make orders vanish from a tab: keep the last complete list and use it until a good one arrives.
   window.__lastVendorOrders = window.__lastVendorOrders || {};

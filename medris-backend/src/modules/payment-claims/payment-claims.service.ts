@@ -9,7 +9,7 @@ import { badRequest, forbidden, notFound } from "../../shared/errors/app-error.j
 type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 type Result = Record<string, unknown>;
 
-const AWAIT_TEXT = " Please confirm once you have received your order. It completes automatically in 48 hours if no issue is reported.";
+const AWAIT_TEXT = " Please confirm once you have received your order. It completes automatically in 24 hours if no issue is reported.";
 
 /**
  * Direct (bank transfer) payments and disputes. The buyer reports paying the vendor; the vendor (or
@@ -220,7 +220,7 @@ export class PaymentClaimsService {
         type: "payment_confirmed",
         title: "Payment confirmed",
         body: `${o.vendor_name ?? "The vendor"} confirmed that your payment was received. ${
-          completed ? "Your order is now complete." : "Payment recorded. Please confirm once you have received your order; it completes automatically in 48 hours if no issue is reported."
+          completed ? "Your order is now complete." : "Payment recorded. Please confirm once you have received your order; it completes automatically in 24 hours if no issue is reported."
         }`,
         targetView: "orderDetail",
         targetParams: { orderId, reviewEligible: completed },

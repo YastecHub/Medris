@@ -30,6 +30,8 @@ export class CancellationsService {
       if (!["pending", "confirmed"].includes(o.status)) throw badRequest("This order can no longer be cancelled: it is already out for delivery or finished. If something is wrong, report an issue from the order page.");
       const notify = new NotificationWriter(tx);
       if (o.paid) {
+        // a refund can only be asked for within 24 hours of the order: Paystack cannot investigate money after it has been sent on
+        if (o.refund_window_over) throw badRequest("A refund can only be requested within 24 hours of placing the order. If something is wrong with what you received, report an issue from the order page.");
         if (await repo.open(orderId)) throw conflict("You have already asked for a refund on this order.");
         const reason = (reasonInput ?? "").trim() || "The buyer wants to cancel and be refunded.";
         const id = await repo.insert(orderId, me.userId, reason.slice(0, 500), "buyer");

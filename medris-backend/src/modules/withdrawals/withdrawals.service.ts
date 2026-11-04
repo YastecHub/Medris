@@ -118,6 +118,22 @@ export class WithdrawalsService {
     });
   }
 
+  /** The shop takes back a request that is still waiting for Levromart: its money goes back to the shop's waiting pile. */
+  async cancel(me: Identity | null, requestId: string) {
+    if (!me) throw forbidden("Please log in to continue.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const repo = new WithdrawalsRepository(tx);
+      const vendor = await repo.vendor(me.userId);
+      if (!vendor) throw forbidden("Only shops can do this.");
+      const w = await repo.byId(requestId);
+      if (!w || w.vendor_id !== vendor.id) throw notFound("Request not found.");
+      if (w.status !== "requested") throw conflict("This request was already decided, so it cannot be cancelled.");
+      await repo.detach(requestId);
+      await repo.decide(requestId, "rejected", me.userId, "Cancelled by the shop");
+      return { status: "cancelled" };
+    });
+  }
+
   /** Admin screen: requests, newest first, pending ones on top. */
   async adminList(me: Identity | null, status: string | null) {
     if (!me) throw forbidden("Admin access required.");

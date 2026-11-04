@@ -160,7 +160,7 @@ export class WalletRepository {
     return jsonRows<Record<string, unknown>>(
       this.db,
       sql`select e.id, e.kind, e.amount_kobo::text as amount_kobo, e.balance_after_kobo::text as balance_after_kobo, e.order_id, e.reference, e.note, e.created_at,
-                 e.counterparty_id, cu.name as counterparty_name, cw.handle as counterparty_handle,
+                 e.counterparty_id, cu.name as counterparty_name, cu.avatar_url as counterparty_avatar, cw.handle as counterparty_handle,
                  wd.status as withdrawal_status, wd.bank_name, wd.account_last4, wd.account_name
           from public.wallet_entries e
           left join public.users cu on cu.id = e.counterparty_id

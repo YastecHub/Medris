@@ -499,6 +499,7 @@ export const RPC: Record<string, RpcEntry> = {
   },
   withdraw_levromart_commission: { run: (s, me, a) => s.platformWallet.withdraw(me, num(a.p_amount_kobo), str(a.p_password)), limit: L.platformWallet },
   admin_set_wallet_frozen: { run: (s, me, a) => s.wallet.adminFreeze(me, str(a.p_user_id), bool(a.p_frozen), str(a.p_reason)), limit: L.adminUsers },
+  cancel_withdrawal_request: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.cancel(me, id(a.p_request_id))), limit: L.withdrawals },
   admin_list_withdrawals: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.adminList(me, str(a.p_status))) },
   admin_decide_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.decide(me, id(a.p_request_id), id(a.p_decision), str(a.p_reason))), limit: L.withdrawals },
   admin_reopen_dispute: { run: (s, me, a) => setup("Reopening disputes", s.withdrawals.reopenDispute(me, id(a.p_dispute_id), str(a.p_note))), limit: L.withdrawals },

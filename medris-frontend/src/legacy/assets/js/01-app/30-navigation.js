@@ -246,6 +246,13 @@ async function navigate(view, params = {}, pushHistory = true) {
   const __TAB = { home: 0, vendors: 1, vendorsMap: 1, requestEquipment: 2, vendorRequests: 2, notifications: 3, buyerOrders: 4, vendorOrders: 4 };
   const __isSlideRoute = view !== currentView;
   const __previousIsSlideRoute = false;
+  let __slidDone = false;
+  const __slideEnterNow = (appEl) => {
+    if (!__isSlideRoute || !appEl || __slidDone) return; __slidDone = true;
+    appEl.style.setProperty("--lv-slide-x", __slideDir * 30 + "px");
+    appEl.classList.add("lv-page-slide-transition", "lv-page-slide-enter");
+    requestAnimationFrame(() => requestAnimationFrame(() => appEl.classList.remove("lv-page-slide-enter")));
+  };
   const __slideDir = view in __TAB && currentView in __TAB ? (__TAB[view] >= __TAB[currentView] ? 1 : -1) : pushHistory === false ? -1 : 1;
   // Leaving the notification surface commits the unread items that were
   // visible during this visit. This covers Back, bottom-nav taps, links, and
@@ -447,6 +454,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml && !window.__levroCategorySwitch) {
     // Reuse a previously rendered real page while the original renderer refreshes it.
     app.innerHTML = cachedRouteHtml;
+    __slideEnterNow(app);
     try { initHomepageCarousel(); } catch (_) {}
     restoreAdminTabsScroll();
     syncLeviFabVisibility();
@@ -463,6 +471,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     try { painted = paintHomeFromLocalCatalog(false); } catch (err) {
       console.warn("[Levromart startup] Cached homepage paint failed.", err);
     }
+    if (painted) __slideEnterNow(app);
     if (!painted && !app.querySelector(".levro-home-startup")) {
       app.innerHTML = homeStartupShellHtml({ offline: browserLooksOffline() });
       try { syncLeviFabVisibility(); initHomepageCarousel(); } catch (_) {}
@@ -696,7 +705,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     delete app.dataset.routeTransition;
   }
   app.innerHTML = html;
-  if (__isSlideRoute || __previousIsSlideRoute) {
+  if (!__slidDone && (__isSlideRoute || __previousIsSlideRoute)) {
     app.classList.add("lv-page-slide-enter");
     requestAnimationFrame(() => {
       requestAnimationFrame(() => app.classList.remove("lv-page-slide-enter"));

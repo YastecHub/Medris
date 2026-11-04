@@ -1,6 +1,6 @@
 // ---------- MY DETAILS (any logged-in buyer/vendor's own contact info) ----------
 async function renderBuyerProfile() {
-  if (!session || !profile || profile.role === "admin" || vendor) return '<div class="empty-state">Access denied.</div>';
+  if (!session || !profile || vendor) return '<div class="empty-state">Access denied.</div>';
   const [{ count: totalOrders }, { count: followingCount }, followedRes] = await Promise.all([
     sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id),
     levroData.follows.count(session.user.id),

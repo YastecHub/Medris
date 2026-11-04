@@ -114,7 +114,7 @@ async function renderVendorDashboard() {
     <div class="lv-stat-grid">
       ${lvStatTile("1f6d2", `${totalOrders}`, "Total orders", "navigate('vendorOrders')")}
       ${lvStatTile("1f48e", naira(revenue), "Revenue", "navigate('vendorEarnings')")}
-      ${lvStatTile("lv:stat-views", `${profileViewsToday}`, "Profile views today", "")}
+      ${lvStatTile("1f4e6", `${totalListings}`, "Active listings", "navigate('vendorProducts')")}
       ${lvStatTile("1f465", `${totalFollowers}`, "Followers", "navigate('vendorFollowers')")}
       ${lvStatTile("1f4c8", `${totalViews}`, "Product views", "")}
       ${lvStatTile("1f381", `${totalFavorites}`, "Wishlist saves", "")}

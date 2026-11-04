@@ -194,7 +194,7 @@ function subscribeOrderUpdates() {
   ordersLiveChannel.subscribe(status("orders"));
 
   const aux = sb.channel(`order-extras-${uid}-${stamp}`);
-  for (const table of ["order_items", "order_notes", "service_offers", "disputes"]) aux.on("postgres_changes", { event: "*", schema: "public", table }, () => refreshVisibleOrderView(true));
+  for (const table of ["order_items", "order_notes", "service_offers", "disputes", "cancellation_requests"]) aux.on("postgres_changes", { event: "*", schema: "public", table }, () => refreshVisibleOrderView(true));
   aux.subscribe(status("orderExtras"));
 
   const req = sb.channel(`requests-live-${uid}-${stamp}`);

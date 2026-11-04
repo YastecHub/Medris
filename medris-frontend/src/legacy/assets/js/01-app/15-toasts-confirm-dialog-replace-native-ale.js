@@ -128,6 +128,7 @@ function showTextPromptDialog(title, message, opts = {}) {
     byId("textPromptModalMsg").textContent = message || "";
     const input = byId("textPromptModalInput");
     input.value = "";
+    modal.querySelector(".lv-required-hint")?.remove(); input.classList.remove("lv-required-miss");
     input.placeholder = opts.placeholder || "";
     const okBtn = byId("textPromptModalOk");
     const cancelBtn = byId("textPromptModalCancel");
@@ -140,7 +141,19 @@ function showTextPromptDialog(title, message, opts = {}) {
       cancelBtn.removeEventListener("click", onCancel);
       resolve(result);
     };
-    const onOk = () => cleanup(input.value);
+    const onOk = () => {
+      // a reason that is required cannot be left empty: the pop-up stays open and says so
+      if (opts.required && !String(input.value || "").trim()) {
+        input.classList.add("lv-required-miss"); input.placeholder = "Please write a reason first";
+        let hint = modal.querySelector(".lv-required-hint");
+        if (!hint) { hint = document.createElement("p"); hint.className = "lv-required-hint"; hint.style.cssText = "color:#dc2626;font-size:.82rem;margin:.4rem 0 0"; input.insertAdjacentElement("afterend", hint); }
+        hint.textContent = "A reason is required.";
+        try { input.focus(); } catch (_) {}
+        return;
+      }
+      modal.querySelector(".lv-required-hint")?.remove(); input.classList.remove("lv-required-miss");
+      cleanup(input.value);
+    };
     const onCancel = () => cleanup(null);
     okBtn.addEventListener("click", onOk);
     cancelBtn.addEventListener("click", onCancel);

@@ -89,8 +89,8 @@ function odInfoCard(order, isDelivery) {
   if (odIsPayAfter(order) && t === "confirmed") { const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20)); return { icon: "fa-wallet", head: `Pay the first ${pct}% to start`, body: `This is a pay-after-delivery order. Pay ${pct}% now; the remaining ${100 - pct}% is paid after delivery.` }; }
   if (odIsPayAfter(order) && t === "handed_over") { const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20)); return { icon: "fa-money-bill-transfer", head: `Second payment: remaining ${100 - pct}%`, body: "Your first payment is done. Pay the remaining balance to complete this order." }; }
   if (t === "confirmed" && typeof orderIsFullyPaid === "function" && orderIsFullyPaid(order)) return { icon: "fa-wallet", head: "Payment received", body: "The vendor is getting your order ready. You will see it move to “Out for delivery” as soon as they send it." };
-  if (t === "confirmed") return { icon: "fa-circle-check", head: "The vendor accepted your order", body: "Pay securely in the app with Paystack. Your money is held by Levromart until you confirm you have your order." };
-  if (t === "handed_over") return { icon: "fa-truck-fast", head: isDelivery ? "Your order is on its way" : "Your order has been handed over", body: order.order_type === "rental" ? "Return the equipment when you're done. The vendor will mark it returned." : "Check everything, then confirm once you've received it. If you do nothing and raise no issue, it is marked received automatically after 48 hours." };
+  if (t === "confirmed") return { icon: "fa-circle-check", head: "The vendor accepted your order", body: "Pay securely in the app, with your Levromart wallet or Paystack." };
+  if (t === "handed_over") return { icon: "fa-truck-fast", head: isDelivery ? "Your order is on its way" : "Your order has been handed over", body: order.order_type === "rental" ? "Return the equipment when you're done. The vendor will mark it returned." : "Check everything, then confirm once you've received it. If you do nothing and raise no issue, it is marked received automatically after 24 hours." };
   if (t === "returned") return { icon: "fa-rotate-left", head: "Equipment is back with the vendor", body: "Confirm to complete the order and release the deposit." };
   if (t === "completed") return { icon: "fa-circle-check", head: "Order completed", body: "Thank you for shopping on Levromart." };
   if (t === "cancelled") return { icon: "fa-circle-xmark", head: "This order was cancelled", body: "Any online payment is refunded to you." };
@@ -124,6 +124,8 @@ function customerOrderTopHtml(order, ctx) {
   </section>`;
   // ---- main actions
   const canContact = !!ctx.contactAllowed && order.vendor_id;
+  const canReceive = ctx.isCustomer !== false && ["handed_over", "returned"].includes(order.status);
+  if (canReceive) h += `<div class="od-actions od-actions-receive"><button type="button" class="od-btn od-btn-primary od-btn-received" onclick="confirmReceivedOrder('${esc(order.id)}')"><i class="fa-solid fa-box-open"></i> I have received it</button></div>`;
   if (order.status === "pending" || canContact) {
     h += `<div class="od-actions">${order.status === "pending" ? `<button type="button" class="od-btn od-btn-primary" onclick="remindOrderVendor('${esc(order.id)}',this)"><i class="fa-solid fa-bell"></i> Remind vendor</button>` : ""}
       ${canContact ? `<button type="button" class="od-btn od-btn-light" onclick="startConversationWithVendor('${esc(order.vendor_id)}')"><i class="fa-regular fa-comment-dots"></i> Message</button><button type="button" class="od-btn od-btn-light" onclick="callVendorFromOrder('${esc(order.vendor_id)}')"><i class="fa-solid fa-phone"></i> Call</button>` : ""}</div>`;
@@ -146,18 +148,10 @@ function customerOrderTopHtml(order, ctx) {
   </section>`;
   // ---- payment summary
   const paid = (order.payments || []).filter((p) => p.status === "paid");
-  const methodLabel = (() => {
-    const m = String(paid[0]?.method || "").toLowerCase();
-    if (m === "cash") return "Cash";
-    if (m === "transfer") return "Bank transfer";
-    if (m === "card") return "Card";
-    return paid.length ? "Paid" : (["pending", "cancelled"].includes(order.status) ? "Not paid yet" : "Pay in the app");
-  })();
-  h += `<section class="od-card"><h3>Payment Summary</h3><div class="od-pay-grid">
-    <div><span class="od-muted">Total Amount</span><b class="od-price">${naira(order.total_amount)}</b></div>
+  h += `<section class="od-card od-card-slim"><div class="od-pay-row"><div><span class="od-muted">Total</span><b class="od-price">${naira(order.total_amount)}</b></div>
     ${order.delivery_fee > 0 ? `<div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
-    ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
-    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
+    ${order.order_type === "rental" && order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable deposit</span><b>${naira(order.deposit_amount)}</b></div>` : ""}
+    ${paid.length ? `<div><span class="od-muted">Status</span><b class="od-paid-chip"><i class="fa-solid fa-circle-check"></i> Paid</b></div>` : ""}</div></section>`;
   // ---- delivery / pickup
   if (isDelivery) {
     const hasPin = order.buyer_lat != null && order.buyer_lng != null;
