@@ -310,7 +310,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
     "vendorEarnings","vendorWallet","walletHistory","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","suggestionReplies","wishlist","buyerOrders","myEquipmentRequests","orderHistory","orderDetail","leaveReview",
-    "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminPayments",
+    "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminPayments","adminWalletHistory",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminCampuses","adminLog","adminMonthlyListings","adminConversations","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration","adminR2Optimize"
   ]);
@@ -506,6 +506,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminPayments": html = await renderAdminPayments(); break;
+      case "adminWalletHistory": html = await renderAdminWalletHistory(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPasswordResets": html = await renderAdminPasswordResets(); break;
       case "adminInventory": html = await renderAdminInventory(); break;
