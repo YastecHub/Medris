@@ -296,7 +296,7 @@ describe("parity: helper functions", () => {
             runOriginalAsService(db, "points_award_order", { p_order: orders[key], p_notify: notify }),
             runIsolated(db, (ctx) => ctx.asService((tx) => new PointsRepository(tx).awardOrder(orders[key]!, notify))),
           );
-          expect(o.result).toBe({ completed: "awarded", small: "under minimum", pending: "not completed", own: "own order", capC: "customer cap", capA: "already counted" }[key]);
+          expect(o.result).toBe({ completed: "awarded", small: "awarded" /* migration 0025: every sale earns points */, pending: "not completed", own: "own order", capC: "customer cap", capA: "already counted" }[key]);
         });
       }
     }

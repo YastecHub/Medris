@@ -39,6 +39,9 @@ describe("paystack refunds (issue #99)", () => {
     await db.query(`delete from public.paystack_refunds`);
     await db.query(`delete from public.vendor_payouts`);
     await db.query(`update public.vendors set transfer_recipient_code = 'RCP_test', payout_verified_at = now() where id = $1`, [shop]);
+    // most tests here are about the card path: the buyer's wallet is on hold, so refunds go back to the card (wallet path: own test)
+    await db.query(`insert into public.wallet_accounts (user_id, handle) select u.id, public.wallet_make_handle(u.name, u.id) from public.users u where u.id = $1 on conflict do nothing`, [buyer]);
+    await db.query(`update public.wallet_accounts set frozen = true where user_id = $1`, [buyer]);
     refundAnswer = () => ok({ id: 5501, status: "pending", transaction: { reference: "x" } });
     listAnswer = () => ok([]);
     vi.stubGlobal(
@@ -82,6 +85,21 @@ describe("paystack refunds (issue #99)", () => {
     expect(calls).toEqual([expect.objectContaining({ amount: 200000 })]);
     expect((await rows(orderId))[0]!.status).toBe("processing");
     const told = await db.query(`select 1 from public.notifications where user_id = $1 and type = 'refund_started'`, [buyer]);
+    expect(told.length).toBeGreaterThan(0);
+  });
+
+  it("with a usable wallet, a refund goes into the buyer's Levromart wallet, once, and Paystack is not asked", async () => {
+    await db.query(`update public.wallet_accounts set frozen = false where user_id = $1`, [buyer]);
+    const before = Number((await db.query<{ b: string }>(`select balance_kobo::text as b from public.wallet_accounts where user_id = $1`, [buyer]))[0]!.b);
+    const { orderId } = await paidOrder(1500);
+    await refunds.refundOrder(as(admin), orderId, { reason: "Buyer won the dispute" });
+    await refunds.run();
+    await refunds.run();
+    expect(calls).toHaveLength(0);
+    expect((await rows(orderId))[0]!.status).toBe("processed");
+    const after = Number((await db.query<{ b: string }>(`select balance_kobo::text as b from public.wallet_accounts where user_id = $1`, [buyer]))[0]!.b);
+    expect(after - before).toBe(150000);
+    const told = await db.query(`select 1 from public.notifications where user_id = $1 and type = 'refund_in_wallet'`, [buyer]);
     expect(told.length).toBeGreaterThan(0);
   });
 
@@ -184,11 +202,12 @@ describe("paystack refunds (issue #99)", () => {
   it("FIX review #1: when the refunds wallet cannot be used, the refund goes back on the card instead of getting stuck", async () => {
     const { orderId } = await paidOrder(1200);
     await refunds.refundOrder(as(admin), orderId, { reason: "wallet broken" });
-    await db.query(`alter table public.buyer_payout_accounts rename to buyer_payout_accounts_gone`);
+    await db.query(`update public.wallet_accounts set frozen = false where user_id = $1`, [buyer]);
+    await db.query(`alter table public.wallet_entries rename to wallet_entries_gone`);
     try {
       await refunds.run();
     } finally {
-      await db.query(`alter table public.buyer_payout_accounts_gone rename to buyer_payout_accounts`);
+      await db.query(`alter table public.wallet_entries_gone rename to wallet_entries`);
     }
     expect(calls).toHaveLength(1);
     const [row] = await db.query<{ status: string; paystack_refund_id: string | null }>(`select status, paystack_refund_id from public.paystack_refunds where order_id = $1`, [orderId]);
