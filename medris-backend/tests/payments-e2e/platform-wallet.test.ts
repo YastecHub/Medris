@@ -98,6 +98,22 @@ describe("Levromart's commission wallet", () => {
     expect((await call("get_levromart_wallet", w.admin.token)).data.balance_kobo).toBe("500000");
   });
 
+  it("a paid monthly listing fee is Levromart's money too, counted once and apart from the commission (migration 0036)", async () => {
+    await superAdmin();
+    await w.db.query(`delete from public.platform_wallet_entries`);
+    const ref = `levro_listing_test_${Date.now()}`;
+    await w.db.query(`insert into public.paystack_transactions (reference, purpose, vendor_id, payer_user_id, amount_kobo) values ($1, 'listing_fee', $2, $3, 99900)`, [ref, w.vendor.shop, w.vendor.id]);
+    expect((await rowOf<any>(w, `select count(*)::int as n from public.platform_wallet_entries`)).n).toBe(0); // not paid yet
+    await w.db.query(`update public.paystack_transactions set status = 'success', paid_at = now() where reference = $1`, [ref]);
+    await w.db.query(`update public.paystack_transactions set status = 'success' where reference = $1`, [ref]); // a repeated webhook
+    const s = await call("get_levromart_wallet", w.admin.token);
+    expect(s.status).toBe(200);
+    expect(s.data.listing_fees.all_kobo).toBe("98401"); // ₦999 less Paystack's 1.5% (₦14.99, rounded up)
+    expect(s.data.commission.all_kobo).toBe("0");
+    expect(s.data.balance_kobo).toBe("98401");
+    expect(s.data.entries[0].kind).toBe("listing_fee");
+  });
+
   it("an admin who is not the super admin can look but cannot move the money", async () => {
     await w.db.query(`update public.users set is_super_admin = false where id = $1`, [w.admin.id]);
     const s = await call("get_levromart_wallet", w.admin.token);
