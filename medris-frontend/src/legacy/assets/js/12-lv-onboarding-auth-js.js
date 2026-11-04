@@ -2248,19 +2248,19 @@ async function setVendorRequestPref(v){
 
 /* Fully verified ticks: show a tick only when the vendor is admin-approved AND student-verified */
 (function(){
-  var SET=null,NAMES=null,T=0,Q=0;
+  var SET=null,NAMES=null,NSSET=null,NSNAMES=null,T=0,Q=0;
   function norm(t){ return String(t||"").replace(/\s+/g," ").trim().toLowerCase(); }
-  var TICKED=/(^|\s)(lv-svi|lv-cr-vtick|lv-cr-vbadge)(\s|$)/;
+  var TICKED=/(^|\s)(lv-svi|lv-nsv|lv-cr-vtick|lv-cr-vbadge)(\s|$)/;
   function hasTick(el){
     var p=el.parentElement;
-    if(el.querySelector("[data-vt],.lv-svi,.lv-cr-vtick")) return true;
-    if(p&&p.querySelector(":scope > [data-vt], :scope > .lv-svi, :scope > .lv-cr-vtick, :scope > .lv-cr-vbadge")) return true;
+    if(el.querySelector("[data-vt],.lv-svi,.lv-nsv,.lv-cr-vtick")) return true;
+    if(p&&p.querySelector(":scope > [data-vt], :scope > .lv-svi, :scope > .lv-nsv, :scope > .lv-cr-vtick, :scope > .lv-cr-vbadge")) return true;
     return false;
   }
   // Any place that prints a verified vendor's name (leaderboard, podium, follower lists, cart, orders ...) gets the green tick
   // right after it, so the tick does not depend on every page's template remembering to add one.
   function scanNames(){
-    if(!NAMES||!NAMES.size) return;
+    if(!NAMES||(!NAMES.size&&!(NSNAMES&&NSNAMES.size))) return;
     var root=document.getElementById("app"); if(!root) return;
     root.querySelectorAll("strong,h1,h2,h3,h4,b,.nm,[class*='-name']").forEach(function(el){
       if(el.dataset.lvnt) return;
@@ -2268,18 +2268,20 @@ async function setVendorRequestPref(v){
       var text="",ok=true;
       el.childNodes.forEach(function(n){ if(n.nodeType===3) text+=n.nodeValue; else if(!(n.nodeType===1&&(TICKED.test(n.className||"")||n.hasAttribute("data-vt")))) ok=false; });
       if(!ok||!text.trim()) return;
-      if(!NAMES.has(norm(text))) return;
+      var nk=norm(text), isNs=!!(NSNAMES&&NSNAMES.has(nk));
+      if(!NAMES.has(nk)&&!isNs) return;
       el.dataset.lvnt="1";
       if(hasTick(el)) return;
-      var i=document.createElement("i"); i.className="fa-solid fa-circle-check lv-svi"; i.title="Verified vendor"; i.setAttribute("aria-label","Verified vendor");
+      var i=document.createElement("i"); i.className=isNs?"fa-solid fa-circle-check lv-nsv":"fa-solid fa-circle-check lv-svi"; i.title=isNs?"Verified seller":"Verified vendor"; i.setAttribute("aria-label",isNs?"Verified seller":"Verified vendor");
       el.appendChild(document.createTextNode(" ")); el.appendChild(i);
     });
   }
   function paint(){
     Q=0; if(!SET) return;
     document.querySelectorAll("[data-vt]").forEach(function(el){
-      var on=SET.has(String(el.getAttribute("data-vt")));
+      var vid=String(el.getAttribute("data-vt")), ns=!!(NSSET&&NSSET.has(vid)), on=SET.has(vid)||ns;
       if(on!==el.classList.contains("lv-on")) el.classList.toggle("lv-on",on);
+      if(ns!==el.classList.contains("lv-blue")) el.classList.toggle("lv-blue",ns);
     });
     scanNames();
     keepTicksVisible();
@@ -2306,6 +2308,9 @@ async function setVendorRequestPref(v){
     T=Date.now();
     sb.from("vendors").select("id,business_name").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
       .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); NAMES=new Set(r.data.map(function(x){return norm(x.business_name);}).filter(Boolean)); sched(); } });
+    // verified sellers who are not students: their blue tick follows them everywhere, like the green one follows students
+    sb.from("vendors").select("id,business_name").eq("verification_status","verified").eq("non_student_verified",true).is("deleted_at",null).limit(5000)
+      .then(function(r){ if(r&&!r.error&&r.data){ NSSET=new Set(r.data.map(function(x){return String(x.id);})); NSNAMES=new Set(r.data.map(function(x){return norm(x.business_name);}).filter(Boolean)); sched(); } });
   }
   load();
   setInterval(function(){ if(Date.now()-T>180000) load(); },60000);

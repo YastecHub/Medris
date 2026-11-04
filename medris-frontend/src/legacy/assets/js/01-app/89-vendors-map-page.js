@@ -328,7 +328,7 @@ function vmpDrawRail(keepSel) {
   const list = vmpRailList();
   if (!list.length) { box.innerHTML = '<div class="vmp-empty"><i class="fa-solid fa-map-pin"></i> No vendors match that. Try another search.</div>'; box.__n = 0; return; }
   const one = list.map(vmpRailItemHtml).join("");
-  const loop = list.length >= 8;   // only a long list wraps around; a few vendors just stay where they are
+  const loop = false;   // vendors never loop: the row simply starts and ends   // only a long list wraps around; a few vendors just stay where they are
   box.innerHTML = loop ? one + one + one : one;
   box.__n = list.length; box.__loop = loop;
   box.classList.toggle("vmp-rail-loop", loop);
