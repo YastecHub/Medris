@@ -6948,3 +6948,18 @@ html:root body i.vendor-inline-verified{color:#1d9bf0!important}
 .lw-ben{margin:2px 0 8px}.lw-ben small{display:block;opacity:.7;font-weight:700;margin-bottom:4px}
 .lw-ben div{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.lw-ben button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:inherit;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;max-width:64px}
 .lw-ben button span{width:40px;height:40px;border-radius:50%;background:rgba(22,160,106,.15);color:#0b8a5f;display:flex;align-items:center;justify-content:center;font-weight:800}
+
+/* Levi: black mode is pure black with white text (like a chat app), dark mode stays charcoal */
+html[data-theme="black"]:root body #aiChatPanel{background:#000!important;--lvl-soft:#1b1b1d;--lvl-line:rgba(255,255,255,.12)}
+html[data-theme="black"]:root body #aiChatPanel.lv-full #leviSide{background:#0a0a0b}
+html[data-theme="black"]:root body #aiChatPanel .ai-chat-msg.assistant,html[data-theme="black"]:root body #aiChatPanel .ai-chat-msg.assistant *{color:#fff}
+html[data-theme="black"]:root body #aiChatPanel .ai-chat-input-row textarea{background:#1b1b1d!important;color:#fff!important}
+/* the new-chat picture */
+.lv-newchat{display:inline-block;vertical-align:-.2em;flex:none}
+/* copy under an answer */
+.ai-chat-msg .lv-copy{display:inline-flex;align-items:center;gap:.35rem;margin-top:.45rem;padding:.25rem .6rem;border:0;border-radius:999px;background:transparent;color:inherit;opacity:.6;font:inherit;font-size:.74rem;font-weight:700;cursor:pointer}
+.ai-chat-msg .lv-copy:active{background:rgba(128,128,128,.2);opacity:1}
+/* wallet "?" gently pulses until it has been tapped once */
+@keyframes lvHelpPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(22,160,106,.45)}50%{transform:scale(1.08);box-shadow:0 0 0 7px rgba(22,160,106,0)}}
+.lvw-help:not(.seen){animation:lvHelpPulse 2.4s ease-in-out infinite;border-radius:50%}
+@media (prefers-reduced-motion:reduce){.lvw-help:not(.seen){animation:none}}

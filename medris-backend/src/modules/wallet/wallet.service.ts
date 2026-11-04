@@ -17,7 +17,7 @@ type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 
 /** Limits that keep the wallet safe (all in kobo). */
 export const WALLET = {
-  minTransfer: 5_000, // ₦50
+  minTransfer: 10_000, // ₦100
   maxTransfer: 5_000_000, // ₦50,000 per transfer
   maxSentPerDay: 10_000_000, // ₦100,000 a day
   minTopup: 10_000, // ₦100

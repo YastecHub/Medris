@@ -2263,12 +2263,17 @@ window.lvAskCancel = async function (orderId) {
       return true;
     } catch (_) { return false; }
   }
-  async function activatePending() {
-    var pa = pendingAcct(); if (!pa || activating) return; activating = true;
+  // an account kept while the server was not ready is finished only when the person taps (it needs their password)
+  async function activatePending(byTap) {
+    var pa = pendingAcct(); if (!pa || activating) return false; if (!byTap) return false; activating = true;
     try {
-      var r = await sb.rpc("save_refund_account", { p_bank_code: pa.c, p_account_number: pa.n, p_confirmed_name: pa.name });
-      if (!r.error) { await setPending(null); cache = null; refresh(true); }
-    } catch (_) {} finally { activating = false; }
+      var pwd = await window.lvAskPassword(); if (!pwd) return false;
+      var r = await sb.rpc("save_refund_account", { p_bank_code: pa.c, p_account_number: pa.n, p_confirmed_name: pa.name, p_password: pwd });
+      if (r.error) { if (typeof showToast === "function") showToast(r.error.message || "Could not save the account.", "error"); return false; }
+      await setPending(null); cache = null; refresh(true);
+      if (typeof showToast === "function") showToast("Your account is saved.", "success");
+      return true;
+    } catch (_) { return false; } finally { activating = false; }
   }
   function money(kobo) { return "₦" + (Number(kobo || 0) / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }
   function when(d) { try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + new Date(d).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" }); } catch (_) { return ""; } }
@@ -2281,7 +2286,6 @@ window.lvAskCancel = async function (orderId) {
       if (r.error || !r.data) { failed = true; return cache ? cache.data : null; }   // not set up on the server yet: the card says so instead of waiting forever
       failed = false;
       cache = { at: Date.now(), data: r.data };
-      if (!r.data.has_account && pendingAcct()) activatePending();
       return r.data;
     })().catch(function () { return null; }).finally(function () { loading = null; });
     return loading;
@@ -2329,6 +2333,7 @@ window.lvAskCancel = async function (orderId) {
       (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
   window.lvRefundAccount = async function (fromPopup) {
+    if (pendingAcct() && !(cache && cache.data && cache.data.has_account)) { if (await activatePending(true)) return; }
     var m = sheet(fromPopup ? "Where should your money go?" : "Your bank account",
       '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">When you withdraw from your Levromart wallet (refunds, money sent to you, money you added), it goes to this account. It must be an account in your own name. For your safety, you can withdraw 24 hours after you add or change it, and the first withdrawal to it is checked by Levromart. Check the details carefully: Levromart is not responsible for money sent to an account that was entered wrongly.</p>' +
       '<label class="lvrw-l">Bank</label><button type="button" class="lvrw-bankbtn" id="lvrwBankBtn"><span class="ve-bank-ico" id="lvrwBankIco"><i class="fa-solid fa-building-columns"></i></span><span id="lvrwBankLabel" class="lvrw-bank-label">Choose your bank</span><i class="fa-solid fa-chevron-down"></i></button>' +
@@ -4035,7 +4040,7 @@ window.lvAskCancel = async function (orderId) {
     m.querySelector("#lwSendGo").onclick = async function () {
       var amt = readAmount("lwSendAmt"), note = m.querySelector("#lwNote").value.trim();
       if (!pick) return err(m, "Choose who to send to from the list.");
-      if (amt < 5000) return err(m, "The smallest amount is ₦50.");
+      if (amt < 10000) return err(m, "The smallest amount is ₦100.");
       if (amt > Number(d.balance_kobo)) return err(m, "You only have " + money(d.balance_kobo, true) + ". Add money first.");
       err(m, "");
       var fee = window.lvWalletFee(amt);
@@ -5746,4 +5751,57 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     return realFetch.call(this, input, init);
   };
   window.fetch.__lvPw = true;
+})();
+
+/* ===== Levi chat: fits above the keyboard, a copy button under answers ===== */
+(function () {
+  "use strict";
+  var vv = window.visualViewport, ticking = false;
+  function panel() { return document.getElementById("aiChatPanel"); }
+  // Follow the visible area: when the keyboard opens the whole chat (header included) shrinks to what is left, so nothing is cut off and the page behind never shows through
+  function fit() {
+    ticking = false;
+    var p = panel(); if (!p || p.classList.contains("hidden") || !vv) return;
+    var kb = window.innerHeight - vv.height - vv.offsetTop > 80;
+    if (p.classList.contains("lv-full")) {
+      p.style.setProperty("height", vv.height + "px", "important");
+      p.style.setProperty("top", vv.offsetTop + "px", "important");
+      p.style.setProperty("bottom", "auto", "important");
+    } else if (kb) {
+      p.style.setProperty("height", Math.min(vv.height - 8, 780) + "px", "important");
+      p.style.setProperty("bottom", Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + "px", "important");
+    } else {
+      ["height", "top", "bottom"].forEach(function (k) { p.style.removeProperty(k); });
+    }
+    if (kb) { var m = document.getElementById("aiChatMessages"); if (m) m.scrollTop = m.scrollHeight; }
+  }
+  function schedule() { if (!ticking) { ticking = true; requestAnimationFrame(fit); } }
+  if (vv) { vv.addEventListener("resize", schedule); vv.addEventListener("scroll", schedule); }
+  document.addEventListener("focusout", function () { setTimeout(schedule, 120); }, true);
+  // a copy button under each of Levi's answers
+  function decorate() {
+    document.querySelectorAll("#aiChatMessages .ai-chat-msg.assistant").forEach(function (el) {
+      if (el.__lvCopy || el.querySelector(".lv-copy")) return; el.__lvCopy = 1;
+      if (!(el.textContent || "").trim() || el.classList.contains("typing")) return;
+      var b = document.createElement("button"); b.type = "button"; b.className = "lv-copy"; b.setAttribute("aria-label", "Copy answer"); b.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+      b.onclick = function (e) {
+        e.stopPropagation();
+        var t = Array.prototype.map.call(el.childNodes, function (n) { return n.classList && n.classList.contains("lv-copy") ? "" : (n.innerText || n.textContent || ""); }).join("").trim();
+        var done = function () { b.innerHTML = '<i class="fa-solid fa-check"></i> Copied'; setTimeout(function () { b.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 1600); };
+        try { navigator.clipboard.writeText(t).then(done, done); } catch (_) { done(); }
+      };
+      el.appendChild(b);
+    });
+  }
+  var host = document.getElementById("aiChatMessages");
+  if (host) new MutationObserver(function () { clearTimeout(decorate.t); decorate.t = setTimeout(decorate, 250); }).observe(host, { childList: true });
+})();
+/* the wallet "?" stops pulsing once someone has opened the help */
+(function () {
+  "use strict";
+  var seen = false; try { seen = localStorage.getItem("lv-wallet-help-seen") === "1"; } catch (_) {}
+  function mark() { document.querySelectorAll(".lvw-help").forEach(function (b) { b.classList.toggle("seen", seen); }); }
+  document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest(".lvw-help"); if (b) { seen = true; try { localStorage.setItem("lv-wallet-help-seen", "1"); } catch (_) {} mark(); } }, true);
+  new MutationObserver(function () { clearTimeout(mark.t); mark.t = setTimeout(mark, 100); }).observe(document.body, { childList: true, subtree: true });
+  mark();
 })();

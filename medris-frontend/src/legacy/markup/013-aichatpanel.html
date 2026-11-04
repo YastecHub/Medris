@@ -6,18 +6,18 @@
     <div class="flex levi-header-actions" style="gap:0.3rem;">
       <div class="levi-tools" id="leviTools">
         <button class="icon-btn" onclick="shareCurrentAiChat()" title="Share this chat"><i class="fa-solid fa-share-nodes"></i></button>
-        <button class="icon-btn" onclick="startNewAiChat()" title="New chat"><i class="fa-solid fa-plus"></i></button>
+        <button class="icon-btn" onclick="startNewAiChat()" title="New chat"><svg class="lv-newchat" viewBox="0 0 24 24" width="1.15em" height="1.15em" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.2c0 3.9-3.6 6.8-8 6.8-1 0-1.9-.1-2.8-.4L4.5 20l1.2-3.5C4.6 15.3 4 13.8 4 12.2 4 8.3 7.6 5.4 12 5.4c.9 0 1.7.1 2.5.3"/><path d="M18.5 2.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" fill="currentColor" stroke="none"/></svg></button>
         <button class="icon-btn" id="aiChatHistoryToggleBtn" onclick="toggleAiChatHistory()" title="Recent chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
         <button class="icon-btn" id="aiChatExpandBtn" onclick="toggleAiChatExpanded()" title="Expand"><i class="fa-solid fa-expand"></i></button>
       </div>
       <button class="icon-btn levi-tools-toggle" id="leviToolsToggle" onclick="toggleLeviTools()" title="More" aria-expanded="false" aria-controls="leviTools"><i class="fa-solid fa-chevron-left"></i></button>
-      <button class="icon-btn levi-full-only" onclick="startNewAiChat()" title="New chat" aria-label="New chat"><i class="fa-regular fa-pen-to-square"></i></button>
+      <button class="icon-btn levi-full-only" onclick="startNewAiChat()" title="New chat" aria-label="New chat"><svg class="lv-newchat" viewBox="0 0 24 24" width="1.15em" height="1.15em" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.2c0 3.9-3.6 6.8-8 6.8-1 0-1.9-.1-2.8-.4L4.5 20l1.2-3.5C4.6 15.3 4 13.8 4 12.2 4 8.3 7.6 5.4 12 5.4c.9 0 1.7.1 2.5.3"/><path d="M18.5 2.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" fill="currentColor" stroke="none"/></svg></button>
       <button class="drawer-close-btn" onclick="toggleAiChat()"><i class="fa-solid fa-xmark"></i></button>
     </div>
   </div>
   <div id="leviSideBack" class="levi-side-back" onclick="toggleLeviSidebar(false)"></div>
   <div id="leviSide" class="levi-side">
-    <div class="levi-side-head"><button type="button" onclick="startNewAiChat()"><i class="fa-regular fa-pen-to-square"></i> New chat</button><button type="button" onclick="shareCurrentAiChat()"><i class="fa-solid fa-share-nodes"></i> Share this chat</button></div>
+    <div class="levi-side-head"><button type="button" onclick="startNewAiChat()"><svg class="lv-newchat" viewBox="0 0 24 24" width="1.15em" height="1.15em" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.2c0 3.9-3.6 6.8-8 6.8-1 0-1.9-.1-2.8-.4L4.5 20l1.2-3.5C4.6 15.3 4 13.8 4 12.2 4 8.3 7.6 5.4 12 5.4c.9 0 1.7.1 2.5.3"/><path d="M18.5 2.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" fill="currentColor" stroke="none"/></svg> New chat</button><button type="button" onclick="shareCurrentAiChat()"><i class="fa-solid fa-share-nodes"></i> Share this chat</button></div>
     <input type="text" id="aiChatHistorySearch" placeholder="Search chats…" oninput="searchAiChatHistory()" />
     <div id="aiChatHistoryList" class="ai-chat-history-panel"></div>
   </div>
