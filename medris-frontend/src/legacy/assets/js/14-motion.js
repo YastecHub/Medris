@@ -1995,7 +1995,7 @@
   function txList(d) {
     var chips = [["all", "All"], ["pending", "Pending"], ["ready", "Ready"], ["onway", "On its way"], ["paid", "Paid out"]];
     var rows = d.tx.filter(function (t) { return filter === "all" || t.state === filter; });
-    return '<div class="lvw-chips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
+    return '<div class="lvw-chips lvw-fchips">' + chips.map(function (c) { return '<button type="button" class="lvw-chip' + (filter === c[0] ? " on" : "") + '" onclick="lvWalletFilter(\'' + c[0] + '\')">' + c[1] + '</button>'; }).join("") + '</div>' +
       (rows.length ? '<ul class="lvw-list">' + rows.map(function (t) {
         return '<li onclick="navigate(\'orderDetail\',{orderId:\'' + esc(t.id) + '\'})"><span class="lvw-ico ' + t.state + '"><i class="fa-solid ' + (t.state === "paid" ? "fa-arrow-down-long" : t.state === "onway" ? "fa-paper-plane" : t.state === "ready" ? "fa-wallet" : t.state === "asked" ? "fa-user-clock" : t.state === "held" ? "fa-scale-balanced" : "fa-hourglass-half") + '"></i></span>' +
           '<div class="lvw-li"><strong>' + esc(t.title) + '</strong><small>#' + esc(String(t.id).slice(0, 8).toUpperCase()) + " · " + LABEL[t.state] + " · " + esc(when(t.date)) + '</small>' + ((t.comm || t.refunded) ? '<small>Sale ' + esc(money(t.gross)) + (t.comm ? ' − commission ' + esc(money(t.comm)) : "") + (t.refunded ? ' − refunded ' + esc(money(t.refunded)) : "") + '</small>' : "") + '</div>' +
@@ -2023,8 +2023,8 @@
     if (!cache) readStored();
     var d = cache && cache.data;
     if (!d) return '<p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p>';
-    return '<div class="lvw-tabs"><button type="button" class="' + (tab === "tx" ? "on" : "") + '" onclick="lvWalletOpen(\'tx\')">Transactions</button><button type="button" class="' + (tab === "withdrawals" ? "on" : "") + '" onclick="lvWalletOpen(\'withdrawals\')">Withdrawals</button><button type="button" class="' + (tab === "commission" ? "on" : "") + '" onclick="lvWalletOpen(\'commission\')">Commission</button></div>' +
-      (tab === "tx" ? txList(d) : tab === "withdrawals" ? withdrawalsPane(d) : commissionPane(d));
+    return '<div class="lvw-tabs"><button type="button" class="' + (tab === "tx" ? "on" : "") + '" onclick="lvWalletOpen(\'tx\')">Transactions</button><button type="button" class="' + (tab === "withdrawals" ? "on" : "") + '" onclick="lvWalletOpen(\'withdrawals\')">Withdrawals</button></div>' +
+      (tab === "withdrawals" ? withdrawalsPane(d) : txList(d));
   }
   window.lvWalletFilter = function (f) { filter = f; paint(); };
   window.lvWalletOpen = function (t) { tab = t || "tx"; if (typeof currentView !== "undefined" && currentView === "vendorWallet") paint(); else { window.__lvWalletTab = tab; navigate("vendorWallet"); } };
@@ -4109,10 +4109,15 @@ window.lvAskCancel = async function (orderId) {
   };
 
   // the full history: grouped by day, a new-bank header when withdrawals start going to a different account
-  window.lvW3History = async function () {
-    var m = sheet("Transaction history", '<p class="muted" style="text-align:center">Loading…</p>', "lw-tall");
+  // the history is a page of its own (not a drawer): the strip on the wallet card opens it
+  window.renderWalletHistoryPage = function () {
+    setTimeout(function () { var t = document.getElementById("lvwhPage"); if (t) window.lvW3History(t); }, 30);
+    return '<div class="lvw-page"><div class="lvw-page-head"><button type="button" class="lvw-back" onclick="history.back()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2>Transaction history</h2></div><div id="lvwhPage" class="lvwh-page"><p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p></div></div>';
+  };
+  window.lvW3History = async function (target) {
+    if (!(target && target.nodeType === 1)) return navigate("walletHistory");
+    var body = target;
     var r = await sb.rpc("get_levro_wallet_history", {});
-    var body = m.querySelector(".lvw-sheet-body"); if (!body) return;
     var all = (r && r.data) || [], filter = "all", term = "", more = all.length >= 50;
     if (!all.length) { body.innerHTML = '<div class="lvw-empty"><i class="fa-solid fa-receipt"></i><strong>No transactions yet</strong><span>Money you add, send, receive or spend shows here.</span></div>'; return; }
     body.innerHTML = '<div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div><button type="button" class="lwh-more" id="lwhMore" hidden>Show older</button>';
@@ -4185,7 +4190,7 @@ window.lvAskCancel = async function (orderId) {
   var nav0 = window.navigate;
   if (typeof nav0 === "function" && !nav0.__lw) {
     var nav1 = function (view) {
-      if (view === "levroWallet") { var to = typeof vendor !== "undefined" && vendor ? "vendorOrders" : "buyerProfile"; var p = nav0.call(this, to); Promise.resolve(p).then(function () { setTimeout(window.lvW3History, 400); }); return p; }
+      if (view === "levroWallet") { var to = typeof vendor !== "undefined" && vendor ? "vendorOrders" : "buyerProfile"; return nav0.call(this, "walletHistory"); }
       return nav0.apply(this, arguments);
     };
     nav1.__lw = true; window.navigate = nav1;

@@ -6963,3 +6963,10 @@ html[data-theme="black"]:root body #aiChatPanel .ai-chat-input-row textarea{back
 @keyframes lvHelpPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(22,160,106,.45)}50%{transform:scale(1.08);box-shadow:0 0 0 7px rgba(22,160,106,0)}}
 .lvw-help:not(.seen){animation:lvHelpPulse 2.4s ease-in-out infinite;border-radius:50%}
 @media (prefers-reduced-motion:reduce){.lvw-help:not(.seen){animation:none}}
+
+/* wallet filter chips (All / Pending / Ready / On its way / Paid out) stay on one level */
+.lvw-chips.lvw-fchips{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 0 .7rem;scrollbar-width:none}
+.lvw-chips.lvw-fchips::-webkit-scrollbar{display:none}
+.lvw-chips.lvw-fchips .lvw-chip{flex:0 0 auto;padding:6px 11px;font-size:.78rem;white-space:nowrap}
+.lvw-tabs{grid-template-columns:1fr 1fr}
+.lvwh-page{padding:.2rem 0 5rem}

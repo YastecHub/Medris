@@ -69,7 +69,8 @@ async function renderVendorDashboard() {
     ? await sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) })
     : { data: [] };
   const totalFavorites = (favCounts || []).reduce((s, r) => s + r.count, 0);
-  const totalListings = (products || []).filter((p) => p.status !== "removed").length;
+  // "Listings" is how many are live right now (active ones), not every listing ever made
+  const totalListings = (products || []).filter((p) => p.status === "active").length + Number(hubPackages || 0);
   const totalFollowers = Number(followerCounts?.[0]?.follower_count || 0);
   const commissionOwed = Number(owed || 0);
   const earliestCommissionDueAt = commissionDeadline?.[0]?.earliest_due_at || null;
