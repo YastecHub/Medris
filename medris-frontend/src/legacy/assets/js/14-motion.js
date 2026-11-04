@@ -3873,13 +3873,15 @@ window.lvAskCancel = async function (orderId) {
   function signedIn() { return typeof session !== "undefined" && session && typeof profile !== "undefined" && profile && profile.role !== "admin"; }
   function key() { try { return crypto.randomUUID(); } catch (_) { return String(Date.now()) + Math.random().toString(16).slice(2); } }
   async function load(force) {
-    if (!signedIn() || W.off) return null;
+    if (!signedIn()) return null;
+    if (W.off && Date.now() - (W.offAt || 0) < 60000) return W.data;   // switched off only for a minute, never for the whole visit
+    W.off = false;
     if (!force && W.data && Date.now() - W.at < 20000) return W.data;
     if (W.loading) return W.loading;
     W.loading = (async function () {
       try {
         var r = await sb.rpc("get_levro_wallet");
-        if (r.error || !r.data) { if (r.error && /set up|not ready|being set|unknown|not found|404|503/i.test(String(r.error.message || r.error.code || ""))) W.off = true; return W.data; }
+        if (r.error || !r.data) { if (r.error && /being set up|not ready/i.test(String(r.error.message || r.error.code || ""))) { W.off = true; W.offAt = Date.now(); } return W.data; }
         W.data = r.data; W.at = Date.now();
         try { if (W.data.pin) window.__lvHasPin = !!W.data.pin.has_pin; if (W.data.pin && !W.data.pin.has_pin && typeof window.lvPinNudge === "function") window.lvPinNudge(false); } catch (_) {}
         return W.data;
@@ -3889,6 +3891,9 @@ window.lvAskCancel = async function (orderId) {
   }
   function repaint() { try { if (window.lvWalletRepaint) window.lvWalletRepaint(); } catch (_) {} try { if (window.lvRefundRepaint) window.lvRefundRepaint(); } catch (_) {} }
   window.lvW3Refresh = function () { return load(true).then(repaint); };
+  // the wallet follows what happens to it (a rejected withdrawal, money received) without a page refresh
+  setInterval(function () { if (!document.hidden && signedIn() && W.data && document.querySelector(".lvw-card, .lw-card")) load(true).then(repaint); }, 25000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && signedIn() && W.data) load(true).then(repaint); });
   window.lvW3Eye = function () { W.hide = !W.hide; try { localStorage.setItem("lv-w3-hide", W.hide ? "1" : "0"); } catch (_) {} repaint(); };
 
   var KIND = {
@@ -4041,7 +4046,7 @@ window.lvAskCancel = async function (orderId) {
     }
     var a = d.account, most = Number(d.withdrawable_now_kobo || 0);
     var m = sheet("Withdraw", '<div class="lw-bank"><span><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
-      '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", k2n(most)) + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + ' · the most you can withdraw is ' + money(most, true) + ' (a fee comes out of the same balance)</p>' +
+      '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", k2n(most)) + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + ' · the most you can withdraw is ' + money(most, true) + '</p>' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo">Continue</button>');
     m.querySelector("#lwWdGo").onclick = async function () {
       var amt = readAmount("lwWdAmt");
@@ -5433,11 +5438,13 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
         if (first === null) { first = v; P.clear(); m.querySelector("#lvpT").textContent = "Enter it again"; m.querySelector("#lvpS").textContent = "Type the same six digits to confirm."; return; }
         if (v !== first) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Create your wallet PIN"; m.querySelector("#lvpS").textContent = "The two PINs did not match. Start again."; return; }
         var r = await sb.rpc("set_wallet_pin", { p_pin: first, p_pin_confirm: v });
-        if (r.error) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Create your wallet PIN"; err.textContent = r.error.message || "Could not save your PIN."; err.hidden = false; return; }
+        if (r.error) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Create your wallet PIN"; err.textContent = /not valid|not found|being set up/i.test(String(r.error.message || "")) ? "The wallet PIN is not switched on yet. Please try again a little later." : (r.error.message || "Could not save your PIN."); err.hidden = false; return; }
         window.__lvHasPin = true; close(); if (typeof showToast === "function") showToast("Your wallet PIN is set. Keep it safe.", "success"); resolve(true);
       });
       var later = m.querySelector("#lvpLater"); if (later) later.onclick = function () { close(); resolve(false); };
-      m.addEventListener("click", function (e) { if (e.target === m && !o.required) { close(); resolve(false); } });
+      // the sheet can always be put away (tap outside, or the cross); a compulsory PIN simply asks again next time
+      m.addEventListener("click", function (e) { if (e.target === m) { close(); resolve(false); } });
+      var x = document.createElement("button"); x.type = "button"; x.className = "lvpin-x"; x.setAttribute("aria-label", "Close"); x.innerHTML = '<i class="fa-solid fa-xmark"></i>'; x.onclick = function () { close(); resolve(false); }; m.querySelector(".lvpin").appendChild(x);
     });
   };
   /* A gentle reminder (once per visit) for people who have not made a PIN yet; after a bank account is saved it is compulsory. */
@@ -5492,10 +5499,11 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
         if (first === null) { first = v; P.clear(); m.querySelector("#lvpT").textContent = "Enter it again"; m.querySelector("#lvpS").textContent = "Type the new PIN once more."; return; }
         if (v !== first) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Choose a new PIN"; err.textContent = "The two PINs did not match. Start again."; err.hidden = false; return; }
         var r = await sb.rpc("change_wallet_pin", { p_password: pw, p_pin: first, p_pin_confirm: v });
-        if (r.error) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Choose a new PIN"; err.textContent = r.error.message || "Could not change your PIN."; err.hidden = false; return; }
+        if (r.error) { first = null; P.shake(); P.clear(); m.querySelector("#lvpT").textContent = "Choose a new PIN"; err.textContent = /not valid|not found|being set up/i.test(String(r.error.message || "")) ? "The wallet PIN is not switched on yet. Please try again a little later." : (r.error.message || "Could not change your PIN."); err.hidden = false; return; }
         close(); if (typeof showToast === "function") showToast("Your PIN was changed.", "success"); resolve(true);
       });
       m.querySelector("#lvpBack").onclick = function () { close(); resolve(false); };
+      m.addEventListener("click", function (e) { if (e.target === m) { close(); resolve(false); } });
     });
   };
 })();
@@ -5551,4 +5559,54 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   new MutationObserver(function (list) { list.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1) return; if (n.tagName === "IMG") ready(n); else if (n.querySelectorAll) n.querySelectorAll("img").forEach(ready); }); }); }).observe(document.documentElement, { childList: true, subtree: true });
   // the three quick-action pictures on Home are fetched as soon as the app starts
   ["shop-products", "rent-items", "book-services", "request-item"].map(function (n) { return "/action-cards/" + n + ".webp"; }).forEach(function (u) { var i = new Image(); i.src = u; keep.push(i); });
+})();
+
+/* ===== Refund requests on the order page (migration 0038): the buyer sees where the request is; the shop can refund or decline ===== */
+(function () {
+  "use strict";
+  function oid() { try { return (typeof currentViewParams !== "undefined" && currentViewParams && currentViewParams.orderId) || ""; } catch (_) { return ""; } }
+  function card(c, isShop, isBuyer) {
+    var open = c.status === "requested", waiting = open && c.vendor_decision !== "declined";
+    var title, text, btns = "";
+    if (c.requester_role !== "buyer") {
+      if (isShop) { title = open ? "Waiting for Levromart" : c.status === "approved" ? "Order cancelled" : "Not approved"; text = open ? "You asked Levromart to cancel this paid order. An admin will decide." : (c.reject_reason || ""); } else return "";
+    } else if (isShop && open) {
+      title = c.vendor_decision === "declined" ? "You declined this refund request" : "Refund request";
+      text = c.vendor_decision === "declined" ? "Levromart will decide. If your reason is good it may stand." : 'The buyer cancelled this paid order and asked for a refund. "' + esc(c.reason || "") + '"';
+      if (c.vendor_decision !== "declined") btns = '<div class="lvrq-btns"><button type="button" class="lvrq-go" onclick="lvRefundDecide(\'' + esc(c.id) + '\',\'refund\')">Refund the buyer</button><button type="button" class="lvrq-no" onclick="lvRefundDecide(\'' + esc(c.id) + '\',\'decline\')">Decline</button></div>';
+    } else if (isBuyer) {
+      if (open) { title = c.vendor_decision === "declined" ? "The shop did not refund" : "Refund requested"; text = c.vendor_decision === "declined" ? "The shop said: " + esc(c.vendor_reason || "") + ". Levromart is looking at your request and will decide." : "The shop and Levromart have been told. Your order is cancelled and your money goes back to your wallet as soon as the shop agrees or Levromart decides."; }
+      else if (c.status === "approved") { title = "Refund approved"; text = "Your order was cancelled and what you paid for it is going back to your wallet."; }
+      else { title = "Refund not approved"; text = esc(c.reject_reason || "Levromart did not approve this request."); }
+    } else return "";
+    return '<div class="od-card lvrq' + (waiting ? " wait" : "") + '"><div class="lvrq-h">' + (window.lv3dIcon ? window.lv3dIcon(open ? "tx-pending" : c.status === "approved" ? "tx-paid" : "order-cancelled", 40) : "") + "<b>" + title + "</b></div><p>" + text + "</p>" + btns + "</div>";
+  }
+  var busy = false, shown = "";
+  async function paint() {
+    if (busy) return; var id = oid(); if (!id || typeof currentView === "undefined" || currentView !== "orderDetail") { shown = ""; return; }
+    var host = document.querySelector("#app .od-actions, #app .od-card"); if (!host) return;
+    if (document.getElementById("lvRqCard")) return;
+    busy = true;
+    try {
+      var r = await sb.rpc("get_order_cancellation", { p_order_id: id }); var c = r && r.data;
+      if (!c || document.getElementById("lvRqCard")) return;
+      var uid = session && session.user && session.user.id, isBuyer = uid === c.buyer_id, isShop = uid === c.vendor_user_id;
+      var html = card(c, isShop, isBuyer); if (!html) return;
+      var first = document.querySelector("#app .od-card"); if (!first) return;
+      var wrap = document.createElement("div"); wrap.id = "lvRqCard"; wrap.innerHTML = html;
+      first.parentNode.insertBefore(wrap, first);
+    } catch (_) {} finally { busy = false; }
+  }
+  window.lvRefundDecide = async function (id, how) {
+    var reason = null;
+    if (how === "decline") { reason = await showTextPromptDialog("Decline the refund", "Tell the buyer why. Levromart sees it too and decides.", { okLabel: "Decline", placeholder: "Why are you not refunding?" }); if (!reason) return; }
+    else if (!(await showConfirmDialog("Refund the buyer? The order is cancelled and what they paid for it goes back to their wallet, out of your share.", { title: "Refund the buyer", okLabel: "Refund", cancelLabel: "Go back" }))) return;
+    var r = await sb.rpc("vendor_decide_cancellation", { p_request_id: id, p_decision: how, p_reason: reason });
+    if (r.error) return showToast(r.error.message || "Could not save.", "error");
+    showToast(how === "refund" ? "Refunded. The order is cancelled." : "Your answer was sent to the buyer and Levromart.", "success");
+    var oldc = document.getElementById("lvRqCard"); if (oldc) oldc.remove();
+    try { await navigate("orderDetail", { orderId: oid() }); } catch (_) { paint(); }
+  };
+  var t = 0;
+  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; paint(); }, 200); }).observe(document.getElementById("app") || document.body, { childList: true, subtree: true });
 })();

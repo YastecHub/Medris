@@ -25,6 +25,9 @@ export interface CancellationRow {
   vendor_user_id: string | null;
   order_status: string | null;
   total_amount: string | null;
+  requester_role: string;
+  vendor_decision: string | null;
+  vendor_reason: string | null;
 }
 
 /** Cancel requests for paid orders (migration 0018), and the order row they act on. Service role only. */
@@ -55,9 +58,19 @@ export class CancellationsRepository {
     return jsonRow(this.db, sql`select id from public.cancellation_requests where order_id = ${orderId} and status = 'requested'`);
   }
 
-  async insert(orderId: string, userId: string, reason: string): Promise<string> {
-    const [row] = await jsonReturning<{ id: string }>(this.db, sql`insert into public.cancellation_requests (order_id, requested_by, reason) values (${orderId}, ${userId}, ${reason}) returning id`);
+  async insert(orderId: string, userId: string, reason: string, role: "vendor" | "buyer" = "vendor"): Promise<string> {
+    const [row] = await jsonReturning<{ id: string }>(this.db, sql`insert into public.cancellation_requests (order_id, requested_by, reason, requester_role) values (${orderId}, ${userId}, ${reason}, ${role}) returning id`);
     return row!.id;
+  }
+
+  /** The shop says no to a buyer's refund request; the request stays open for an admin to decide. */
+  async vendorDeclined(id: string, reason: string): Promise<void> {
+    await this.db.execute(sql`update public.cancellation_requests set vendor_decision = 'declined', vendor_reason = ${reason} where id = ${id}`);
+  }
+
+  /** The newest request on an order (what the buyer, the shop and the admins see on the order page). */
+  latestForOrder(orderId: string): Promise<CancellationRow | null> {
+    return jsonRow<CancellationRow>(this.db, this.select(sql`where c.order_id = ${orderId} order by c.created_at desc limit 1`));
   }
 
   byId(id: string): Promise<CancellationRow | null> {
@@ -80,7 +93,8 @@ export class CancellationsRepository {
 
   private select(tail: ReturnType<typeof sql>) {
     return sql`select c.id, c.order_id, c.requested_by, c.reason, c.status, c.reject_reason, c.created_at, c.decided_at,
-                      v.business_name, o.buyer_id, v.user_id as vendor_user_id, o.status::text as order_status, o.total_amount::text as total_amount
+                      v.business_name, o.buyer_id, v.user_id as vendor_user_id, o.status::text as order_status, o.total_amount::text as total_amount,
+                      c.requester_role, c.vendor_decision, c.vendor_reason
                from public.cancellation_requests c join public.orders o on o.id = c.order_id join public.vendors v on v.id = o.vendor_id ${tail}`;
   }
 }

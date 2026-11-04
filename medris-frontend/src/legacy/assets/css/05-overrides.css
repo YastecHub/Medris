@@ -6903,3 +6903,14 @@ html:root:root:root:root:root:root:root body #app#app .ad-btn.ad-unverify{backgr
 .ai-tabs button.on{background:#16a06a;border-color:#16a06a;color:#fff}
 .ai-tabs button.on span{background:rgba(255,255,255,.25)}
 .admin-inventory-status-select{display:none}
+/* ===== PIN sheet close button; refund request card ===== */
+.lvpin{position:relative}
+.lvpin-x{position:absolute;top:12px;right:14px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(100,116,139,.15);color:inherit;display:grid;place-items:center}
+.lvrq{margin:10px 0;padding:14px!important;border-left:4px solid #16a06a}
+.lvrq.wait{border-left-color:#f59e0b}
+.lvrq-h{display:flex;align-items:center;gap:10px}
+.lvrq-h b{font-size:1rem}
+.lvrq p{margin:8px 0 2px;font-size:.88rem;line-height:1.45;opacity:.85}
+.lvrq-btns{display:flex;gap:8px;margin-top:10px}
+.lvrq-go{flex:1;border:0;border-radius:999px;padding:11px;background:#16a06a;color:#fff;font-weight:800}
+.lvrq-no{flex:1;border:1.5px solid #e5484d;border-radius:999px;padding:11px;background:transparent;color:#e5484d;font-weight:800}

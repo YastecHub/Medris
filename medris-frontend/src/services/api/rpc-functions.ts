@@ -54,7 +54,7 @@ export const RPC_WRITES: ReadonlySet<string> = new Set([
   "vendor_confirm_reported_payment", "vendor_confirm_unreported_payment", "vendor_dispute_reported_payment",
   "vendor_dispute_unreported_payment", "vendor_respond_to_dispute", "vendor_set_storefront_active",
   "vendor_suggest_order_quantity",
-  "get_wallet_pin_status", "set_wallet_pin", "change_wallet_pin", "wallet_fee_quote", "set_wallet_handle", "wallet_send", "wallet_topup", "wallet_withdraw", "wallet_pay_order",
+  "vendor_decide_cancellation", "get_order_cancellation", "get_wallet_pin_status", "set_wallet_pin", "change_wallet_pin", "wallet_fee_quote", "set_wallet_handle", "wallet_send", "wallet_topup", "wallet_withdraw", "wallet_pay_order",
   "admin_decide_wallet_withdrawal", "admin_set_wallet_frozen", "set_levromart_payout_account", "withdraw_levromart_commission",
 ]);
 

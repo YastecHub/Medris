@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- response bodies are checked field by field */
 import { describe, expect, it } from "vitest";
-import { api, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld } from "./harness.js";
+import { api, shopRefunds, json, newOrder, payOrder, rowOf, runJob, sendWebhook, startPayment, useWorld } from "./harness.js";
 
 // Migration 0019: a buyer with a refund account gets refunds in a wallet (not on the card) and withdraws them to the bank.
 describe("the buyer's refunds wallet", () => {
@@ -13,6 +13,7 @@ describe("the buyer's refunds wallet", () => {
     const started = await startPayment(w, o, w.buyer2.token);
     await sendWebhook(w, "charge.success", w.paystack.completeCheckout(started.data.reference));
     expect((await call("buyer_cancel_order", w.buyer2.token, { p_order_id: o })).status).toBe(200);
+    expect((await shopRefunds(w, o)).status).toBe(200);
     await runJob(w, "paystack-refunds");
     expect(w.paystack.callsTo("POST", "/refund")).toHaveLength(0);
     expect(await rowOf(w, `select 1 as x from public.refund_credits where order_id = $1`, [o])).toBeFalsy();
