@@ -195,7 +195,7 @@ async function renderVendorProducts() {
     <div class="vh-hero-copy"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
     <h2 class="vh-title">My Listings</h2><p class="vh-sub">Manage your products, services and packages in one place.</p></div>
     <img class="vh-hero-art" src="/icons3d/vh-bags.webp" alt="" aria-hidden="true">
-    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button>
+    <button type="button" class="vl-add vl-add-wide" onclick="openAddChooser()"><i class="fa-solid fa-plus"></i> Add New Listing</button>
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="vl-note"><i class="fa-solid fa-circle-info"></i> Listings won't appear publicly until your vendor account is verified.</p>`;
 

@@ -149,7 +149,7 @@ async function renderVendorDashboard() {
     <h2 class="vh-title">My Listings</h2>
     <p class="vh-sub">Manage your products, services and packages in one place.</p></div>
     <img class="vh-hero-art" src="/icons3d/vh-bags.webp" alt="" aria-hidden="true">
-    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button></div>
+    <button type="button" class="vl-add vl-add-wide" onclick="openAddChooser()"><i class="fa-solid fa-plus"></i> Add New Listing</button></div>
     <div class="vh-stats">${hubStat('<img class="vh-3d" src="/icons3d/vh-products.webp" alt="" loading="lazy" decoding="async">', hubProducts, "Products", "products")}${hubStat('<img class="vh-3d" src="/icons3d/vh-services.webp" alt="" loading="lazy" decoding="async">', hubServices, "Services", "services")}${hubStat('<img class="vh-3d" src="/icons3d/vh-packages.webp" alt="" loading="lazy" decoding="async">', hubPackages, "Packages", "packages")}</div>
     <div class="vh-section-head"><h3><i class="fa-solid fa-layer-group"></i> My listings</h3><button type="button" onclick="${goTab("all")}">Manage all <i class="fa-solid fa-chevron-right"></i></button></div>
     <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${hubDiscarded ? ` (${hubDiscarded})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="navigate('vendorProducts').then(()=>setTimeout(()=>toggleVendorDiscarded(null,true),250))" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>
@@ -397,6 +397,8 @@ async function lvOpenProfileShare(kind, targetId) {
     x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
     const mt = isProduct ? 60 : 130;
     x.fillStyle = "#fff"; rrect(x, 90, mt, 900, out.height - 2 * mt, 56); x.fill();
+    // a light watermark on the white card: the Levromart mark, map pins on a map card, tags and bags on a product card
+    if (typeof lvQrWatermark === "function") await lvQrWatermark(x, isProduct ? "product" : isMap ? "map" : "shop", 90, mt, 900, out.height - 2 * mt, 56, colours[1]);
     x.textAlign = "center";
     let y = 130;
     if (isProduct) {

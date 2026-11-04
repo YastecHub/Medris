@@ -1512,7 +1512,8 @@
       var key = (w ? w.vendor_id + "|" + (logoPal ? logoPal[0] : "") + "|" + (pool.length ? 1 : 0) + "|" + scopeId() : "none") + "|ov:" + (ow ? ow.vendor_id : "");
       if (car.getAttribute("data-wv-key") === key) return;
       if (w) { extra.push(slide("a", w, rows, h)); if (rows.length) extra.push(slide("b", w, rows, h)); extra.push(slide("c", w, rows, h)); }
-      if (ow) { var opool = await products(ow.vendor_id); window.__lvOvPool = opool; extra.push(slide("o", ow, pick3(opool), null)); } else window.__lvOvPool = [];
+      // the overall winner's banner is the first one people see when the app opens
+      if (ow) { var opool = await products(ow.vendor_id); window.__lvOvPool = opool; extra.unshift(slide("o", ow, pick3(opool), null)); } else window.__lvOvPool = [];
       car.setAttribute("data-wv-key", key);
       if (w) { try { localStorage.setItem("lv-wv-cache", JSON.stringify({ at: Date.now(), scope: scopeId(), w: { vendor_id: w.vendor_id, business_name: w.business_name, logo_url: w.logo_url, points: w.points }, pal: logoPal, pool: pool.map(function (p) { return { id: p.id, name: p.name, photos: [p.photos[0]], sale_price: p.sale_price, discount_price: p.discount_price, is_service: p.is_service }; }) })); } catch (_) {} }
       rebuild(car, extra);
@@ -3082,7 +3083,8 @@ window.lvAskCancel = async function (orderId) {
   // Levi turns into a pin on the Vendors page and into a magnifying glass (still carrying the Levromart mark) on the Search page
   var LENS = '<svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><defs><linearGradient id="lvLensA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19c486"/><stop offset="1" stop-color="#7c3aed"/></linearGradient><linearGradient id="lvLensB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#19c486"/></linearGradient></defs><g class="mf-lens-ring"><path d="M13.7 31.9A13.5 13.5 0 0 1 13.7 8.1" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><path d="M26.3 8.1A13.5 13.5 0 0 1 26.3 31.9" stroke="url(#lvLensA)" stroke-width="4.6" stroke-linecap="round"/><circle cx="20" cy="20" r="3.6" fill="url(#lvLensB)"/></g><path d="M34.5 34.5 42 42" stroke="url(#lvLensB)" stroke-width="6" stroke-linecap="round"/></svg>';
   function modeNow() { try { var v = typeof currentView !== "undefined" ? currentView : ""; return v === "vendors" ? "vendors" : v === "search" ? "search" : ""; } catch (_) { return ""; } }
-  function core(mode) { return '<span class="mf-core">' + (mode === "search" ? LENS : PIN) + '<b>' + (mode === "search" ? "Search" : "Map") + '</b></span>'; }
+  // the 3D magnifier (Search) and the 3D map pin (Vendors), floating on their own: no tile behind them
+  function core(mode) { return '<span class="mf-core mf-3dcore"><img class="mf-3d" src="/icons3d/lv/' + (mode === "search" ? "search" : "map-pin") + '.webp" alt="" width="64" height="64" draggable="false" decoding="async"></span>'; }
   function tap(mode) { if (mode === "search") { try { if (typeof toggleAiChat === "function") { var pnl = document.getElementById("aiChatPanel"); if (!pnl || pnl.classList.contains("hidden")) toggleAiChat(); } } catch (_) {} } else { try { navigate("vendorsMap"); } catch (_) {} } }
   function clampPos(x, y) {
     var w = innerWidth, h = innerHeight;
@@ -3279,7 +3281,7 @@ window.lvAskCancel = async function (orderId) {
    than once every two days, or over another open sheet. The cards take turns; the artwork is the onboarding art. */
 (function () {
   "use strict";
-  var KEY = "lv_promo_v1", GAP_MS = 48 * 60 * 60 * 1000, WAIT_MS = 2500;
+  var KEY = "lv_promo_v1", WAIT_MS = 2500;
   // kept in local storage AND a cookie: some phones lose one of them when the app is closed, which made the same card
   // come back every time; whichever copy has seen more app opens wins
   function fromCookie() { try { var m = /(?:^|; )lv_promo_v1=([^;]*)/.exec(document.cookie); return m ? JSON.parse(decodeURIComponent(m[1])) || {} : {}; } catch (_) { return {}; } }
@@ -3288,9 +3290,10 @@ window.lvAskCancel = async function (orderId) {
     var b = fromCookie();
     return Number(b.opens || 0) > Number(a.opens || 0) || Number(b.at || 0) > Number(a.at || 0) ? b : a;
   }
+  function gapFor(st) { return 2 + (Number(st.n || 0) % 2); }   // every 2nd, then every 3rd open, and so on
   function save(s) {
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {}
-    try { document.cookie = "lv_promo_v1=" + encodeURIComponent(JSON.stringify({ opens: s.opens, at: s.at, n: s.n })) + "; max-age=31536000; path=/; samesite=lax"; } catch (_) {}
+    try { document.cookie = "lv_promo_v1=" + encodeURIComponent(JSON.stringify({ opens: s.opens, at: s.at, n: s.n, last: s.last, seen: s.seen })) + "; max-age=31536000; path=/; samesite=lax"; } catch (_) {}
   }
   var arts = [].slice.call(document.querySelectorAll("#lvOnb img.lv-hero")).map(function (i) { return i.getAttribute("src") || ""; });
   function isVendor() { try { return typeof profile !== "undefined" && profile && profile.role === "vendor"; } catch (_) { return false; } }
@@ -3359,18 +3362,30 @@ window.lvAskCancel = async function (orderId) {
     if (onb && onb.offsetParent !== null && getComputedStyle(onb).display !== "none" && getComputedStyle(onb).visibility !== "hidden") return true;
     return !closeAi();
   }
-  function onboarded() { try { return localStorage.getItem("levromart_onboarding_completed") === "true"; } catch (_) { return false; } }
-  // counts app opens; the pop-up never comes on the very first one
+  function onboarded() {
+    try { if (localStorage.getItem("levromart_onboarding_completed") === "true" || sessionStorage.getItem("levromart_onboarding_completed") === "true") return true; } catch (_) {}
+    try { return typeof session !== "undefined" && !!session; } catch (_) { return false; }
+  }
+  // counts app opens (a fresh start, or coming back to the app after 30 minutes away); never on the very first one
   var s = load(); s.opens = Number(s.opens || 0) + 1; save(s);
+  var hiddenAt = 0;
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) { var st = load(); st.opens = Number(st.opens || 0) + 1; save(st); tries = 0; setTimeout(maybe, WAIT_MS); }
+  });
+  var tries = 0;
   function maybe() {
     var st = load();
     if (/[?&]nopromo\b/.test(location.search)) return;
     if (st.opens < 2 || !onboarded()) return;
-    if (st.at && Date.now() - Number(st.at) < GAP_MS) return;
-    if (typeof currentView !== "undefined" && currentView !== "home") return;
-    if (document.visibilityState === "hidden" || busy()) return;
+    if (Number(st.seen || 0) === st.opens) return;                      // already shown on this open
+    if (st.last != null && st.opens - Number(st.last) < gapFor(st)) return;
+    // not on the home screen yet, or something else is open: look again a little later (for about half a minute)
+    var later = function () { if (++tries < 8) setTimeout(maybe, 4000); };
+    if (typeof currentView !== "undefined" && currentView !== "home") return later();
+    if (document.visibilityState === "hidden" || busy()) return later();
     var card = pick(st); if (!card) return;
-    st.at = Date.now(); st.n = Number(st.n || 0) + 1; save(st);
+    st.at = Date.now(); st.n = Number(st.n || 0) + 1; st.last = st.opens; st.seen = st.opens; save(st);
     show(card);
   }
   setTimeout(maybe, WAIT_MS);
@@ -3467,7 +3482,7 @@ window.lvAskCancel = async function (orderId) {
   var LAYER_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 8.2 12 13.4l9.5-5.2L12 3Z" fill="currentColor" opacity=".9"/><path d="m4.3 11.6-1.8 1L12 17.8l9.5-5.2-1.8-1L12 15.8l-7.7-4.2Z" fill="currentColor" opacity=".6"/><path d="m4.3 15.4-1.8 1L12 21.6l9.5-5.2-1.8-1L12 19.6l-7.7-4.2Z" fill="currentColor" opacity=".4"/></svg>';
   function swapIcons() {
     var loc = document.getElementById("vmpLocate");
-    if (loc && !loc.querySelector(".lvm-loc")) loc.innerHTML = LOC_SVG;
+    if (loc && !loc.querySelector(".lv-loc-logo")) loc.innerHTML = '<span class="lv-loc-logo" aria-hidden="true"></span>';
     var lay = document.querySelector(".vmpage .vmp-fabs .vmp-fab");
     if (lay && !lay.querySelector("svg")) { lay.innerHTML = LAYER_SVG; lay.classList.add("lvm-layers"); }
     try { if (loc) loc.classList.toggle("on", !!(typeof buyerLocation !== "undefined" && buyerLocation)); } catch (_) {}
@@ -4163,6 +4178,7 @@ window.lvAskCancel = async function (orderId) {
     var k = Number(e.amount_kobo), plus = k > 0, ic, cls, title, sub = hm(e.created_at);
     if (e.kind === "commission") { ic = "fa-percent"; cls = "in"; title = e.shop_name ? "Commission · " + e.shop_name : (e.note || "Commission"); if (e.order_id) sub += " · Order #" + String(e.order_id).slice(0, 8).toUpperCase(); }
     else if (e.kind === "commission_reversed") { ic = "fa-rotate-left"; cls = "back"; title = "Commission taken back" + (e.shop_name ? " · " + e.shop_name : ""); }
+    else if (e.kind === "listing_fee") { ic = "fa-calendar-check"; cls = "in"; title = "Monthly listing fee" + (e.shop_name ? " · " + e.shop_name : ""); sub += " · after Paystack's fee"; }
     else if (e.kind === "withdrawal") { ic = "fa-building-columns"; cls = e.withdrawal_status === "success" ? "out" : e.withdrawal_status === "failed" || e.withdrawal_status === "reversed" ? "fail" : "wait"; title = "Withdrawal"; sub += " · " + (e.bank_name || "Bank") + " ···" + (e.account_last4 || "") + " · " + ({ success: "Sent", processing: "On its way", failed: "Not sent", reversed: "Returned" }[e.withdrawal_status] || ""); }
     else { ic = "fa-arrow-rotate-left"; cls = "back"; title = "Withdrawal returned"; }
     return '<div class="lwa-row"><span class="lwa-ic ' + cls + '"><i class="fa-solid ' + ic + '"></i></span><div class="lwa-mid"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></div><span class="lwa-amt ' + cls + '">' + (plus ? "+" : "−") + naira(Math.abs(k)) + "</span></div>";
@@ -4186,18 +4202,21 @@ window.lvAskCancel = async function (orderId) {
   async function levromartWalletHtml() {
     var r = await sb.rpc("get_levromart_wallet");
     if (r.error || !r.data) return null;
-    var d = LW = r.data, a = d.account, c = d.commission || {};
+    var d = LW = r.data, a = d.account, c = d.commission || {}, lf = d.listing_fees || null;
     var wait = a && a.wait_hours > 0;
     return '<div class="aw-card lwa"><div class="lwa-card">' +
-      '<div class="lwa-top"><div><small>Levromart commission · available</small><b class="lwa-bal">' + naira(d.balance_kobo) + '</b></div>' +
+      '<div class="lwa-top"><div><small>' + (lf ? "Levromart's money · available" : "Levromart commission · available") + '</small><b class="lwa-bal">' + naira(d.balance_kobo) + '</b></div>' +
         (d.can_manage ? '<button type="button" class="lwa-wd" onclick="lvLwWithdraw()"' + (!a || wait || Number(d.balance_kobo) < Number(d.min_withdrawal_kobo || 0) ? " disabled" : "") + '><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : "") + "</div>" +
       '<div class="lwa-bankrow"><i class="fa-solid fa-building-columns"></i><span>' + (a ? esc(a.bank_name || "") + " ···" + esc(a.last4) + " · " + esc(a.account_name) : "No payout account yet") + "</span>" +
         (d.can_manage ? '<button type="button" onclick="lvLwAccount()">' + (a ? "Change" : "Add") + "</button>" : "") + "</div>" +
       (wait ? '<div class="lwa-wait"><i class="fa-solid fa-shield-halved"></i> New payout account: withdrawals open in ' + a.wait_hours + " hour" + (a.wait_hours === 1 ? "" : "s") + ".</div>" : "") +
+      (lf ? '<div class="lwa-tl">3% commission</div>' : "") +
       '<div class="lwa-tiles"><div><small>Today</small><b>' + naira(c.today_kobo) + '</b></div><div><small>7 days</small><b>' + naira(c.week_kobo) + '</b></div><div><small>30 days</small><b>' + naira(c.month_kobo) + '</b></div><div><small>All time</small><b>' + naira(c.all_kobo) + "</b></div></div>" +
+      // monthly listing fees, apart from the commission (migration 0036)
+      (lf ? '<div class="lwa-tl">Monthly listing fees</div><div class="lwa-tiles"><div><small>Today</small><b>' + naira(lf.today_kobo) + '</b></div><div><small>7 days</small><b>' + naira(lf.week_kobo) + '</b></div><div><small>30 days</small><b>' + naira(lf.month_kobo) + '</b></div><div><small>All time</small><b>' + naira(lf.all_kobo) + "</b></div></div>" : "") +
       "</div>" +
       (d.can_manage ? "" : '<p class="aw-note"><i class="fa-solid fa-lock"></i> Only the super admin can withdraw or change the payout account.</p>') +
-      '<div class="aw-sub">Commission history</div><div class="lwa-hist">' + historyHtml(d.entries || []) + "</div></div>";
+      '<div class="aw-sub">' + (lf ? "History" : "Commission history") + '</div><div class="lwa-hist">' + historyHtml(d.entries || []) + "</div></div>";
   }
   function pwSheet(title, text, okLabel) {
     return new Promise(function (resolve) {
@@ -4518,10 +4537,15 @@ window.lvAskCancel = async function (orderId) {
   }
   document.addEventListener("pointerdown", hold, true);
   document.addEventListener("touchstart", hold, { capture: true, passive: true });
+  // the person moving the page (finger, wheel, keys) is never undone: that fought them and bounced the page up and down
+  var mine = function () { keep = null; };
+  document.addEventListener("touchmove", function (e) { if (!(e.target && e.target.closest && e.target.closest("#veLocationMap"))) keep = null; }, { capture: true, passive: true });
+  document.addEventListener("wheel", mine, { capture: true, passive: true });
+  document.addEventListener("keydown", mine, true);
   window.addEventListener("scroll", function () {
     if (!keep || Date.now() > keep.until) { keep = null; return; }
     // a jump of more than a screen towards the top that the person did not make: put the page back
-    if (keep.y - window.scrollY > Math.min(600, window.innerHeight * 0.6)) { var y = keep.y; requestAnimationFrame(function () { window.scrollTo(0, y); }); }
+    if (keep.y - window.scrollY > Math.min(600, window.innerHeight * 0.6)) { var y = keep.y; keep = null; requestAnimationFrame(function () { window.scrollTo(0, y); }); }
   }, { passive: true });
   // the map itself should not grab focus (that is what makes iPhone scroll)
   document.addEventListener("focusin", function (e) {
@@ -4637,7 +4661,8 @@ window.lvAskCancel = async function (orderId) {
   var NAMES = ["order-cancelled", "order-confirmed", "order-reminder", "new-order", "new-listing", "points", "vendor-of-week", "order-completed", "handed-over", "dispute",
     "withdrawal-approved", "withdrawal-rejected", "payout-sent", "moved-up", "general", "empty-orders", "empty-vendors", "empty-cart", "empty-bank", "empty-messages", "empty-notifications",
     "manage-listings", "monthly-listing", "reviews", "working-hours", "requests", "suggestions", "support", "settings", "tx-all", "tx-pending", "tx-ready", "tx-onway", "tx-paid",
-    "stat-orders", "stat-followers", "stat-views", "stat-wishlist"];
+    "stat-orders", "stat-followers", "stat-views", "stat-wishlist",
+    "out-of-stock", "cash", "diamond", "chart", "new-arrival", "store", "gift", "bars", "cart-list", "search", "map-pin"];
   window.LV3D = {}; NAMES.forEach(function (n) { window.LV3D[n] = "/icons3d/lv/" + n + ".webp"; });
   window.lv3dIcon = function (name, size, alt) {
     var src = window.LV3D[name]; if (!src) return "";
@@ -4678,4 +4703,553 @@ window.lvAskCancel = async function (orderId) {
     ni1.__lv3d = true; window.notificationSystemIconHtml = ni1;
     try { notificationSystemIconHtml = ni1; } catch (_) {}
   }
+})();
+
+/* ===== Black theme = Dark theme, everywhere: every style written for Dark is copied for Black (Deep black) when the page
+   loads, unless Black already has its own style for that exact element. Page backgrounds and colour variables are left
+   alone, so Black stays truly black; cards, rows and text get the same dark treatment as in Dark. ===== */
+(function () {
+  "use strict";
+  var DARK = /\[data-theme=["']?dark["']?\]/g, seen = typeof WeakSet === "function" ? new WeakSet() : null, mirror = null;
+  function parts(sel) { var out = [], depth = 0, cur = ""; for (var i = 0; i < sel.length; i++) { var c = sel[i]; if (c === "(") depth++; if (c === ")") depth--; if (c === "," && !depth) { out.push(cur.trim()); cur = ""; } else cur += c; } if (cur.trim()) out.push(cur.trim()); return out; }
+  function norm(s) { return s.replace(/\s+/g, " ").replace(/["']/g, "").trim(); }
+  function walk(list, fn, wrap) {
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (r.type === 1) fn(r, wrap);
+      else if ((r.type === 4 || r.type === 12) && r.cssRules) walk(r.cssRules, fn, (r.type === 4 ? "@media " + r.conditionText : "@supports " + r.conditionText));
+    }
+  }
+  function sheets() { var out = []; for (var i = 0; i < document.styleSheets.length; i++) { var sh = document.styleSheets[i]; if (sh.ownerNode && sh.ownerNode.id === "lvBlackMirror") continue; try { if (sh.cssRules) out.push(sh); } catch (_) {} } return out; }
+  function run() {
+    var have = {}, add = [];
+    var all = sheets();
+    all.forEach(function (sh) { walk(sh.cssRules, function (r) { parts(r.selectorText || "").forEach(function (p) { if (/data-theme=["']?black/.test(p)) have[norm(p)] = 1; }); }); });
+    all.forEach(function (sh) {
+      walk(sh.cssRules, function (r, wrap) {
+        if (seen && seen.has(r)) return; if (seen) seen.add(r);
+        var sel = r.selectorText || ""; if (sel.indexOf("data-theme") < 0) return;
+        var outSel = parts(sel).filter(function (p) {
+          if (!/data-theme=["']?dark/.test(p) || /black/.test(p)) return false;
+          DARK.lastIndex = 0;
+          var rest = p.split(DARK).pop();
+          return !/^\s*(body)?\s*$/.test(rest);   // the page itself (html / body) keeps Black's own background
+        }).map(function (p) { DARK.lastIndex = 0; return p.replace(DARK, '[data-theme="black"]'); }).filter(function (p) { return !have[norm(p)]; });
+        if (!outSel.length) return;
+        var decl = [];
+        for (var k = 0; k < r.style.length; k++) { var prop = r.style[k]; if (prop.indexOf("--") === 0) continue; decl.push(prop + ":" + r.style.getPropertyValue(prop) + (r.style.getPropertyPriority(prop) ? " !important" : "")); }
+        if (!decl.length) return;
+        var txt = outSel.join(",") + "{" + decl.join(";") + "}";
+        add.push(wrap ? wrap + "{" + txt + "}" : txt);
+      });
+    });
+    if (!add.length) return;
+    if (!mirror) { mirror = document.createElement("style"); mirror.id = "lvBlackMirror"; }
+    mirror.appendChild(document.createTextNode(add.join("\n") + "\n"));
+    document.head.appendChild(mirror);   // stays last
+  }
+  function soon() { try { run(); } catch (e) { console.warn("[Levromart] black theme", e); } }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", soon); else setTimeout(soon, 0);
+  setTimeout(soon, 2500); setTimeout(soon, 9000);
+  try { new MutationObserver(function () { if (document.documentElement.getAttribute("data-theme") === "black") soon(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch (_) {}
+})();
+
+/* ===== Order history shows each order like the order list: the product's picture, name, price, the other person and the
+   status (dates stay as headings). ===== */
+(function () {
+  "use strict";
+  var orig = window.orderHistoryInnerHtml;
+  if (typeof orig !== "function" || orig.__lvo) return;
+  var f = function (historyOrders, isCustomerView, sourcePerspective) {
+    if (typeof window.orderListHtml !== "function") return orig.apply(this, arguments);
+    var byDate = new Map();
+    (historyOrders || []).forEach(function (o) {
+      var iso = (typeof orderActivityIso === "function" ? orderActivityIso(o) : null) || o.created_at;
+      var key = new Date(iso).toLocaleDateString("en-NG", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key).push(o);
+    });
+    var inner = "";
+    byDate.forEach(function (dayOrders, dateKey) {
+      inner += '<div class="order-history-date"><i class="fa-regular fa-calendar"></i><span>' + esc(dateKey) + "</span></div>";
+      inner += '<div class="order-history-day lvo-list lvo-hist-day">' + dayOrders.map(function (o) {
+        return String(window.orderListHtml([o], isCustomerView, sourcePerspective)).replace(/^<div class="lvo-list">/, "").replace(/<\/div>$/, "");
+      }).join("") + "</div>";
+    });
+    return inner;
+  };
+  f.__lvo = true; window.orderHistoryInnerHtml = f;
+  try { orderHistoryInnerHtml = f; } catch (_) {}
+})();
+
+/* ===== Admin: approving, rejecting or deleting a vendor never hangs on "Approving…": after 25 seconds the button comes back
+   with a clear message (the step itself is safe to try again). ===== */
+(function () {
+  "use strict";
+  var NAMES = { admin_set_vendor_status: 1, admin_delete_vendor: 1 };
+  function wrap() {
+    if (typeof sb === "undefined" || !sb || typeof sb.rpc !== "function" || sb.rpc.__lvTimeout) return;
+    var rpc0 = sb.rpc;
+    var rpc1 = function (name) {
+      var call = rpc0.apply(this, arguments);
+      if (!NAMES[name]) return call;
+      var timer;
+      var late = new Promise(function (res) { timer = setTimeout(function () { res({ data: null, error: { message: "This is taking too long. Check your connection and try again." } }); }, 25000); });
+      return Promise.race([Promise.resolve(call).then(function (r) { clearTimeout(timer); return r; }), late]);
+    };
+    rpc1.__lvTimeout = true; sb.rpc = rpc1;
+  }
+  wrap(); setTimeout(wrap, 1500); setTimeout(wrap, 5000);
+})();
+
+/* ===== Settings: the font size and Levi size scales only change when they are dragged on purpose. Scrolling the page with a
+   finger that lands on a scale used to change it by itself. ===== */
+(function () {
+  "use strict";
+  var IDS = { levroFontScaleRange: "setLevromartFontScale", leviSizeRange: "setLeviFabSize" };
+  var g = null;
+  function apply(el, v) { el.value = v; var fn = window[IDS[el.id]]; if (typeof fn === "function") { try { fn(v); } catch (_) {} } }
+  document.addEventListener("touchstart", function (e) {
+    var el = e.target && e.target.closest && e.target.closest("input[type=range]");
+    if (!el || !IDS[el.id]) { g = null; return; }
+    var t = e.touches[0];
+    g = { el: el, v0: el.value, x: t.clientX, y: t.clientY, ok: false, no: false };
+  }, { capture: true, passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!g || g.ok || g.no) return;
+    var t = e.touches[0], dx = Math.abs(t.clientX - g.x), dy = Math.abs(t.clientY - g.y);
+    if (dy > 6 && dy > dx) { g.no = true; apply(g.el, g.v0); }     // a scroll: leave the setting as it was
+    else if (dx > 8 && dx > dy) g.ok = true;                      // a real sideways drag
+  }, { capture: true, passive: true });
+  document.addEventListener("input", function (e) {
+    if (!g || e.target !== g.el) return;
+    if (g.no || !g.ok) { e.stopImmediatePropagation(); g.el.value = g.v0; }
+  }, true);
+  document.addEventListener("touchend", function () {
+    if (g && !g.ok && g.el.value !== g.v0) apply(g.el, g.v0);
+    g = null;
+  }, { capture: true, passive: true });
+})();
+
+/* ===== Vendor requests page, refurbished like the customer's: a friendly header, the request box picture instead of the hand,
+   two clean tabs and neat empty states with a 3D picture. ===== */
+(function () {
+  "use strict";
+  var BOX = "<svg viewBox='0 0 24 24' width='26' height='26' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 22V12'/><path d='M20.27 18.27 22 20'/><path d='M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559'/><path d='M3.29 7 12 12l8.71-5'/><path d='m7.5 4.27 8.997 5.148'/><circle cx='18.5' cy='16.5' r='2.5'/></svg>";
+  function empty(icon, title, text, btn) {
+    return '<div class="lv3d-empty vrq-empty">' + (typeof lv3dIcon === "function" ? lv3dIcon(icon, 112) : "") + "<strong>" + title + "</strong><span>" + text + "</span>" + (btn || "") + "</div>";
+  }
+  function tidy(html) {
+    html = String(html == null ? "" : html);
+    if (html.indexOf("vendor-requests-page") < 0 || html.indexOf("vrq-ready") >= 0) return html;
+    html = html.replace('<div class="vendor-requests-page">', '<div class="vendor-requests-page vrq-ready">' + (typeof lvPageHero === "function" ? lvPageHero("request") : ""));
+    html = html.replace(/<h2><i class=['"]fa-solid fa-hand['"]><\/i> Requests /, '<h2 class="vrq-title"><span class="rq-ic vrq-ic">' + BOX + '</span><span class="vrq-tt"><b>Requests</b><small>What customers need, and what you asked for.</small></span> ');
+    html = html.replace('<i class="fa-solid fa-users"></i> Customer requests', "Customer requests").replace('<i class="fa-solid fa-list-check"></i> My requests', "My requests");
+    html = html.replace('<div class="empty-state">No customer requests to show right now.</div>', empty("requests", "No requests right now", "When a customer asks for something you sell, it shows up here and you get a notification."));
+    html = html.replace('<div class="empty-state">No requests in your sector right now.</div>', empty("requests", "Nothing in your sector yet", "Requests in your sector show up here. You can switch to all requests above."));
+    html = html.replace(/<div class="empty-state"><i class="fa-solid fa-list-check"[^>]*><\/i>You haven't posted any requests yet\.<br><button type="button" class="btn btn-sm" style="margin-top:\.7rem;" onclick="navigate\('requestEquipment'\)">Post a request<\/button><\/div>/,
+      empty("manage-listings", "You haven't asked for anything yet", "Vendors are customers too. Post what you need and other shops send you offers.", '<button type="button" class="btn lvo-btn" onclick="navigate(\'requestEquipment\')"><i class="fa-solid fa-plus"></i> Post a request</button>'));
+    return html;
+  }
+  function wrap() {
+    var f = window.renderVendorRequests; if (typeof f !== "function" || f.__vrq) return;
+    var w = async function () { return tidy(await f.apply(this, arguments)); };
+    w.__vrq = true; w.__lvw = f.__lvw; w.__lvrw = f.__lvrw; window.renderVendorRequests = w;
+    try { renderVendorRequests = w; } catch (_) {}
+  }
+  wrap(); setTimeout(wrap, 1300); setTimeout(wrap, 4200);
+})();
+
+/* ===== Revenue chart: a small palette button next to its title lets the shop pick the chart's colour (kept on this phone) ===== */
+(function () {
+  "use strict";
+  var KEY = "lv-chart-colour", COLS = ["#16a06a", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#ca8a04", "#475569"];
+  function saved() { try { return localStorage.getItem(KEY) || ""; } catch (_) { return ""; } }
+  function paint(wrap, c) { if (c) wrap.style.setProperty("--primary", c); else wrap.style.removeProperty("--primary"); }
+  var orig = window.buildRevenueChart;
+  if (typeof orig !== "function" || orig.__lvpal) return;
+  var f = function () {
+    var wrap = orig.apply(this, arguments);
+    try {
+      paint(wrap, saved());
+      var label = wrap.querySelector(".modern-chart-card > .flex > p");
+      if (label) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "lvc-pal-btn"; b.setAttribute("aria-label", "Chart colour"); b.title = "Chart colour";
+        b.innerHTML = '<i class="fa-solid fa-palette"></i>';
+        var row = document.createElement("div"); row.className = "lvc-pal hidden"; row.setAttribute("role", "radiogroup"); row.setAttribute("aria-label", "Chart colour");
+        row.innerHTML = COLS.map(function (c) { return '<button type="button" role="radio" aria-label="Colour" data-c="' + c + '" style="--c:' + c + '"' + (saved() === c ? ' aria-checked="true"' : "") + "></button>"; }).join("");
+        label.appendChild(b);
+        wrap.querySelector(".modern-chart-card").insertBefore(row, wrap.querySelector(".modern-chart-svg"));
+        b.addEventListener("click", function (e) { e.stopPropagation(); row.classList.toggle("hidden"); });
+        row.addEventListener("click", function (e) {
+          var s = e.target.closest("[data-c]"); if (!s) return;
+          var c = s.getAttribute("data-c");
+          try { localStorage.setItem(KEY, c); } catch (_) {}
+          document.querySelectorAll(".revenue-chart-wrap").forEach(function (w) { paint(w, c); });
+          row.querySelectorAll("[data-c]").forEach(function (x) { x.setAttribute("aria-checked", String(x === s)); });
+          row.classList.add("hidden");
+        });
+      }
+    } catch (_) {}
+    return wrap;
+  };
+  f.__lvpal = true; window.buildRevenueChart = f;
+  try { buildRevenueChart = f; } catch (_) {}
+})();
+
+/* ===== Share cards: a light watermark behind the QR card. The Levromart mark here and there; map pins on a map card; tags and
+   bags on a product card. Drawn on screen and in the saved picture. ===== */
+(function () {
+  "use strict";
+  var MARK = '<path d="M8.6 17.4a7.4 7.4 0 0 1 0-10.8" fill="none" stroke-width="2.6" stroke-linecap="round"/><path d="M15.4 6.6a7.4 7.4 0 0 1 0 10.8" fill="none" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2.6" stroke="none"/>';
+  var PIN = '<path d="M12 21s-6.5-5.6-6.5-10.4a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z" stroke="none"/><circle cx="12" cy="10.6" r="2.4" fill="#fff" stroke="none"/>';
+  var TAG = '<path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.4 1.4 0 0 1 0 2l-6.1 6.1a1.4 1.4 0 0 1-2 0Z" stroke="none"/><circle cx="8" cy="8" r="1.6" fill="#fff" stroke="none"/>';
+  var BAG = '<path d="M5 8h14l-1 12.5H6Z" stroke="none"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke-width="1.8"/>';
+  function g(shape, x, y, s, r, col) { return '<g transform="translate(' + x + " " + y + ") rotate(" + r + ") scale(" + s + ') translate(-12 -12)" fill="' + col + '" stroke="' + col + '">' + shape + "</g>"; }
+  window.lvQrWatermarkSvg = function (kind, col) {
+    col = col || "#0f9d6b";
+    var extra = kind === "map" ? [PIN, PIN] : kind === "product" ? [TAG, BAG] : [MARK, MARK];
+    var body = g(MARK, 28, 30, 1.5, -12, col) + g(extra[0], 118, 22, 1.15, 14, col) + g(extra[1], 82, 92, 1.3, -8, col) + g(MARK, 150, 120, 1.05, 20, col) + g(extra[0], 22, 132, 1.05, 8, col);
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="176" height="160" viewBox="0 0 176 160">' + body + "</svg>";
+  };
+  window.lvQrWatermarkUrl = function (kind, col) { return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(window.lvQrWatermarkSvg(kind, col)); };
+  // on the saved picture: tiles the pattern lightly over the white card (X, Y, W, H, rounded R)
+  window.lvQrWatermark = function (x, kind, X, Y, W, H, R, col) {
+    return new Promise(function (done) {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          x.save();
+          x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); x.clip();
+          x.globalAlpha = 0.07;
+          var tile = document.createElement("canvas"); tile.width = 352; tile.height = 320;
+          tile.getContext("2d").drawImage(img, 0, 0, 352, 320);
+          x.fillStyle = x.createPattern(tile, "repeat"); x.fillRect(X, Y, W, H);
+          x.restore();
+        } catch (_) {}
+        done();
+      };
+      img.onerror = function () { done(); };
+      img.src = window.lvQrWatermarkUrl(kind, col);
+    });
+  };
+  // on screen: the card body gets the same pattern (colour of the chosen gradient)
+  new MutationObserver(function () {
+    var card = document.querySelector("#lvqrSheet .lvqr-card"); if (!card) return;
+    var body = card.querySelector(".lvqr-body"); if (!body) return;
+    var kind = card.classList.contains("is-map") ? "map" : card.classList.contains("is-product") ? "product" : "shop";
+    var col = "#0f9d6b";
+    try { var cs = getComputedStyle(card); col = (cs.getPropertyValue("--g2") || cs.getPropertyValue("--g1") || col).trim() || col; } catch (_) {}
+    var key = kind + col;
+    if (body.__wm === key) return; body.__wm = key;
+    body.style.setProperty("--lvqr-wm", 'url("' + window.lvQrWatermarkUrl(kind, col) + '")');
+    body.classList.add("lvqr-wm");
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+})();
+
+/* ===== Levi for vendors =====
+   1. "Add a product" walks the shop through the listing step by step with tap-to-choose answers (type, name, a suggested
+      description, sector, category, condition, sale/rent, price, commission or monthly, delivery, stock). At the photos step
+      it opens the add form already filled in and points at "Add photos".
+   2. "What's selling?" / "How is my shop doing?": answers from Levromart's own data.
+   3. Vendors see these as ready-made suggestions in Levi, and in the box's placeholder. ===== */
+(function () {
+  "use strict";
+  var W = null;   // the walk-through in progress
+  function isVendor() { try { return typeof vendor !== "undefined" && !!vendor && !!vendor.id; } catch (_) { return false; } }
+  function say(text) { try { appendAiChatMessage("assistant", text); persistAiMessage("assistant", text); } catch (_) {} }
+  function lastBubble() { var box = document.getElementById("aiChatMessages"); if (!box) return null; var all = box.querySelectorAll(".ai-msg-assistant, .ai-chat-msg.assistant, [data-role='assistant']"); return all.length ? all[all.length - 1] : box.lastElementChild; }
+  function chips(list, onPick, opts) {
+    setTimeout(function () {
+      var host = lastBubble(); if (!host) return;
+      var row = document.createElement("div"); row.className = "lvw-chips" + (opts && opts.cls ? " " + opts.cls : "");
+      list.forEach(function (c) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "lvw-chip"; b.innerHTML = c.html || esc(c.label);
+        b.onclick = function () { if (row.__used) return; row.__used = true; row.classList.add("used"); b.classList.add("on"); try { appendAiChatMessage("user", c.label); persistAiMessage("user", c.label); } catch (_) {} onPick(c.value, c.label); };
+        row.appendChild(b);
+      });
+      host.appendChild(row);
+      try { var box = document.getElementById("aiChatMessages"); box.scrollTop = box.scrollHeight; } catch (_) {}
+    }, 60);
+  }
+  function hint(placeholder) { var i = document.getElementById("aiChatInput"); if (i) { i.placeholder = placeholder; try { i.focus({ preventScroll: true }); } catch (_) {} } }
+  function resetHint() { var i = document.getElementById("aiChatInput"); if (i) i.placeholder = isVendor() ? "Add a product, ask what's selling…" : "Ask Levi anything…"; }
+  function money(t) { var m = String(t).replace(/[,\s]/g, "").match(/(\d+(?:\.\d+)?)(k)?/i); if (!m) return null; var n = Number(m[1]) * (m[2] ? 1000 : 1); return n > 0 ? n : null; }
+  function sectorsList() { try { return (typeof sectors !== "undefined" && sectors) || []; } catch (_) { return []; } }
+  function catsFor(sectorId) { return (window.__categories || []).filter(function (c) { return !sectorId || String(c.sector_id) === String(sectorId); }); }
+  function describe(name, d) {
+    var n = String(name).trim(), cond = d.condition === "new" ? "Brand new" : d.condition === "used-good" ? "Used and in good condition" : d.condition === "used-fair" ? "Used, fair condition" : "";
+    if (d.service) return n + " by a trusted local vendor. Clear pricing, friendly service and quick replies. Message me to book a time that suits you.";
+    return n + (cond ? " – " + cond.toLowerCase() : "") + ". Good quality and ready to go. Message me for more pictures, sizes or colours, and I'll answer quickly.";
+  }
+  // ---- the walk-through, one question at a time ----
+  var STEPS = {
+    type: function () {
+      say("Let's add it together. **What are you adding?**");
+      chips([{ label: "Product", value: "product" }, { label: "Service", value: "service" }, { label: "Package (bundle)", value: "package" }], function (v) {
+        if (v === "package") { W = null; resetHint(); say("Packages are built from products you already have. I'm opening the package form for you."); setTimeout(function () { closeLevi(); if (typeof openAddPackageModal === "function") openAddPackageModal(); }, 500); return; }
+        W.d.service = v === "service"; go("name");
+      });
+    },
+    name: function () { W.want = "name"; say("What's it called? Type the name (for example *" + (W.d.service ? "Hair braiding" : "Nike Air Force 1, size 43") + "*)."); hint("Type the name…"); },
+    desc: function () {
+      var sug = describe(W.d.name, W.d);
+      W.d.descSuggestion = sug;
+      say("Here is a description you can use:\n\n" + sug);
+      chips([{ label: "Use this", value: "use" }, { label: "I'll write my own", value: "own" }, { label: "Skip for now", value: "skip" }], function (v) {
+        if (v === "use") { W.d.desc = sug; go("sector"); } else if (v === "own") { W.want = "desc"; say("Okay, type your description."); hint("Type your description…"); } else go("sector");
+      });
+    },
+    sector: function () {
+      var list = sectorsList();
+      if (!list.length) return go(W.d.service ? "service_unit" : "condition");
+      say("Which **sector** is it in?");
+      chips(list.slice(0, 14).map(function (s) { return { label: s.name, value: s.id }; }), function (v) { W.d.sector = v; go("category"); });
+    },
+    category: function () {
+      var list = catsFor(W.d.sector);
+      if (!list.length) return go(W.d.service ? "service_unit" : "condition");
+      say("And the **category**?");
+      chips(list.slice(0, 18).map(function (c) { return { label: c.name, value: c.id }; }), function (v) { W.d.category = v; go(W.d.service ? "service_unit" : "condition"); });
+    },
+    condition: function () {
+      say("What **condition** is it in?");
+      chips([{ label: "New", value: "new" }, { label: "Used - good", value: "used-good" }, { label: "Used - fair", value: "used-fair" }], function (v) { W.d.condition = v; go("listing"); });
+    },
+    listing: function () {
+      say("Are you **selling** it, **renting** it out, or both?");
+      chips([{ label: "Sale only", value: "sale" }, { label: "Rent only", value: "rent" }, { label: "Rent & sale", value: "both" }], function (v) { W.d.listing = v; go(v === "rent" ? "rent" : "price"); });
+    },
+    service_unit: function () {
+      say("How do you **charge** for it?");
+      chips([{ label: "One-time (flat)", value: "flat" }, { label: "Per hour", value: "hour" }, { label: "Per day", value: "day" }, { label: "Per week", value: "week" }], function (v) { W.d.unit = v; go("price"); });
+    },
+    price: function () { W.want = "price"; say("What's the **price** in naira? (for example *15000*)"); hint("Price in ₦…"); },
+    rent: function () {
+      W.want = "rent"; say("What's the **rent** in naira, and per day or per week? (for example *3000 a day*)"); hint("Rent, e.g. 3000 a day…");
+    },
+    billing: function () {
+      say("How would you like to pay Levromart for this listing?\n\n- **Commission:** 3% of each completed sale, nothing up front.\n- **Monthly:** ₦999 a month for this listing, no commission (paid through Paystack).");
+      chips([{ label: "Commission (3%)", value: "commission" }, { label: "Monthly (₦999)", value: "monthly" }], function (v) { W.d.billing = v; go(W.d.service ? "photos" : "delivery"); });
+    },
+    delivery: function () {
+      say("How does **delivery** work?");
+      chips([{ label: "Free delivery", value: "free" }, { label: "Flat fee", value: "flat" }, { label: "By distance (per km)", value: "distance" }], function (v) {
+        W.d.delivery = v;
+        if (v === "flat") { W.want = "fee"; say("How much is the delivery fee? (₦)"); hint("Delivery fee in ₦…"); }
+        else if (v === "distance") { W.want = "perkm"; say("How much per kilometre? (₦, at most 1,000)"); hint("₦ per km…"); }
+        else go("stock");
+      });
+    },
+    stock: function () {
+      say("How many do you have in **stock**?");
+      chips([{ label: "Just 1", value: 1 }, { label: "2-5 (I'll type it)", value: "type" }, { label: "Don't track stock", value: 0 }], function (v) {
+        if (v === "type") { W.want = "stock"; hint("How many?"); say("Type the number."); return; }
+        W.d.stock = v; go("photos");
+      });
+    },
+    photos: function () {
+      say("Great, that's everything except the **photos**. I'm opening your listing with all of this filled in. Tap **Add photos** (I've highlighted it), check the details, then save.");
+      var d = W.d; W = null; resetHint();
+      setTimeout(function () { fillForm(d); }, 700);
+    }
+  };
+  function go(step) { if (!W) return; W.step = step; W.want = null; resetHint(); STEPS[step](); }
+  function start() { W = { d: {}, step: "type", want: null }; STEPS.type(); }
+  function closeLevi() { try { var p = document.getElementById("aiChatPanel"); if (p && !p.classList.contains("hidden") && typeof toggleAiChat === "function") toggleAiChat(); } catch (_) {} }
+  async function fillForm(d) {
+    closeLevi();
+    try { if (typeof navigate === "function" && typeof currentView !== "undefined" && currentView !== "vendorProducts") await navigate("vendorProducts"); } catch (_) {}
+    window.__lfWant = d.service ? "service" : "product";
+    try { await window.openAddProductModal(); } catch (_) { return; }
+    var set = function (id, v, fire) { var el = document.getElementById(id); if (!el || v == null) return; if (el.type === "checkbox") el.checked = !!v; else el.value = v; if (fire) { try { el.dispatchEvent(new Event(fire, { bubbles: true })); } catch (_) {} } };
+    setTimeout(function () {
+      try {
+        set("prodIsService", d.service, "change");
+        set("prodName", d.name, "input");
+        if (d.desc) set("prodDesc", d.desc, "input");
+        if (d.sector) { set("prodSector", d.sector); try { loadProdCategoriesForSector(d.category || ""); } catch (_) {} }
+        if (d.category) set("prodCategory", d.category, "change");
+        if (!d.service && d.condition) set("prodCondition", d.condition, "change");
+        if (!d.service && d.listing) set("prodListingType", d.listing, "change");
+        if (d.service && d.unit) set("prodServiceUnit", d.unit, "change");
+        if (d.price) set("prodSalePrice", d.price, "input");
+        if (d.rent) { set("prodRentalRate", d.rent, "input"); set("prodRateUnit", d.rentUnit || "day", "change"); }
+        if (d.billing) set("prodBillingModel", d.billing, "change");
+        if (d.delivery) { set("prodDeliveryMode", d.delivery, "change"); if (d.fee) set("prodDeliveryFee", d.fee, "input"); if (d.perkm) set("prodDeliveryPerKm", d.perkm, "input"); }
+        if (d.stock > 0) { set("prodTrackQuantity", true, "change"); set("prodQtyTotal", d.stock, "input"); }
+        try { updateProductFormFields(); } catch (_) {}
+        try { updateProductSaveButtonLabel(); } catch (_) {}
+      } catch (_) {}
+      var drop = document.getElementById("photoDropzone");
+      if (drop) {
+        try { drop.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) {}
+        drop.classList.add("lvw-glow"); setTimeout(function () { drop.classList.remove("lvw-glow"); }, 6000);
+      }
+    }, 450);
+  }
+  // answers typed while the walk-through waits for one
+  function typed(text) {
+    var t = String(text).trim(), d = W.d;
+    if (/^(cancel|stop|never ?mind|quit)$/i.test(t)) { W = null; resetHint(); return "Okay, I've stopped. Nothing was saved."; }
+    switch (W.want) {
+      case "name": if (t.length < 2) return "Please type the name."; d.name = t.slice(0, 120); setTimeout(function () { go("desc"); }, 50); return "**" + d.name + "**, nice.";
+      case "desc": d.desc = t.slice(0, 2000); setTimeout(function () { go("sector"); }, 50); return "Got it.";
+      case "price": { var p = money(t); if (!p) return "Please type the price as a number, for example *15000*."; d.price = p; setTimeout(function () { go(d.listing === "both" ? "rent" : "billing"); }, 50); return "₦" + p.toLocaleString("en-NG") + ", noted."; }
+      case "rent": { var r = money(t); if (!r) return "Please type the rent as a number, for example *3000 a day*."; d.rent = r; d.rentUnit = /week/i.test(t) ? "week" : "day"; setTimeout(function () { go("billing"); }, 50); return "₦" + r.toLocaleString("en-NG") + " a " + d.rentUnit + ", noted."; }
+      case "fee": { var f = money(t); if (f == null) return "Please type the fee as a number."; d.fee = f; setTimeout(function () { go("stock"); }, 50); return "Delivery ₦" + f.toLocaleString("en-NG") + "."; }
+      case "perkm": { var k = money(t); if (!k) return "Please type a number, for example *200*."; d.perkm = Math.min(1000, k); setTimeout(function () { go("stock"); }, 50); return "₦" + d.perkm + " per km."; }
+      case "stock": { var s = parseInt(t.replace(/\D/g, ""), 10); if (!s) return "Please type a number."; d.stock = s; setTimeout(function () { go("photos"); }, 50); return s + " in stock."; }
+    }
+    return null;
+  }
+  // ---- what's selling, and how the shop is doing ----
+  async function insights(mine) {
+    if (mine && isVendor()) {
+      try {
+        var since = new Date(Date.now() - 30 * 864e5).toISOString();
+        var r = await sb.from("orders").select("total_amount,status,created_at").eq("vendor_id", vendor.id).gte("created_at", since).limit(500);
+        var rows = (r && r.data) || [], done = rows.filter(function (o) { return o.status === "completed"; });
+        var total = done.reduce(function (a, o) { return a + Number(o.total_amount || 0); }, 0);
+        var week = done.filter(function (o) { return Date.parse(o.created_at) > Date.now() - 7 * 864e5; }).reduce(function (a, o) { return a + Number(o.total_amount || 0); }, 0);
+        return "**Your shop, last 30 days**\n\n- Orders: **" + rows.length + "** (" + done.length + " completed)\n- Sales completed: **" + (typeof naira === "function" ? naira(total) : "₦" + total) + "**\n- This week: **" + (typeof naira === "function" ? naira(week) : "₦" + week) + "**\n\nTip: shops with 3 or more clear photos and a short description get more orders. Ask me *what's selling on Levromart* to see what shoppers want right now.";
+      } catch (_) { return "I couldn't read your orders just now. Please try again in a moment."; }
+    }
+    var cache = null; try { cache = typeof readOfflineHomeCache === "function" ? readOfflineHomeCache() : null; } catch (_) {}
+    var trend = (cache && cache.trending) || [];
+    if (!trend.length) return "I don't have enough shopping data yet. Open the Home page once, then ask me again.";
+    var cats = {}, catName = {};
+    ((cache && cache.categories) || []).forEach(function (c) { catName[c.id] = c.name; });
+    trend.forEach(function (p) { var k = p.category_id; if (!k) return; cats[k] = (cats[k] || 0) + 1; });
+    var topCats = Object.keys(cats).sort(function (a, b) { return cats[b] - cats[a]; }).slice(0, 4).map(function (k) { return catName[k] || "Other"; });
+    var topItems = trend.slice(0, 5).map(function (p) { return "- " + p.name + (p.sale_price != null ? " · " + (typeof naira === "function" ? naira(p.sale_price) : "₦" + p.sale_price) : ""); });
+    return "**What's selling on Levromart right now**\n\n" + (topCats.length ? "Most popular categories: **" + topCats.join(", ") + "**.\n\n" : "") + "Trending items:\n" + topItems.join("\n") + "\n\nWant to add something in one of these? Say *add a product* and I'll walk you through it.";
+  }
+  // ---- plugging into Levi ----
+  var orig = window.resolveLeviLocalAction;
+  if (typeof orig === "function" && !orig.__lvVendor) {
+    var f = async function (text) {
+      var q = String(text || "").toLowerCase();
+      if (W && W.want) { var ans = typed(text); if (ans) return { handled: true, reply: ans }; }
+      if (isVendor() && /\b(add|create|list|upload|post|sell)\b[\s\S]{0,30}\b(product|item|listing|service|something|this)\b|\bnew (product|listing)\b/.test(q) && !/\bcart\b/.test(q)) {
+        return { handled: true, reply: "Sure, I'll help you list it.", afterReply: start };
+      }
+      if (/\b(what('s| is| are)?|which)\b[\s\S]{0,20}\b(selling|sells|trending|popular|in demand|hot)\b|\bbest[- ]?sell/.test(q)) return { handled: true, reply: await insights(false) };
+      if (isVendor() && /\bhow('s| is)\b[\s\S]{0,20}\bmy (shop|store|sales|business|market)\b|\bmy (sales|stats|performance)\b/.test(q)) return { handled: true, reply: await insights(true) };
+      return orig.apply(this, arguments);
+    };
+    f.__lvVendor = true; window.resolveLeviLocalAction = f;
+    try { resolveLeviLocalAction = f; } catch (_) {}
+  }
+  // vendors: ready-made suggestions when Levi opens with an empty chat, and a helpful placeholder
+  function offer() {
+    if (!isVendor()) return;
+    resetHint();
+    var box = document.getElementById("aiChatMessages"); if (!box || box.querySelector(".lvw-vsug")) return;
+    var row = document.createElement("div"); row.className = "lvw-chips lvw-vsug";
+    [["Add a product for me", "Add a product"], ["What's selling on Levromart?", "What's selling on Levromart?"], ["How is my shop doing?", "How is my shop doing?"]].forEach(function (s) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "lvw-chip"; b.textContent = s[0];
+      b.onclick = function () { var i = document.getElementById("aiChatInput"); if (!i) return; i.value = s[1]; row.remove(); try { sendAiChatMessage(); } catch (_) {} };
+      row.appendChild(b);
+    });
+    box.appendChild(row);
+  }
+  document.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest("#aiChatFab")) setTimeout(offer, 450); }, true);
+  setTimeout(resetHint, 3000);
+})();
+
+/* ===== Levi's photo touch-up: in the add / edit listing form, "Enhance with Levi" brightens and balances the colours of
+   the new photos, sharpens them a little and frames wide or tall ones neatly on a square. "Undo" brings the originals back. ===== */
+(function () {
+  "use strict";
+  function load(file) { return new Promise(function (res, rej) { var u = URL.createObjectURL(file), i = new Image(); i.onload = function () { res({ img: i, url: u }); }; i.onerror = rej; i.src = u; }); }
+  function pct(hist, total, p) { var s = 0, t = total * p; for (var i = 0; i < 256; i++) { s += hist[i]; if (s >= t) return i; } return 255; }
+  async function enhance(file) {
+    var L = await load(file), img = L.img;
+    var max = 1600, sc = Math.min(1, max / Math.max(img.width, img.height));
+    var w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h);
+    var data = x.getImageData(0, 0, w, h), p = data.data, n = w * h;
+    // 1) levels: stretch the brightness range (0.5% / 99.5%) and balance the colours a little (grey world, half strength)
+    var hist = new Uint32Array(256), sr = 0, sg = 0, sb2 = 0;
+    for (var i = 0; i < p.length; i += 4) { var lum = (p[i] * 299 + p[i + 1] * 587 + p[i + 2] * 114) / 1000 | 0; hist[lum]++; sr += p[i]; sg += p[i + 1]; sb2 += p[i + 2]; }
+    var lo = pct(hist, n, 0.005), hi = pct(hist, n, 0.995); if (hi - lo < 40) { lo = Math.max(0, lo - 10); hi = Math.min(255, hi + 10); }
+    var avg = (sr + sg + sb2) / 3 / n, kr = 1 + ((avg / (sr / n)) - 1) * 0.5, kg = 1 + ((avg / (sg / n)) - 1) * 0.5, kb = 1 + ((avg / (sb2 / n)) - 1) * 0.5;
+    var span = 255 / Math.max(1, hi - lo);
+    var lut = new Uint8ClampedArray(256);
+    for (var v = 0; v < 256; v++) { var y = (v - lo) * span / 255; y = Math.min(1, Math.max(0, y)); y = y + 0.08 * Math.sin(Math.PI * y) * (y - 0.5) * -1 + 0.04 * Math.sin(Math.PI * y); lut[v] = y * 255; }
+    for (var j = 0; j < p.length; j += 4) {
+      var r = lut[Math.min(255, p[j] * kr | 0)], g = lut[Math.min(255, p[j + 1] * kg | 0)], b = lut[Math.min(255, p[j + 2] * kb | 0)];
+      // 2) a touch more colour (vibrance: muted colours more than bright ones)
+      var m = (r + g + b) / 3, mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0, k = 0.18 * (1 - sat);
+      p[j] = r + (r - m) * k; p[j + 1] = g + (g - m) * k; p[j + 2] = b + (b - m) * k;
+    }
+    x.putImageData(data, 0, 0);
+    // 3) a little sharper (unsharp mask from a softened copy)
+    var soft = document.createElement("canvas"); soft.width = w; soft.height = h;
+    var sx = soft.getContext("2d"); sx.filter = "blur(1.2px)"; sx.drawImage(c, 0, 0);
+    var a = x.getImageData(0, 0, w, h), bl = sx.getImageData(0, 0, w, h).data, q = a.data;
+    for (var z = 0; z < q.length; z += 4) { q[z] += (q[z] - bl[z]) * 0.45; q[z + 1] += (q[z + 1] - bl[z + 1]) * 0.45; q[z + 2] += (q[z + 2] - bl[z + 2]) * 0.45; }
+    x.putImageData(a, 0, 0);
+    // 4) framing: a wide or tall photo sits in the middle of a square on a soft, blurred copy of itself
+    var out = c, ratio = w / h;
+    if (ratio > 1.25 || ratio < 0.8) {
+      var S = Math.max(w, h), o = document.createElement("canvas"); o.width = o.height = S;
+      var ox = o.getContext("2d");
+      ox.filter = "blur(28px) brightness(1.08) saturate(1.1)"; ox.drawImage(c, -S * 0.1, -S * 0.1, S * 1.2, S * 1.2); ox.filter = "none";
+      ox.fillStyle = "rgba(255,255,255,.18)"; ox.fillRect(0, 0, S, S);
+      ox.shadowColor = "rgba(0,0,0,.22)"; ox.shadowBlur = S * 0.03; ox.shadowOffsetY = S * 0.012;
+      ox.drawImage(c, (S - w) / 2, (S - h) / 2);
+      out = o;
+    }
+    URL.revokeObjectURL(L.url);
+    var blob = await new Promise(function (res) { out.toBlob(res, "image/jpeg", 0.9); });
+    var name = String(file.name || "photo").replace(/\.[^.]+$/, "") + "-enhanced.jpg";
+    return new File([blob], name, { type: "image/jpeg", lastModified: Date.now() });
+  }
+  var originals = null, enhancedList = null;
+  function redraw() {
+    try { syncNewProductPhotoInput(); } catch (_) {}
+    var wrap = document.getElementById("prodNewPhotoPreviews"); if (wrap) wrap.innerHTML = "";
+    try { renderNewProductPhotos(); } catch (_) {}
+    try { renderProductDisplayPicture(); } catch (_) {}
+    try { renderProductVariantPricing(); } catch (_) {}
+  }
+  function bar() {
+    var grid = document.getElementById("prodNewPhotoPreviews"); if (!grid) return;
+    var files = window.__newProductPhotoFiles || [];
+    var el = document.getElementById("lvEnhanceBar");
+    if (!files.length) { if (el) el.remove(); originals = null; return; }
+    if (originals && files !== enhancedList) originals = null;   // photos were added or removed since: a fresh start
+    if (!el) {
+      el = document.createElement("div"); el.id = "lvEnhanceBar"; el.className = "lv-enh";
+      grid.parentNode.insertBefore(el, grid.nextSibling);
+      el.addEventListener("click", async function (e) {
+        var b = e.target.closest("button"); if (!b || b.disabled) return;
+        if (b.dataset.act === "undo") { if (originals) { window.__newProductPhotoFiles = originals; originals = null; redraw(); } paint(); return; }
+        b.disabled = true; b.innerHTML = '<span class="lvthink-mark lv-enh-spin" aria-hidden="true"></span> Enhancing…';
+        try {
+          var src = (window.__newProductPhotoFiles || []).slice(), out = [];
+          for (var i = 0; i < src.length; i++) out.push(/-enhanced\.jpg$/.test(src[i].name) ? src[i] : await enhance(src[i]));
+          originals = src; window.__newProductPhotoFiles = enhancedList = out; redraw();
+          if (typeof showToast === "function") showToast("Photos enhanced. Tap Undo to get the originals back.", "success");
+        } catch (err) { if (typeof showToast === "function") showToast("Levi could not enhance these photos.", "error"); }
+        paint();
+      });
+    }
+    paint();
+    function paint() {
+      var state = originals ? "undo" : "go";
+      if (el.__state === state && !el.querySelector("button[disabled]")) return;   // nothing changed: do not redraw (no loop)
+      el.__state = state;
+      el.innerHTML = originals
+        ? '<span class="lv-enh-t"><i class="fa-solid fa-wand-magic-sparkles"></i> Enhanced by Levi</span><button type="button" data-act="undo" class="lv-enh-undo"><i class="fa-solid fa-rotate-left"></i> Undo</button>'
+        : '<span class="lv-enh-t"><i class="fa-solid fa-wand-magic-sparkles"></i> Make your photos look their best</span><button type="button" data-act="go" class="lv-enh-go"><i class="fa-solid fa-wand-magic-sparkles"></i> Enhance with Levi</button>';
+    }
+  }
+  var t = 0;
+  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; bar(); }, 120); }).observe(document.body, { childList: true, subtree: true });
+  window.lvEnhancePhoto = enhance;   // for checking on a preview
 })();

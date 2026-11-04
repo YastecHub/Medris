@@ -212,9 +212,9 @@ window.renderVendorMapRail = function(){
     const modal=document.createElement('div');
     modal.id='addListingChooser'; modal.className='modal';
     modal.innerHTML=`<div class="modal-content"><div class="drawer-header"><h3 style="margin:0;"><i class="fa-solid fa-plus"></i> Add to your shop</h3><button type="button" class="drawer-close-btn" onclick="byId('addListingChooser')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><p class="muted" style="margin:.25rem 0 .7rem;">Choose what you want to add.</p>
-      <button type="button" class="add-listing-choice" onclick="chooseAddListing('product')"><i class="fa-solid fa-box"></i><span class="add-listing-choice-copy"><strong>Product</strong><small>Sell or rent a physical item.</small></span></button>
-      <button type="button" class="add-listing-choice" onclick="chooseAddListing('service')"><i class="fa-solid fa-hand-holding-heart"></i><span class="add-listing-choice-copy"><strong>Service</strong><small>Offer a service with its own price or rate.</small></span></button>
-      <button type="button" class="add-listing-choice" onclick="chooseAddListing('package')"><i class="fa-solid fa-box-open"></i><span class="add-listing-choice-copy"><strong>Package</strong><small>Bundle your products into one fixed-price deal.</small></span></button>
+      <button type="button" class="add-listing-choice" onclick="chooseAddListing('product')"><img class="alc-3d" src="/icons3d/vh-products.webp" alt="" width="52" height="52" decoding="async"><span class="add-listing-choice-copy"><strong>Product</strong><small>Sell or rent a physical item.</small></span></button>
+      <button type="button" class="add-listing-choice" onclick="chooseAddListing('service')"><img class="alc-3d" src="/icons3d/vh-services.webp" alt="" width="52" height="52" decoding="async"><span class="add-listing-choice-copy"><strong>Service</strong><small>Offer a service with its own price or rate.</small></span></button>
+      <button type="button" class="add-listing-choice" onclick="chooseAddListing('package')"><img class="alc-3d" src="/icons3d/vh-packages.webp" alt="" width="52" height="52" decoding="async"><span class="add-listing-choice-copy"><strong>Package</strong><small>Bundle your products into one fixed-price deal.</small></span></button>
     </div>`;
     document.body.appendChild(modal); trackModalOpened('addListingChooser');
   };

@@ -8,6 +8,7 @@ function renderTerms() {
     <h3>1. What Levromart is (and isn't)</h3>
     <p>Levromart is a marketplace and transaction-facilitation platform. We provide the technology, vendor onboarding/verification, payment and order records, messaging, and dispute process. We are not the seller or renter of record for a vendor's listing. Every product, service, or package is supplied by the independent vendor shown on the listing, and that vendor is responsible for the legality, authenticity, condition, safety, availability, accuracy, and fulfilment of what they offer.</p>
     <p>Vendor verification means that Levromart has completed the verification checks required for that account; it is not a guarantee that every future transaction or listing by that vendor will be problem-free.</p>
+    <p>Verification badges: a <strong>green tick</strong> beside a vendor's name means Levromart has verified them as a student of the campus shown; a <strong>blue tick</strong> means Levromart has verified them as a seller who is not a student (for example, a seller based on or near a campus). A paid premium (gold) verification may be introduced later; these terms will be updated before it is.</p>
     <p>Only categories that currently have live listings from verified vendors are shown when you browse by category; the marketplace, its promotions and its search results change as vendors add or remove listings.</p>
 
     <h3>2. Accounts</h3>
