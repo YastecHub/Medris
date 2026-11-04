@@ -22,6 +22,9 @@ export const RPC_READS: ReadonlySet<string> = new Set([
   "get_vendor_followers_v2", "get_vendor_product_regions", "get_vendor_spotlight", "get_vendor_stats",
   "get_vendor_suggestions", "get_withdrawal_summary", "admin_list_withdrawals", "get_setup_status", "get_refund_wallet", "admin_list_cancellations", "list_my_chat_lists", "list_my_conversations", "search_ai_conversations",
   "search_product_ids", "search_products_full_v2", "validate_referral_code",
+  // the Levromart wallet (migration 0033) and Levromart's commission wallet (migration 0035)
+  "get_levro_wallet", "get_levro_wallet_history", "find_wallet_people", "admin_wallets",
+  "get_levromart_wallet", "get_levromart_wallet_history",
 ]);
 
 export const RPC_WRITES: ReadonlySet<string> = new Set([
@@ -51,6 +54,8 @@ export const RPC_WRITES: ReadonlySet<string> = new Set([
   "vendor_confirm_reported_payment", "vendor_confirm_unreported_payment", "vendor_dispute_reported_payment",
   "vendor_dispute_unreported_payment", "vendor_respond_to_dispute", "vendor_set_storefront_active",
   "vendor_suggest_order_quantity",
+  "set_wallet_handle", "wallet_send", "wallet_topup", "wallet_withdraw", "wallet_pay_order",
+  "admin_decide_wallet_withdrawal", "admin_set_wallet_frozen", "set_levromart_payout_account", "withdraw_levromart_commission",
 ]);
 
 export const isBackendRpc = (name: string): boolean => RPC_READS.has(name) || RPC_WRITES.has(name);

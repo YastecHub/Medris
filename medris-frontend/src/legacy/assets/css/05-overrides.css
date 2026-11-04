@@ -6420,3 +6420,21 @@ html:root:root body #app .vh-hub .vh-tabs button{border-radius:999px!important}
 html:root:root body #app .vh-hub .vl-discarded{border-radius:16px!important}
 html:root:root body #app .vh-hub .vh-hero .vl-add,html:root:root body #app .vh-hub .vh-hero .vl-add *{color:#0b3d2e!important;-webkit-text-fill-color:#0b3d2e!important}
 html:root:root body #app .vh-hub .vh-hero .vl-add{background-image:none!important;display:flex!important;align-items:center;justify-content:center;gap:8px;font-size:.95rem!important}
+
+/* My Listings tiles, from the founder's design: colour tiles with the 3D picture top-right, number and name bottom-left */
+html:root:root body #app .vh-hub .vh-hero{background:linear-gradient(120deg,#00402a 0%,#029f50 70%,#01b75f 100%)!important}
+html:root:root body #app .vh-hub .vh-hero-art{right:4px!important;top:8px!important;width:118px!important;height:auto!important}
+html:root:root body #app .vh-hub .vh-stat{position:relative!important;overflow:hidden!important;min-height:132px!important;justify-content:flex-end!important;padding:12px!important;color:#fff!important}
+html:root:root body #app .vh-hub .vh-stat-ico{position:absolute!important;top:6px!important;right:4px!important;width:76%!important;height:auto!important;background:none!important;border-radius:0!important;display:block!important}
+html:root:root body #app .vh-hub .vh-stat .vh-3d{width:100%!important;height:auto!important;max-height:84px;object-fit:contain;object-position:right top;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25))}
+html:root:root body #app .vh-hub .vh-stat>span:not(.vh-stat-ico){position:relative;z-index:1}
+html:root:root body #app .vh-hub .vh-stat b,html:root:root body #app .vh-hub .vh-stat small{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important;text-shadow:0 1px 6px rgba(0,0,0,.25)}
+html:root:root body #app .vh-hub .vh-stat b{font-size:1.5rem!important}
+html:root:root body #app .vh-hub .vh-stat small{font-size:.8rem!important;font-weight:800!important}
+html:root:root body #app .vh-hub .vh-stat-products,html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-products{background:linear-gradient(160deg,#17845a 0%,#014a2e 100%)!important}
+html:root:root body #app .vh-hub .vh-stat-services,html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-services{background:linear-gradient(160deg,#e7891f 0%,#7e4114 100%)!important}
+html:root:root body #app .vh-hub .vh-stat-packages,html:root:root[data-theme="dark"] body #app .vh-hub .vh-stat-packages{background:linear-gradient(160deg,#775c96 0%,#392651 100%)!important}
+html:root:root body #app .vh-hub .vh-stat{height:136px!important;min-height:0!important;max-height:136px!important;display:block!important}
+html:root:root body #app .vh-hub .vh-stat>span:not(.vh-stat-ico){position:absolute!important;left:12px;bottom:10px;z-index:1;display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:0!important}
+html:root:root body #app .vh-hub .vh-stat .vh-3d,html:root:root body #app .vh-hub .vh-hero-art{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+html:root:root body #app .vh-hub .vh-stat-ico{top:8px!important;right:6px!important;width:80%!important}

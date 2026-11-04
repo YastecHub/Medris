@@ -62,7 +62,13 @@ class BackendRpcCall implements PromiseLike<RpcResult> {
           warned.shown = true;
           console.warn(`[levroData] backend unavailable (${err.status || err.code}); using Supabase directly for now.`);
         }
-        return Promise.resolve(this.viaSupabase(this.signal));
+        const fallback = await Promise.resolve(this.viaSupabase(this.signal));
+        // A function that lives only on the backend is not in the database: say what the backend said (for example
+        // "being set up"), not Supabase's "Could not find the function ... in the schema cache".
+        if (fallback?.error && (fallback.error.code === "PGRST202" || /could not find the function/i.test(fallback.error.message || ""))) {
+          return failure(err.message || "This is not available right now. Please try again later.", err.code, err.status, err.details);
+        }
+        return fallback;
       }
       return failure(err.message, err.code, err.status, err.details);
     }
