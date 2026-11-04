@@ -102,6 +102,18 @@ export class WalletRepository {
     await this.db.execute(sql`update public.wallet_accounts set handle = ${handle}, handle_changed_at = now() where user_id = ${userId}`);
   }
 
+  async markRefundProcessed(id: string): Promise<void> {
+    await this.db.execute(sql`update public.paystack_refunds set status = 'processed', last_error = null where id = ${id}`);
+  }
+
+  /** Marks a shop payout as moved into the wallet; false when it was not waiting (already moved or paid). */
+  async payoutToWallet(payoutId: string, amountKobo: number, commissionKobo: number): Promise<boolean> {
+    const rows = await jsonReturning<{ id: string }>(this.db, sql`
+      update public.vendor_payouts set status = 'to_wallet', amount_kobo = ${amountKobo}, commission_kobo = ${commissionKobo}, hold_reason = null, withdrawal_id = null
+      where id = ${payoutId} and status = 'on_hold' returning id`);
+    return rows.length > 0;
+  }
+
   async entryExists(userId: string, kind: Kind, reference: string): Promise<boolean> {
     return (await jsonRow(this.db, sql`select 1 as x from public.wallet_entries where user_id = ${userId} and kind = ${kind} and reference = ${reference}`)) !== null;
   }

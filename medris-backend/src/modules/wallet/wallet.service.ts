@@ -1,6 +1,4 @@
 import crypto from "node:crypto";
-import { sql } from "drizzle-orm";
-import { jsonReturning } from "../../database/json.js";
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
@@ -439,10 +437,9 @@ export async function creditWalletRefund(tx: Tx, refund: { id: string; order_id:
   if (!(await repo.entryExists(refund.buyer_id, "refund_in", "refund:" + refund.id))) {
     await repo.move(refund.buyer_id, Number(refund.amount_kobo), "refund_in", { reference: "refund:" + refund.id, orderId: refund.order_id, note: "Refund" });
   }
-  await tx.execute(sqlProcessed(refund.id));
+  await new WalletRepository(tx).markRefundProcessed(refund.id);
   return true;
 }
-const sqlProcessed = (id: string) => sql`update public.paystack_refunds set status = 'processed', last_error = null where id = ${id}`;
 
 /** A shop's earnings for some orders move into the owner's wallet (marks those payouts "to_wallet"). Returns the amount moved. */
 export async function creditWalletEarnings(tx: Tx, ownerUserId: string, rows: { payout_id: string; order_id: string; net_kobo: string; commission_kobo: number }[]): Promise<number> {
@@ -452,10 +449,7 @@ export async function creditWalletEarnings(tx: Tx, ownerUserId: string, rows: { 
   let total = 0;
   for (const r of rows) {
     const amount = Number(r.net_kobo);
-    const moved = await jsonReturning<{ id: string }>(tx, sql`
-      update public.vendor_payouts set status = 'to_wallet', amount_kobo = ${amount}, commission_kobo = ${r.commission_kobo}, hold_reason = null, withdrawal_id = null
-      where id = ${r.payout_id} and status = 'on_hold' returning id`);
-    if (!moved.length) continue;
+    if (!(await repo.payoutToWallet(r.payout_id, amount, r.commission_kobo))) continue;
     if (amount > 0 && !(await repo.entryExists(ownerUserId, "earnings_in", "payout:" + r.payout_id))) {
       await repo.move(ownerUserId, amount, "earnings_in", { reference: "payout:" + r.payout_id, orderId: r.order_id, note: "Shop earnings" });
       total += amount;
