@@ -897,6 +897,7 @@ async function transcribeAudio(body, res) {
   const me = await meRes.json().catch(() => ({}));
   if (!meRes.ok || !me?.id) { res.status(401).json({ error: "Session expired." }); return; }
   const prompt = "Transcribe this short voice clip exactly as spoken (English, possibly with a Nigerian accent). Output ONLY the spoken words with normal punctuation. No quotes, no commentary. If there is no clear speech, output nothing.";
+  let lastProblem = "";
   for (const model of modelChain(MODEL)) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -904,7 +905,7 @@ async function transcribeAudio(body, res) {
         headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
         body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: "audio/wav", data: audio } }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } }),
       });
-      if (!r.ok) continue;
+      if (!r.ok) { lastProblem = `${model}: ${r.status} ${String((await r.json().catch(() => ({})))?.error?.message || "").slice(0, 160)}`; console.error("[levi] transcribe failed:", lastProblem); continue; }
       goodModel = model;
       const j = await r.json();
       const text = String(j?.candidates?.[0]?.content?.parts?.map((x) => x.text || "").join(" ") || "").replace(/\s+/g, " ").trim();
@@ -912,7 +913,8 @@ async function transcribeAudio(body, res) {
       return;
     } catch (_) { /* try the fallback model */ }
   }
-  res.status(502).json({ error: "Couldn't transcribe that." });
+  // the reason Google gave (for example an invalid key or a used-up quota) goes back too, so the problem can be seen and fixed
+  res.status(502).json({ error: "Couldn't transcribe that.", detail: lastProblem || "no model answered" });
 }
 
 
@@ -1345,7 +1347,7 @@ module.exports = async function handler(req, res) {
     res.status(200).json({ reply: finalText });
   } catch (err) {
     console.error("[Levromart] Levi handler error:", err);
-    res.status(500).json({ error: "Levi could not complete that request." });
+    res.status(500).json({ error: "Levi could not complete that request.", detail: String(err && err.message || err).slice(0, 200) });
   }
 };
 

@@ -5422,6 +5422,47 @@ window.lvAskCancel = async function (orderId) {
       return (r && r.data) || [];
     } catch (_) { return []; }
   }
+  // ---- a shop's own reviews, and what buyers want: answered from Levromart's data, never with product suggestions ----
+  function nf(n) { return Number(n || 0).toLocaleString("en-NG"); }
+  async function myReviews() {
+    if (!isVendor()) return "Only shops have reviews. Open your shop first and I'll show you what customers say.";
+    try {
+      var r = await sb.from("reviews").select("rating,comment,created_at,buyer_name").eq("vendor_id", vendor.id).order("created_at", { ascending: false }).limit(200);
+      var rows = (r && r.data) || [];
+      if (!rows.length) return "**No reviews yet** ⭐\n\nCustomers can review your shop after an order is completed. Deliver quickly, keep them updated in chat, and ask happy buyers to leave a review: it helps you rank higher and win Vendor of the week.";
+      var avg = rows.reduce(function (a, x) { return a + Number(x.rating || 0); }, 0) / rows.length, dist = [0, 0, 0, 0, 0, 0];
+      rows.forEach(function (x) { dist[Math.max(1, Math.min(5, Number(x.rating) || 0))]++; });
+      var recent = rows.filter(function (x) { return x.comment && String(x.comment).trim(); }).slice(0, 4).map(function (x) {
+        return "- " + "★".repeat(Number(x.rating) || 0) + " \"" + String(x.comment).trim().slice(0, 180) + "\" (" + String(x.buyer_name || "A buyer").split(/\s+/)[0] + ")"; });
+      var low = rows.filter(function (x) { return Number(x.rating) <= 2; }).length;
+      return ["**What customers say about your shop** ⭐", "",
+        "- Average rating: **" + avg.toFixed(1) + " / 5** from **" + rows.length + "** review" + (rows.length === 1 ? "" : "s"),
+        "- 5★ " + dist[5] + " · 4★ " + dist[4] + " · 3★ " + dist[3] + " · 2★ " + dist[2] + " · 1★ " + dist[1],
+        "", recent.length ? "**Latest comments**\n" + recent.join("\n") : "Nobody has written a comment yet, only star ratings.",
+        "", low ? "Tip: " + low + " low rating" + (low === 1 ? "" : "s") + ". Reply to unhappy buyers quickly in chat and fix the problem; good service turns ratings around." : "Great work. Keep it up! 🎉"].join("\n");
+    } catch (_) { return "I couldn't read your reviews just now. Please try again in a moment."; }
+  }
+  async function buyerDemand() {
+    try {
+      var since = new Date(Date.now() - 30 * 864e5).toISOString();
+      var rq = await sb.from("equipment_requests").select("title,created_at,status").gte("created_at", since).order("created_at", { ascending: false }).limit(60);
+      var reqs = ((rq && rq.data) || []).map(function (x) { return String(x.title || "").trim(); }).filter(Boolean);
+      var pv = await sb.from("products").select("name,view_count").eq("status", "active").order("view_count", { ascending: false }).limit(8);
+      var top = ((pv && pv.data) || []).filter(function (x) { return Number(x.view_count) > 0; });
+      var mine = [];
+      if (isVendor()) {
+        var mv = await sb.from("products").select("name,view_count").eq("vendor_id", vendor.id).neq("status", "deleted").order("view_count", { ascending: false }).limit(3);
+        mine = ((mv && mv.data) || []).filter(function (x) { return Number(x.view_count) > 0; });
+      }
+      var out = ["**What buyers are looking for** 🔎", ""];
+      if (reqs.length) { var seen = {}, uniq = reqs.filter(function (t) { var k = t.toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; }); out.push("**Asked for in Requests (last 30 days)**"); uniq.slice(0, 8).forEach(function (t) { out.push("- " + t); }); out.push(""); }
+      if (top.length) { out.push("**Most viewed on Levromart**"); top.forEach(function (x) { out.push("- " + x.name + " · " + nf(x.view_count) + " views"); }); out.push(""); }
+      if (mine.length) { out.push("**Your most viewed listings**"); mine.forEach(function (x) { out.push("- " + x.name + " · " + nf(x.view_count) + " views"); }); out.push(""); }
+      if (!reqs.length && !top.length) return "Not enough buyer activity yet to show what people are looking for. Check back in a few days.";
+      out.push(isVendor() ? "If you have any of the requested items, list them or reply to the request on the **Requests** page; buyers there are ready to buy." : "Can't find something? Post a request and shops will come to you.");
+      return out.join("\n");
+    } catch (_) { return "I couldn't read that just now. Please try again in a moment."; }
+  }
   // ---- how Levromart works: short, accurate answers to the common questions ----
   window.lvLeviFaq = function (raw) {
     var q = String(raw || "").toLowerCase();
@@ -5558,6 +5599,8 @@ window.lvAskCancel = async function (orderId) {
       var q = String(text || "").toLowerCase();
       if (W && W.want) { var ans = typed(text); if (ans) return { handled: true, reply: ans }; }
       // questions about how Levromart works are answered right away, never turned into a product search
+      if (/\bmy reviews?\b|\b(customers?|buyers?|people)\b[\s\S]{0,30}\b(say(ing)?|think|feel)\b[\s\S]{0,30}\b(my (shop|store|business|products?)|about me)\b/.test(q)) return { handled: true, reply: await myReviews() };
+      if (/\b(buyers?|customers?|people|students?)\b[\s\S]{0,25}\b(search(ing)?|looking for|asking for|want(ing)?|requesting)\b|\bwhat('s| is) in demand\b/.test(q)) return { handled: true, reply: await buyerDemand() };
       var faq = window.lvLeviFaq ? window.lvLeviFaq(q) : null;
       if (faq) { cartWanted = 0; return { handled: true, reply: faq }; }
       // the answer to "what would you like to add to your cart?" is the thing to add, not a new search
@@ -5724,7 +5767,7 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
 (function () {
   "use strict";
   // a text ending in a space is put in the box for the person to finish; "!" runs an action instead of asking
-  var VENDOR = [["How is my shop doing?", "How is my shop doing?"], ["My reviews", "What are customers saying about my shop?"], ["What are buyers searching for?", "What are buyers searching for on Levromart?"], ["Set up delivery", "!delivery"], ["Add a listing", "Add a listing"], ["How do I get paid?", "How do I get paid for my orders?"]];
+  var VENDOR = [["How is my shop doing?", "How is my shop doing?"], ["My reviews", "What are customers saying about my shop?"], ["What are buyers searching for?", "What are buyers searching for on Levromart?"], ["Set up delivery", "!delivery"], ["Add a listing", "Add a listing"], ["Add to my cart", "Add to my cart"], ["How do I get paid?", "How do I get paid for my orders?"]];
   var SHOPPER = [["Best-rated shops for…", "Which shops have the best reviews for "], ["Closest vendor", "Which vendor is closest to me?"], ["Delivery to my campus", "How much is delivery to my campus for "], ["Where is my order?", "Where is my latest order?"], ["What's selling?", "What's selling on Levromart?"], ["How do refunds work?", "How do refunds work on Levromart?"]];
   var HINTS = { v: ["Ask Levi anything…", "How is my shop doing this week?", "What are customers saying about my shop?", "What should I list next?"], s: ["Ask Levi anything…", "Best-rated shops for sneakers?", "Who delivers free to my campus?", "Closest shop selling phone cases?", "Where is my order?"] };
   var hintI = 0;

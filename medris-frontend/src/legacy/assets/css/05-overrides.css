@@ -7440,3 +7440,14 @@ html:root:root:root:root body #app .vl-tabs .vh-stat.active{box-shadow:0 0 0 3px
 .lde-soon{margin:0;padding:.6rem .8rem;border-radius:14px;background:#eff6ff;color:#1e40af;font-size:.78rem;font-weight:600;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start}
 :root[data-theme="dark"] .lde-soon{background:rgba(59,130,246,.14);color:#bfdbfe}
 #aiChatTyping .lv-copy,.lvthink-row .lv-copy,.ai-chat-msg:has(.lvthink) .lv-copy{display:none!important}
+/* ===== Levi: the send button in the brand green, and suggestion chips in soft, different colours ===== */
+html:root:root body #aiChatPanel button[onclick*="sendAiChatMessage"]{background:linear-gradient(135deg,#22c55e,#0b8a5f)!important;color:#fff!important;border:0!important;box-shadow:0 6px 16px rgba(11,138,95,.35)!important}
+html:root:root body #aiChatPanel button[onclick*="sendAiChatMessage"] i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root body #aiChatPanel button[onclick*="sendAiChatMessage"]:active{transform:scale(.94)}
+html:root:root body #lvLeviSuggest button{--c:#0b8a5f;--b:#e8f7ef;--l:#bfe8d1;background:var(--b)!important;color:var(--c)!important;border:1.5px solid var(--l)!important;-webkit-text-fill-color:var(--c)!important}
+html:root:root body #lvLeviSuggest button:nth-child(6n+2){--c:#1d4ed8;--b:#eaf1ff;--l:#c7d8fe}
+html:root:root body #lvLeviSuggest button:nth-child(6n+3){--c:#7c3aed;--b:#f3edff;--l:#dccbfd}
+html:root:root body #lvLeviSuggest button:nth-child(6n+4){--c:#b45309;--b:#fff4e5;--l:#fcd9a8}
+html:root:root body #lvLeviSuggest button:nth-child(6n+5){--c:#be185d;--b:#fdeef5;--l:#f8c6dc}
+html:root:root body #lvLeviSuggest button:nth-child(6n+6){--c:#0e7490;--b:#e7f8fb;--l:#b4e6ef}
+html:root:root[data-theme="dark"] body #lvLeviSuggest button,html:root:root[data-theme="black"] body #lvLeviSuggest button{background:color-mix(in srgb,var(--c) 16%,#111)!important;border-color:color-mix(in srgb,var(--c) 40%,#111)!important;color:color-mix(in srgb,var(--c) 45%,#fff)!important;-webkit-text-fill-color:color-mix(in srgb,var(--c) 45%,#fff)!important}
