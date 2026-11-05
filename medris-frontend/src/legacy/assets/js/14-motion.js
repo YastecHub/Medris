@@ -3988,7 +3988,7 @@ window.lvAskCancel = async function (orderId) {
     } catch (_) {}
   }
   setInterval(listen, 4000);
-  setInterval(function () { if (!document.hidden && signedIn() && W.data && document.querySelector(".lvw-card, .lw-card")) load(true).then(repaint); }, 5000);
+  setInterval(function () { if (!document.hidden && signedIn() && W.data && document.querySelector(".lvw-card, .lw-card") && Date.now() - (W.at || 0) > 11000) load(true).then(repaint); }, 6000);   // a wallet check at most every ~12 s: the notification already refreshes it at once
   document.addEventListener("visibilitychange", function () { if (!document.hidden && signedIn() && W.data) load(true).then(repaint); });
   window.lvW3Eye = function () { W.hide = !W.hide; try { localStorage.setItem("lv-w3-hide", W.hide ? "1" : "0"); } catch (_) {} repaint(); };
 
