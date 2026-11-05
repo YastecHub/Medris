@@ -18,6 +18,31 @@ export interface SaleProduct {
   track_quantity: boolean | null;
 }
 
+/** One delivery option of a listing (products.delivery_rules, migration 0041). */
+export interface DeliveryRule {
+  mode: "free" | "flat" | "distance";
+  fee?: number;
+  perKm?: number;
+  scope: "mine" | "selected" | "all";
+  campuses?: string[];
+}
+
+/**
+ * The option that applies to the buyer's campus: the shop's own campus ("mine"), then a campus the shop picked by
+ * name, then "every other campus". No match means the shop does not deliver there.
+ */
+export function pickDeliveryRule(rules: DeliveryRule[], shopCampus: string | null, campusId: string | null): DeliveryRule {
+  const campus = campusId ? String(campusId).trim() : "";
+  if (!campus || campus === "none") throw new AppError(400, "bad_request", "Choose the campus you want it delivered to.");
+  const own = shopCampus && shopCampus !== "none" ? shopCampus : null;
+  const rule =
+    rules.find((r) => r.scope === "mine" && own !== null && own === campus) ??
+    rules.find((r) => r.scope === "selected" && Array.isArray(r.campuses) && r.campuses.includes(campus)) ??
+    rules.find((r) => r.scope === "all");
+  if (!rule) throw new AppError(400, "bad_request", "This shop does not deliver to that campus. Choose pickup, or another item.");
+  return rule;
+}
+
 export interface NewOrder {
   buyerId: string;
   vendorId: string;
@@ -33,6 +58,7 @@ export interface NewOrder {
   paymentDepositPercent?: Numeric | null;
   commissionExempt?: boolean;
   packageId?: string | null;
+  deliveryCampusId?: string | null;
 }
 
 /**
@@ -110,24 +136,42 @@ export class CheckoutRepository {
    * Free, a flat fee, or per kilometre by straight-line distance from the shop (rounded to ₦50, at
    * least one kilometre). A distance fee needs the buyer's location.
    */
-  async deliveryFee(productId: string, lat: number | null, lng: number | null): Promise<Numeric> {
-    const p = await jsonRow<{ mode: string | null; fee: Numeric; per_km: Numeric; vlat: number | null; vlng: number | null }>(
+  async deliveryFee(productId: string, lat: number | null, lng: number | null, campusId: string | null = null): Promise<Numeric> {
+    const p = await jsonRow<{ mode: string | null; fee: Numeric; per_km: Numeric; vlat: number | null; vlng: number | null; rules: unknown; vcampus: string | null }>(
       this.db,
-      sql`select p.delivery_fee_mode::text as mode, coalesce(p.delivery_fee, 0)::text as fee, coalesce(p.delivery_fee_per_km, 0)::text as per_km, v.lat as vlat, v.lng as vlng
+      // to_jsonb(p): the delivery_rules column (0041) is read only when it exists
+      sql`select p.delivery_fee_mode::text as mode, coalesce(p.delivery_fee, 0)::text as fee, coalesce(p.delivery_fee_per_km, 0)::text as per_km, v.lat as vlat, v.lng as vlng,
+                 to_jsonb(p)->'delivery_rules' as rules, v.campus_id as vcampus
           from public.products p join public.vendors v on v.id = p.vendor_id where p.id = ${productId}`,
     );
+    if (p && Array.isArray(p.rules) && p.rules.length) {
+      // Delivery by campus: the option for the buyer's campus decides the fee.
+      const rule = pickDeliveryRule(p.rules as DeliveryRule[], p.vcampus, campusId);
+      if (rule.mode === "free") return "0";
+      if (rule.mode === "flat") return String(Math.max(0, Number(rule.fee) || 0));
+      const perKm = Math.min(1000, Math.max(0, Number(rule.perKm) || 0));
+      if (perKm <= 0) return "0";
+      if (p.vlat == null || p.vlng == null) throw new AppError(400, "bad_request", "This shop has not set its location yet, so delivery by distance is not available. Choose pickup or message the shop.");
+      if (lat == null || lng == null) throw new AppError(400, "bad_request", "Share your location to get this product's delivery fee.");
+      return this.distanceFee(String(perKm), p.vlat, p.vlng, lat, lng);
+    }
     if (!p || p.mode == null || p.mode === "free") return "0";
     if (p.mode === "flat") return p.fee;
     if (p.mode !== "distance") return "0";
     if (Number(p.per_km) <= 0) return "0";
     if (p.vlat == null || p.vlng == null) return p.fee;
     if (lat == null || lng == null) throw new AppError(400, "bad_request", "Share your location to get this product's delivery fee.");
+    return this.distanceFee(p.per_km, p.vlat, p.vlng, lat, lng);
+  }
+
+  /** Per kilometre by straight-line distance from the shop, at least one kilometre, rounded to ₦50. */
+  private async distanceFee(perKm: Numeric, vlat: number, vlng: number, lat: number, lng: number): Promise<Numeric> {
     const row = await jsonRow<{ fee: Numeric }>(
       this.db,
       sql`with c as (
-            select radians(${lat}::double precision - ${p.vlat}::double precision) as dlat, radians(${lng}::double precision - ${p.vlng}::double precision) as dlng),
-          a as (select sin(dlat/2)^2 + cos(radians(${p.vlat}::double precision)) * cos(radians(${lat}::double precision)) * sin(dlng/2)^2 as a from c)
-          select (round((${p.per_km}::numeric * greatest(6371::double precision * 2 * atan2(sqrt(a), sqrt(1 - a)), 1)) / 50) * 50)::text as fee from a`,
+            select radians(${lat}::double precision - ${vlat}::double precision) as dlat, radians(${lng}::double precision - ${vlng}::double precision) as dlng),
+          a as (select sin(dlat/2)^2 + cos(radians(${vlat}::double precision)) * cos(radians(${lat}::double precision)) * sin(dlng/2)^2 as a from c)
+          select (round((${perKm}::numeric * greatest(6371::double precision * 2 * atan2(sqrt(a), sqrt(1 - a)), 1)) / 50) * 50)::text as fee from a`,
     );
     return row!.fee;
   }
@@ -153,6 +197,7 @@ export class CheckoutRepository {
       ["paymentDepositPercent", "payment_deposit_percent", (v) => sql`${v as string | null}::numeric`],
       ["commissionExempt", "commission_exempt", (v) => sql`${v as boolean | null}::boolean`],
       ["packageId", "package_id", (v) => sql`${v as string | null}::uuid`],
+      ["deliveryCampusId", "delivery_campus_id", (v) => sql`${v as string | null}::text`],
     ];
     for (const [key, column, value] of optional) {
       if (o[key] === undefined) continue;

@@ -59,6 +59,7 @@ const delivery = (a: Args) => ({
   phone: str(a.p_delivery_phone),
   lat: num(a.p_buyer_lat),
   lng: num(a.p_buyer_lng),
+  campusId: str(a.p_delivery_campus_id),
 });
 
 /* ---------------------------------------------------------------- results */
