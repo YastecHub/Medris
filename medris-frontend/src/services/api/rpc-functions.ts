@@ -24,7 +24,7 @@ export const RPC_READS: ReadonlySet<string> = new Set([
   "search_product_ids", "search_products_full_v2", "validate_referral_code",
   // the Levromart wallet (migration 0033) and Levromart's commission wallet (migration 0035)
   "get_levro_wallet", "get_levro_wallet_history", "find_wallet_people", "admin_wallets",
-  "get_levromart_wallet", "get_levromart_wallet_history",
+  "get_levromart_wallet", "get_levromart_wallet_history", "get_levromart_wallet_entry",
 ]);
 
 export const RPC_WRITES: ReadonlySet<string> = new Set([

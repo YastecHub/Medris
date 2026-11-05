@@ -101,6 +101,20 @@ export class PlatformWalletService {
     );
   }
 
+  /** One line of Levromart's wallet with where the money came from (admins only). */
+  async entry(me: Identity | null, id: string | null) {
+    const user = need(me);
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) throw badRequest("Invalid transaction.");
+    return this.ready(() =>
+      this.db().asService(async (tx) => {
+        if (!(await new AccessRepository(tx).isAdmin(user.userId))) throw forbidden("Admin access required.");
+        const row = await new PlatformWalletRepository(tx).entry(id);
+        if (!row) throw badRequest("That transaction was not found.");
+        return row;
+      }),
+    );
+  }
+
   /** A super admin sets Levromart's bank account (password first). Withdrawals to it open 24 hours later. */
   async setAccount(me: Identity | null, input: { bankCode: string | null; accountNumber: string | null; confirmedName: string | null; password: string | null }) {
     const user = need(me);

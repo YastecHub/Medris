@@ -63,6 +63,12 @@ describe("the Levromart wallet", () => {
     expect(await balance(w.buyer.token)).toBe(198500); // 300000 - 100000 sent - 1500 fee
     expect(await balance(w.buyer2.token)).toBe(100000);
     expect(await rowOf(w, `select 1 as x from public.notifications where user_id = $1 and type = 'wallet_received'`, [w.buyer2.id])).toBeTruthy();
+    // the admin opens Levromart's fee line and sees the transfer behind it: from whom, to whom, how much
+    const feeLine = await rowOf<any>(w, `select e.id from public.platform_wallet_entries e join public.wallet_transfers t on e.reference = 'fee:transfer:' || t.id where t.from_user = $1`, [w.buyer.id]);
+    const detail = await call("get_levromart_wallet_entry", w.admin.token, { p_id: feeLine.id });
+    expect(detail.status).toBe(200);
+    expect(detail.data).toMatchObject({ kind: "transaction_fee", amount_kobo: "1500", from_handle: me, to_handle: to, transfer_amount_kobo: "100000", transfer_note: "for lunch" });
+    expect((await call("get_levromart_wallet_entry", w.buyer.token, { p_id: feeLine.id })).status).toBe(403);
     // a wallet on hold cannot send
     await w.db.query(`update public.wallet_accounts set frozen = true where user_id = $1`, [w.buyer.id]);
     expect((await call("wallet_send", w.buyer.token, { p_to: to, p_amount_kobo: 10000 })).status).toBe(403);
