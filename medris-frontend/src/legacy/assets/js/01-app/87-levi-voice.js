@@ -582,6 +582,12 @@ async function leviOfflineFallback(text) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
     return `Hi${name ? `, ${name}` : ''}. I'm Levi. Tell me what you need and I'll help you get there.`;
   }
+  // a question about how Levromart works is answered, never turned into a product search
+  const faq = window.lvLeviFaq ? window.lvLeviFaq(q) : null;
+  if (faq) return faq;
+  if (/^(how|why|when|what('s| is| are| does)|where do i|can i|do i|will i|is it|explain)\b/.test(q) && !/\b(sell|sells|buy|get me|find|price of|cost of|where can i (get|buy)|who has)\b/.test(q)) {
+    return "I can't reach my full brain for that question right now 😅 Please try again in a moment. I can still find products and shops, open your cart or orders, and explain getting paid, refunds, the wallet and delivery.";
+  }
   // Levi's server could not be reached: search the shops right here instead of giving a stock sentence
   try {
     const RELATED = { bottle: ["flask", "thermos", "tumbler"], chips: ["crisps", "plantain chips", "snacks"], gown: ["dress", "maxi"], dress: ["gown"], sneakers: ["shoes"], perfume: ["fragrance", "body spray"], wig: ["hair", "bundles"], phone: ["iphone", "samsung"] };
