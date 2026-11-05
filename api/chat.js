@@ -564,6 +564,76 @@ async function removeFromCart(args, ctx) {
   return { ok: true, product: { id: productId, name: row.product?.name || "item" }, clientDirective: `[[CARTSYNC]]` };
 }
 
+// Reviews: what buyers say about a shop, or the best-reviewed shops for an item. Only first names are shown.
+async function getReviews(args, ctx) {
+  let vendors = [];
+  if (args.mine) {
+    const mine = await getMyVendor(ctx);
+    const v = mine && (mine.vendor || mine.result || mine);
+    if (!v || !v.id) return { ok: false, message: "This account has no shop." };
+    vendors = [{ id: v.id, business_name: v.business_name, avg_rating: v.avg_rating, review_count: v.review_count }];
+  } else if (args.vendorId) {
+    const r = await restJson(ctx.url, `/rest/v1/vendors?id=eq.${enc(args.vendorId)}&select=id,business_name,avg_rating,review_count,lat,lng`, ctx.serviceHeaders);
+    vendors = r.ok ? (r.data || []) : [];
+  } else {
+    const found = await searchVendors({ query: args.vendorQuery || "", productQuery: args.productQuery || "", nearest: !!args.nearest, sort: "rating", limit: 12 }, ctx);
+    vendors = found.results || [];
+  }
+  if (!vendors.length) return { count: 0, results: [], message: args.productQuery ? `No shop on Levromart sells ${args.productQuery} yet.` : "No shop found." };
+  const ids = vendors.map((v) => v.id).slice(0, 12);
+  const rv = await restJson(ctx.url, `/rest/v1/reviews?vendor_id=in.(${ids.map(enc).join(",")})&select=vendor_id,rating,comment,created_at,buyer_name&order=created_at.desc&limit=200`, ctx.serviceHeaders);
+  const byVendor = {};
+  for (const r of (rv.ok ? rv.data : []) || []) (byVendor[r.vendor_id] = byVendor[r.vendor_id] || []).push(r);
+  const out = vendors.slice(0, 12).map((v) => {
+    const list = byVendor[v.id] || [];
+    const avg = list.length ? list.reduce((s, r) => s + Number(r.rating || 0), 0) / list.length : Number(v.avg_rating || 0);
+    return {
+      id: v.id, business_name: v.business_name, average_rating: Number(avg.toFixed(2)), review_count: list.length || Number(v.review_count || 0),
+      distance_km: v.distance_km ?? null, carries: v.carries || v.products || undefined,
+      recent_reviews: list.filter((r) => r.comment).slice(0, 3).map((r) => ({ rating: r.rating, comment: cleanText(r.comment, 220), by: String(r.buyer_name || "A buyer").split(/\s+/)[0], date: String(r.created_at || "").slice(0, 10) })),
+    };
+  });
+  // best first: rating weighted by how many reviews it rests on, so one 5-star review does not beat fifty 4.8s
+  out.sort((a, b) => (b.average_rating * Math.min(1, b.review_count / 5)) - (a.average_rating * Math.min(1, a.review_count / 5)) || b.review_count - a.review_count);
+  return { count: out.length, results: out.slice(0, Math.max(1, Math.min(8, Number(args.limit) || 5))) };
+}
+
+// Delivery to a campus: what a listing charges for the buyer's campus (delivery options by campus, 0041), or its single setting.
+async function getDeliveryToCampus(args, ctx) {
+  let productId = args.productId;
+  if (!productId && args.query) {
+    const found = await searchProducts({ query: args.query, limit: 1 }, ctx);
+    productId = found.results?.[0]?.id;
+  }
+  if (!productId) return { ok: false, message: "Tell me which product." };
+  const base = `/rest/v1/products?id=eq.${enc(productId)}&select=id,name,delivery_fee_mode,delivery_fee,delivery_fee_per_km,vendor:vendors(business_name,campus_id,lat,lng)`;
+  let r = await restJson(ctx.url, base.replace("select=id,", "select=id,delivery_rules,"), ctx.serviceHeaders);
+  if (!r.ok) r = await restJson(ctx.url, base, ctx.serviceHeaders);   // before migration 0041
+  const p = r.ok ? r.data?.[0] : null;
+  if (!p) return { ok: false, message: "I couldn't find that product." };
+  let campus = cleanText(args.campus, 160);
+  if (!campus && ctx.userId) {
+    const me = await restJson(ctx.url, `/rest/v1/users?id=eq.${enc(ctx.userId)}&select=campus_id`, ctx.serviceHeaders);
+    campus = me.ok ? (me.data?.[0]?.campus_id || "") : "";
+  }
+  const describe = (o) => o.mode === "free" ? "free delivery" : o.mode === "flat" ? `₦${Number(o.fee || 0).toLocaleString()} delivery` : `₦${Number(o.perKm || 0).toLocaleString()} per km`;
+  const rules = Array.isArray(p.delivery_rules) && p.delivery_rules.length ? p.delivery_rules : null;
+  const shopCampus = p.vendor?.campus_id || null;
+  if (!rules) {
+    const mode = p.delivery_fee_mode || "free";
+    return { product: p.name, shop: p.vendor?.business_name, same_for_every_campus: true, delivery: describe({ mode, fee: p.delivery_fee, perKm: p.delivery_fee_per_km }), pickup_available: true };
+  }
+  const want = (campus || "").toLowerCase();
+  const match = (c) => String(c || "").toLowerCase() === want || String(c || "").toLowerCase().includes(want);
+  const rule = (want && (rules.find((o) => o.scope === "mine" && shopCampus && match(shopCampus)) || rules.find((o) => o.scope === "selected" && (o.campuses || []).some(match)))) || rules.find((o) => o.scope === "all") || null;
+  return {
+    product: p.name, shop: p.vendor?.business_name, campus_asked: campus || null,
+    delivery_for_that_campus: !want ? null : rule ? describe(rule) : "not delivered there (pickup only)",
+    all_options: rules.map((o) => ({ campuses: o.scope === "mine" ? (shopCampus ? [shopCampus] : ["the shop's campus"]) : o.scope === "selected" ? o.campuses : ["every other campus"], delivery: describe(o) })),
+    pickup_available: true,
+  };
+}
+
 const TOOL_DECLARATIONS = [
   {
     name: "search_products",
@@ -655,6 +725,8 @@ const TOOL_DECLARATIONS = [
   { name:"get_my_vendor_orders", description:"Read the signed-in vendor's own orders and order items. Never expose private data belonging to other vendors.", parameters:{type:"OBJECT",properties:{}} },
   { name:"get_marketplace_trends", description:"Return aggregate public marketplace signals such as active product counts by sector, popular products by views, newest listings and verified vendor counts. Never identify individual customers.", parameters:{type:"OBJECT",properties:{}} },
   { name:"draft_message", description:"Prepare a message for a real vendor for the user to review and send. Never send it automatically.", parameters:{type:"OBJECT",properties:{vendorId:{type:"STRING"},message:{type:"STRING"}},required:["vendorId","message"]} },
+  { name:"get_reviews", description:"What buyers say about shops: average rating, number of reviews and recent review comments. Use productQuery for 'best/most trusted/highest rated shop for <item>' (returns the shops that sell it, best reviewed first), vendorId or vendorQuery for one shop, or mine=true for the signed-in vendor's own reviews.", parameters:{type:"OBJECT",properties:{productQuery:{type:"STRING"},vendorId:{type:"STRING"},vendorQuery:{type:"STRING"},mine:{type:"BOOLEAN"},nearest:{type:"BOOLEAN"},limit:{type:"INTEGER"}}} },
+  { name:"get_delivery_to_campus", description:"How much delivery costs for a product to a campus (the buyer's own campus when not given), and the product's delivery options for other campuses. Use for 'how much is delivery to UNILAG', 'is delivery free to my school', 'does this shop deliver to LASU'.", parameters:{type:"OBJECT",properties:{productId:{type:"STRING"},query:{type:"STRING"},campus:{type:"STRING"}}} },
   { name:"request_item", description:"Open the Levromart request flow prefilled with the item the user could not find.", parameters:{type:"OBJECT",properties:{query:{type:"STRING"}},required:["query"]} },
 ];
 
@@ -708,6 +780,13 @@ CORE BEHAVIOUR:
 - Treat the current turn as authoritative. Use the recent messages only to resolve references such as "this", "that", "the one you showed me", or "same vendor". Never carry an old product, vendor, search result, route, or navigation destination into a new request unless the user explicitly refers back to it. A new noun such as "scarf", "shoes", "book", or "hook" starts a new search.
 
 HOW LEVROMART WORKS (use this when people ask how things work; do not invent other rules):
+- Reviews: for "best", "most trusted" or "highest rated" shop for an item, call get_reviews with productQuery and give the top shops with their average rating, number of reviews and one short quote from a recent review (first names only). For "what do people say about <shop>" use get_reviews with vendorId or vendorQuery. A vendor asking "what are customers saying about my shop" gets get_reviews with mine=true.
+- Delivery by campus: a shop can set free delivery, a flat fee or a fee per km for different campuses; buyers choose their campus at checkout and pickup is always possible. For "how much is delivery to <campus>" or "is delivery free to my school" call get_delivery_to_campus. Vendors set this in Seller hub > Delivery settings ([[NAV:vendorDashboard]]).
+- Paying: every order is paid in full through Levromart (card, bank transfer or the Levromart wallet) before the shop hands it over. The shop gets the money after the buyer confirms they received it, or automatically 24 hours after delivery if the buyer does nothing. Levromart keeps 3% commission.
+- Refunds: a buyer can ask for a refund within 24 hours of placing the order, from the order page; refunds go back to the Levromart wallet or the card. After that a dispute can still be raised if what arrived is wrong.
+- Wallet: everyone has a Levromart wallet with an @tag. You can add money, send money to another @tag, pay for orders and withdraw to a bank. Moving money needs the 6-digit wallet PIN; a small fee (Paystack's) applies to transfers and withdrawals and is always shown before you confirm.
+- Requests: if nobody sells something, post a request and shops that have it respond ([[NAV:requestEquipment]]).
+- Vendor of the week: shops earn points for sales and good reviews; the top shop on each campus is Vendor of the week on Home.
 - Chat and calls: a customer and a vendor can message each other only while they have an accepted order together; the vendor cannot see the customer's name until the order is accepted. There is no Message button on product pages. Calls are in-app voice calls from the chat (phone button); phone numbers are never shown to the other person, and call audio is not recorded. Phone numbers and outside contact details cannot be shared in chat. A conversation closes 24 hours after its order is completed (it leaves the chat list and cannot be continued), but its messages are kept as a record and reappear if the same customer and vendor have another order.
 - Orders: the Orders page has a history button for finished orders, with search and Completed / Cancelled tabs.
 - Browsing: the category row at the top of Home lists only categories that currently have live listings; tapping one filters trending items, vendors, services, packages and Browse everything. Search has All, Products, Vendors, Services and Packages tabs. Banners on Home move by themselves and can be swiped.
@@ -745,6 +824,8 @@ async function executeTool(name, args, ctx) {
     case "get_marketplace_trends": return getMarketplaceTrends(args || {}, ctx);
     case "draft_message": return draftMessage(args || {}, ctx);
     case "request_item": return requestItem(args || {}, ctx);
+    case "get_reviews": return getReviews(args || {}, ctx);
+    case "get_delivery_to_campus": return getDeliveryToCampus(args || {}, ctx);
     default: return { ok: false, message: `Unknown Levi tool: ${name}` };
   }
 }

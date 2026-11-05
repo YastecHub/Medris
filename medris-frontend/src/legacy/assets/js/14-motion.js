@@ -5623,8 +5623,16 @@ window.lvOpenLevi = function () {
 window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico" src="/icons3d/lv/admin.webp" width="' + (px || 34) + '" height="' + (px || 34) + '" alt="Levromart team" decoding="async">'; };
 (function () {
   "use strict";
-  var VENDOR = [["Add a listing", "Add a listing"], ["What's selling?", "What's selling on Levromart?"], ["How is my shop doing?", "How is my shop doing?"], ["Add to my cart", "Add to my cart"]];
-  var SHOPPER = [["Closest vendor", "Which vendor is closest to me?"], ["Add to my cart", "Add to my cart"], ["How many vendors sell this?", "How many vendors sell "], ["What's selling?", "What's selling on Levromart?"]];
+  // a text ending in a space is put in the box for the person to finish; "!" runs an action instead of asking
+  var VENDOR = [["How is my shop doing?", "How is my shop doing?"], ["My reviews", "What are customers saying about my shop?"], ["What are buyers searching for?", "What are buyers searching for on Levromart?"], ["Set up delivery", "!delivery"], ["Add a listing", "Add a listing"], ["How do I get paid?", "How do I get paid for my orders?"]];
+  var SHOPPER = [["Best-rated shops for…", "Which shops have the best reviews for "], ["Closest vendor", "Which vendor is closest to me?"], ["Delivery to my campus", "How much is delivery to my campus for "], ["Where is my order?", "Where is my latest order?"], ["What's selling?", "What's selling on Levromart?"], ["How do refunds work?", "How do refunds work on Levromart?"]];
+  var HINTS = { v: ["Ask Levi anything…", "How is my shop doing this week?", "What are customers saying about my shop?", "What should I list next?"], s: ["Ask Levi anything…", "Best-rated shops for sneakers?", "Who delivers free to my campus?", "Closest shop selling phone cases?", "Where is my order?"] };
+  var hintI = 0;
+  setInterval(function () {
+    var input = document.getElementById("aiChatInput"), panel = document.getElementById("aiChatPanel");
+    if (!input || !panel || panel.classList.contains("hidden") || input.value || document.activeElement === input) return;
+    var list = HINTS[isVendor() ? "v" : "s"]; hintI = (hintI + 1) % list.length; input.placeholder = list[hintI];
+  }, 3500);
   function isVendor() { try { return typeof vendor !== "undefined" && !!vendor && !!vendor.id; } catch (_) { return false; } }
   function strip() {
     var panel = document.getElementById("aiChatPanel"); if (!panel || panel.classList.contains("hidden")) return;
@@ -5640,6 +5648,7 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
     list.forEach(function (s) {
       var b = document.createElement("button"); b.type = "button"; b.textContent = s[0];
       b.onclick = function () {
+        if (s[1] === "!delivery") { if (window.lvDrOpenPage) window.lvDrOpenPage(); return; }
         input.value = s[1]; input.focus();
         if (!/ $/.test(s[1])) { try { sendAiChatMessage(); } catch (_) {} }
       };
@@ -6460,7 +6469,6 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
       + '<div class="lde-scroll"><div class="lde-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading your listings…</div></div>';
     document.body.appendChild(w); document.documentElement.classList.add("lde-open");
     w.addEventListener("click", function (ev) { pageClick(ev, w); });
-    try { localStorage.setItem("lv-dr-intro:" + v.id, "done"); } catch (_) {}
     Promise.all([probe(), probePkg(), ready()]).then(function (ok) {
       if (!ok[0]) { w.querySelector(".lde-scroll").innerHTML = '<div class="lde-card"><p>Delivery by campus is being switched on. Please check back soon.</p></div>'; return; }
       var prods = sb.from("products").select("id,name,photos,listing_type,status,delivery_rules,delivery_fee_mode,delivery_fee,delivery_fee_per_km").eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").order("name");
@@ -6498,15 +6506,15 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   function saveOne(x, rules) {
     var payload, q;
     if (x.kind === "package") { payload = { delivery_rules: rules }; q = sb.from("vendor_packages").update(payload).eq("id", x.id); }
-    else { var single = rules.length === 1 && rules[0].scope === "all"; payload = Object.assign({ delivery_rules: single ? null : rules }, legacyOf(rules)); q = sb.from("products").update(payload).eq("id", x.id); }
-    return Promise.resolve(q).then(function (r) { if (r && r.error) throw r.error; Object.assign(x, payload); });
+    else { payload = Object.assign({ delivery_rules: rules }, legacyOf(rules)); q = sb.from("products").update(payload).eq("id", x.id); }
+    return Promise.resolve(q).then(function (r) { if (r && r.error) throw r.error; Object.assign(x, payload); markDone(); });
   }
   function saveAll(rules) {
-    var v = myVendor(), single = rules.length === 1 && rules[0].scope === "all";
-    var a = sb.from("products").update(Object.assign({ delivery_rules: single ? null : rules }, legacyOf(rules))).eq("vendor_id", v.id).eq("is_service", false);
+    var v = myVendor(), single = false;
+    var a = sb.from("products").update(Object.assign({ delivery_rules: rules }, legacyOf(rules))).eq("vendor_id", v.id).eq("is_service", false);
     var b = PG.list.some(function (x) { return x.kind === "package"; }) ? sb.from("vendor_packages").update({ delivery_rules: rules }).eq("vendor_id", v.id) : Promise.resolve({});
     return Promise.all([a, b]).then(function (res) {
-      res.forEach(function (r) { if (r && r.error) throw r.error; });
+      res.forEach(function (r) { if (r && r.error) throw r.error; }); markDone();
       PG.list.forEach(function (x) { x.delivery_rules = x.kind === "package" || !single ? rules : null; if (x.kind !== "package") Object.assign(x, legacyOf(rules)); });
     });
   }
@@ -6534,29 +6542,43 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     }
   }
 
-  /* ---------------- tell shops about it once: Set up now / Later ---------------- */
-  function introDue(v) { try { var s = localStorage.getItem("lv-dr-intro:" + v.id); if (s === "done") return false; return !s || Date.now() > Number(s); } catch (_) { return false; } }
+  /* ---------------- tell shops about it every time the app opens until their delivery is set up ---------------- */
+  function markDone() { var v = myVendor(); try { if (v) localStorage.setItem("lv-dr-intro:" + v.id, "done"); } catch (_) {} }
+  function laterKey(v) { return "lv-dr-later:" + v.id; }
+  function setUpAlready(v) {   // set up = any of the shop's listings has its delivery options saved (on any device)
+    try { if (localStorage.getItem("lv-dr-intro:" + v.id) === "done") return Promise.resolve(true); } catch (_) {}
+    var a = sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", v.id).not("delivery_rules", "is", null);
+    var b = probePkg().then(function (ok) { return ok ? sb.from("vendor_packages").select("id", { count: "exact", head: true }).eq("vendor_id", v.id).not("delivery_rules", "is", null) : { count: 0 }; });
+    return Promise.all([a, b]).then(function (r) { var n = (r[0] && r[0].count || 0) + (r[1] && r[1].count || 0); if (n > 0) markDone(); return n > 0; }, function () { return true; });
+  }
   function intro() {
-    var v = myVendor(); if (!v || !introDue(v) || byId("ldeIntro")) return;
+    var v = myVendor(); if (!v || byId("ldeIntro")) return;
+    try { if (sessionStorage.getItem(laterKey(v))) return; } catch (_) {}
     probe().then(function (ok) {
-      if (!ok) return;
-      return sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").then(function (r) {
-        if (!r || r.error || !(r.count > 0) || !introDue(v)) return;
-        var w = document.createElement("div"); w.id = "ldeIntro"; w.className = "lde-intro"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "Delivery by campus");
-        w.innerHTML = '<div class="lde-intro-card"><div class="lde-intro-icons">' + ico("free", 56) + ico("flat", 56) + ico("distance", 56) + "</div>"
-          + "<h3>New: delivery by campus</h3><p>Free delivery on your campus, a flat fee on nearby campuses, per km everywhere else. Buyers choose their campus and see the right fee.</p>"
-          + '<button type="button" class="lde-save" data-a="go">Set up delivery</button><button type="button" class="lde-ghost" data-a="later">I\'ll do it later</button></div>';
-        document.body.appendChild(w);
-        w.addEventListener("click", function (ev) {
-          var b = ev.target.closest("[data-a]"); if (!b && ev.target !== w) return;
-          var a = b ? b.getAttribute("data-a") : "later";
-          try { localStorage.setItem("lv-dr-intro:" + v.id, a === "go" ? "done" : String(Date.now() + 3 * 864e5)); } catch (_) {}
-          w.remove(); if (a === "go") window.lvDrOpenPage();
+      if (!ok) return;   // the database does not have delivery by campus yet (migration 0041)
+      return setUpAlready(v).then(function (done) {
+        if (done) return;
+        return sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").then(function (r) {
+          if (!r || r.error || !(r.count > 0) || byId("ldeIntro")) return;
+          var w = document.createElement("div"); w.id = "ldeIntro"; w.className = "lde-intro"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "Delivery by campus");
+          w.innerHTML = '<div class="lde-intro-card"><div class="lde-intro-icons">' + ico("free", 56) + ico("flat", 56) + ico("distance", 56) + "</div>"
+            + "<h3>Set up your delivery</h3><p>Free delivery on your campus, a flat fee on nearby campuses, per km everywhere else. Buyers choose their campus and see the right fee. It takes a minute.</p>"
+            + '<button type="button" class="lde-save" data-a="go">Set up delivery</button><button type="button" class="lde-ghost" data-a="later">I\'ll do it later</button></div>';
+          document.body.appendChild(w);
+          w.addEventListener("click", function (ev) {
+            var b = ev.target.closest("[data-a]"); if (!b && ev.target !== w) return;
+            var a = b ? b.getAttribute("data-a") : "later";
+            try { sessionStorage.setItem(laterKey(v), "1"); } catch (_) {}   // not again until the app is opened again
+            w.remove(); if (a === "go") window.lvDrOpenPage();
+          });
         });
       });
     });
   }
-  setTimeout(function () { try { probe().then(function (ok) { window.lvDrHubRowOk = !!ok; }); intro(); } catch (_) {} }, 6000);
+  // wait for the shop to load (slow networks), then ask
+  (function wait(n) { if (myVendor()) { setTimeout(intro, 1500); return; } if (n < 45) setTimeout(function () { wait(n + 1); }, 2000); })(0);
+  window.lvDrHubRowOk = true;
+  probe();
 
   /* ---------------- product cards: the delivery line shows the type, for the buyer's campus ---------------- */
   var RC = {}, VC = {}, PC = {}, want = [], wantT = null;
