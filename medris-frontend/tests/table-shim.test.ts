@@ -92,6 +92,15 @@ describe("sb.from through the backend's data API", () => {
     expect(supabaseCalls).toEqual(["GET /products?select=id"]);
   });
 
+  it("a read the backend answers with a server error goes to Supabase, and the next reads skip the backend for a while", async () => {
+    const backend = vi.fn(async () => new Response('{"error":"x"}', { status: 500 }));
+    const { query } = await setup(true, backend);
+    await query("/products?select=id");
+    await query("/orders?select=id");
+    expect(backend).toHaveBeenCalledTimes(1);
+    expect(supabaseCalls).toEqual(["GET /products?select=id", "GET /orders?select=id"]);
+  });
+
   it("a write the data API refused before running (PGRST0xx) goes to Supabase", async () => {
     const { query } = await setup(true, async () => new Response('{"code":"PGRST001","message":"no connection"}', { status: 503 }));
     await query("/favorites", { method: "POST", body: "{}" });

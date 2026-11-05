@@ -14,7 +14,7 @@
  * Any other function, or a call with options (head/count), goes straight to Supabase as before.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { V1Error, pauseBackend, pauseReads, v1Request } from "@/services/api/v1-client";
+import { V1Error, pauseBackend, pauseReads, readsPaused, v1Request } from "@/services/api/v1-client";
 import { RPC_READS, isBackendRpc } from "@/services/api/rpc-functions";
 
 type RpcResult = { data: unknown; error: { message: string; code: string; details: unknown; hint: string } | null; count: null; status: number; statusText: string };
@@ -45,6 +45,14 @@ class BackendRpcCall implements PromiseLike<RpcResult> {
   }
 
   private async send(): Promise<RpcResult> {
+    // while the backend is struggling, a read goes straight to Supabase; a function that only exists on the backend says so plainly
+    if (RPC_READS.has(this.name) && readsPaused()) {
+      const direct = await Promise.resolve(this.viaSupabase(this.signal));
+      if (direct?.error && (direct.error.code === "PGRST202" || /could not find the function/i.test(direct.error.message || ""))) {
+        return failure("This is not available right now. Please try again in a moment.", "unavailable", 503);
+      }
+      return direct;
+    }
     try {
       const data = await v1Request<unknown>("POST", `rpc/${this.name}`, { body: this.args, timeoutMs: TIMEOUT_MS, signal: this.signal });
       // A change went through the backend, so the browser's short-lived copies of table reads are out of date.
