@@ -7507,3 +7507,9 @@ body[data-view="vendorsMap"]:has(#vmpSugg:not(.hidden)) :is(#vmpChips,#vmpExpand
 .lw-mv-h{margin:1rem 0 .3rem;font-weight:700}.lw-mv-req{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:.6rem 0;border-top:1px solid rgba(127,127,127,.15)}
 .lw-mv-req button{border:1px solid #d33;color:#d33;background:none;border-radius:999px;padding:.35rem .9rem;font-weight:600}.lw-mv-bad{color:#c62828!important}
 .adp-conf{flex:1 0 100%;font-size:.78rem;color:#0d8a43;font-weight:600}
+.admin-nav-grp{margin:.9rem 0 .35rem;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#667)}
+.lwa-src>div[role=button]{cursor:pointer}.lwa-src small i{font-size:.65rem;opacity:.7;margin-left:2px}
+.lwh-brk{margin:.6rem 0;padding:.8rem;border-radius:16px;background:var(--card,#fff);box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.lwh-brk-t{font-weight:700;margin-bottom:.5rem}.lwh-brk-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem}
+.lwh-brk-g small{display:block;color:var(--muted,#667)}.lwh-brk-g b{font-size:1rem}
+:root[data-theme="dark"] .lwh-brk{background:#17171f}

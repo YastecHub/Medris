@@ -698,7 +698,7 @@ async function buyPackage(packageId) {
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   window.__reviewPromptDismissedOrderId=String(orderId);
   window.__closeLevromartReviewPrompt?.();
-  navigate("orderDetail", { orderId });
+  lvGoToNewOrder(orderId);
 }
 
 // Swipe sideways on a storefront to move between Products, Services and Packages (not when the finger starts on a scrolling row or a field).
