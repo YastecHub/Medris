@@ -708,14 +708,10 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
     const lmDup = order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder;
     // Paid but not yet marked out for delivery: the buyer can already say they have it (nobody is left waiting), and is told what is happening
     if (isCustomer && !order.awaiting_confirmation_since && order.status === "confirmed" && order.order_type === "sale" && !order.service_offer_id && lmPaidAll) {
-      buttons.push(`<button class="btn btn-sm" onclick="confirmReceivedOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
-      buttons.push(`<p class="muted" style="font-size:.8rem;margin:.2rem 0 0;"><i class="fa-solid fa-clock"></i> Payment confirmed. We are waiting for the vendor to mark your order as out for delivery. If you already have it, tap “I've received this”. Until then you can still cancel.</p>`);
     }
     if (isCustomer && order.awaiting_confirmation_since && ["confirmed", "handed_over"].includes(order.status) && order.order_type !== "rental" && !order.service_offer_id && String(order.payout_status || "not_applicable") === "not_applicable" && lmPaidAll && !lmDup) {
       const due = new Date(new Date(order.awaiting_confirmation_since).getTime() + 24 * 3600 * 1000);
-      buttons.push(`<button class="btn btn-sm" onclick="confirmReceivedOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
       buttons.push(notReceivedButtonHtml(order));
-      buttons.push(`<p class="muted" style="font-size:.8rem;margin:.2rem 0 0;"><i class="fa-solid fa-clock"></i> Payment confirmed. If you don't respond or report a problem, this order completes automatically on ${esc(due.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}.</p>`);
     }
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);

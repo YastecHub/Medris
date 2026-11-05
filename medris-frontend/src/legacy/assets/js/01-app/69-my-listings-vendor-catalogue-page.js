@@ -501,6 +501,13 @@ async function warmProductModalRefs(force) {
   return promise;
 }
 async function showProductModal() {
+  // Editing: the product, its engagement settings and its varieties are asked for at the same moment as the categories
+  // (they used to be asked one after the other, which made the edit page stall).
+  const prefetch = editingProductId ? Promise.all([
+    sb.from("products").select("*").eq("id", editingProductId).single(),
+    sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id", editingProductId).maybeSingle(),
+    sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
+  ]) : null;
   // Categories, sectors and the vendor's delivery defaults are loaded once and reused, so the
   // Add / Edit card opens instantly. warmProductModalRefs() fetches them in the background.
   await warmProductModalRefs();
@@ -532,15 +539,12 @@ async function showProductModal() {
 
   let presetCategoryId = "";
   if (editingProductId) {
-    const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
-    const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    // For the editor, read the actual product_variants rows first. This avoids
-    // relying on a JSONB RPC representation for the primary UI path. If RLS or
-    // an older deployment blocks the direct read, fall back to the ownership-
-    // checked RPC. Either way the editor receives a plain array.
-    let { data: productVariants, error: productVariantsError } = await sb.from("product_variants")
-      .select("*").eq("product_id", editingProductId)
-      .order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+    const [pRes, engRes, varRes] = await prefetch;
+    const { data: p } = pRes;
+    const { data: engagement } = engRes;
+    // The product_variants rows are read first; if RLS or an older deployment blocks the direct read, the
+    // ownership-checked RPC is the fallback. Either way the editor receives a plain array.
+    let { data: productVariants, error: productVariantsError } = varRes;
     const normalizeVariants = (value) => {
       if (Array.isArray(value)) return value;
       if (typeof value === "string") { try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; } }

@@ -54,6 +54,9 @@
   function visible(el){ if (!el) return false; var r = el.getBoundingClientRect(); var cs = getComputedStyle(el); return r.width > 8 && r.height > 8 && cs.display !== "none" && cs.visibility !== "hidden" && Number(cs.opacity) > 0.05; }
   function welcome(fab){
     try { if (sessionStorage.getItem("lv-levi-hi")) return; sessionStorage.setItem("lv-levi-hi", "1"); } catch (_) {}
+    // once a day at most, and never on top of a pop-up (the pop-up wins)
+    try { var seenAt = Number(localStorage.getItem("lv-levi-hi-at") || 0); if (seenAt && Date.now() - seenAt < 20 * 3600 * 1000) return; localStorage.setItem("lv-levi-hi-at", String(Date.now())); } catch (_) {}
+    if (document.getElementById("lvPromo")) return;
     var r = fab.getBoundingClientRect(), right = r.left + r.width / 2 > window.innerWidth / 2;
     var b = document.createElement("div"); b.className = "lvs-hi" + (right ? " r" : " l"); b.setAttribute("role", "status");
     b.innerHTML = '<button type="button" class="lvs-hi-x" aria-label="Close">×</button><b>Hi, I’m Levi 👋</b><span>Welcome to Levromart! Ask me anything: products, shops near you, prices or your orders.</span><em>Tap me to chat</em>';
@@ -63,6 +66,9 @@
     document.body.appendChild(b);
     requestAnimationFrame(function(){ b.classList.add("on"); });
     var gone = false, close = function(){ if (gone) return; gone = true; b.classList.remove("on"); setTimeout(function(){ b.remove(); }, 300); };
+    // touching Levi himself (to move or open him) takes the bubble away at once; a pop-up opening does too
+    ["pointerdown", "touchstart", "mousedown"].forEach(function(t){ fab.addEventListener(t, function(){ close(); }, { once: true, capture: true, passive: true }); });
+    var watch = setInterval(function(){ if (gone) return clearInterval(watch); if (document.getElementById("lvPromo")) { clearInterval(watch); close(); } }, 300);
     b.addEventListener("click", function(e){ if (e.target.closest(".lvs-hi-x")) return close(); close(); try { fab.click(); } catch (_) {} });
     setTimeout(close, 7000);
   }

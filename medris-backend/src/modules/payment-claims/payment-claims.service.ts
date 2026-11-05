@@ -376,6 +376,11 @@ export class PaymentClaimsService {
       if (!orderId) throw notFound("dispute not found");
       await claims.resolveDispute(disputeId, notes);
       if (status != null) await claims.setOrderStatus(orderId, status);
+      else {
+        // no outcome chosen: a disputed order goes back to where it was, so the shop can carry on (mark out for delivery, deliver, get paid)
+        const o = await claims.order(orderId);
+        if (o && o.status === "disputed") await claims.setOrderStatus(orderId, o.awaiting_confirmation_since != null ? "handed_over" : "confirmed");
+      }
     });
     return { done: true };
   }

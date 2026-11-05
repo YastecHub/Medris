@@ -110,11 +110,11 @@ export class WalletService {
     return this.ready(() => this.db().asService((tx) => new WalletRepository(tx).entries(user.userId, 50, before)));
   }
 
-  /** People to send money to, by the start of their @tag (at least 2 characters). */
+  /** People to send money to, by any part of their @tag or name (at least 2 characters). */
   async find(me: Identity | null, query: string | null) {
     const user = need(me);
-    const q = String(query ?? "").trim().toLowerCase().replace(/^@/, "");
-    if (q.length < 2 || !/^[a-z0-9_]+$/.test(q)) return [];
+    const q = String(query ?? "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, " ");
+    if (q.length < 2 || q.length > 40 || !/^[\p{L}0-9_ .'-]+$/u.test(q)) return [];
     return this.ready(() =>
       this.db().asService(async (tx) =>
         (await new WalletRepository(tx).search(q, user.userId)).filter((p) => !p.frozen).map((p) => ({ handle: p.handle, name: p.name, avatar_url: p.avatar_url })),

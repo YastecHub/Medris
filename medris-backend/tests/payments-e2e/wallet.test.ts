@@ -32,6 +32,9 @@ describe("the Levromart wallet", () => {
     expect(found.data.map((p: any) => p.handle)).toContain(other);
     expect(found.data.map((p: any) => p.handle)).not.toContain(s.data.handle);
     expect((await call("find_wallet_people", w.buyer.token, { p_query: "a" })).data).toEqual([]);
+    // a person is also found by any word of their name, in the middle of it, not only by the start of the @tag
+    const nm = String((await rowOf<any>(w, `select name from public.users where id = $1`, [w.buyer2.id])).name || "").toLowerCase().split(/\s+/).filter((x) => /^[a-z]{3,}$/.test(x))[0];
+    if (nm) expect((await call("find_wallet_people", w.buyer.token, { p_query: nm.slice(1) })).data.map((p: any) => p.handle)).toContain(other);
   });
 
   it("a top-up through Paystack puts the asked amount in the wallet, once", async () => {

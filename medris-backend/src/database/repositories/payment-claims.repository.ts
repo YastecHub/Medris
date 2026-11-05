@@ -11,6 +11,7 @@ export interface ClaimOrder {
   buyer_id: string;
   vendor_id: string;
   status: string;
+  awaiting_confirmation_since?: string | null;
   order_type: string;
   delivery_method: string | null;
   payment_timing: string | null;
@@ -48,7 +49,7 @@ export class PaymentClaimsRepository {
         select json_build_object(
           'id', o.id, 'buyer_id', o.buyer_id, 'vendor_id', o.vendor_id, 'status', o.status::text, 'order_type', o.order_type::text,
           'delivery_method', o.delivery_method::text, 'payment_timing', o.payment_timing::text, 'payout_status', o.payout_status,
-          'service_offer_id', o.service_offer_id, 'payment_escalated_at', o.payment_escalated_at,
+          'service_offer_id', o.service_offer_id, 'payment_escalated_at', o.payment_escalated_at, 'awaiting_confirmation_since', o.awaiting_confirmation_since,
           'confirmed_a_day_ago', coalesce(o.status_changed_at, o.created_at) <= now() - interval '24 hours',
           'total_amount', o.total_amount::text, 'delivery_fee', o.delivery_fee::text, 'deposit_amount', o.deposit_amount::text,
           'payment_deposit_percent', o.payment_deposit_percent::text,

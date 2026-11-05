@@ -59,6 +59,20 @@ describe("cancelling paid orders", () => {
     expect(Number((await refundsOf(o))[0]!.amount_kobo)).toBe(436500);
   });
 
+  it("an admin can cancel and refund an order at any point, also while it is disputed or out for delivery", async () => {
+    for (const status of ["disputed", "handed_over"]) {
+      const o = await newOrder(w, 4500);
+      await payOrder(w, o);
+      await call("buyer_cancel_order", w.buyer.token, { p_order_id: o });
+      const req = await rowOf<any>(w, `select id from public.cancellation_requests where order_id = $1`, [o]);
+      await w.db.query(`update public.orders set status = $2::public.order_status where id = $1`, [o, status]);
+      const ok = await call("admin_decide_cancellation", w.admin.token, { p_request_id: req.id, p_decision: "approve" });
+      expect(ok.status).toBe(200);
+      expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [o]))?.s).toBe("cancelled");
+      expect(Number((await refundsOf(o))[0]!.amount_kobo)).toBe(436500);
+    }
+  });
+
   it("nobody else can cancel it, and the buyer cannot once it is out for delivery", async () => {
     const o = await newOrder(w, 4000);
     await payOrder(w, o);
