@@ -66,37 +66,34 @@
     b.addEventListener("click", function(e){ if (e.target.closest(".lvs-hi-x")) return close(); close(); try { fab.click(); } catch (_) {} });
     setTimeout(close, 7000);
   }
+  // As the splash fades, Levi warps out where he stands: a little lift, then he spins away into a point with a burst of
+  // sparkles (the same warp as the map and search buttons). His floating button simply stays where it always is.
   function fly(splash){
     if (done) return; done = true;
     var src = splash.querySelector(".lv-sp-levi svg.lvs"), fab = document.getElementById("aiChatFab");
-    if (!src || reduced() || !visible(fab)) { if (visible(fab)) setTimeout(function(){ welcome(fab); }, 400); return; }
-    var target = fab.querySelector(".lv-fab-badge") || fab;
-    var a = src.getBoundingClientRect(), t = target.getBoundingClientRect();
-    if (!a.width || !t.width) return;
+    var hello = function(){ if (visible(fab)) setTimeout(function(){ welcome(fab); }, 350); };
+    if (!src || reduced()) { hello(); return; }
+    var a = src.getBoundingClientRect(); if (!a.width) { hello(); return; }
     var w = document.createElement("div"); w.className = "lvs-fly";
     w.style.left = a.left + "px"; w.style.top = a.top + "px"; w.style.width = a.width + "px"; w.style.height = a.height + "px";
-    w.innerHTML = src.outerHTML.replace(/\blvs([gr])\b/g, "lvf$1"); document.body.appendChild(w);   // own gradient ids, so the colours survive the splash going away
-    var prevOp = fab.style.opacity; fab.style.opacity = "0";
-    var dx = (t.left + t.width / 2) - (a.left + a.width / 2), dy = (t.top + t.height / 2) - (a.top + a.height / 2), s = Math.max(.2, Math.min(1, t.width / a.width));
-    var side = dx >= 0 ? -1 : 1;
+    w.innerHTML = src.outerHTML.replace(/\blvs([gr])\b/g, "lvf$1");   // own gradient ids, so the colours survive the splash going away
+    document.body.appendChild(w); src.style.visibility = "hidden";
     var anim = w.animate([
-      { transform: "translate(0,0) scale(1) rotate(0deg)" },
-      { transform: "translate(" + (dx * .1 + side * 40) + "px," + (-40) + "px) scale(1.06) rotate(" + (side * 8) + "deg)", offset: .18 },
-      { transform: "translate(" + (dx * .55 + side * 30) + "px," + (dy * .45) + "px) scale(" + ((1 + s) / 2) + ") rotate(" + (-side * 14) + "deg)", offset: .6 },
-      { transform: "translate(" + dx + "px," + dy + "px) scale(" + (s * 1.12) + ") rotate(0deg)", offset: .9 },
-      { transform: "translate(" + dx + "px," + dy + "px) scale(" + s + ") rotate(0deg)" }
-    ], { duration: 1100, easing: "cubic-bezier(.45,.05,.25,1)", fill: "forwards" });
-    var kinds = ["", "p", "g"], n = 0, trail = setInterval(function(){
-      var r = w.getBoundingClientRect(); if (!r.width) return;
-      var d = document.createElement("i"); d.className = "lvs-trail " + kinds[n++ % 3];
-      d.style.left = (r.left + r.width * (.3 + Math.random() * .4)) + "px"; d.style.top = (r.top + r.height * (.55 + Math.random() * .35)) + "px";
-      document.body.appendChild(d); setTimeout(function(){ d.remove(); }, 750);
-    }, 70);
-    anim.onfinish = function(){
-      clearInterval(trail); w.remove(); fab.style.opacity = prevOp;
-      try { fab.animate([{ transform: "scale(1.18)" }, { transform: "scale(.94)" }, { transform: "scale(1)" }], { duration: 420, easing: "ease-out" }); } catch (_) {}
-      setTimeout(function(){ welcome(fab); }, 250);
-    };
+      { transform: "scale(1) rotate(0deg)", opacity: 1 },
+      { transform: "scale(1.14) rotate(-14deg)", opacity: 1, offset: .28 },
+      { transform: "scale(.08) rotate(210deg)", opacity: 0 }
+    ], { duration: 460, easing: "cubic-bezier(.5,0,.8,.4)", fill: "forwards" });
+    var cx = a.left + a.width / 2, cy = a.top + a.height / 2, kinds = ["", "p", "g"];
+    setTimeout(function(){
+      for (var k = 0; k < 10; k++) {
+        var d = document.createElement("i"), ang = (k / 10) * Math.PI * 2, dist = a.width * (.55 + Math.random() * .35);
+        d.className = "lvs-trail " + kinds[k % 3]; d.style.left = cx + "px"; d.style.top = cy + "px";
+        document.body.appendChild(d);
+        try { d.animate([{ transform: "translate(0,0) scale(1.4)", opacity: 1 }, { transform: "translate(" + Math.cos(ang) * dist + "px," + Math.sin(ang) * dist + "px) scale(.2)", opacity: 0 }], { duration: 520, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }); } catch (_) {}
+        (function(el){ setTimeout(function(){ el.remove(); }, 560); })(d);
+      }
+    }, 300);
+    anim.onfinish = function(){ w.remove(); hello(); };
   }
   var splash = document.getElementById("levromartSplash");
   if (!splash || !window.MutationObserver) return;
@@ -104,8 +101,7 @@
   var mo = new MutationObserver(function(){
     if (!splash.classList.contains("is-hidden")) return;
     mo.disconnect();
-    // the page is being shown now: give his button a moment to settle into its place
-    setTimeout(function(){ requestAnimationFrame(function(){ fly(splash); }); }, 120);
+    fly(splash);
   });
   mo.observe(splash, { attributes: true, attributeFilter: ["class"] });
 })();
