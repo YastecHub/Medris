@@ -21,6 +21,7 @@
   }
   function release() {
     try { window.__levroSplashHidden = true; } catch (_) {}
+    try { var fp = document.getElementById("lv-first-paint"); if (fp) fp.remove(); } catch (_) {}
     hide();
   }
   function mark(splash, stage) {

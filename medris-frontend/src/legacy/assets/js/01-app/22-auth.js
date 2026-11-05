@@ -134,9 +134,15 @@ async function refreshAuthState() {
       resolvedRole = await ensureProfileAndRoleSync;
       [profileRes, vendorRes, favsRes, pkgFavsRes] = await loadAccount();
     }
-    profile = profileRes.data;
+    // A slow or failed read must never flip a shop into a customer (or back): keep what this phone already knew about the same account.
+    profile = profileRes.data || (profileRes.error && profile && profile.id === userId ? profile : null);
     if (freshSignIn && resolvedRole && profile) { profile.role = resolvedRole; }
-    vendor = profile?.role === "admin" ? null : vendorRes.data;
+    let vendorRow = vendorRes.data;
+    if (!vendorRow && vendorRes.error && profile && profile.role !== "admin") {
+      try { const again = await sb.from("vendors").select("*").eq("user_id", userId).is("deleted_at", null).maybeSingle(); if (!again.error) vendorRow = again.data; } catch (_) {}
+      if (!vendorRow && vendor && vendor.user_id === userId) vendorRow = vendor;
+    }
+    vendor = profile?.role === "admin" ? null : vendorRow;
     // profile.role comes straight from the users row, which
     // sync_current_account_role() (above, SECURITY DEFINER, immune to RLS
     // and run first) already made authoritative. Re-deriving it here a

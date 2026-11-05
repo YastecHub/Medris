@@ -475,7 +475,7 @@ export const RPC: Record<string, RpcEntry> = {
   get_setup_status: { run: (s, me) => s.setupStatus.status(me) },
   // Withdrawals
   get_withdrawal_summary: { run: (s, me) => setup("Withdrawals", s.withdrawals.summary(me)) },
-  request_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.request(me, str(a.p_destination) ?? "bank", str(a.p_pin))), limit: L.withdrawals },
+  request_withdrawal: { run: (s, me, a) => setup("Withdrawals", s.withdrawals.request(me, str(a.p_destination) ?? "bank", str(a.p_pin), Array.isArray(a.p_order_ids) ? (a.p_order_ids as unknown[]).map(String) : null, str(a.p_reason))), limit: L.withdrawals },
   // The Levromart wallet (migration 0033)
   get_levro_wallet: { run: (s, me) => s.wallet.summary(me) },
   get_levro_wallet_history: { run: (s, me, a) => s.wallet.history(me, str(a.p_before)) },
