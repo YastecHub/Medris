@@ -78,6 +78,17 @@ describe("the Levromart wallet", () => {
     await w.db.query(`update public.wallet_accounts set frozen = false where user_id = $1`, [w.buyer.id]);
   });
 
+  it("transfer fees follow Paystack's rate but never exceed 5% of the amount", async () => {
+    await reset();
+    await fund(w.buyer.id, 2000000);
+    const to = await handleOf(w.buyer2.id);
+    const r = await call("wallet_send", w.buyer.token, { p_to: to, p_amount_kobo: 250000, p_key: "cap-1" });
+    expect(r.status).toBe(200);
+    expect(r.data.fee_kobo).toBe("12500"); // Paystack would take 13,750 (1.5% + ₦100); capped at 5% = 12,500
+    const small = await call("wallet_send", w.buyer.token, { p_to: to, p_amount_kobo: 10000, p_key: "cap-2" });
+    expect(small.data.fee_kobo).toBe("150"); // under the cap: Paystack's 1.5%
+  });
+
   it("two transfers at the same moment can never spend the same money", async () => {
     await reset();
     await fund(w.buyer.id, 100000);
@@ -95,14 +106,14 @@ describe("the Levromart wallet", () => {
     const o = await newOrder(w, 5000);
     const r = await call("wallet_pay_order", w.buyer.token, { p_order_id: o });
     expect(r.status).toBe(200);
-    expect(r.data.fee_kobo).toBe("17500"); // 1.5% of ₦5,000 + ₦100
-    expect(await balance(w.buyer.token)).toBe(482500); // 1,000,000 - 500,000 order - 17,500 fee
-    expect((await rowOf<any>(w, `select coalesce(sum(amount_kobo),0)::text as k from public.platform_wallet_entries where kind = 'transaction_fee'`)).k).toBe("17500"); // the fee is Levromart's
+    expect(r.data.fee_kobo).toBe("0"); // paying an order from the wallet is free
+    expect(await balance(w.buyer.token)).toBe(500000); // 1,000,000 - 500,000 order, no fee
+    expect((await rowOf<any>(w, `select coalesce(sum(amount_kobo),0)::text as k from public.platform_wallet_entries where kind = 'transaction_fee'`)).k).toBe("0");
     expect(w.paystack.callsTo("POST", "/transaction/initialize")).toHaveLength(0);
     expect(await rowOf(w, `select status from public.payments where order_id = $1 and provider_reference like 'lvm\\_ord\\_%'`, [o])).toMatchObject({ status: "paid" });
     expect((await call("wallet_pay_order", w.buyer.token, { p_order_id: o })).status).toBe(400); // nothing left to pay
     expect((await json(await api.post(w, `/orders/${o}/paystack/initialize`, w.buyer.token))).status).toBe(400); // nor with a card
-    expect(await balance(w.buyer.token)).toBe(482500);
+    expect(await balance(w.buyer.token)).toBe(500000);
     expect((await call("wallet_pay_order", w.buyer2.token, { p_order_id: o })).status).toBe(403);
     await handOver(w, o);
     expect((await json(await api.post(w, `/orders/${o}/received`, w.buyer.token))).status).toBe(200);

@@ -86,10 +86,11 @@ describe("the wallet PIN", () => {
     await w.db.query(`delete from public.wallet_pins where user_id = $1`, [w.buyer2.id]);
   });
 
-  it("the fee quote is Paystack's fee on the amount", async () => {
+  it("the fee quote is Paystack's fee on the amount, never more than 5%", async () => {
     const q = (n: number) => call("wallet_fee_quote", w.buyer.token, { p_amount_kobo: n });
     expect((await q(10000)).data).toMatchObject({ fee_kobo: "150", total_kobo: "10150" }); // ₦100 -> ₦101.50
-    expect((await q(250000)).data.fee_kobo).toBe("13750"); // ₦2,500: 1.5% + ₦100
+    expect((await q(250000)).data.fee_kobo).toBe("12500"); // ₦2,500: Paystack's 13,750 (1.5% + ₦100) capped at 5%
+    expect((await q(500000)).data.fee_kobo).toBe("17500"); // ₦5,000: 1.5% + ₦100, under the 5% cap
     expect((await q(100000000)).data.fee_kobo).toBe("200000"); // capped at ₦2,000
     expect((await q(0)).status).toBe(400);
   });
