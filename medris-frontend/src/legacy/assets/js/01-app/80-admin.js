@@ -21,10 +21,17 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
 
 function openAdminNavSheet() {
   if (byId("adminNavSheet")) return;
-  const tabs = [...document.querySelectorAll(".admin-dash-tabs [data-admin-view]")].filter((b) => !b.classList.contains("hidden") && b.style.display !== "none");
+  const seenTabs = new Set();
+  const tabs = [...document.querySelectorAll(".admin-dash-tabs [data-admin-view]")].filter((b) => !b.classList.contains("hidden") && b.style.display !== "none" && !seenTabs.has(b.dataset.adminView) && seenTabs.add(b.dataset.adminView));
+  // the sections, grouped by what they are for (each page appears once)
+  const GROUPS = [["Money", ["adminPayments", "adminMonthlyListings", "adminDisputes"]], ["People", ["adminPeople", "adminPanel", "adminUsers"]], ["Messages and support", ["adminSupportRequests", "adminFeedback", "adminConversations"]], ["Records", ["adminLog", "adminAuthLogs"]], ["Content and storage", ["adminInventory", "adminCarousel", "adminR2Migration", "adminR2Optimize"]]];
+  const itemHtml = (b) => `<button type="button" class="admin-nav-item${b.classList.contains("active") ? " active" : ""}${(b.querySelector(".dash-tab-dot:not(.hidden)") && /[1-9]/.test(b.querySelector(".dash-tab-dot:not(.hidden)").textContent)) ? " has-alert" : ""}" data-v="${esc(b.dataset.adminView)}">${b.innerHTML}</button>`;
+  const used = new Set();
+  let gridsHtml = GROUPS.map(([title, views]) => { const bs = views.map((v) => tabs.find((b) => b.dataset.adminView === v)).filter(Boolean); bs.forEach((b) => used.add(b)); return bs.length ? `<div class="admin-nav-grp">${esc(title)}</div><div class="admin-nav-grid">${bs.map(itemHtml).join("")}</div>` : ""; }).join("");
+  const rest = tabs.filter((b) => !used.has(b)); if (rest.length) gridsHtml += `<div class="admin-nav-grp">More</div><div class="admin-nav-grid">${rest.map(itemHtml).join("")}</div>`;
   const wrap = document.createElement("div");
   wrap.id = "adminNavSheet"; wrap.className = "cc-backdrop";
-  wrap.innerHTML = `<div class="cc-sheet admin-nav-sheet" role="dialog" aria-modal="true"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button><h3 style="margin:.2rem 0 .8rem;text-align:left;">Go to</h3><div class="admin-nav-grid">${tabs.map((b) => `<button type="button" class="admin-nav-item${b.classList.contains("active") ? " active" : ""}${(b.querySelector(".dash-tab-dot:not(.hidden)") && /[1-9]/.test(b.querySelector(".dash-tab-dot:not(.hidden)").textContent)) ? " has-alert" : ""}" data-v="${esc(b.dataset.adminView)}">${b.innerHTML}</button>`).join("")}</div></div>`;
+  wrap.innerHTML = `<div class="cc-sheet admin-nav-sheet" role="dialog" aria-modal="true"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button><h3 style="margin:.2rem 0 .8rem;text-align:left;">Go to</h3>${gridsHtml}</div>`;
   document.body.appendChild(wrap);
   // red badges on the sections that are waiting for the admin: open disputes stay counted until every one is resolved
   const BADGES = { adminDisputes: Number(window.__adminDisputeCount || 0), adminPayments: Number(window.__lvPayPending || 0) };

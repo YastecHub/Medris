@@ -108,7 +108,7 @@ async function buyPackageFromDetail(packageId) {
     return;
   }
   await persistBuyerDeliveryLocation(orderId, delivery.method);
-  navigate("orderDetail", { orderId });
+  lvGoToNewOrder(orderId);
 }
 async function renderPackageDetail(packageId) {
   const engagementPromise=sb.from("package_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("package_id",packageId).maybeSingle();

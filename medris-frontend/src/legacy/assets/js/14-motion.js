@@ -4477,9 +4477,9 @@ window.lvAskCancel = async function (orderId) {
         (d.can_manage ? '<button type="button" onclick="lvLwAccount()">' + (a ? "Change" : "Add") + "</button>" : "") + "</div>" +
       (wait ? '<div class="lwa-wait"><i class="fa-solid fa-shield-halved"></i> New payout account: withdrawals open in ' + a.wait_hours + " hour" + (a.wait_hours === 1 ? "" : "s") + ".</div>" : "") +
       '<div class="lwa-src">' +
-        '<div><small>3% commission</small><b>' + naira(c.all_kobo) + '</b><em>Today ' + naira(c.today_kobo) + '</em></div>' +
-        (lf ? '<div><small>Monthly listing fees</small><b>' + naira(lf.all_kobo) + '</b><em>Today ' + naira(lf.today_kobo) + '</em></div>' : "") +
-        (d.transaction_fees ? '<div><small>Transaction fees</small><b>' + naira(d.transaction_fees.all_kobo) + '</b><em>Today ' + naira(d.transaction_fees.today_kobo) + '</em></div>' : "") +
+        '<div role="button" tabindex="0" onclick="lvAwOpen(\'commission\')"><small>3% commission <i class="fa-solid fa-chevron-right"></i></small><b>' + naira(c.all_kobo) + '</b><em>Today ' + naira(c.today_kobo) + '</em></div>' +
+        (lf ? '<div role="button" tabindex="0" onclick="lvAwOpen(\'listing\')"><small>Monthly listing fees <i class="fa-solid fa-chevron-right"></i></small><b>' + naira(lf.all_kobo) + '</b><em>Today ' + naira(lf.today_kobo) + '</em></div>' : "") +
+        (d.transaction_fees ? '<div role="button" tabindex="0" onclick="lvAwOpen(\'fees\')"><small>Transaction fees <i class="fa-solid fa-chevron-right"></i></small><b>' + naira(d.transaction_fees.all_kobo) + '</b><em>Today ' + naira(d.transaction_fees.today_kobo) + '</em></div>' : "") +
       '</div>' +
       '<button type="button" class="lwa-strip" onclick="navigate(\'adminWalletHistory\')"><span class="lwa-strip-ic">' + (window.lv3dIcon ? window.lv3dIcon("tx-all", 22) : '<i class="fa-solid fa-clock-rotate-left"></i>') + '</span><span class="lwa-strip-t">Transaction history</span>' +
         ((d.entries || [])[0] ? '<span class="lwa-strip-last">' + esc(String(((d.entries || [])[0].kind || "").replace(/_/g, " "))) + ' <b>' + (Number((d.entries || [])[0].amount_kobo) > 0 ? "+" : "−") + naira(Math.abs(Number((d.entries || [])[0].amount_kobo))) + '</b></span>' : "") + '<i class="fa-solid fa-chevron-right"></i></button>' +
@@ -4594,7 +4594,7 @@ window.lvAskCancel = async function (orderId) {
       var next = ((more && more.data) || []).filter(function (e) { return !have[e.id]; });
       if (!next.length) break; all = all.concat(next);
     }
-    var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() }, month = { y: cur.y, m: cur.m }, kind = "all", day = null;
+    var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() }, month = { y: cur.y, m: cur.m }, kind = (window.__lvAwKind && LW_KINDS[window.__lvAwKind]) ? window.__lvAwKind : "all", day = null; window.__lvAwKind = null;
     var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     host.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lvAhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="lwh-pick" id="lvAhMonth" aria-label="Pick a date"></button><button type="button" id="lvAhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lvAhSum"></div><div class="lwa-tabs">' + [["all", "All"], ["commission", "Commission"], ["listing", "Listing fees"], ["fees", "Transaction fees"], ["withdrawals", "Withdrawals"]].map(function (t) { return '<button type="button" data-k="' + t[0] + '" class="' + (t[0] === "all" ? "on" : "") + '">' + t[1] + "</button>"; }).join("") + '</div><div class="lwa-hist" id="lvAhList"></div>';
     function paintH() {
@@ -4604,6 +4604,14 @@ window.lvAskCancel = async function (orderId) {
       host.querySelector("#lvAhNext").disabled = month.y === cur.y && month.m === cur.m;
       host.querySelector("#lvAhSum").innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + naira(tin) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + naira(tout) + "</b></div>";
       var rows = kind === "all" ? inM : inM.filter(function (e) { return LW_KINDS[kind].indexOf(e.kind) >= 0; });
+      // how much was made: the chosen day, the month and the year (money that came in, for the kind chosen above)
+      var kindRows = function (f) { return all.filter(function (e) { var d = new Date(e.created_at); return f(d) && Number(e.amount_kobo) > 0 && (kind === "all" || LW_KINDS[kind].indexOf(e.kind) >= 0); }); };
+      var sumOf = function (list) { return list.reduce(function (a, e) { return a + Number(e.amount_kobo); }, 0); };
+      var brk = host.querySelector("#lvAhBreak"); if (!brk) { brk = document.createElement("div"); brk.id = "lvAhBreak"; brk.className = "lwh-brk"; host.querySelector("#lvAhSum").insertAdjacentElement("afterend", brk); }
+      var mRows = kindRows(function (d) { return d.getFullYear() === month.y && d.getMonth() === month.m; });
+      brk.innerHTML = '<div class="lwh-brk-t">' + (kind === "all" ? "All income" : { commission: "3% commission", listing: "Monthly listing fees", fees: "Transaction fees" }[kind] || "Income") + ' made</div><div class="lwh-brk-g">' +
+        (day ? '<div><small>' + day + " " + MONTHS[month.m].slice(0, 3) + '</small><b>' + naira(sumOf(kindRows(function (d) { return d.getFullYear() === month.y && d.getMonth() === month.m && d.getDate() === day; }))) + '</b></div>' : "") +
+        '<div><small>' + MONTHS[month.m] + '</small><b>' + naira(sumOf(mRows)) + '</b></div><div><small>Year ' + month.y + '</small><b>' + naira(sumOf(kindRows(function (d) { return d.getFullYear() === month.y; }))) + '</b></div><div><small>All time</small><b>' + naira(sumOf(kindRows(function () { return true; }))) + '</b></div></div>';
       lwAll = true; var saveTab = lwTab; lwTab = "all";
       host.querySelector("#lvAhList").innerHTML = rows.length ? historyHtml(rows) : '<p class="aw-note" style="text-align:center;padding:1rem 0">Nothing this month.</p>';
       lwTab = saveTab;
@@ -4615,9 +4623,11 @@ window.lvAskCancel = async function (orderId) {
       var pick = await window.lvPickDate({ y: month.y, m: month.m, d: day, minYear: minY, marks: function (yy, mm) { var o = {}; all.forEach(function (e) { var t = new Date(e.created_at); if (t.getFullYear() === yy && t.getMonth() === mm) o[t.getDate()] = true; }); return o; } });
       if (pick) { month = { y: pick.y, m: pick.m }; day = pick.d; paintH(); }
     };
+    host.querySelectorAll(".lwa-tabs button").forEach(function (x) { x.classList.toggle("on", x.dataset.k === kind); });
     host.querySelector(".lwa-tabs").onclick = function (e) { var b = e.target.closest("[data-k]"); if (!b) return; kind = b.dataset.k; host.querySelectorAll(".lwa-tabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); paintH(); };
     paintH();
   }
+  window.lvAwOpen = function (k) { window.__lvAwKind = k; navigate("adminWalletHistory"); };
   window.lvAwRange = function (r) { range = r; paint(); };
   window.lvAwSearch = function (v) { q = String(v || "").trim(); paint(); };
   window.lvAwDecide = async function (id, how) {
@@ -7079,3 +7089,15 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   };
   window.lvFavPeople = favs;
 })();
+
+/* After an order is placed: go straight to the orders list (a shop to "My purchases") with the new order at the top, never from an older copy. */
+window.lvGoToNewOrder = function (orderId) {
+  try { __ordersTabCache.clear(); } catch (_) {}
+  try { window.__ordCnt = null; window.__orderStatsOrders = null; } catch (_) {}
+  try { showToast("Order placed. You will see it change here as the shop answers.", "success"); } catch (_) {}
+  try { if (typeof refreshNotifications === "function") refreshNotifications(); } catch (_) {}
+  try {
+    if (typeof vendor !== "undefined" && vendor) return navigate("vendorOrders", { status: "all", perspective: "purchases" });
+    return navigate("buyerOrders");
+  } catch (_) { try { return navigate("orderDetail", { orderId: orderId }); } catch (e) {} }
+};

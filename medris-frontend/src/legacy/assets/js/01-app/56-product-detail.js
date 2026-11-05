@@ -591,7 +591,7 @@ async function confirmRental(vendorId, productId) {
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   await persistBuyerDeliveryLocation(orderId, delivery.method);
-  navigate("orderDetail", { orderId });
+  lvGoToNewOrder(orderId);
 }
 
 function updateServiceTotalPreview(rate, unit) {
@@ -723,8 +723,7 @@ async function buyNow(vendorId, productId) {
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   await persistBuyerDeliveryLocation(orderId, delivery.method);
-
-  await navigate("orderDetail", { orderId });
+  lvGoToNewOrder(orderId);
 }
 
 

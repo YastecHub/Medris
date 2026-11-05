@@ -260,8 +260,8 @@ async function checkoutCartAll() {
   }
   refreshNotifications();
   if (failed.length) showToast(`${done} placed. Couldn't place: ${failed.join("; ")}`, "error");
-  if (done === 1 && !failed.length) navigate("orderDetail", { orderId: lastId });
-  else if (done) { if (!failed.length) showToast(`${done} orders placed`, "success"); navigate(failed.length ? "cart" : "buyerOrders", {}, false); }
+  if (done && !failed.length) { if (done > 1) showToast(`${done} orders placed`, "success"); lvGoToNewOrder(lastId); }
+  else if (done) navigate("cart", {}, false);
 }
 
 async function checkoutCartVendor(vendorId) {
@@ -305,7 +305,7 @@ async function checkoutCartVendor(vendorId) {
   await levroData.cart.removeMany(group.items.map((it) => it.id));
   await persistBuyerDeliveryLocation(orderId, delivery.method);
   refreshNotifications();
-  navigate("orderDetail", { orderId });
+  lvGoToNewOrder(orderId);
   } catch (err) {
     console.error("Cart checkout failed", err);
     if (errorEl) { errorEl.textContent = "Checkout couldn’t complete. Please try again."; errorEl.classList.remove("hidden"); }
