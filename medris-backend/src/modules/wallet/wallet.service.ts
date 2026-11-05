@@ -320,7 +320,7 @@ export class WalletService {
         const amount = amountKobo == null ? withdrawableKobo(balance) : Number(amountKobo);
         if (!Number.isInteger(amount) || amount < WALLET.minWithdrawal) throw badRequest(`The smallest withdrawal is ${naira(WALLET.minWithdrawal)}.`);
         const fee = walletFeeKobo(amount);
-        if (amount + fee > balance) throw badRequest(`You have ${naira(balance)} in your wallet. This withdrawal needs ${naira(amount + fee)}.`);
+        if (amount + fee > balance) throw badRequest("That is a bit too close to your full balance. Bank transfers carry a small fee, paid from your wallet on top of what you withdraw. Please try a slightly smaller amount.");
         if ((await repo.withdrawalsToday(user.userId)) >= WALLET.withdrawalsPerDay) throw badRequest(`You can withdraw ${WALLET.withdrawalsPerDay} times in 24 hours. Please try again tomorrow.`);
         const reference = WALLET_TRANSFER_PREFIX + crypto.randomBytes(12).toString("hex");
         const id = await repo.insertWithdrawal({ userId: user.userId, amountKobo: amount, feeKobo: fee, status: "processing", reviewReason: null, reference, account });

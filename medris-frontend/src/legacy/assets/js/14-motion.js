@@ -4199,13 +4199,14 @@ window.lvAskCancel = async function (orderId) {
     }
     var a = d.account, most = Number(d.withdrawable_now_kobo || 0);
     var m = sheet("Withdraw", '<div class="lw-bank"><span class="ve-bank-ico lw-bank-logo" data-bank-code="' + esc(a.bank_code || bankCodeOf(a.bank_name)) + '"><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
-      '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", k2n(most)) + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + ' · the most you can withdraw is ' + money(most, true) + '</p>' +
+      '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", "") + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + ' · a small bank transfer fee applies</p>' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo">Continue</button>');
     m.querySelector("#lwWdGo").onclick = async function () {
       var amt = readAmount("lwWdAmt");
       if (amt < 10000) return err(m, "The smallest withdrawal is ₦100.");
       var fee = window.lvWalletFee(amt);
-      if (amt + fee > Number(d.balance_kobo)) return err(m, "You have " + money(d.balance_kobo, true) + ". This withdrawal needs " + money(amt + fee, true) + ".");
+      // like a bank app: never say "the most you can take is…"; explain that the transfer has a small fee and invite a slightly smaller amount
+      if (amt + fee > Number(d.balance_kobo) || amt > most) return err(m, "That is a bit too close to your full balance. Bank transfers carry a small fee (charged through Paystack and the banks), and it is paid from your wallet on top of what you withdraw. Please try a slightly smaller amount.");
       var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
       if (!pin) return;
       if (!(await showConfirmDialog("Withdraw " + short(amt) + " to " + (a.bank_name || "your bank") + " ···" + (a.last4 || "") + (a.account_name ? " (" + a.account_name + ")" : "") + "? This is final.", { title: "Withdraw money", okLabel: "Yes, withdraw", cancelLabel: "No, go back" }))) return;
