@@ -146,14 +146,7 @@ export class CheckoutRepository {
     );
     if (p && Array.isArray(p.rules) && p.rules.length) {
       // Delivery by campus: the option for the buyer's campus decides the fee.
-      const rule = pickDeliveryRule(p.rules as DeliveryRule[], p.vcampus, campusId);
-      if (rule.mode === "free") return "0";
-      if (rule.mode === "flat") return String(Math.max(0, Number(rule.fee) || 0));
-      const perKm = Math.min(1000, Math.max(0, Number(rule.perKm) || 0));
-      if (perKm <= 0) return "0";
-      if (p.vlat == null || p.vlng == null) throw new AppError(400, "bad_request", "This shop has not set its location yet, so delivery by distance is not available. Choose pickup or message the shop.");
-      if (lat == null || lng == null) throw new AppError(400, "bad_request", "Share your location to get this product's delivery fee.");
-      return this.distanceFee(String(perKm), p.vlat, p.vlng, lat, lng);
+      return this.feeForRule(pickDeliveryRule(p.rules as DeliveryRule[], p.vcampus, campusId), p.vlat, p.vlng, lat, lng);
     }
     if (!p || p.mode == null || p.mode === "free") return "0";
     if (p.mode === "flat") return p.fee;
@@ -162,6 +155,27 @@ export class CheckoutRepository {
     if (p.vlat == null || p.vlng == null) return p.fee;
     if (lat == null || lng == null) throw new AppError(400, "bad_request", "Share your location to get this product's delivery fee.");
     return this.distanceFee(p.per_km, p.vlat, p.vlng, lat, lng);
+  }
+
+  /** A package's delivery fee from its options by campus (0042); null when it has none (the shop's fee applies). */
+  async packageDeliveryFee(packageId: string, lat: number | null, lng: number | null, campusId: string | null): Promise<Numeric | null> {
+    const p = await jsonRow<{ rules: unknown; vcampus: string | null; vlat: number | null; vlng: number | null }>(
+      this.db,
+      sql`select to_jsonb(k)->'delivery_rules' as rules, v.campus_id as vcampus, v.lat as vlat, v.lng as vlng
+          from public.vendor_packages k join public.vendors v on v.id = k.vendor_id where k.id = ${packageId}`,
+    );
+    if (!p || !Array.isArray(p.rules) || !p.rules.length) return null;
+    return this.feeForRule(pickDeliveryRule(p.rules as DeliveryRule[], p.vcampus, campusId), p.vlat, p.vlng, lat, lng);
+  }
+
+  private async feeForRule(rule: DeliveryRule, vlat: number | null, vlng: number | null, lat: number | null, lng: number | null): Promise<Numeric> {
+    if (rule.mode === "free") return "0";
+    if (rule.mode === "flat") return String(Math.max(0, Number(rule.fee) || 0));
+    const perKm = Math.min(1000, Math.max(0, Number(rule.perKm) || 0));
+    if (perKm <= 0) return "0";
+    if (vlat == null || vlng == null) throw new AppError(400, "bad_request", "This shop has not set its location yet, so delivery by distance is not available. Choose pickup or message the shop.");
+    if (lat == null || lng == null) throw new AppError(400, "bad_request", "Share your location to get the delivery fee.");
+    return this.distanceFee(String(perKm), vlat, vlng, lat, lng);
   }
 
   /** Per kilometre by straight-line distance from the shop, at least one kilometre, rounded to ₦50. */
