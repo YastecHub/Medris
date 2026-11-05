@@ -145,6 +145,10 @@
       // Levi only follows a drag that starts on his top bar or on empty chat space: never on buttons, the chat list, the select toolbar or the box
       allow: function (t, sheet) {
         if (t.closest("button,a,input,textarea,select,label,.ai-chat-history-item,.ai-history-select-toolbar,.ai-chat-input-row,.levi-tools")) return false;
+        // a row that scrolls sideways (Levi's product cards, shop lists) keeps the finger: the sheet never takes it
+        for (var n = t; n && n !== sheet && n.nodeType === 1; n = n.parentNode) {
+          if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return false;
+        }
         if (sheet.classList.contains("history-mode") && !t.closest(".drawer-header")) return false;
         if (sheet.classList.contains("lv-full")) return false;
         if (document.querySelector(".lv-dlg,#confirmModal.open,.modal.open")) return false;
@@ -5418,8 +5422,55 @@ window.lvAskCancel = async function (orderId) {
       return (r && r.data) || [];
     } catch (_) { return []; }
   }
+  // ---- "add X and Y to my cart": find each item by name and put it in the cart, then say exactly what happened ----
+  var cartWanted = 0;   // set when Levi has just asked "what would you like to add?"
+  async function addNamed(text) {
+    var parts = String(text || "").replace(/\b(to|in|into)\s+(my\s+|the\s+)?(cart|basket)\b/ig, "").replace(/^\s*(please\s+)?(can you\s+)?(add|put|get me|buy)\s+/i, "")
+      .split(/\s*(?:,|&|\+|\band\b|\balso\b)\s*/i).map(function (x) { return x.replace(/^(the|a|an|some|one)\s+/i, "").replace(/[.!?]+$/, "").trim(); }).filter(function (x) { return x.length > 1; }).slice(0, 8);
+    if (!parts.length) return "Tell me the name of what you want, for example *Stanley cup and power bank*.";
+    var added = [], missed = [], own = [];
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i], qty = 1, m = part.match(/^(\d{1,2})\s*x?\s+(.+)$/i);
+      if (m) { qty = Math.max(1, Math.min(20, parseInt(m[1], 10))); part = m[2]; }
+      var safe = part.replace(/[%_,()]/g, " ").trim(), rows = [];
+      try {
+        var r = await sb.from("products").select("id,name,sale_price,discount_price,vendor_id,is_service,listing_type").eq("status", "active").ilike("name", "%" + safe + "%").limit(8);
+        rows = (r && r.data) || [];
+        if (!rows.length) {   // every word must be in the name, in any order
+          var words = safe.split(/\s+/).filter(function (w) { return w.length > 2; }).map(function (w) { return w.length > 3 ? w.replace(/(es|s)$/i, "") : w; });   // "cups" finds "Cup"
+          if (words.length) {
+            var q = sb.from("products").select("id,name,sale_price,discount_price,vendor_id,is_service,listing_type").eq("status", "active");
+            words.forEach(function (w) { q = q.ilike("name", "%" + w + "%"); });
+            var r2 = await q.limit(8); rows = (r2 && r2.data) || [];
+          }
+        }
+      } catch (_) {}
+      rows = rows.filter(function (p) { return !p.is_service && p.sale_price != null && p.listing_type !== "rent"; });
+      if (!rows.length) { missed.push(part); continue; }
+      var low = safe.toLowerCase();
+      rows.sort(function (a, b) { var ea = String(a.name).toLowerCase() === low ? 0 : 1, eb = String(b.name).toLowerCase() === low ? 0 : 1; return ea - eb || String(a.name).length - String(b.name).length; });
+      var p = rows[0];
+      try { if (typeof isOwnVendorId === "function" && isOwnVendorId(p.vendor_id)) { own.push(p.name); continue; } } catch (_) {}
+      var res = null;
+      try { res = window.levroData && levroData.cart ? await levroData.cart.add(p.id, qty, null) : null; } catch (e) { res = { error: e }; }
+      if (res && res.error) { missed.push(part); continue; }
+      if (!res) { try { await addToCart(p.id, qty); } catch (_) { missed.push(part); continue; } }
+      added.push((qty > 1 ? qty + " × " : "") + "**" + p.name + "** · " + (typeof naira === "function" ? naira(p.discount_price != null ? p.discount_price : p.sale_price) : "₦" + p.sale_price));
+    }
+    if (added.length) {
+      try { if (typeof buyerCartCount !== "undefined") buyerCartCount += added.length; } catch (_) {}
+      try { if (typeof updateCartFab === "function") updateCartFab(); if (window.lmSyncCartCount) window.lmSyncCartCount(); } catch (_) {}
+    }
+    var out = [];
+    if (added.length) out.push("Added to your cart ✅\n\n" + added.map(function (x) { return "- " + x; }).join("\n"));
+    if (own.length) out.push("You can't buy from your own shop, so I left out: " + own.map(function (x) { return "**" + x + "**"; }).join(", ") + ".");
+    if (missed.length) out.push("I couldn't find " + missed.map(function (x) { return "**" + x + "**"; }).join(", ") + " on Levromart. Check the spelling, or tell me a bit more about it.");
+    if (added.length) out.push("Say *open my cart* when you're ready to check out.");
+    return out.join("\n\n");
+  }
   // "add to my cart" on its own: ask what, and suggest things to pick from
   async function askWhatToAdd() {
+    cartWanted = Date.now();
     var list = (await latestProducts(12)).slice(0, 6);
     setTimeout(function () {
       if (!list.length) return;
@@ -5468,6 +5519,14 @@ window.lvAskCancel = async function (orderId) {
     var f = async function (text) {
       var q = String(text || "").toLowerCase();
       if (W && W.want) { var ans = typed(text); if (ans) return { handled: true, reply: ans }; }
+      // the answer to "what would you like to add to your cart?" is the thing to add, not a new search
+      if (cartWanted && Date.now() - cartWanted < 10 * 60000 && !/\?\s*$/.test(q) && !/\b(what|which|how|why|where|who|when|show|find|search|cheap|best)\b/.test(q)) {
+        cartWanted = 0; return { handled: true, reply: await addNamed(text) };
+      }
+      cartWanted = 0;
+      // "add <things> to my cart" in one go
+      var am = q.match(/^\s*(?:please\s+)?(?:can you\s+)?(?:add|put)\s+(.{2,200}?)\s+(?:to|in|into)\s+(?:my\s+|the\s+)?(?:cart|basket)\s*[.!?]*\s*$/i);
+      if (am && !/^(something|an item|items?|a product|products|it|them|this|that|these|those|all of them|both)$/i.test(am[1].trim())) return { handled: true, reply: await addNamed(am[1]) };
       if (/^\s*(please\s+)?(can you\s+)?add\s+(something|an item|items?|a product|products)?\s*(to|in|into)\s+(my\s+|the\s+)?(cart|basket)\s*[.!?]*\s*$/i.test(q)) {
         return { handled: true, reply: "What would you like to add to your cart? Tell me the name, or tap one of these:", afterReply: askWhatToAdd };
       }
@@ -6325,7 +6384,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     return t;
   };
   Editor.prototype.render = function () {
-    var rules = this.rules, own = SHOP.vcampus, many = rules.length > 1;
+    var self = this, rules = this.rules, own = SHOP.vcampus, many = rules.length > 1;
     var html = rules.map(function (r, i) {
       var type = function (m) { return '<button type="button" class="lde-type' + (r.mode === m ? " on" : "") + '" data-a="mode" data-i="' + i + '" data-v="' + m + '" aria-pressed="' + (r.mode === m) + '"><span class="lde-type-ico">' + ico(m, 34) + '</span><b>' + TYPE[m][0] + "</b><small>" + TYPE[m][1] + '</small><i class="fa-solid fa-circle-check lde-tick"></i></button>'; };
       var scope = function (s, label, dis) { return '<button type="button" class="lde-pill' + (r.scope === s ? " on" : "") + '" data-a="scope" data-i="' + i + '" data-v="' + s + '"' + (dis ? " disabled" : "") + ">" + label + "</button>"; };
@@ -6335,14 +6394,15 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
         + '<div class="lde-types">' + type("free") + type("flat") + type("distance") + "</div>"
         + (r.mode === "flat" ? '<label class="lde-money"><span class="lde-cur">₦</span><input type="number" inputmode="numeric" min="1" step="50" data-f="fee" data-i="' + i + '" value="' + (r.fee || "") + '" placeholder="500" aria-label="Delivery fee in naira"><span class="lde-unit">per order</span></label>' : "")
         + (r.mode === "distance" ? '<label class="lde-money"><span class="lde-cur">₦</span><input type="number" inputmode="numeric" min="1" max="1000" step="10" data-f="perKm" data-i="' + i + '" value="' + (r.perKm || "") + '" placeholder="200" aria-label="Fee per kilometre in naira"><span class="lde-unit">per km · max ₦1,000</span></label>' : "")
-        + '<div class="lde-cap">Which campuses?</div>'
-        + '<div class="lde-pills">' + scope("mine", own ? "My campus" : "My campus (not set)", !own) + scope("selected", "Selected") + scope("all", many ? "All others" : "All campuses") + "</div>"
-        + (r.scope === "mine" && own ? '<div class="lde-chips"><span class="lde-chip"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(own) : "") + "</span>" + E(campusName(own)) + "</span></div>" : "")
-        + (r.scope === "selected" ? '<div class="lde-chips">' + r.campuses.map(function (c) { return '<span class="lde-chip"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(c) : "") + "</span>" + E(campusName(c)) + '<button type="button" data-a="unc" data-i="' + i + '" data-c="' + E(c) + '" aria-label="Remove ' + E(campusName(c)) + '"><i class="fa-solid fa-xmark"></i></button></span>'; }).join("") + '<button type="button" class="lde-addc" data-a="pickc" data-i="' + i + '"><i class="fa-solid fa-plus"></i> ' + (r.campuses.length ? "Add or remove" : "Add campuses") + "</button></div>" : "")
-        + (r.scope === "all" && many ? '<p class="lde-hint">Every campus not listed in your other options.</p>' : "")
+        + (self.single ? "" : '<div class="lde-cap">Which campuses?</div>')
+        + (self.single ? "" : '<div class="lde-pills">' + scope("mine", own ? "My campus" : "My campus (not set)", !own) + scope("selected", "Selected") + scope("all", many ? "All others" : "All campuses") + "</div>")
+        + (self.single ? "" : r.scope === "mine" && own ? '<div class="lde-chips"><span class="lde-chip"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(own) : "") + "</span>" + E(campusName(own)) + "</span></div>" : "")
+        + (self.single ? "" : r.scope === "selected" ? '<div class="lde-chips">' + r.campuses.map(function (c) { return '<span class="lde-chip"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(c) : "") + "</span>" + E(campusName(c)) + '<button type="button" data-a="unc" data-i="' + i + '" data-c="' + E(c) + '" aria-label="Remove ' + E(campusName(c)) + '"><i class="fa-solid fa-xmark"></i></button></span>'; }).join("") + '<button type="button" class="lde-addc" data-a="pickc" data-i="' + i + '"><i class="fa-solid fa-plus"></i> ' + (r.campuses.length ? "Add or remove" : "Add campuses") + "</button></div>" : "")
+        + (self.single ? "" : (r.scope === "all" && many ? '<p class="lde-hint">Every campus not listed in your other options.</p>' : ""))
         + "</div>";
     }).join("");
-    if (rules.length < 10) html += '<button type="button" class="lde-more" data-a="add"><i class="fa-solid fa-plus"></i> Add delivery for other campuses</button>';
+    if (this.single) html += '<p class="lde-soon"><i class="fa-solid fa-circle-info"></i> A different delivery for each campus is being switched on by the Levromart team. For now this delivery applies to every campus.</p>';
+    else if (rules.length < 10) html += '<button type="button" class="lde-more" data-a="add"><i class="fa-solid fa-plus"></i> Add delivery for other campuses</button>';
     html += '<div class="lde-sum">' + this.sumHtml() + "</div>";
     this.el.innerHTML = html;
   };
@@ -6405,11 +6465,11 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var rules = p && Array.isArray(p.delivery_rules) && p.delivery_rules.length ? p.delivery_rules : [legacyRule(p)];
     FORM.on = false;
     probe().then(function (ok) {
-      if (!ok) return;
       return ready().then(function () {
         if (!formHost()) return;
-        FORM.on = true; legacyEls().forEach(function (el) { el.classList.add("lvdr-hide"); });
-        FORM.ed.set(rules);
+        FORM.on = true; FORM.single = !ok; FORM.ed.single = !ok;
+        legacyEls().forEach(function (el) { el.classList.add("lvdr-hide"); });
+        FORM.ed.set(ok ? rules : [rules.find(function (r) { return r.scope === "all"; }) || rules[0]].map(function (r) { return Object.assign({}, r, { scope: "all", campuses: [] }); }));
       });
     });
   };
@@ -6426,7 +6486,8 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var rules = toSave(FORM.ed.rules), L = legacyOf(rules);
     var set = function (id, v) { var el = byId(id); if (el) el.value = v; };
     set("prodDeliveryMode", L.delivery_fee_mode); set("prodDeliveryFee", L.delivery_fee); set("prodDeliveryPerKm", L.delivery_fee_per_km);
-    return rules.length === 1 && rules[0].scope === "all" ? null : rules;   // one option for every campus = the plain single setting
+    if (FORM.single) return undefined;   // the database has no campus options yet: the single setting above is what is saved
+    return rules;   // always kept (one option for every campus too), so the shop counts as "delivery set up"
   };
 
   /* the package form */
@@ -6470,13 +6531,14 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     document.body.appendChild(w); document.documentElement.classList.add("lde-open");
     w.addEventListener("click", function (ev) { pageClick(ev, w); });
     Promise.all([probe(), probePkg(), ready()]).then(function (ok) {
-      if (!ok[0]) { w.querySelector(".lde-scroll").innerHTML = '<div class="lde-card"><p>Delivery by campus is being switched on. Please check back soon.</p></div>'; return; }
-      var prods = sb.from("products").select("id,name,photos,listing_type,status,delivery_rules,delivery_fee_mode,delivery_fee,delivery_fee_per_km").eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").order("name");
-      var pkgs = ok[1] ? sb.from("vendor_packages").select("id,name,photos,status,delivery_rules").eq("vendor_id", v.id).order("name") : Promise.resolve({ data: [] });
+      var single = !ok[0];   // before migration 0041: one delivery per listing, for every campus
+      var prods = sb.from("products").select("id,name,photos,listing_type,status," + (single ? "" : "delivery_rules,") + "delivery_fee_mode,delivery_fee,delivery_fee_per_km").eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").order("name");
+      var pkgs = ok[1] && !single ? sb.from("vendor_packages").select("id,name,photos,status,delivery_rules").eq("vendor_id", v.id).order("name") : Promise.resolve({ data: [] });
       return Promise.all([prods, pkgs]).then(function (res) {
         var list = (res[0].data || []).map(function (x) { x.kind = x.listing_type === "rent" ? "rental" : "product"; return x; })
           .concat((res[1].data || []).map(function (x) { x.kind = "package"; return x; }));
-        PG = { w: w, list: list, open: null, ed: null, allEd: null, all: false };
+        if (single) list = list.filter(function (x) { return x.kind !== "package"; });
+        PG = { w: w, list: list, open: null, ed: null, allEd: null, all: false, single: single };
         paint();
       });
     }).catch(function (e) { var s = w.querySelector(".lde-scroll"); if (s) s.innerHTML = '<div class="lde-card"><p>Couldn\'t load your listings. ' + E(e && e.message || "") + "</p></div>"; });
@@ -6500,18 +6562,18 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     sc.innerHTML = steps + allCard + '<div class="lde-cap lde-listcap">Your listings (' + n + ")</div>"
       + (n ? '<div class="lde-list">' + rows + "</div>" : '<div class="lde-card"><p>You have no products or packages yet. Add one and come back here.</p></div>')
       + '<p class="lde-foot"><i class="fa-solid fa-circle-info"></i> Services happen in person, so they have no delivery.</p>';
-    if (PG.all) { PG.allEd = PG.allEd && PG.allEd.el === byId("ldeAllEd") ? PG.allEd : new Editor(byId("ldeAllEd")); if (!PG.allRules) PG.allRules = rowSummary(PG.list[0] || {}).rules; PG.allEd.set(PG.allRules); PG.allEd.changed = function () { PG.allRules = PG.allEd.rules; }; }
-    if (PG.open != null && byId("ldeRowEd")) { PG.ed = new Editor(byId("ldeRowEd")); PG.ed.set(rowSummary(PG.list[PG.open]).rules); }
+    if (PG.all) { PG.allEd = PG.allEd && PG.allEd.el === byId("ldeAllEd") ? PG.allEd : new Editor(byId("ldeAllEd")); PG.allEd.single = PG.single; if (!PG.allRules) PG.allRules = rowSummary(PG.list[0] || {}).rules; PG.allEd.set(PG.allRules); PG.allEd.changed = function () { PG.allRules = PG.allEd.rules; }; }
+    if (PG.open != null && byId("ldeRowEd")) { PG.ed = new Editor(byId("ldeRowEd")); PG.ed.single = PG.single; PG.ed.set(rowSummary(PG.list[PG.open]).rules); }
   }
   function saveOne(x, rules) {
     var payload, q;
     if (x.kind === "package") { payload = { delivery_rules: rules }; q = sb.from("vendor_packages").update(payload).eq("id", x.id); }
-    else { payload = Object.assign({ delivery_rules: rules }, legacyOf(rules)); q = sb.from("products").update(payload).eq("id", x.id); }
+    else { payload = Object.assign(PG && PG.single ? {} : { delivery_rules: rules }, legacyOf(rules)); q = sb.from("products").update(payload).eq("id", x.id); }
     return Promise.resolve(q).then(function (r) { if (r && r.error) throw r.error; Object.assign(x, payload); markDone(); });
   }
   function saveAll(rules) {
     var v = myVendor(), single = false;
-    var a = sb.from("products").update(Object.assign({ delivery_rules: rules }, legacyOf(rules))).eq("vendor_id", v.id).eq("is_service", false);
+    var a = sb.from("products").update(Object.assign(PG.single ? {} : { delivery_rules: rules }, legacyOf(rules))).eq("vendor_id", v.id).eq("is_service", false);
     var b = PG.list.some(function (x) { return x.kind === "package"; }) ? sb.from("vendor_packages").update({ delivery_rules: rules }).eq("vendor_id", v.id) : Promise.resolve({});
     return Promise.all([a, b]).then(function (res) {
       res.forEach(function (r) { if (r && r.error) throw r.error; }); markDone();
