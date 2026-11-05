@@ -4243,39 +4243,60 @@ window.lvAskCancel = async function (orderId) {
   }
   window.lvW3MoveEarnings = async function () {
     var r0 = await sb.rpc("get_withdrawal_summary"); var s = (r0 && r0.data) || {};
-    var list = (s.earnings || []).slice(), reqs = (s.recent || []).filter(function (w) { return w.destination === "wallet"; });
-    function ago(iso) { var h = (Date.now() - new Date(iso).getTime()) / 36e5; if (!(h >= 0)) return "just now"; if (h < 1) return Math.max(1, Math.round(h * 60)) + " min ago"; if (h < 48) return Math.floor(h) + " h ago"; return Math.floor(h / 24) + " days ago"; }
-    function left(iso) { var h = 24 - (Date.now() - new Date(iso).getTime()) / 36e5; if (h <= 0) return "now"; return h < 1 ? "in under 1 h" : "in " + Math.ceil(h) + " h"; }
     if (!Array.isArray(s.earnings)) return legacyMove(s);   // the server has not been updated yet: keep the old all-or-nothing way
+    var list = s.earnings.slice().filter(function (e) { return e.state !== "held"; });
+    // the order the money moves in: money that is ready first (oldest first), then newer money (oldest first)
+    list.sort(function (a, b) { var ra = a.state === "ready" ? 0 : 1, rb = b.state === "ready" ? 0 : 1; return ra - rb || new Date(a.paid_at) - new Date(b.paid_at); });
+    var ready = 0, recent = 0; list.forEach(function (e) { if (e.state === "ready") ready += e.net_kobo; else recent += e.net_kobo; });
+    var total = ready + recent, reqs = (s.recent || []).filter(function (w) { return w.destination === "wallet"; });
+    var waiting = reqs.filter(function (w) { return w.status === "requested"; }).length;
     if (!list.length && !reqs.length) return nothingToMove();
-    var chosen = {}; list.forEach(function (e) { if (e.state === "ready") chosen[e.order_id] = true; });
-    var reqHtml = reqs.length ? '<div class="lw-mv-h">Your requests</div>' + reqs.slice(0, 6).map(function (w) {
-      var st = { requested: "Waiting for Levromart", approved: "Approved", rejected: "Not approved" }[w.status] || w.status;
-      return '<div class="lw-mv-req ' + esc(w.status) + '"><div><b>' + short(w.amount_kobo) + '</b><small>' + esc(st) + " · asked " + ago(w.created_at) + '</small>' + (w.request_reason ? '<small>Your reason: ' + esc(w.request_reason) + '</small>' : "") + (w.status === "rejected" && w.reject_reason ? '<small class="lw-mv-bad">Reason from Levromart: ' + esc(w.reject_reason) + '</small>' : "") + '</div>' + (w.status === "requested" ? '<button type="button" data-cancel="' + esc(w.id) + '">Cancel</button>' : "") + '</div>';
-    }).join("") : "";
-    var m = sheet("Move earnings to your wallet", '<p class="lw-hint" style="margin-top:0">Choose the earnings you want in your wallet. Money paid 24 hours ago or more moves at once. Newer money needs Levromart to approve it, so tell us why you need it.</p><div id="lwMvList"></div><div id="lwMvSum" class="lw-mv-sum"></div><div id="lwMvWhy" hidden><label class="lw-l">Why do you need this money now?</label><textarea id="lwMvReason" class="lw-in" rows="2" maxlength="300" placeholder="For example: I need to restock today"></textarea></div><p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwMvGo">Continue</button>' + reqHtml);
-    var host = m.querySelector("#lwMvList");
-    host.innerHTML = list.length ? list.map(function (e) {
-      var dis = e.state === "held", tag = dis ? "Held: open dispute" : e.state === "ready" ? "Ready · earned " + ago(e.paid_at) : "Earned " + ago(e.paid_at) + " · ready " + left(new Date(new Date(e.paid_at).getTime() + 864e5).toISOString()) + " or ask now";
-      return '<label class="lw-mv-row' + (dis ? " off" : "") + '"><input type="checkbox" data-o="' + esc(e.order_id) + '"' + (chosen[e.order_id] ? " checked" : "") + (dis ? " disabled" : "") + '><div><b>' + short(e.net_kobo) + '</b><small>Order ' + esc(String(e.order_id).slice(0, 8).toUpperCase()) + " · " + esc(tag) + '</small></div></label>';
-    }).join("") : '<p class="muted" style="text-align:center">No earnings waiting right now.</p>';
-    function sum() {
-      var now = 0, later = 0; list.forEach(function (e) { if (!chosen[e.order_id]) return; if (e.state === "ready") now += e.net_kobo; else if (e.state === "needs_approval") later += e.net_kobo; });
-      m.querySelector("#lwMvSum").innerHTML = (now ? '<div><span>Moves now</span><b>' + short(now) + '</b></div>' : "") + (later ? '<div><span>Needs approval</span><b>' + short(later) + '</b></div>' : "") + (!now && !later ? '<small>Tick the earnings you want to move.</small>' : "");
-      m.querySelector("#lwMvWhy").hidden = !later; m.__now = now; m.__later = later;
+    function pick(amt) {   // whole sales only, up to the amount typed
+      var ids = [], now = 0, later = 0, sum = 0;
+      for (var k = 0; k < list.length; k++) { var e = list[k]; if (sum + e.net_kobo > amt) continue; sum += e.net_kobo; ids.push(e.order_id); if (e.state === "ready") now += e.net_kobo; else later += e.net_kobo; }
+      return { ids: ids, now: now, later: later, total: sum };
     }
-    sum();
-    host.onchange = function (ev) { var c = ev.target.closest("input[data-o]"); if (!c) return; chosen[c.dataset.o] = c.checked; sum(); };
-    m.addEventListener("click", function (ev) { var b = ev.target.closest("[data-cancel]"); if (b) { closeSheet(); window.lvCancelWdReq(b.dataset.cancel); } });
+    var smallest = list.reduce(function (m, e) { return m ? Math.min(m, e.net_kobo) : e.net_kobo; }, 0);
+    var m = sheet("Move to wallet", '<div class="lw-mv-stats"><div><small>Ready now</small><b>' + short(ready) + '</b></div><div><small>Within 24 hours</small><b>' + short(recent) + '</b></div></div>' +
+      (list.length ? '<label class="lw-l">How much do you want to move?</label>' + amountField("lwMvAmt", "") + '<button type="button" class="lw-mv-all" id="lwMvAll">Move all ' + short(total) + '</button><p class="lw-mv-info" id="lwMvInfo"></p>' +
+        '<div id="lwMvWhy" hidden><label class="lw-l">Why do you need it now?</label><textarea id="lwMvReason" class="lw-in" rows="2" maxlength="300" placeholder="For example: I need to restock today"></textarea></div>' +
+        '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwMvGo">Move to wallet</button>' : '<p class="lv-safe-p">Nothing is ready to move right now. Your earnings are safe and will show here.</p>') +
+      '<div class="lw-mv-links"><button type="button" id="lwMvReqs">My requests' + (waiting ? " (" + waiting + " waiting)" : "") + ' <i class="fa-solid fa-chevron-right"></i></button><button type="button" id="lwMvList">Earnings breakdown <i class="fa-solid fa-chevron-right"></i></button></div>');
+    function ago(iso) { var h = (Date.now() - new Date(iso).getTime()) / 36e5; if (!(h >= 0)) return "just now"; if (h < 1) return Math.max(1, Math.round(h * 60)) + " min ago"; if (h < 48) return Math.floor(h) + " h ago"; return Math.floor(h / 24) + " days ago"; }
+    function sub(title, html) { var mm = sheet(title, html + '<button type="button" class="lw-link" id="lwMvBack"><i class="fa-solid fa-arrow-left"></i> Back</button>'); mm.querySelector("#lwMvBack").onclick = function () { window.lvW3MoveEarnings(); }; return mm; }
+    m.querySelector("#lwMvList").onclick = function () {
+      sub("Earnings breakdown", s.earnings.length ? '<div class="lw-mv-rows">' + s.earnings.map(function (e) { var tag = e.state === "held" ? "Held: open dispute" : e.state === "ready" ? "Ready" : "Ready in " + Math.max(1, Math.ceil(24 - (Date.now() - new Date(e.paid_at).getTime()) / 36e5)) + " h"; return '<div><b>' + short(e.net_kobo) + '</b><small>Order ' + esc(String(e.order_id).slice(0, 8).toUpperCase()) + " · earned " + ago(e.paid_at) + " · " + tag + '</small></div>'; }).join("") + '</div>' : '<p class="muted">No earnings yet.</p>');
+    };
+    m.querySelector("#lwMvReqs").onclick = function () {
+      var mm = sub("My requests", reqs.length ? '<div class="lw-mv-rows">' + reqs.slice(0, 15).map(function (w) {
+        var st = { requested: "Waiting for Levromart", approved: "Approved", rejected: "Not approved" }[w.status] || w.status;
+        return '<div class="' + esc(w.status) + '"><span><b>' + short(w.amount_kobo) + '</b><small>' + esc(st) + " · " + ago(w.created_at) + '</small>' + (w.request_reason ? '<small>Your reason: ' + esc(w.request_reason) + '</small>' : "") + (w.status === "rejected" && w.reject_reason && w.reject_reason !== "Cancelled by the shop" ? '<small class="lw-mv-bad">Levromart: ' + esc(w.reject_reason) + '</small>' : "") + '</span>' + (w.status === "requested" ? '<button type="button" data-cancel="' + esc(w.id) + '">Cancel</button>' : "") + '</div>';
+      }).join("") + '</div>' : '<p class="muted">You have not made a request yet.</p>');
+      mm.addEventListener("click", function (ev) { var b = ev.target.closest("[data-cancel]"); if (b) { closeSheet(); window.lvCancelWdReq(b.dataset.cancel); } });
+    };
+    if (!list.length) return;
+    var amtEl = m.querySelector("#lwMvAmt"), info = m.querySelector("#lwMvInfo");
+    function refresh() {
+      var amt = readAmount("lwMvAmt"), p = pick(amt);
+      m.__pick = p;
+      m.querySelector("#lwMvWhy").hidden = !p.later;
+      if (!amt) info.textContent = "Enter an amount, or tap Move all.";
+      else if (amt > total) info.textContent = "You only have " + short(total) + " to move.";
+      else if (!p.total) info.textContent = "Earnings move one sale at a time. The smallest is " + short(smallest) + ".";
+      else info.textContent = (p.now ? short(p.now) + " moves now" : "") + (p.now && p.later ? " · " : "") + (p.later ? short(p.later) + " goes to Levromart for approval" : "") + (p.total < amt ? " (rounded down to whole sales: " + short(p.total) + ")" : "");
+    }
+    amtEl.addEventListener("input", refresh); refresh();
+    m.querySelector("#lwMvAll").onclick = function () { amtEl.value = String(total / 100); refresh(); };
     m.querySelector("#lwMvGo").onclick = async function () {
-      var ids = Object.keys(chosen).filter(function (k) { return chosen[k]; }), why = m.querySelector("#lwMvReason").value.trim();
-      if (!ids.length) return err(m, "Tick at least one earning to move.");
-      if (m.__later && why.length < 3) return err(m, "Please write why you need the newer money. An admin reads it.");
+      var p = m.__pick || pick(readAmount("lwMvAmt")), why = (m.querySelector("#lwMvReason").value || "").trim(), b = this;
+      if (!p.total) return err(m, readAmount("lwMvAmt") ? "Please enter an amount that covers at least one sale (" + short(smallest) + ")." : "Enter how much you want to move.");
+      if (p.later && why.length < 3) return err(m, "Please tell us why you need the newer money. An admin reads it.");
       err(m, "");
-      var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(m.__now || 0), 1]].concat(m.__later ? [["Checked by Levromart first", short(m.__later)]] : []), cta: "Move" });
+      var pin = await window.lvPinGate({ title: "Move to wallet", rows: [["Amount", short(p.total), 1]].concat(p.later ? [["Waits for approval", short(p.later)]] : []), cta: "Move " + short(p.total) });
       if (!pin) return;
-      var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin, p_order_ids: ids, p_reason: why || null });
-      if (r.error) return err(m, r.error.message || "Could not move your earnings.");
+      b.disabled = true; b.textContent = "Please wait…";
+      var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin, p_order_ids: p.ids, p_reason: why || null });
+      if (r.error) { b.disabled = false; b.textContent = "Move to wallet"; return err(m, r.error.message || "Could not move your earnings."); }
       closeSheet();
       showToast(Number(r.data.sent_kobo) > 0 ? short(r.data.sent_kobo) + " is now in your wallet." + (Number(r.data.requested_kobo) > 0 ? " The rest is waiting for approval." : "") : "Request sent. We will message you when it is approved.", "success");
       await load(true); repaint(); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
