@@ -1049,8 +1049,11 @@ async function quickFind(messages, ctx) {
       found = { ...found, exact_match: true };
     }
   }
-  if (!results.length) return null;
-  if (!results.length) return null;
+  if (!results.length) {
+    // the person named a product and nothing fits: never a dead end, suggest 6 to 8 real products
+    if (direct) { try { const sug = await suggestAlternatives(term, ctx, [], 8); if (sug.picks.length) return notFoundReply(term, sug, ctx); } catch (_) {} }
+    return null;
+  }
   if (shownBefore) { const fresh = results.filter((p) => !shownBefore.includes(normalize(p.name))); if (fresh.length) results = fresh; else return `${emojiFor(normalize(term))} That's everything on Levromart for **${term}** right now; I've shown you all of it. Want me to look for something similar, or post a request so shops can offer you one?`; }
   const priceOfP = (p) => Number(p.discount_price ?? p.sale_price ?? p.rental_rate ?? NaN);
   let rangeNote = "";
@@ -1064,8 +1067,8 @@ async function quickFind(messages, ctx) {
     }
   }
   if (!exactName) {
-    const alt = results.slice(0, 6);
-    return `😕 I couldn't find a **${term}** on Levromart yet.\n\n**You may also like:**\n${alt.map((p, i) => `${i + 1}. **${p.name}** · ${money(priceOfP(p))} from **${p.vendor.business_name}**`).join("\n")}\n\nNot quite it? I can post a request for "${term}" so shops that have one can send you offers. [[PRODUCTS:${alt.map((p) => p.id).join(",")}]]`;
+    const sug = await suggestAlternatives(term, ctx, results, 8);
+    return notFoundReply(term, sug, ctx);
   }
   const hasLoc = ctx.lat != null && ctx.lng != null;
   const e = emojiFor(normalize(term));
@@ -1148,6 +1151,43 @@ function altTerms(term) {
   return out.slice(0, 4);
 }
 
+
+// Nothing matched what the person asked for: look wider (each word of it, other words for it, the categories and sectors it
+// belongs to), then fill up with what is popular, so Levi can always suggest 6 to 8 real products instead of a dead end.
+async function suggestAlternatives(term, ctx, have = [], want = 8) {
+  const out = [], seen = new Set();
+  const add = (list) => { for (const p of list || []) { if (!p || !p.vendor || seen.has(p.id)) continue; seen.add(p.id); out.push(p); if (out.length >= want) return true; } return false; };
+  if (add(have)) return { picks: out, popular: false };
+  const t = normalize(term);
+  const words = t.split(/\s+/).filter((w) => w.length > 2).map((w) => w.replace(/s$/, ""));
+  const concept = CONCEPTS.find(([re]) => re.test(t));
+  const tries = [...altTerms(term), ...words, ...(concept ? concept[1] : [])].filter((w, i, a) => w && a.indexOf(w) === i).slice(0, 8);
+  for (const q of tries) {
+    const r = await searchProducts({ query: q, limit: 10, nearest: ctx.lat != null }, ctx).catch(() => null);
+    if (r && add(r.results)) return { picks: out, popular: false };
+    // the other categories of the same sector as the best match ("you may also like" in the same area)
+    if (r && out.length < want && r.related_categories && r.related_categories.length) {
+      for (const cat of r.related_categories.slice(0, 2)) {
+        const c = await searchProducts({ query: cat, limit: 4, nearest: ctx.lat != null }, ctx).catch(() => null);
+        if (c && add(c.results)) return { picks: out, popular: false };
+      }
+    }
+  }
+  const matched = out.length;
+  const pop = await getPopularProducts({ limit: 15 }, ctx).catch(() => null);
+  add(pop && pop.results);
+  if (out.length < want) { const fresh = await getLatestProducts({ limit: 12 }, ctx).catch(() => null); add(fresh && fresh.results); }
+  return { picks: out, popular: matched === 0 };
+}
+function notFoundReply(term, sug, ctx) {
+  const e = emojiFor(normalize(term));
+  const hasLoc = ctx.lat != null && ctx.lng != null;
+  const priceOfX = (p) => Number(p.discount_price ?? p.sale_price ?? p.rental_rate);
+  if (!sug.picks.length) return `😕 I couldn't find **${term}** on Levromart yet. I looked through product names, descriptions, categories and sectors. Post a request (Request on the bottom bar) and shops that have it will send you offers.`;
+  const lines = sug.picks.map((p, i) => `${i + 1}. **${p.name}** · ${Number.isFinite(priceOfX(p)) ? money(priceOfX(p)) : "price not listed"} from **${p.vendor.business_name}**${hasLoc && Number.isFinite(p.vendor.distance_km) ? ` · ${distLabel(p.vendor.distance_km)}` : ""}`);
+  return `${e} I couldn't find **${term}** on Levromart right now. I checked the product names, descriptions, categories and sectors.\n\n**${sug.popular ? "Here are some popular picks you may like instead" : "You may also like"}:**\n${lines.join("\n")}\n\nNone of these it? I can post a request for "${term}" so shops that have one can send you offers. [[PRODUCTS:${sug.picks.map((p) => p.id).join(",")}]]`;
+}
+
 // When the AI model cannot be reached, Levi still answers what it can from the live catalogue: products, the shops that sell
 // them (closest first when the location is known), and shops by name.
 async function liveDataAnswer(latest, messages, ctx) {
@@ -1179,6 +1219,7 @@ async function liveDataAnswer(latest, messages, ctx) {
         return `I could not find "${term}" exactly, but these ${alt} listings are close${hasLoc ? " (closest first)" : ""}:\n${lines.join("\n")} [[PRODUCTS:${ps.slice(0, 5).map((p) => p.id).join(",")}]]`;
       }
     }
+    try { const sug = await suggestAlternatives(term, ctx, [], 8); if (sug.picks.length) return notFoundReply(term, sug, ctx); } catch (_) {}
     return `I could not find "${term}" on Levromart yet. Try another word for it, or post a request (Request on the bottom bar) and shops that have it will send you offers.`;
   }
   if (wantsVendors && hasLoc) {
