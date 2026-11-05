@@ -46,6 +46,8 @@ export interface V1RequestOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 20_000;
+/** A page-load read that has not answered in this long is not worth waiting for: the app reads from Supabase instead. */
+const READ_TIMEOUT_MS = 9_000;
 
 export function v1Url(path: string, query?: V1RequestOptions["query"]): string {
   const params = new URLSearchParams();
@@ -55,9 +57,9 @@ export function v1Url(path: string, query?: V1RequestOptions["query"]): string {
 }
 
 /** The client-side timeout, joined with the caller's signal when there is one. */
-function requestSignal(options: V1RequestOptions): AbortSignal | undefined {
+function requestSignal(options: V1RequestOptions, method = "POST"): AbortSignal | undefined {
   // AbortSignal.timeout / AbortSignal.any are missing on some older mobile browsers; they simply get no client-side timeout.
-  const timeout = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS) : undefined;
+  const timeout = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(options.timeoutMs ?? (method === "GET" ? READ_TIMEOUT_MS : DEFAULT_TIMEOUT_MS)) : undefined;
   if (!options.signal) return timeout;
   if (!timeout) return options.signal;
   return typeof AbortSignal.any === "function" ? AbortSignal.any([options.signal, timeout]) : options.signal;
@@ -70,6 +72,18 @@ function requestSignal(options: V1RequestOptions): AbortSignal | undefined {
  */
 const PAUSE_AFTER_NETWORK_ERROR_MS = 60_000;
 let pausedUntil = 0;
+
+/**
+ * Reads only: when the backend answers a read with a server error or not at all, further reads go straight to Supabase for
+ * a short while instead of each one waiting for the backend first. Writes are never moved: they keep using the backend.
+ */
+let readsPausedUntil = 0;
+export function pauseReads(ms: number): void {
+  readsPausedUntil = Math.max(readsPausedUntil, Date.now() + ms);
+}
+export function readsPaused(): boolean {
+  return Date.now() < readsPausedUntil;
+}
 
 /** Skip the backend for `ms` (e.g. it answered that an endpoint does not exist yet). */
 export function pauseBackend(ms: number): void {
@@ -91,7 +105,7 @@ export async function v1Request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "D
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       credentials: appConfig.backendUrl ? "include" : "same-origin",
-      signal: requestSignal(options),
+      signal: requestSignal(options, method),
     });
   } catch (err) {
     if (options.signal?.aborted) throw new V1Error("AbortError: The operation was aborted.", 0, "aborted");

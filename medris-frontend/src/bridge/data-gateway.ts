@@ -22,7 +22,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { v1 } from "@/services/api/v1-endpoints";
-import { V1Error } from "@/services/api/v1-client";
+import { V1Error, pauseReads, readsPaused } from "@/services/api/v1-client";
 import { appConfig } from "@/config/env";
 import { BACKEND_FEATURES, defaultFeatureList, enabledFeatures, parseFeatureList, writeFeatureOverride, type BackendFeature } from "@/services/backend-features";
 import { installRpc, supabaseRpc } from "./rpc-shim";
@@ -74,12 +74,14 @@ function toGatewayError(err: unknown): GatewayError {
 
 async function route<T>(feature: BackendFeature, backend: () => Promise<GatewayResult<T>>, legacy: Legacy<T>, canFallBack: boolean): Promise<GatewayResult<T>> {
   if (!features.has(feature)) return legacy();
+  if (canFallBack && readsPaused()) return legacy();   // the backend is struggling: read from Supabase at once
   try {
     return await backend();
   } catch (err) {
     // A read is retried on Supabase whenever the backend is unavailable; a write only when it never left the browser.
     // (a read is also retried on Supabase after a server error or a rate limit: reading twice is harmless, and it spares people a "Try again" screen)
-    if (err instanceof V1Error && (canFallBack ? err.isUnavailable || err.status >= 500 || err.status === 429 : err.notSent)) {
+    if (canFallBack && err instanceof V1Error && (err.status >= 500 || err.code === "timeout")) pauseReads(45_000);
+    if (err instanceof V1Error && (canFallBack ? err.isUnavailable || err.status >= 500 || err.status === 429 || err.code === "timeout" : err.notSent)) {
       if (!warned.has(feature)) {
         warned.add(feature);
         console.warn(`[levroData] backend unavailable for "${feature}" (${err.status}); using Supabase directly for now.`);
