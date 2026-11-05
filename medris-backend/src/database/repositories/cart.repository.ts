@@ -38,12 +38,13 @@ export class CartRepository {
                 'sale_price', p.sale_price, 'discount_price', p.discount_price, 'rental_rate', p.rental_rate,
                 'photos', p.photos, 'quantity_available', p.quantity_available, 'status', p.status,
                 'delivery_fee', p.delivery_fee, 'delivery_fee_mode', p.delivery_fee_mode, 'delivery_fee_per_km', p.delivery_fee_per_km,
+                'delivery_rules', to_jsonb(p)->'delivery_rules',
                 'vendor', (
                   select json_build_object(
                     'id', v.id, 'business_name', v.business_name, 'previous_business_name', v.previous_business_name,
                     'name_changed_at', v.name_changed_at, 'is_active', v.is_active, 'verification_status', v.verification_status,
                     'delivery_fee', v.delivery_fee, 'delivery_fee_mode', v.delivery_fee_mode, 'delivery_fee_per_km', v.delivery_fee_per_km,
-                    'lat', v.lat, 'lng', v.lng)
+                    'lat', v.lat, 'lng', v.lng, 'campus_id', v.campus_id)
                   from public.vendors v where v.id = p.vendor_id)
               )
               from public.products p where p.id = ci.product_id)

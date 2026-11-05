@@ -6076,3 +6076,286 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     try { currentViewParams.status = st; window.__orderListOrders = list; } catch (_) {}
   }, true);
 })();
+
+/* ===== Delivery by campus (migration 0041). A listing can have several delivery options, each for "my campus", campuses
+   the shop picks, or every other campus: e.g. free on UNILAG, ₦500 on LASU and YABATECH, ₦200/km everywhere else.
+   The buyer says which campus the order goes to and the fee follows it; the server works the fee out again the same way
+   (checkout.repository pickDeliveryRule) and the database refuses a contradictory list. Until 0041 is applied the old
+   single setting is shown and nothing changes. ===== */
+(function () {
+  "use strict";
+  var OK = null, probing = null;
+  function probe() {
+    if (OK !== null) return Promise.resolve(OK);
+    if (probing) return probing;
+    probing = Promise.resolve().then(function () { return sb.from("products").select("delivery_rules").limit(1); })
+      .then(function (r) { OK = !(r && r.error); return OK; }, function () { OK = false; return false; });
+    return probing;
+  }
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s); }
+  function N(n) { return typeof naira === "function" ? naira(n) : "₦" + Number(n || 0).toLocaleString(); }
+  function campusName(id) {
+    if (!id) return "";
+    var r = window.lvCampusById && window.lvCampusById(id);
+    if (r && window.lvCampusShort) { try { var s = window.lvCampusShort(id); if (s) return s; } catch (_) {} }
+    if (r && r.name) return r.name;
+    return String(id).replace(/^custom:/, "").replace(/-/g, " ").replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+  }
+  window.lvDrCampusName = campusName;
+  // the same choice the server makes
+  function pick(rules, shopCampus, campus) {
+    if (!campus || campus === "none" || !Array.isArray(rules)) return null;
+    var own = shopCampus && shopCampus !== "none" ? shopCampus : null;
+    return rules.find(function (r) { return r.scope === "mine" && own && own === campus; })
+      || rules.find(function (r) { return r.scope === "selected" && (r.campuses || []).indexOf(campus) >= 0; })
+      || rules.find(function (r) { return r.scope === "all"; }) || null;
+  }
+  window.lvDrPick = pick;
+  function ruleText(r) { return r.mode === "free" ? "Free delivery" : r.mode === "flat" ? N(r.fee) + " delivery" : N(r.perKm) + "/km"; }
+
+  /* ---------------- buyer: which campus is it going to? ---------------- */
+  var REG = {};
+  window.lvDrRegister = function (prefix, products, v) {
+    var lines = (products || []).map(function (p) {
+      return { name: p.name || "", rules: Array.isArray(p.delivery_rules) && p.delivery_rules.length ? p.delivery_rules : null,
+        mode: String(p.delivery_fee_mode || "free").toLowerCase(), fee: Number(p.delivery_fee) || 0, perKm: Math.min(1000, Number(p.delivery_fee_per_km) || 0) };
+    });
+    if (!lines.some(function (l) { return l.rules; })) { delete REG[prefix]; return; }
+    REG[prefix] = { lines: lines, vcampus: (v && v.campus_id) || null, vlat: v && v.lat != null ? Number(v.lat) : null, vlng: v && v.lng != null ? Number(v.lng) : null, chosen: null };
+  };
+  function coverage(R) {
+    var ruled = R.lines.filter(function (l) { return l.rules; });
+    var own = R.vcampus && R.vcampus !== "none" ? R.vcampus : null;
+    if (ruled.every(function (l) { return l.rules.some(function (r) { return r.scope === "all"; }); })) return { any: true, list: [] };
+    var cand = [];
+    ruled.forEach(function (l) { l.rules.forEach(function (r) {
+      if (r.scope === "mine" && own && cand.indexOf(own) < 0) cand.push(own);
+      if (r.scope === "selected") (r.campuses || []).forEach(function (c) { if (cand.indexOf(c) < 0) cand.push(c); });
+    }); });
+    return { any: false, list: cand.filter(function (c) { return ruled.every(function (l) { return pick(l.rules, R.vcampus, c); }); }) };
+  }
+  function effective(R) {
+    return R.lines.map(function (l) {
+      if (!l.rules) return { name: l.name, mode: l.mode === "free" ? "flat" : l.mode, fee: l.mode === "flat" ? l.fee : 0, perKm: l.mode === "distance" ? l.perKm : 0 };
+      var r = pick(l.rules, R.vcampus, R.chosen);
+      if (!r) return { name: l.name, blocked: true };
+      return { name: l.name, mode: r.mode === "distance" ? "distance" : "flat", fee: r.mode === "flat" ? Number(r.fee) || 0 : 0, perKm: r.mode === "distance" ? Math.min(1000, Number(r.perKm) || 0) : 0, free: r.mode === "free" };
+    });
+  }
+  function apply(prefix) {
+    var R = REG[prefix], wrap = byId(prefix + "DeliveryFields"); if (!R || !wrap) return;
+    var nameEl = byId(prefix + "DrName"), line = byId(prefix + "FeeLine"), note = byId(prefix + "DrNote");
+    if (nameEl) nameEl.innerHTML = R.chosen ? (window.lvCampusLogoHtml ? '<span class="lvdr-logo">' + window.lvCampusLogoHtml(R.chosen) + "</span>" : "") + E(campusName(R.chosen)) : "Choose your campus";
+    if (note) note.textContent = "";
+    if (!R.chosen) {
+      wrap.dataset.feeMode = "flat"; wrap.dataset.fee = "0"; wrap.dataset.perKm = "0"; if (wrap.dataset.feeLines !== undefined) wrap.dataset.feeLines = "[]";
+      if (line) line.innerHTML = '<i class="fa-solid fa-truck"></i> Choose your campus to see the delivery fee.';
+      if (typeof refreshPriceBreakdown === "function") refreshPriceBreakdown(prefix);
+      return;
+    }
+    var eff = effective(R), ok = eff.filter(function (x) { return !x.blocked; }), bad = eff.filter(function (x) { return x.blocked; });
+    if (bad.length && note) note.textContent = bad.map(function (x) { return x.name; }).join(", ") + (bad.length === 1 ? " is" : " are") + " not delivered to " + campusName(R.chosen) + ". Choose pickup, or check that out separately.";
+    var flat = ok.reduce(function (s, x) { return s + (x.mode === "flat" ? x.fee : 0); }, 0), dist = ok.find(function (x) { return x.mode === "distance" && x.perKm > 0; });
+    wrap.dataset.feeMode = dist ? "distance" : "flat"; wrap.dataset.fee = String(flat); wrap.dataset.perKm = String(dist ? dist.perKm : 0);
+    if (wrap.dataset.feeLines !== undefined || R.lines.length > 1) wrap.dataset.feeLines = JSON.stringify(ok);
+    if (line) {
+      if (dist && R.vlat != null && R.vlng != null && typeof deliveryInfoLineHtml === "function") line.innerHTML = deliveryInfoLineHtml(prefix, true, true, R.vlat, R.vlng, dist.perKm);
+      else if (dist) line.innerHTML = '<i class="fa-solid fa-circle-info"></i> This shop has not set its location, so delivery by distance is not available. Choose pickup.';
+      else line.innerHTML = '<i class="fa-solid fa-truck"></i> ' + (flat > 0 ? "<strong>" + N(flat) + "</strong> delivery" : "<strong>Free delivery</strong>") + " to " + E(campusName(R.chosen));
+    }
+    if (dist && typeof ensureDeliveryLocation === "function") ensureDeliveryLocation(prefix);
+    if (typeof refreshPriceBreakdown === "function") refreshPriceBreakdown(prefix);
+  }
+  window.lvDrApply = apply;
+  function choose(prefix, id) { var R = REG[prefix]; if (!R) return; R.chosen = id || null; try { if (id) localStorage.setItem("lv-dr-campus", id); } catch (_) {} apply(prefix); }
+  window.lvDrChoose = function (prefix) {
+    var R = REG[prefix]; if (!R) return;
+    var cov = coverage(R);
+    var go = function () {
+      if (cov.any && window.lvOpenCampusPicker) {
+        window.lvOpenCampusPicker({ title: "Where should it be delivered?", current: R.chosen || "", onPick: function (id) { choose(prefix, typeof id === "string" ? id : (id && id.id)); } });
+        return;
+      }
+      var old = document.getElementById("lvDrSheet"); if (old) old.remove();
+      var w = document.createElement("div"); w.id = "lvDrSheet"; w.className = "lvdr-sheet"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true");
+      w.innerHTML = '<div class="lvdr-sheet-card"><div class="lvdr-sheet-h"><strong>Where should it be delivered?</strong><button type="button" class="lvdr-x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>'
+        + '<p class="lvdr-sheet-sub">This shop delivers to these campuses only.</p><div class="lvdr-sheet-list">'
+        + (cov.list.length ? cov.list.map(function (c) { return '<button type="button" class="lvdr-sheet-row' + (c === R.chosen ? " on" : "") + '" data-c="' + E(c) + '"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(c) : "") + "</span><span>" + E(campusName(c)) + "</span></button>"; }).join("") : '<p class="lvdr-sheet-sub">These items have no campus in common. Check them out separately.</p>')
+        + '</div><p class="lvdr-sheet-sub">Not on one of these campuses? Choose <b>Pickup</b> instead.</p></div>';
+      document.body.appendChild(w);
+      w.addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-c]"); if (b) { choose(prefix, b.getAttribute("data-c")); w.remove(); return; }
+        if (ev.target === w || ev.target.closest(".lvdr-x")) w.remove();
+      });
+    };
+    (window.lvCampuses ? window.lvCampuses() : Promise.resolve()).then(go, go);
+  };
+  if (typeof window.deliveryFieldsHtml === "function" && !window.deliveryFieldsHtml.__lvdr) {
+    var dfh0 = window.deliveryFieldsHtml;
+    var dfh1 = function (prefix) {
+      var html = dfh0.apply(this, arguments), R = REG[prefix];
+      if (!R) return html;
+      var cov = coverage(R), mine = "";
+      try { mine = (window.lvMyCampusId && window.lvMyCampusId()) || localStorage.getItem("lv-dr-campus") || ""; } catch (_) {}
+      R.chosen = mine && mine !== "none" && (cov.any || cov.list.indexOf(mine) >= 0) ? mine : (cov.list.length === 1 ? cov.list[0] : null);
+      html = html.replace(/<p class="delivery-fee-line"[^>]*>[\s\S]*?<\/p>/g, "");
+      var row = '<div class="lvdr-pick"><span class="lvdr-k"><i class="fa-solid fa-graduation-cap"></i> Deliver to campus</span>'
+        + '<button type="button" class="lvdr-btn" onclick="lvDrChoose(\'' + E(prefix) + '\')"><span id="' + E(prefix) + 'DrName">Choose your campus</span><i class="fa-solid fa-chevron-down"></i></button></div>'
+        + '<p class="delivery-fee-line" id="' + E(prefix) + 'FeeLine" style="margin:.35rem 0 0;"></p><p class="lvdr-note" id="' + E(prefix) + 'DrNote"></p>';
+      html = html.replace(/(<label class="df-label" for="[^"]*Address")/, row + "$1");
+      setTimeout(function () { (window.lvCampuses ? window.lvCampuses() : Promise.resolve()).then(function () { apply(prefix); }, function () { apply(prefix); }); }, 0);
+      return html;
+    };
+    dfh1.__lvdr = true; window.deliveryFieldsHtml = dfh1;
+    try { deliveryFieldsHtml = dfh1; } catch (_) {}
+  }
+  if (typeof window.readDeliveryFields === "function" && !window.readDeliveryFields.__lvdr) {
+    var rdf0 = window.readDeliveryFields;
+    var rdf1 = function (prefix, errorEl) {
+      var d = rdf0.apply(this, arguments), R = REG[prefix];
+      if (!d || !R || d.method !== "delivery") return d;
+      var fail = function (m) { if (errorEl) { errorEl.textContent = m; errorEl.classList.remove("hidden"); } return null; };
+      if (!R.chosen) return fail("Choose the campus it should be delivered to (under Delivery), or switch to pickup.");
+      var bad = R.lines.filter(function (l) { return l.rules && !pick(l.rules, R.vcampus, R.chosen); });
+      if (bad.length) return fail(bad.map(function (l) { return l.name; }).join(", ") + " can't be delivered to " + campusName(R.chosen) + ". Choose pickup, or check it out separately.");
+      var eff = effective(R);
+      if (eff.some(function (x) { return x.mode === "distance" && x.perKm > 0; }) && (R.vlat == null || R.vlng == null)) return fail("This shop has not set its location, so delivery by distance is not available. Choose pickup.");
+      d.campusId = R.chosen;
+      return d;
+    };
+    rdf1.__lvdr = true; window.readDeliveryFields = rdf1;
+    try { readDeliveryFields = rdf1; } catch (_) {}
+  }
+
+  /* ---------------- shop: delivery options on the listing form ---------------- */
+  var ST = { on: false, rules: [], vcampus: null, vlat: null, vlng: null };
+  function legacyRule(p) {
+    var m = String((p && p.delivery_fee_mode) || "free");
+    return { mode: m === "flat" || m === "distance" ? m : "free", fee: Number(p && p.delivery_fee) || 0, perKm: Number(p && p.delivery_fee_per_km) || 0, scope: "all", campuses: [] };
+  }
+  function host() {
+    var box = byId("prodDeliverySettings"); if (!box) return null;
+    var ed = byId("lvDrEditor");
+    if (!ed) { ed = document.createElement("div"); ed.id = "lvDrEditor"; ed.className = "lvdr"; box.appendChild(ed); ed.addEventListener("click", onClick); ed.addEventListener("input", onInput); }
+    return ed;
+  }
+  function legacyEls() { return ["prodDeliveryMode", "prodDeliveryFlatRow", "prodDeliveryDistanceRow", "prodDeliveryHint"].map(byId).concat([document.querySelector("#prodDeliverySettings > label")]).filter(Boolean); }
+  function shopInfo() {
+    var v = null; try { v = typeof vendor !== "undefined" ? vendor : null; } catch (_) {}
+    if (!v || !v.id) return Promise.resolve();
+    return Promise.resolve().then(function () { return sb.from("vendors").select("campus_id,lat,lng").eq("id", v.id).maybeSingle(); }).then(function (r) {
+      var d = r && r.data; if (!d) return;
+      ST.vcampus = d.campus_id && d.campus_id !== "none" ? d.campus_id : null; ST.vlat = d.lat; ST.vlng = d.lng;
+    }, function () {});
+  }
+  window.lvDrLoad = function (p) {
+    var src = p && Array.isArray(p.delivery_rules) && p.delivery_rules.length ? JSON.parse(JSON.stringify(p.delivery_rules)) : [legacyRule(p)];
+    ST.rules = src.map(function (r) { return { mode: r.mode, fee: Number(r.fee) || 0, perKm: Number(r.perKm) || 0, scope: r.scope || "all", campuses: (r.campuses || []).slice() }; });
+    ST.on = false;
+    probe().then(function (ok) {
+      if (!ok) return;
+      return Promise.all([shopInfo(), window.lvCampuses ? window.lvCampuses().catch(function () {}) : null]).then(function () {
+        ST.on = true; legacyEls().forEach(function (el) { el.classList.add("lvdr-hide"); }); render();
+      });
+    });
+  };
+  function problems() {
+    var out = [], seen = {}, nAll = 0, nMine = 0;
+    ST.rules.forEach(function (r, i) {
+      var n = ST.rules.length > 1 ? " (option " + (i + 1) + ")" : "";
+      if (r.mode === "flat" && !(r.fee > 0)) out.push("Enter a delivery fee above ₦0" + n + ", or choose Free.");
+      if (r.mode === "flat" && r.fee > 1000000) out.push("That delivery fee is too high" + n + ".");
+      if (r.mode === "distance" && !(r.perKm > 0 && r.perKm <= 1000)) out.push("Enter a fee per km between ₦1 and ₦1,000" + n + ".");
+      if (r.mode === "distance" && (ST.vlat == null || ST.vlng == null)) out.push("Set your shop's location first (Edit shop) to charge by distance" + n + ".");
+      if (r.scope === "all") nAll++;
+      if (r.scope === "mine") { nMine++; if (!ST.vcampus) out.push("Your shop has no campus yet, so \"My campus\" can't be used" + n + ". Pick the campuses instead."); else seen[ST.vcampus] = (seen[ST.vcampus] || 0) + 1; }
+      if (r.scope === "selected") { if (!r.campuses.length) out.push("Choose at least one campus" + n + "."); r.campuses.forEach(function (c) { seen[c] = (seen[c] || 0) + 1; }); }
+    });
+    if (nAll > 1) out.push("Only one option can cover \"all other campuses\".");
+    if (nMine > 1) out.push("Only one option can be \"My campus\".");
+    Object.keys(seen).forEach(function (c) { if (seen[c] > 1) out.push(campusName(c) + " is in two options. Each campus can only have one."); });
+    return out;
+  }
+  function summary() {
+    var parts = [], others = ST.rules.some(function (r) { return r.scope !== "all"; });
+    ST.rules.forEach(function (r) {
+      var where = r.scope === "mine" ? (ST.vcampus ? campusName(ST.vcampus) + " (your campus)" : "Your campus") : r.scope === "selected" ? (r.campuses.map(campusName).join(", ") || "No campus chosen yet") : (others ? "Every other campus" : "All campuses");
+      parts.push("<li><b>" + E(where) + "</b>: " + E(ruleText(r)) + "</li>");
+    });
+    if (!ST.rules.some(function (r) { return r.scope === "all"; })) parts.push('<li class="lvdr-muted">Buyers on any other campus can only pick up.</li>');
+    return "<ul>" + parts.join("") + "</ul>";
+  }
+  function render() {
+    var ed = host(); if (!ed || !ST.on) return;
+    var others = ST.rules.length > 1;
+    ed.innerHTML = '<div class="lvdr-title"><strong>Delivery options</strong><span>Set a different delivery for different campuses. Pickup is always available.</span></div>'
+      + ST.rules.map(function (r, i) {
+        var seg = function (a, val, label, dis) { return '<button type="button" class="lvdr-seg-b' + ((a === "mode" ? r.mode : r.scope) === val ? " on" : "") + '" data-a="' + a + '" data-i="' + i + '" data-v="' + val + '"' + (dis ? " disabled" : "") + ">" + label + "</button>"; };
+        return '<div class="lvdr-opt">'
+          + '<div class="lvdr-opt-h"><b>' + (others ? "Option " + (i + 1) : "Delivery") + "</b>" + (others ? '<button type="button" class="lvdr-del" data-a="del" data-i="' + i + '">Remove</button>' : "") + "</div>"
+          + '<div class="lvdr-seg">' + seg("mode", "free", "Free") + seg("mode", "flat", "Flat fee") + seg("mode", "distance", "By distance") + "</div>"
+          + (r.mode === "flat" ? '<label class="lvdr-f">Delivery fee (₦)<input type="number" min="1" step="50" inputmode="numeric" data-f="fee" data-i="' + i + '" value="' + (r.fee || "") + '" placeholder="e.g. 500"></label>' : "")
+          + (r.mode === "distance" ? '<label class="lvdr-f">Fee per km (₦, max 1,000)<input type="number" min="1" max="1000" step="10" inputmode="numeric" data-f="perKm" data-i="' + i + '" value="' + (r.perKm || "") + '" placeholder="e.g. 200"></label>' : "")
+          + '<div class="lvdr-k2">For which campuses?</div>'
+          + '<div class="lvdr-seg">' + seg("scope", "mine", ST.vcampus ? "My campus" : "My campus (not set)", !ST.vcampus) + seg("scope", "selected", "Choose campuses") + seg("scope", "all", others ? "All other campuses" : "All campuses") + "</div>"
+          + (r.scope === "mine" && ST.vcampus ? '<div class="lvdr-chips"><span class="lvdr-chip">' + E(campusName(ST.vcampus)) + "</span></div>" : "")
+          + (r.scope === "selected" ? '<div class="lvdr-chips">' + r.campuses.map(function (c) { return '<span class="lvdr-chip">' + E(campusName(c)) + '<button type="button" aria-label="Remove ' + E(campusName(c)) + '" data-a="unc" data-i="' + i + '" data-c="' + E(c) + '">×</button></span>'; }).join("") + '<button type="button" class="lvdr-addc" data-a="pickc" data-i="' + i + '"><i class="fa-solid fa-plus"></i> ' + (r.campuses.length ? "Change campuses" : "Choose campuses") + "</button></div>" : "")
+          + "</div>";
+      }).join("")
+      + (ST.rules.length < 10 ? '<button type="button" class="lvdr-add" data-a="add"><i class="fa-solid fa-plus"></i> Add a delivery option for other campuses</button>' : "")
+      + '<div class="lvdr-sum"><div class="lvdr-k2">What buyers will see</div>' + summary() + "</div>"
+      + (function (p) { return p.length ? '<div class="lvdr-err">' + p.map(function (x) { return "<div><i class=\"fa-solid fa-triangle-exclamation\"></i> " + E(x) + "</div>"; }).join("") + "</div>" : ""; })(problems());
+  }
+  function onClick(ev) {
+    var b = ev.target.closest("[data-a]"); if (!b || b.disabled) return;
+    var a = b.getAttribute("data-a"), i = Number(b.getAttribute("data-i")), r = ST.rules[i];
+    if (a === "mode") { r.mode = b.getAttribute("data-v"); render(); }
+    else if (a === "scope") { r.scope = b.getAttribute("data-v"); render(); }
+    else if (a === "del") { ST.rules.splice(i, 1); render(); }
+    else if (a === "unc") { r.campuses = r.campuses.filter(function (c) { return c !== b.getAttribute("data-c"); }); render(); }
+    else if (a === "add") {
+      var hasAll = ST.rules.some(function (x) { return x.scope === "all"; }), hasMine = ST.rules.some(function (x) { return x.scope === "mine"; });
+      ST.rules.push({ mode: "flat", fee: 0, perKm: 0, scope: !hasAll ? "all" : !hasMine && ST.vcampus ? "mine" : "selected", campuses: [] });
+      render();
+    } else if (a === "pickc" && window.lvOpenCampusPicker) {
+      window.lvCampuses().then(function () {
+        window.lvOpenCampusPicker({ title: "Campuses for this delivery option", multi: true, selected: r.campuses.slice(), onDone: function (ids) { r.campuses = (ids || []).filter(function (c) { return c && c !== "none" && c !== "all"; }); render(); } });
+      });
+    }
+  }
+  function onInput(ev) {
+    var f = ev.target.getAttribute("data-f"); if (!f) return;
+    var r = ST.rules[Number(ev.target.getAttribute("data-i"))]; if (!r) return;
+    r[f] = Math.max(0, Number(ev.target.value) || 0);
+    var ed = host(), sum = ed && ed.querySelector(".lvdr-sum"), err = ed && ed.querySelector(".lvdr-err");
+    if (sum) sum.innerHTML = '<div class="lvdr-k2">What buyers will see</div>' + summary();
+    var p = problems();
+    if (err && !p.length) err.remove();
+    else if (p.length) { if (!err) { err = document.createElement("div"); err.className = "lvdr-err"; ed.appendChild(err); } err.innerHTML = p.map(function (x) { return "<div><i class=\"fa-solid fa-triangle-exclamation\"></i> " + E(x) + "</div>"; }).join(""); }
+  }
+  // Levi's guided "add a listing" fills the old single setting: follow it while there is only one option for every campus
+  document.addEventListener("change", function (ev) {
+    if (!ST.on || ST.rules.length !== 1 || ST.rules[0].scope !== "all") return;
+    if (["prodDeliveryMode", "prodDeliveryFee", "prodDeliveryPerKm"].indexOf(ev.target && ev.target.id) < 0) return;
+    ST.rules[0] = legacyRule({ delivery_fee_mode: byId("prodDeliveryMode").value, delivery_fee: byId("prodDeliveryFee").value, delivery_fee_per_km: byId("prodDeliveryPerKm").value });
+    render();
+  }, true);
+  window.lvDrRead = function (isService) {
+    if (!ST.on) return undefined;
+    if (isService) return null;
+    var p = problems(); if (p.length) throw new Error(p[0]);
+    var rules = ST.rules.map(function (r) {
+      var o = { mode: r.mode, scope: r.scope };
+      if (r.mode === "flat") o.fee = Math.round(Number(r.fee) * 100) / 100;
+      if (r.mode === "distance") o.perKm = Math.round(Number(r.perKm));
+      if (r.scope === "selected") o.campuses = r.campuses.slice(0, 300);
+      return o;
+    });
+    // the single setting (cards, old screens) shows the option for "all campuses", or the first one
+    var main = rules.find(function (r) { return r.scope === "all"; }) || rules[0];
+    var set = function (id, v) { var el = byId(id); if (el) el.value = v; };
+    set("prodDeliveryMode", main.mode); set("prodDeliveryFee", main.mode === "flat" ? main.fee : 0); set("prodDeliveryPerKm", main.mode === "distance" ? main.perKm : 0);
+    return rules.length === 1 && main.scope === "all" ? null : rules;   // one option for every campus = the plain old setting
+  };
+  setTimeout(function () { try { probe(); } catch (_) {} }, 4000);
+})();

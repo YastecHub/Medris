@@ -3,6 +3,10 @@ import { AccessRepository } from "../../database/repositories/access.repository.
 import { CheckoutRepository } from "../../database/repositories/checkout.repository.js";
 import { badRequest, unauthenticated } from "../../shared/errors/app-error.js";
 
+/** The chosen campus is kept on the order (only for delivery, and only when one was chosen). */
+const campusOf = (d: Delivery): { deliveryCampusId?: string } =>
+  d.method === "delivery" && d.campusId ? { deliveryCampusId: String(d.campusId).slice(0, 160) } : {};
+
 type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 
 export interface Delivery {
@@ -11,6 +15,8 @@ export interface Delivery {
   phone: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** The campus the buyer wants it delivered to; needed when the listing sets delivery by campus. */
+  campusId?: string | null;
 }
 
 /**
@@ -72,7 +78,7 @@ export class CheckoutService {
       if (product.track_quantity ?? true) {
         await checkout.takeStock(input.productId, input.quantity, variantId && variantStock != null ? variantId : null);
       }
-      const fee = input.delivery.method === "delivery" ? await checkout.deliveryFee(input.productId, input.delivery.lat ?? null, input.delivery.lng ?? null) : "0";
+      const fee = input.delivery.method === "delivery" ? await checkout.deliveryFee(input.productId, input.delivery.lat ?? null, input.delivery.lng ?? null, input.delivery.campusId ?? null) : "0";
       const total = await checkout.times(unit, input.quantity, fee);
       const id = await checkout.createOrder({
         buyerId: me.userId,
@@ -84,6 +90,7 @@ export class CheckoutService {
         deliveryAddress: input.delivery.address,
         deliveryPhone: input.delivery.phone,
         deliveryFee: fee,
+        ...campusOf(input.delivery),
         buyerNote: input.buyerNote ?? null,
         paymentTiming: timing,
         paymentDepositPercent: percent,
@@ -114,7 +121,7 @@ export class CheckoutService {
       const units = product.rental_rate_unit === "week" ? Math.ceil(days / 7) : days;
       const items = await checkout.times(product.rental_rate, units * input.quantity);
       const delivery = input.delivery.method === "delivery";
-      const fee = delivery ? await checkout.deliveryFee(input.productId, input.delivery.lat ?? null, input.delivery.lng ?? null) : "0";
+      const fee = delivery ? await checkout.deliveryFee(input.productId, input.delivery.lat ?? null, input.delivery.lng ?? null, input.delivery.campusId ?? null) : "0";
       const id = await checkout.createOrder({
         buyerId: me.userId,
         vendorId: input.vendorId,
@@ -125,6 +132,7 @@ export class CheckoutService {
         deliveryAddress: input.delivery.address,
         deliveryPhone: input.delivery.phone,
         deliveryFee: fee,
+        ...campusOf(input.delivery),
         paymentTiming: delivery ? timing : "pay_before",
         paymentDepositPercent: delivery && timing === "pay_after" ? percent : null,
       });
@@ -163,6 +171,7 @@ export class CheckoutService {
         deliveryAddress: input.delivery.address,
         deliveryPhone: input.delivery.phone,
         deliveryFee: "0",
+        ...campusOf(input.delivery),
         buyerNote: input.buyerNote ?? null,
         paymentTiming: "pay_before",
         paymentDepositPercent: "100",
@@ -199,7 +208,7 @@ export class CheckoutService {
         await checkout.takeStock(line.product_id, line.quantity);
         await checkout.addItem(id, { productId: line.product_id, quantity: line.quantity, unitPrice: unit, variantId: line.variant_id });
         itemsTotal = await checkout.times(unit, line.quantity, itemsTotal);
-        if (delivery) fees = await checkout.add(fees, await checkout.deliveryFee(line.product_id, input.delivery.lat ?? null, input.delivery.lng ?? null));
+        if (delivery) fees = await checkout.add(fees, await checkout.deliveryFee(line.product_id, input.delivery.lat ?? null, input.delivery.lng ?? null, input.delivery.campusId ?? null));
       }
       await checkout.finishCartOrder(id, itemsTotal, fees, input.delivery.method, timing, percent);
       return { id };
@@ -230,6 +239,7 @@ export class CheckoutService {
         deliveryAddress: input.delivery.address,
         deliveryPhone: input.delivery.phone,
         deliveryFee: fee,
+        ...campusOf(input.delivery),
         packageId: input.packageId,
       });
       for (const item of items) {

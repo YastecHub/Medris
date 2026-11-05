@@ -423,6 +423,7 @@ async function openDuplicateProductModal(productId) {
     byId("prodDeliveryMode").value = source.delivery_fee_mode || "free";
     byId("prodDeliveryFee").value = source.delivery_fee ?? 0;
     byId("prodDeliveryPerKm").value = source.delivery_fee_per_km ?? 0;
+    window.lvDrLoad?.(source);
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = source.payment_timing === "pay_after" ? "pay_after" : "pay_before";
     if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(source.payment_deposit_percent ?? 20) || 20));
     byId("prodLikeVisibility").value = engagement?.like_visibility || "everyone";
@@ -578,6 +579,7 @@ async function showProductModal() {
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = p.delivery_fee ?? 0;
     byId("prodDeliveryPerKm").value = p.delivery_fee_per_km ?? 0;
+    window.lvDrLoad?.(p);
     byId("prodRateUnit").value = p.rental_rate_unit || "day";
     byId("prodDeposit").value = p.deposit_amount ?? "";
     byId("prodTrackQuantity").checked = p.track_quantity !== false;
@@ -607,6 +609,7 @@ async function showProductModal() {
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
     byId("prodDeliveryPerKm").value = 0;
+    window.lvDrLoad?.(null);
     byId("prodTrackQuantity").checked = false;
     byId("prodQtyTotal").value = 1;
     toggleProdQuantityField();
@@ -1453,6 +1456,8 @@ async function saveProduct() {
     const sale_price = byId("prodSalePrice").value ? Number(byId("prodSalePrice").value) : null;
     const discount_price = is_service && billing_model === "commission" ? null : (byId("prodDiscountPrice").value ? Number(byId("prodDiscountPrice").value) : null);
     const rental_rate = is_service ? null : (byId("prodRentalRate").value ? Number(byId("prodRentalRate").value) : null);
+    // delivery by campus (0041): checks the options and copies the main one into the single setting below
+    const delivery_rules = window.lvDrRead ? window.lvDrRead(is_service) : undefined;
     const delivery_fee_mode = is_service ? "free" : (byId("prodDeliveryMode").value || "free");
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
     const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.min(1000, Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0));
@@ -1508,6 +1513,7 @@ async function saveProduct() {
       delivery_fee_mode,
       delivery_fee,
       delivery_fee_per_km,
+      ...(delivery_rules !== undefined ? { delivery_rules } : {}),
       payment_timing,
       payment_deposit_percent,
       rental_rate: listing_type === "sale" ? null : rental_rate,
