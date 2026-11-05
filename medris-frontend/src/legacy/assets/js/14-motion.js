@@ -4958,7 +4958,7 @@ window.lvAskCancel = async function (orderId) {
       new_dispute: "dispute", dispute_reopened: "dispute", dispute_resolved: "order-completed", points: "points", points_winner: "vendor-of-week", vendor_of_the_week: "vendor-of-week",
       vendor_follow: "stat-followers", vendor_follow_update: "new-listing", stock_alert: "new-listing", new_listing: "new-listing", new_review: "reviews", new_message: "requests",
       withdrawal_approved: "withdrawal-approved", withdrawal_rejected: "withdrawal-rejected", payout_failed: "withdrawal-rejected", payout_sent: "payout-sent", refund_sent: "payout-sent",
-      wallet_withdrawal_sent: "payout-sent", wallet_withdrawal_rejected: "withdrawal-rejected", wallet_withdrawal_failed: "withdrawal-rejected", wallet_received: "tx-paid",
+      wallet_topup: "cash", wallet_hold: "tx-pending", wallet_withdrawal_sent: "payout-sent", wallet_withdrawal_rejected: "withdrawal-rejected", wallet_withdrawal_failed: "withdrawal-rejected", wallet_received: "tx-paid",
       payout_on_hold: "tx-pending", payment_unresolved_24h: "tx-pending", product_wishlisted: "stat-wishlist", leaderboard_up: "moved-up", rank_up: "moved-up" };
     if (M[T]) return M[T];
     if (/(now|are|you're|you are) (first|#1|number one|top)\b|first this week|#1 this week|this week'?s? winner/i.test(t)) return "vendor-of-week";
