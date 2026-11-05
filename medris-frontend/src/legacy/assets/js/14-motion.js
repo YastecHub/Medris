@@ -7010,6 +7010,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     if (s.ref) r.push(["Reference", String(s.ref).slice(0, 36)]);
     return r;
   }
+  function ic(name, fa) { return typeof window.lv3dIcon === "function" && window.LV3D && window.LV3D[name] ? window.lv3dIcon(name, 40) : '<i class="fa-solid ' + fa + '"></i>'; }
   function close() { var p = document.getElementById("lvTxPage"); if (p) { p.classList.add("out"); setTimeout(function () { p.remove(); }, 180); } document.body.classList.remove("lv-tx-open"); }
   async function receiptBlob(s) {
     var rows = rowsOf(s), W = 750, H = 420 + rows.length * 78, c = document.createElement("canvas"); c.width = W; c.height = H;
@@ -7030,7 +7031,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var host = d.querySelector(".lv-tx-pick-l");
     function paint(q) {
       var rows = list.filter(function (c) { return !q || String(c.other_name || "").toLowerCase().indexOf(q) > -1; });
-      host.innerHTML = rows.length ? rows.map(function (c) { var av = c.other_avatar || c.other_logo || c.other_avatar_url; return '<button type="button" class="lv-tx-pick-r" data-id="' + E(c.id) + '"><span>' + (av ? '<img src="' + E(av) + '" alt="">' : E(String(c.other_name || "?").slice(0, 1).toUpperCase())) + '</span><b>' + E(c.other_name || "Chat") + '</b></button>'; }).join("") : '<p class="muted" style="padding:1rem;text-align:center">' + (list.length ? "No chat found." : "You have no chats yet. Receipts can only be shared inside Levromart chats.") + '</p>';
+      host.innerHTML = rows.length ? rows.map(function (c) { var av = c.other_avatar || c.other_logo || c.other_avatar_url; return '<button type="button" class="lv-tx-pick-r" data-id="' + E(c.conversation_id) + '"><span>' + (av ? '<img src="' + E(av) + '" alt="">' : E(String(c.other_name || "?").slice(0, 1).toUpperCase())) + '</span><b>' + E(c.other_name || "Chat") + '</b></button>'; }).join("") : '<p class="muted" style="padding:1rem;text-align:center">' + (list.length ? "No chat found." : "You have no chats yet. Receipts can only be shared inside Levromart chats.") + '</p>';
     }
     paint("");
     d.querySelector(".lv-tx-pick-s").oninput = function () { paint(this.value.trim().toLowerCase()); };
@@ -7065,10 +7066,10 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
       '<div class="lv-tx-hero"><div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' +
       '<h2>' + E(done ? s.title : (s.title || "Transaction")) + '</h2><div class="lv-tx-amt">' + (done ? "" : inKind ? "+" : "−") + nair(s.amountKobo) + '</div>' + (who ? '<p class="lv-tx-sub">' + E((inKind && s.person ? "from " : s.kind === "topup" ? "" : "to ") + (s.kind === "topup" ? "your wallet" : who)) + '</p>' : "") + '<span class="lv-tx-pill' + (ok ? "" : " bad") + '">' + E(s.status || "Successful") + '</span></div>' +
       '<div class="lv-tx-card" id="lvTxRows">' + rowsOf(s).map(function (r) { return '<div><span>' + E(r[0]) + '</span><b>' + E(r[1]) + '</b></div>'; }).join("") + '</div>' +
-      '<div class="lv-tx-acts"><button type="button" data-a="share"><i class="fa-solid fa-share-nodes"></i><span>Share receipt</span></button>' +
-      (s.person && s.person.handle && !s.received ? '<button type="button" data-a="fav"' + (isFav ? ' class="on"' : "") + '><i class="fa-' + (isFav ? "solid" : "regular") + ' fa-heart"></i><span>' + (isFav ? "In favourites" : "Add to favourites") + '</span></button>' : "") +
-      '<button type="button" data-a="add"><i class="fa-solid fa-plus"></i><span>Add money</span></button>' +
-      (s.orderId ? '<button type="button" data-a="order"><i class="fa-solid fa-bag-shopping"></i><span>View order</span></button>' : "") + '</div>' +
+      '<div class="lv-tx-acts"><button type="button" data-a="share">' + ic("moved-up", "fa-share-nodes") + '<span>Share receipt</span></button>' +
+      (s.person && s.person.handle && !s.received ? '<button type="button" data-a="fav"' + (isFav ? ' class="on"' : "") + '>' + ic("points", "fa-heart") + '<span>' + (isFav ? "In favourites" : "Add to favourites") + '</span></button>' : "") +
+      '<button type="button" data-a="add">' + ic("cash", "fa-plus") + '<span>Add money</span></button>' +
+      (s.orderId ? '<button type="button" data-a="order">' + ic("order-confirmed", "fa-bag-shopping") + '<span>View order</span></button>' : "") + '</div>' +
       (done ? '<button type="button" class="btn lv-tx-done" data-x>Done</button>' : "");
     document.body.appendChild(p); document.body.classList.add("lv-tx-open");
     p.onclick = function (ev) {
@@ -7082,7 +7083,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
         var f = favs(), i = f.findIndex(function (x) { return x.handle === s.person.handle; });
         if (i > -1) f.splice(i, 1); else f.unshift({ handle: s.person.handle, name: s.person.name || "", avatar_url: s.person.avatar_url || "" });
         try { localStorage.setItem("lv-fav-people", JSON.stringify(f.slice(0, 30))); } catch (_) {}
-        var on = i < 0; b.classList.toggle("on", on); b.innerHTML = '<i class="fa-' + (on ? "solid" : "regular") + ' fa-heart"></i><span>' + (on ? "In favourites" : "Add to favourites") + '</span>';
+        var on = i < 0; b.classList.toggle("on", on); b.innerHTML = ic("points", "fa-heart") + '<span>' + (on ? "In favourites" : "Add to favourites") + '</span>';
         showToast(on ? "Added to your favourites." : "Removed from favourites.", "success");
       }
     };

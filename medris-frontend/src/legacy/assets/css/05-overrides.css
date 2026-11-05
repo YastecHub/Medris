@@ -7513,3 +7513,5 @@ body[data-view="vendorsMap"]:has(#vmpSugg:not(.hidden)) :is(#vmpChips,#vmpExpand
 .lwh-brk-t{font-weight:700;margin-bottom:.5rem}.lwh-brk-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem}
 .lwh-brk-g small{display:block;color:var(--muted,#667)}.lwh-brk-g b{font-size:1rem}
 :root[data-theme="dark"] .lwh-brk{background:#17171f}
+
+.lv-tx-acts button .lv3di{width:40px;height:40px;object-fit:contain}.lv-tx-acts button.on .lv3di{filter:drop-shadow(0 0 6px rgba(255,190,0,.7))}
