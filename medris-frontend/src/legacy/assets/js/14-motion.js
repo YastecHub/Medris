@@ -2281,7 +2281,7 @@
     ico.className = "lv-dlg-ico" + (opts.danger ? " danger" : "") + (opts.tone === "purple" ? " purple" : "");
     c.classList.toggle("lv-dlg-purple", opts.tone === "purple");
     var three = /log ?out|sign ?out/i.test(String(opts.okLabel || "") + " " + String(opts.title || "")) ? "logout" : opts.danger ? "order-cancelled" : /pay|wallet|paystack|transfer|withdraw|send/i.test(String(opts.okLabel || "") + " " + String(opts.title || "")) ? "tx-paid" : "tx-ready";
-    ico.innerHTML = typeof window.lv3dIcon === "function" && !opts.icon ? window.lv3dIcon(three, 84) : '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
+    ico.innerHTML = typeof window.lv3dIcon === "function" && !opts.icon ? window.lv3dIcon(opts.three || three, 84) : '<i class="fa-solid ' + (opts.icon || (opts.danger ? "fa-triangle-exclamation" : "fa-circle-question")) + '"></i>';
     ico.classList.toggle("lv-dlg-3d", !!(typeof window.lv3dIcon === "function" && !opts.icon));
     c.insertBefore(ico, c.firstChild);
     var cancel = document.getElementById(prompt ? "textPromptModalCancel" : "confirmModalCancel");
@@ -4163,6 +4163,10 @@ window.lvAskCancel = async function (orderId) {
     sugg.addEventListener("click", function (e) { var b = e.target.closest("[data-i]"); if (!b) return; pick = sugg.__list[+b.dataset.i]; to.value = pick.handle; paintPick(); });
     if (prefill) search();
     m.querySelector("#lwSendGo").onclick = async function () {
+      var goBtn = this; if (goBtn.__busy) return; goBtn.__busy = true;   // a second tap while this one is working does nothing
+      try { await sendGo.call(goBtn); } finally { goBtn.__busy = false; }
+    };
+    async function sendGo() {
       var amt = readAmount("lwSendAmt"), note = m.querySelector("#lwNote").value.trim();
       if (!pick) return err(m, "Choose who to send to from the list.");
       if (amt < 10000) return err(m, "The smallest amount is ₦100.");
@@ -4172,13 +4176,15 @@ window.lvAskCancel = async function (orderId) {
       if (amt + fee > Number(d.balance_kobo)) return err(m, "You need " + money(amt + fee, true) + ". You have " + money(d.balance_kobo, true) + ".");
       var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
       if (!pin) return;
+      if (!(await window.lvRepeatCheck("send:" + pick.handle + ":" + amt, { title: "Repeat transaction detected", text: "You sent " + short(amt) + " to " + (pick.name || "@" + pick.handle) + " a moment ago. Do you want to send it again?", okLabel: "Send again", cancelLabel: "No, cancel" }))) return;
       if (!(await showConfirmDialog("Send " + short(amt) + " to " + (pick.name || "@" + pick.handle) + " (@" + pick.handle + ")? You cannot get it back once it is sent.", { title: "Send money", okLabel: "Yes, send it", cancelLabel: "No, go back" }))) return;
       var b = this; b.disabled = true; b.textContent = "Sending…";
       var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not send."); }
+      window.lvRepeatMark("send:" + pick.handle + ":" + amt);
       await load(true); repaint(); closeSheet();
       try { window.lvTxPage({ kind: "sent", title: "Transfer successful", amountKobo: amt, feeKobo: fee, person: pick, note: note, ref: r.data && (r.data.id || r.data.reference) }); } catch (_) { showToast(short(amt) + " sent.", "success"); }
-    };
+    }
   };
 
   // the bank's code from its name (the account only carries the name), so its own logo can be shown
@@ -4202,6 +4208,10 @@ window.lvAskCancel = async function (orderId) {
       '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", "") + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + '</p>' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo">Continue</button>');
     m.querySelector("#lwWdGo").onclick = async function () {
+      var goBtn = this; if (goBtn.__busy) return; goBtn.__busy = true;
+      try { await wdGo.call(goBtn); } finally { goBtn.__busy = false; }
+    };
+    async function wdGo() {
       var amt = readAmount("lwWdAmt");
       if (amt < 10000) return err(m, "The smallest withdrawal is ₦100.");
       var fee = window.lvWalletFee(amt);
@@ -4209,13 +4219,15 @@ window.lvAskCancel = async function (orderId) {
       if (amt + fee > Number(d.balance_kobo) || amt > most) return err(m, "This amount exceeds what can be transferred after Paystack's transfer charges. Please enter a lower amount.");
       var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
       if (!pin) return;
+      if (!(await window.lvRepeatCheck("wd:" + amt, { title: "Repeat transaction detected", text: "You withdrew " + short(amt) + " a moment ago. Do you want to withdraw the same amount again?", okLabel: "Withdraw again", cancelLabel: "No, cancel" }))) return;
       if (!(await showConfirmDialog("Withdraw " + short(amt) + " to " + (a.bank_name || "your bank") + " ···" + (a.last4 || "") + (a.account_name ? " (" + a.account_name + ")" : "") + "? This is final.", { title: "Withdraw money", okLabel: "Yes, withdraw", cancelLabel: "No, go back" }))) return;
       var b = this; b.disabled = true; b.textContent = "Please wait…";
       var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not withdraw."); }
+      window.lvRepeatMark("wd:" + amt);
       closeSheet(); await load(true); repaint();
       try { window.lvTxPage({ kind: "withdraw", title: "Withdrawal on its way", amountKobo: amt, feeKobo: fee, bank: a, ref: r.data && (r.data.id || r.data.reference) }); } catch (_) { showToast(short(amt) + " is on its way to your bank.", "success"); }
-    };
+    }
   };
 
   function shieldSvg(sz) {
@@ -7148,3 +7160,40 @@ window.lvGoToNewOrder = function (orderId) {
     return navigate("buyerOrders");
   } catch (_) { try { return navigate("orderDetail", { orderId: orderId }); } catch (e) {} }
 };
+
+/* ===== Repeat protection (orders and money): a second tap while the first is still working, or the same action again
+   a moment after it worked, asks "Repeat ... detected" instead of sending it again and flooding the shop. ===== */
+(function () {
+  "use strict";
+  var RECENT = {}, TTL = 3 * 60 * 1000;
+  window.lvRepeatMark = function (key) { RECENT[key] = Date.now(); };
+  window.lvRepeatCheck = async function (key, o) {
+    var t = RECENT[key];
+    if (!(t && Date.now() - t < TTL)) return true;
+    try { return await showConfirmDialog(o.text, { title: o.title, okLabel: o.okLabel, cancelLabel: o.cancelLabel || "No, cancel", three: "order-reminder" }); } catch (_) { return false; }
+  };
+  var running = {}, asking = false, okAt = 0;
+  var prevGo = window.lvGoToNewOrder;
+  window.lvGoToNewOrder = function () { okAt = Date.now(); return prevGo.apply(this, arguments); };   // an order really went through
+  function guard(name) {
+    var f = window[name]; if (typeof f !== "function" || f.__lvOnce) return;
+    var w = async function () {
+      var args = [].slice.call(arguments), key = "order:" + name + ":" + JSON.stringify(args) + ":" + (function () { try { return JSON.stringify(currentViewParams || {}); } catch (_) { return ""; } })();
+      var recent = RECENT[key] && Date.now() - RECENT[key] < TTL;
+      if (running[key] || recent) {
+        if (asking) return;   // already asking: more taps do nothing
+        asking = true;
+        var ok = false;
+        try { ok = await showConfirmDialog("This looks like the order you just placed. Placing it again will send the shop another order.", { title: "Repeat order detected", okLabel: "Place another order", cancelLabel: "No, don't repeat", three: "order-reminder" }); } catch (_) {}
+        asking = false;
+        if (!ok) return;
+      }
+      var started = Date.now(); running[key] = (running[key] || 0) + 1;
+      try { return await f.apply(this, args); }
+      finally { running[key]--; if (!running[key]) delete running[key]; if (okAt >= started) RECENT[key] = Date.now(); }
+    };
+    w.__lvOnce = true; window[name] = w;
+  }
+  ["checkoutCartAll", "checkoutCartVendor", "buyNow", "confirmRental", "buyPackageFromDetail", "buyPackage"].forEach(guard);
+  setTimeout(function () { ["checkoutCartAll", "checkoutCartVendor", "buyNow", "confirmRental", "buyPackageFromDetail", "buyPackage"].forEach(guard); }, 1500);
+})();
