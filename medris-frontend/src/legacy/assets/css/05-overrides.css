@@ -7515,3 +7515,6 @@ body[data-view="vendorsMap"]:has(#vmpSugg:not(.hidden)) :is(#vmpChips,#vmpExpand
 :root[data-theme="dark"] .lwh-brk{background:#17171f}
 
 .lv-tx-acts button .lv3di{width:40px;height:40px;object-fit:contain}.lv-tx-acts button.on .lv3di{filter:drop-shadow(0 0 6px rgba(255,190,0,.7))}
+
+[data-lv-rwallet][hidden]{display:none!important}
+.lvw[data-lv-wallet] ~ .lvw[data-lv-rwallet],.lvw[data-lv-wallet] + .lvw-wrap-x{display:none}

@@ -2389,7 +2389,7 @@ window.lvAskCancel = async function (orderId) {
   function paint() {
     // with the one Levromart wallet switched on, a page that already shows it does not show it twice
     var one = window.lvWalletCardHtml && document.querySelector("[data-lv-wallet]") && window.lvWalletCardHtml("me", null);
-    document.querySelectorAll("[data-lv-rwallet]").forEach(function (el) { var h = one ? "" : card(cache && cache.data); if (el.__h !== h) { el.innerHTML = h; el.__h = h; el.hidden = !h; } });
+    document.querySelectorAll("[data-lv-rwallet]").forEach(function (el) { var h = one ? "" : card(cache && cache.data); if (el.__h !== h) { el.innerHTML = h; el.__h = h; el.hidden = !h; } el.style.display = one ? "none" : ""; });
   }
   async function refresh(force) { paint(); await load(force); paint(); }
   function sheet(title, body) {
