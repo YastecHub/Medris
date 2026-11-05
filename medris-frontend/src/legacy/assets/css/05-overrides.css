@@ -7555,3 +7555,12 @@ html:root:root body #app#app .lv-act-grid3 .lv-act-half.lv-act-rent .lv-act-copy
 .lv-safe-p{margin:.5rem 0;line-height:1.45}
 .lv-safe-pill{display:flex;align-items:center;gap:.5rem;margin:.7rem 0;padding:.6rem .8rem;border-radius:14px;background:rgba(18,161,80,.1);color:#0d8a43;font-size:.82rem;font-weight:600}
 .lv-safe-ic{display:inline-flex;flex:none}
+
+/* admin section picker: tidy, equal tiles, three on a row */
+html:root:root body .admin-nav-sheet .admin-nav-grp{margin:1rem 0 .4rem;text-align:left;padding-left:.15rem}
+html:root:root body .admin-nav-sheet .admin-nav-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.5rem!important;justify-content:stretch!important}
+html:root:root body .admin-nav-sheet .admin-nav-item{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.35rem!important;width:100%!important;min-height:76px;padding:.6rem .3rem!important;text-align:center;font-size:.74rem!important;line-height:1.15;border-radius:14px}
+html:root:root body .admin-nav-sheet .admin-nav-item i.fa-solid,html:root:root body .admin-nav-sheet .admin-nav-item svg{font-size:1.15rem}
+html:root:root body .admin-nav-sheet .admin-nav-item .lv-nav-badge{position:absolute;top:.3rem;right:.4rem}
+html:root:root body .admin-nav-sheet .admin-nav-grid,html:root:root body .admin-nav-sheet .admin-nav-grp{align-self:stretch!important;width:100%!important;max-width:none!important;box-sizing:border-box}
+html:root:root body .admin-nav-sheet h3{align-self:flex-start;text-align:left!important}
