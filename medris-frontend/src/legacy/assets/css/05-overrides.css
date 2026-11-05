@@ -7518,3 +7518,40 @@ body[data-view="vendorsMap"]:has(#vmpSugg:not(.hidden)) :is(#vmpChips,#vmpExpand
 
 [data-lv-rwallet][hidden]{display:none!important}
 .lvw[data-lv-wallet] ~ .lvw[data-lv-rwallet],.lvw[data-lv-wallet] + .lvw-wrap-x{display:none}
+
+/* Home action cards v2: Shop Products over Rent Items joined by a half-open zip, Book Services as a ticket, Request Item with a pinned note */
+html:root:root body #app#app .lv-act-grid3 .lv-act-merged{background:none;border:0}
+html:root:root body #app#app .lv-act-grid3 .lv-act-merged .lv-act-half.lv-act-products,html:root:root body #app#app .lv-act-grid3 .lv-act-merged .lv-act-half.lv-act-rent{background:none;z-index:2}
+html:root:root body #app#app .lv-act-grid3 .lv-act-divider{display:none!important}
+html:root:root body #app#app .lv-act-grid3 .lv-zip{position:absolute;inset:0;z-index:1;pointer-events:none}
+html:root:root body #app#app .lv-act-grid3 .lv-zip-bg{position:absolute;inset:0;width:100%;height:100%;display:block}
+html:root:root body #app#app .lv-act-grid3 .lv-zip-items{position:absolute;inset:0;clip-path:polygon(31% 50%,50% 45%,75% 40%,100% 37.4%,100% 62.6%,75% 60%,50% 55%)}
+html:root:root body #app#app .lv-act-grid3 .lv-zip-items img{position:absolute;height:auto;aspect-ratio:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+html:root:root body #app#app .lv-act-grid3 .lv-zip-slider{position:absolute;left:23%;top:45.5%;width:14%;aspect-ratio:1.18;border-radius:28%;background:linear-gradient(#f4f6f8,#b9c0c8 55%,#eef1f4);box-shadow:0 2px 4px rgba(0,0,0,.35);display:block}
+html:root:root body #app#app .lv-act-grid3 .lv-zip-slider i{position:absolute;left:50%;top:78%;width:46%;height:72%;transform:translateX(-50%);border-radius:0 0 50% 50%/0 0 40% 40%;background:linear-gradient(#e7ebef,#b9c0c8);box-shadow:0 2px 3px rgba(0,0,0,.3)}
+html:root:root body #app#app .lv-act-grid3 .lv-act-half.lv-act-products .lv-act-img{top:-2%;bottom:auto;right:0;max-height:60%;max-width:46%}
+html:root:root body #app#app .lv-act-grid3 .lv-act-half.lv-act-rent .lv-act-img{max-height:56%;max-width:48%}
+html:root:root body #app#app .lv-act-grid3 .lv-act-half.lv-act-rent .lv-act-copy{padding-top:1.05rem}
+html:root:root body #app#app .lv-act-grid3 .lv-act-services{--lv-act:linear-gradient(160deg,#fbbf24,#ea580c);--lv-act-ink:#fff;background:linear-gradient(160deg,#fbbf24,#ea580c);border:0;overflow:hidden}
+html:root:root body #app#app .lv-act-grid3 .lv-act-services .lv-act-go{background:rgba(255,255,255,.25)}
+html:root:root body #app#app .lv-act-grid3 .lv-act-services::before{content:"";position:absolute;left:58%;top:7px;bottom:7px;border-left:2px dashed rgba(255,255,255,.75);z-index:1;pointer-events:none}
+html:root:root body #app#app .lv-act-grid3 .lv-act-services::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(circle 6px at 58% 0,var(--bg,#f6f8f7) 98%,transparent) ,radial-gradient(circle 6px at 58% 100%,var(--bg,#f6f8f7) 98%,transparent)}
+html:root:root body #app#app .lv-act-grid3 .lv-act-services .lv-act-img{max-width:42%;max-height:104%}
+html:root:root body #app#app .lv-act-grid3 .lv-act-request{background:linear-gradient(160deg,#34d399,#047857);border:0}
+html:root:root body #app#app .lv-act-grid3 .lv-act-request .lv-act-img{max-width:44%;max-height:60%}
+html:root:root body #app#app .lv-act-grid3 .lv-act-note{position:absolute;right:6%;top:7%;z-index:2;display:flex;flex-direction:column;gap:1px;padding:.28rem .45rem;border-radius:6px;background:#fffbe6;color:#334155;transform:rotate(-5deg);box-shadow:0 3px 8px rgba(0,0,0,.28);font-size:.56rem;line-height:1.15}
+html:root:root body #app#app .lv-act-grid3 .lv-act-note b{font-weight:800;font-size:.62rem}
+html:root:root body #app#app .lv-act-grid3 .lv-act-note i{font-style:normal;color:#64748b}
+html:root:root body #app#app .lv-act-grid3 .lv-act-note::before{content:"";position:absolute;left:50%;top:-3px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#ef4444}
+html:root:root body #app#app .lv-act-grid3 .lv-act-note{top:8%;right:5%;padding:.22rem .42rem}
+html:root:root body #app#app .lv-act-grid3 .lv-act-request .lv-act-copy{width:52%}
+html:root:root body #app#app .lv-act-grid3 .lv-zip-slider i{height:50%}
+html:root:root body #app#app .lv-act-grid3 .lv-act-half.lv-act-rent .lv-act-copy{padding-top:1.4rem}
+
+/* "your money is safe" shield */
+.lv-safe-hero{display:flex;flex-direction:column;align-items:center;gap:.3rem;text-align:center;padding:.2rem 0 .8rem}
+.lv-safe-hero .lv-shield{filter:drop-shadow(0 6px 8px rgba(6,95,70,.35))}
+.lv-safe-hero b{font-size:1.05rem}.lv-safe-hero small{color:var(--muted,#667);max-width:26rem;line-height:1.4}
+.lv-safe-p{margin:.5rem 0;line-height:1.45}
+.lv-safe-pill{display:flex;align-items:center;gap:.5rem;margin:.7rem 0;padding:.6rem .8rem;border-radius:14px;background:rgba(18,161,80,.1);color:#0d8a43;font-size:.82rem;font-weight:600}
+.lv-safe-ic{display:inline-flex;flex:none}
