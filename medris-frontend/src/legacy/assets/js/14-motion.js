@@ -4371,7 +4371,7 @@ window.lvAskCancel = async function (orderId) {
     var d = await load(true);
     if (!d || d.frozen) return paystackGo();
     var bal = Number(d.balance_kobo), need = Math.round(Number(total || 0) * 100), enough = need > 0 ? bal >= need : bal > 0;
-    var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? "" : " · not enough") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
+    var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? "" : " · not enough") + (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0 ? " · " + d.free_order_payments_left + " free payment" + (d.free_order_payments_left === 1 ? "" : "s") + " left" : "") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       (enough ? "" : '<button type="button" class="lw-link" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money to your wallet</button>') +
       '<button type="button" class="lw-pay" id="lwPayCard"><span class="lw-pay-ic p"><i class="fa-solid fa-credit-card"></i></span><div><b>Card, bank transfer or USSD</b><small>Through Paystack</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       '<p class="lw-err" hidden></p><p class="lv-safe-pill"><span class="lv-safe-ic">' + shieldSvg(22) + '</span> All payments are secured by Paystack.</p>');
@@ -4379,7 +4379,7 @@ window.lvAskCancel = async function (orderId) {
     var wb = m.querySelector("#lwPayWallet");
     wb.onclick = async function () {
       if (wb.disabled) return;
-      var fee = 0;   // paying an order from the wallet is free
+      var fee = (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0) ? 0 : (need ? window.lvWalletFee(need) : 0);   // the first 3 orders paid from the wallet are free
       if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + ". You have " + money(bal, true) + ".");
       var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Total from your wallet", short(need + fee), 1]], cta: "Pay " + short(need + fee) });
       if (!pin) return;

@@ -161,6 +161,11 @@ export class WalletRepository {
   }
 
   /** The ledger, newest first, with the other person's name and @tag for transfers. */
+  /** How many orders this person has paid from the wallet so far (the first few carry no fee). */
+  async orderPaymentCount(userId: string): Promise<number> {
+    return (await jsonRow<{ n: number }>(this.db, sql`select count(*)::int as n from public.wallet_entries where user_id = ${userId} and kind = 'order_payment'`))?.n ?? 0;
+  }
+
   entries(userId: string, limit: number, before: string | null) {
     return jsonRows<Record<string, unknown>>(
       this.db,
