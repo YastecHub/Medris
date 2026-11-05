@@ -160,7 +160,7 @@ class LmChunkRecognizer {
         const j = await r.json().catch(() => ({}));
         if (this._aborted) return;
         if (j.text) { this._chunks.push(j.text); this.onresult?.({ results: this._chunks.map((t) => { const x = [{ transcript: t }]; x.isFinal = true; return x; }) }); }
-        else if (!r.ok) this.onerror?.({ error: r.status === 401 ? "not-allowed-session" : "network" });
+        else if (!r.ok) { if (j.detail) console.warn("[Levi] voice typing:", j.detail); this.onerror?.({ error: r.status === 401 ? "not-allowed-session" : "network", detail: j.detail || "" }); }
       } catch (_) { if (!this._aborted) this.onerror?.({ error: "network" }); }
     });
   }
@@ -182,7 +182,15 @@ class LmChunkRecognizer {
     setTimeout(() => this.onend?.(), 0);
   }
 }
-function lmNewRecognizer() { return lmChunkSttAvailable() ? new LmChunkRecognizer() : new AiSpeechRecognition(); }
+// When Levromart's transcription service fails, the phone's own speech recognition takes over for the rest of the visit.
+let lmUseNativeStt = false;
+function lmNewRecognizer() { return lmChunkSttAvailable() && !(lmUseNativeStt && AiSpeechRecognition) ? new LmChunkRecognizer() : new AiSpeechRecognition(); }
+/** A transcription failure: switch to the phone's recogniser (true = try again with it), or say clearly that voice typing is unavailable. */
+function lmSttFailed(e) {
+  if (e && e.error === "network" && !lmUseNativeStt && AiSpeechRecognition) { lmUseNativeStt = true; showToast("Switching to your phone's voice typing…", "info"); return true; }
+  if (e && e.error === "network") { showToast("Voice typing isn't available right now. Please type your message.", "error"); return false; }
+  showToast("I didn't catch that. Tap the microphone and speak a little louder.", "error"); return false;
+}
 function lmMergeResults(results) {
   const kept = [];
   for (let i = 0; i < results.length; i++) {
@@ -300,7 +308,8 @@ function toggleAiChatMic(evt) {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") { showToast("Allow the microphone for Levromart in your phone's settings, then try again.", "error"); return; }
     if (e.error === "not-allowed-session") { showToast("Please log in again to talk to Levi.", "error"); return; }
     if (e.error !== "aborted" && e.error !== "no-speech") {
-      showToast("Couldn't hear that, try again.", "error");
+      if (lmSttFailed(e)) { try { aiRecThis.abort(); } catch (_) {} }   // its end starts listening again, with the phone's recogniser
+      else aiChatWant = false;
     }
   };
   aiChatRecognizer.onend = () => {
@@ -451,7 +460,7 @@ function startMsgVoiceRecognition() {
       msgWant = false;
       showToast("Microphone or speech recognition permission is blocked. Allow microphone access for Levromart and try again.", "error");
     } else if (e.error !== "aborted" && e.error !== "no-speech") {
-      showToast("Couldn't hear that, try again.", "error");
+      if (!lmSttFailed(e)) msgWant = false;
     }
   };
 
@@ -652,6 +661,7 @@ async function fetchLeviReply(payload) {
       try { json = raw ? JSON.parse(raw) : {}; } catch (_) {}
       if (res.ok && json.reply) return json;
       lastError = new Error(json.error || `Levi service returned HTTP ${res.status}.`);
+      if (json.detail) console.warn("[Levi] server problem:", json.detail);
       if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
     } catch (err) {
       lastError = err;
