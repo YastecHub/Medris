@@ -101,6 +101,7 @@ async function buyPackageFromDetail(packageId) {
     p_delivery_method: delivery.method,
     p_delivery_address: delivery.address,
     p_delivery_phone: delivery.phone,
+    ...(delivery.campusId ? { p_delivery_campus_id: delivery.campusId, p_buyer_lat: buyerLocation?.lat ?? null, p_buyer_lng: buyerLocation?.lng ?? null } : {}),
   });
   if (error) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
@@ -112,8 +113,10 @@ async function buyPackageFromDetail(packageId) {
 async function renderPackageDetail(packageId) {
   const engagementPromise=sb.from("package_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("package_id",packageId).maybeSingle();
   const { data: pkg, error } = await sb.from("vendor_packages")
-    .select("id, vendor_id, name, description, price, photos, created_at, status, vendor:vendors!inner(id,business_name,previous_business_name,name_changed_at,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng), items:package_items(quantity, product:products(id,name,sale_price,rental_rate,rental_rate_unit,photos,quantity_available,condition,listing_type,is_service,service_price_unit,category:categories(name)))")
+    .select("id, vendor_id, name, description, price, photos, created_at, status, vendor:vendors!inner(id,business_name,previous_business_name,name_changed_at,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng,campus_id), items:package_items(quantity, product:products(id,name,sale_price,rental_rate,rental_rate_unit,photos,quantity_available,condition,listing_type,is_service,service_price_unit,category:categories(name)))")
     .eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
+  // delivery by campus (0042): read separately so the page still opens before the database has the column
+  if (pkg && window.lvDrPkgRules) { try { pkg.delivery_rules = await window.lvDrPkgRules(pkg.id); } catch (_) {} }
   if (error || !pkg) return '<div class="empty-state"><i class="fa-solid fa-box-open" style="font-size:1.6rem;display:block;margin-bottom:.6rem;"></i>Package not found or no longer available.</div>';
   const {data:packageEngagement}=await engagementPromise;
 
@@ -152,7 +155,7 @@ async function renderPackageDetail(packageId) {
     html += `<div class="card own-purchase-block"><p style="margin:0;"><i class="fa-solid fa-circle-info"></i> This is your own package. You can manage it from your vendor dashboard, but you can't buy it from your own shop.</p></div>`;
   } else {
     html += `<div class="card"><h3 style="margin-top:0;"><i class="fa-solid fa-cart-shopping"></i> Buy this package</h3>
-      ${deliveryFieldsHtml("pkgdetail", v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "Pickup", pkg.price)}
+      ${(window.lvDrRegister && window.lvDrRegister("pkgdetail", [{ name: pkg.name, delivery_rules: pkg.delivery_rules, delivery_fee_mode: v.delivery_fee_mode || "flat", delivery_fee: v.delivery_fee, delivery_fee_per_km: v.delivery_fee_per_km }], v), "")}      ${deliveryFieldsHtml("pkgdetail", v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "Pickup", pkg.price)}
       <button class="btn" style="width:100%;justify-content:center;" onclick="buyPackageFromDetail('${pkg.id}')">Buy package · ${naira(pkg.price)}</button>
       <p id="packageDetailBuyError" class="error-text hidden"></p>
     </div>`;

@@ -1317,7 +1317,8 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     chips.innerHTML=kinds.map(function(k){return '<button type="button" class="lvc-chip'+(k[0]===filter?' on':'')+'" data-k="'+k[0]+'">'+k[1]+'</button>';}).join("");
     function itemHtml(r){
       var sub=r.abbr&&r.abbr.length<=8?r.abbr:"";
-      return '<button type="button" class="lvc-item'+((multi?chosen.has(r.id):r.id===cur)?' sel':'')+'" data-id="'+esc2(r.id)+'"><span class="lvc-logo">'+logoHtml(r)+'<span class="lvc-tick"><i class="fa-solid fa-check"></i></span></span><span class="lvc-name">'+esc2(r.name.replace(/,\s*[A-Z][a-z]+( State)?$/,""))+'</span>'+(sub?'<span class="lvc-sub">'+esc2(sub)+'</span>':'')+'</button>';
+      var tk=opts.taken&&opts.taken[r.id];
+      return '<button type="button" class="lvc-item'+((multi?chosen.has(r.id):r.id===cur)?' sel':'')+(tk?' lvc-taken" disabled aria-disabled="true" data-tk="'+esc2(tk):'')+'" data-id="'+esc2(r.id)+'"><span class="lvc-logo">'+logoHtml(r)+'<span class="lvc-tick"><i class="fa-solid fa-check"></i></span></span><span class="lvc-name">'+esc2(r.name.replace(/,\s*[A-Z][a-z]+( State)?$/,""))+'</span>'+(sub?'<span class="lvc-sub">'+esc2(sub)+'</span>':'')+'</button>';
     }
     function apply(){
       var toks=q.toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(Boolean);

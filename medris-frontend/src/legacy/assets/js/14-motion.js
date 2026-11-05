@@ -6227,135 +6227,410 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     try { readDeliveryFields = rdf1; } catch (_) {}
   }
 
-  /* ---------------- shop: delivery options on the listing form ---------------- */
-  var ST = { on: false, rules: [], vcampus: null, vlat: null, vlng: null };
-  function legacyRule(p) {
-    var m = String((p && p.delivery_fee_mode) || "free");
-    return { mode: m === "flat" || m === "distance" ? m : "free", fee: Number(p && p.delivery_fee) || 0, perKm: Number(p && p.delivery_fee_per_km) || 0, scope: "all", campuses: [] };
+  /* ---------------- shop: one delivery editor (listing form, package form, Delivery settings page) ---------------- */
+  var PK = null, pkProbing = null;   // does vendor_packages have delivery_rules yet (0042)?
+  function probePkg() {
+    if (PK !== null) return Promise.resolve(PK);
+    if (pkProbing) return pkProbing;
+    pkProbing = Promise.resolve().then(function () { return sb.from("vendor_packages").select("delivery_rules").limit(1); })
+      .then(function (r) { PK = !(r && r.error); return PK; }, function () { PK = false; return false; });
+    return pkProbing;
   }
-  function host() {
-    var box = byId("prodDeliverySettings"); if (!box) return null;
-    var ed = byId("lvDrEditor");
-    if (!ed) { ed = document.createElement("div"); ed.id = "lvDrEditor"; ed.className = "lvdr"; box.appendChild(ed); ed.addEventListener("click", onClick); ed.addEventListener("input", onInput); }
-    return ed;
-  }
-  function legacyEls() { return ["prodDeliveryMode", "prodDeliveryFlatRow", "prodDeliveryDistanceRow", "prodDeliveryHint"].map(byId).concat([document.querySelector("#prodDeliverySettings > label")]).filter(Boolean); }
+  var SHOP = { vcampus: null, vlat: null, vlng: null, fee: 0, mode: "flat", perKm: 0, loaded: false };
+  function myVendor() { try { return typeof vendor !== "undefined" && vendor && vendor.id ? vendor : null; } catch (_) { return null; } }
   function shopInfo() {
-    var v = null; try { v = typeof vendor !== "undefined" ? vendor : null; } catch (_) {}
-    if (!v || !v.id) return Promise.resolve();
-    return Promise.resolve().then(function () { return sb.from("vendors").select("campus_id,lat,lng").eq("id", v.id).maybeSingle(); }).then(function (r) {
+    var v = myVendor(); if (!v) return Promise.resolve();
+    return Promise.resolve().then(function () { return sb.from("vendors").select("campus_id,lat,lng,delivery_fee,delivery_fee_mode,delivery_fee_per_km").eq("id", v.id).maybeSingle(); }).then(function (r) {
       var d = r && r.data; if (!d) return;
-      ST.vcampus = d.campus_id && d.campus_id !== "none" ? d.campus_id : null; ST.vlat = d.lat; ST.vlng = d.lng;
+      SHOP.vcampus = d.campus_id && d.campus_id !== "none" ? d.campus_id : null; SHOP.vlat = d.lat; SHOP.vlng = d.lng;
+      SHOP.mode = d.delivery_fee_mode || (Number(d.delivery_fee) > 0 ? "flat" : "free"); SHOP.fee = Number(d.delivery_fee) || 0; SHOP.perKm = Number(d.delivery_fee_per_km) || 0; SHOP.loaded = true;
     }, function () {});
   }
-  window.lvDrLoad = function (p) {
-    var src = p && Array.isArray(p.delivery_rules) && p.delivery_rules.length ? JSON.parse(JSON.stringify(p.delivery_rules)) : [legacyRule(p)];
-    ST.rules = src.map(function (r) { return { mode: r.mode, fee: Number(r.fee) || 0, perKm: Number(r.perKm) || 0, scope: r.scope || "all", campuses: (r.campuses || []).slice() }; });
-    ST.on = false;
-    probe().then(function (ok) {
-      if (!ok) return;
-      return Promise.all([shopInfo(), window.lvCampuses ? window.lvCampuses().catch(function () {}) : null]).then(function () {
-        ST.on = true; legacyEls().forEach(function (el) { el.classList.add("lvdr-hide"); }); render();
-      });
-    });
-  };
-  function problems() {
+  function ready() { return Promise.all([shopInfo(), window.lvCampuses ? window.lvCampuses().catch(function () {}) : null]); }
+  var ICON = { free: "gift", flat: "cash", distance: "map-pin" };
+  var TYPE = { free: ["Free", "No charge"], flat: ["Flat fee", "One price"], distance: ["By distance", "Per km"] };
+  function ico(mode, size) { return window.lv3dIcon ? window.lv3dIcon(ICON[mode] || "cash", size || 40) : ""; }
+  function legacyRule(p) {
+    var m = String((p && p.delivery_fee_mode) || "free");
+    var r = { mode: m === "flat" || m === "distance" ? m : "free", fee: Number(p && p.delivery_fee) || 0, perKm: Number(p && p.delivery_fee_per_km) || 0, scope: "all", campuses: [] };
+    if (r.mode === "flat" && !(r.fee > 0)) r.mode = "free";
+    return r;
+  }
+  function norm(list) { return (list || []).map(function (r) { return { mode: r.mode, fee: Number(r.fee) || 0, perKm: Number(r.perKm) || 0, scope: r.scope || "all", campuses: (r.campuses || []).slice() }; }); }
+  function whereText(r, rules, own) {
+    var others = rules.some(function (x) { return x !== r && x.scope !== "all"; });
+    if (r.scope === "mine") return own ? campusName(own) : "Your campus";
+    if (r.scope === "selected") return r.campuses.length === 1 ? campusName(r.campuses[0]) : r.campuses.length ? r.campuses.length + " campuses" : "No campus yet";
+    return others ? "Everywhere else" : "All campuses";
+  }
+  function shortSummary(rules) {
+    if (!rules || !rules.length) return "";
+    return rules.map(function (r) { return (r.mode === "free" ? "Free" : r.mode === "flat" ? N(r.fee) : N(r.perKm) + "/km") + " · " + whereText(r, rules, SHOP.vcampus); }).join("  ·  ");
+  }
+  function problemsOf(rules) {
     var out = [], seen = {}, nAll = 0, nMine = 0;
-    ST.rules.forEach(function (r, i) {
-      var n = ST.rules.length > 1 ? " (option " + (i + 1) + ")" : "";
+    rules.forEach(function (r, i) {
+      var n = rules.length > 1 ? " (option " + (i + 1) + ")" : "";
       if (r.mode === "flat" && !(r.fee > 0)) out.push("Enter a delivery fee above ₦0" + n + ", or choose Free.");
       if (r.mode === "flat" && r.fee > 1000000) out.push("That delivery fee is too high" + n + ".");
       if (r.mode === "distance" && !(r.perKm > 0 && r.perKm <= 1000)) out.push("Enter a fee per km between ₦1 and ₦1,000" + n + ".");
-      if (r.mode === "distance" && (ST.vlat == null || ST.vlng == null)) out.push("Set your shop's location first (Edit shop) to charge by distance" + n + ".");
+      if (r.mode === "distance" && (SHOP.vlat == null || SHOP.vlng == null)) out.push("Set your shop's location first (Edit shop) to charge by distance" + n + ".");
       if (r.scope === "all") nAll++;
-      if (r.scope === "mine") { nMine++; if (!ST.vcampus) out.push("Your shop has no campus yet, so \"My campus\" can't be used" + n + ". Pick the campuses instead."); else seen[ST.vcampus] = (seen[ST.vcampus] || 0) + 1; }
-      if (r.scope === "selected") { if (!r.campuses.length) out.push("Choose at least one campus" + n + "."); r.campuses.forEach(function (c) { seen[c] = (seen[c] || 0) + 1; }); }
+      if (r.scope === "mine") { nMine++; if (!SHOP.vcampus) out.push("Your shop has no campus yet, so \"My campus\" can't be used" + n + "."); else seen[SHOP.vcampus] = (seen[SHOP.vcampus] || 0) + 1; }
+      if (r.scope === "selected") { if (!r.campuses.length) out.push("Add at least one campus" + n + "."); r.campuses.forEach(function (c) { seen[c] = (seen[c] || 0) + 1; }); }
     });
-    if (nAll > 1) out.push("Only one option can cover \"all other campuses\".");
+    if (nAll > 1) out.push("Only one option can be \"Everywhere else\".");
     if (nMine > 1) out.push("Only one option can be \"My campus\".");
     Object.keys(seen).forEach(function (c) { if (seen[c] > 1) out.push(campusName(c) + " is in two options. Each campus can only have one."); });
     return out;
   }
-  function summary() {
-    var parts = [], others = ST.rules.some(function (r) { return r.scope !== "all"; });
-    ST.rules.forEach(function (r) {
-      var where = r.scope === "mine" ? (ST.vcampus ? campusName(ST.vcampus) + " (your campus)" : "Your campus") : r.scope === "selected" ? (r.campuses.map(campusName).join(", ") || "No campus chosen yet") : (others ? "Every other campus" : "All campuses");
-      parts.push("<li><b>" + E(where) + "</b>: " + E(ruleText(r)) + "</li>");
-    });
-    if (!ST.rules.some(function (r) { return r.scope === "all"; })) parts.push('<li class="lvdr-muted">Buyers on any other campus can only pick up.</li>');
-    return "<ul>" + parts.join("") + "</ul>";
-  }
-  function render() {
-    var ed = host(); if (!ed || !ST.on) return;
-    var others = ST.rules.length > 1;
-    ed.innerHTML = '<div class="lvdr-title"><strong>Delivery options</strong><span>Set a different delivery for different campuses. Pickup is always available.</span></div>'
-      + ST.rules.map(function (r, i) {
-        var seg = function (a, val, label, dis) { return '<button type="button" class="lvdr-seg-b' + ((a === "mode" ? r.mode : r.scope) === val ? " on" : "") + '" data-a="' + a + '" data-i="' + i + '" data-v="' + val + '"' + (dis ? " disabled" : "") + ">" + label + "</button>"; };
-        return '<div class="lvdr-opt">'
-          + '<div class="lvdr-opt-h"><b>' + (others ? "Option " + (i + 1) : "Delivery") + "</b>" + (others ? '<button type="button" class="lvdr-del" data-a="del" data-i="' + i + '">Remove</button>' : "") + "</div>"
-          + '<div class="lvdr-seg">' + seg("mode", "free", "Free") + seg("mode", "flat", "Flat fee") + seg("mode", "distance", "By distance") + "</div>"
-          + (r.mode === "flat" ? '<label class="lvdr-f">Delivery fee (₦)<input type="number" min="1" step="50" inputmode="numeric" data-f="fee" data-i="' + i + '" value="' + (r.fee || "") + '" placeholder="e.g. 500"></label>' : "")
-          + (r.mode === "distance" ? '<label class="lvdr-f">Fee per km (₦, max 1,000)<input type="number" min="1" max="1000" step="10" inputmode="numeric" data-f="perKm" data-i="' + i + '" value="' + (r.perKm || "") + '" placeholder="e.g. 200"></label>' : "")
-          + '<div class="lvdr-k2">For which campuses?</div>'
-          + '<div class="lvdr-seg">' + seg("scope", "mine", ST.vcampus ? "My campus" : "My campus (not set)", !ST.vcampus) + seg("scope", "selected", "Choose campuses") + seg("scope", "all", others ? "All other campuses" : "All campuses") + "</div>"
-          + (r.scope === "mine" && ST.vcampus ? '<div class="lvdr-chips"><span class="lvdr-chip">' + E(campusName(ST.vcampus)) + "</span></div>" : "")
-          + (r.scope === "selected" ? '<div class="lvdr-chips">' + r.campuses.map(function (c) { return '<span class="lvdr-chip">' + E(campusName(c)) + '<button type="button" aria-label="Remove ' + E(campusName(c)) + '" data-a="unc" data-i="' + i + '" data-c="' + E(c) + '">×</button></span>'; }).join("") + '<button type="button" class="lvdr-addc" data-a="pickc" data-i="' + i + '"><i class="fa-solid fa-plus"></i> ' + (r.campuses.length ? "Change campuses" : "Choose campuses") + "</button></div>" : "")
-          + "</div>";
-      }).join("")
-      + (ST.rules.length < 10 ? '<button type="button" class="lvdr-add" data-a="add"><i class="fa-solid fa-plus"></i> Add a delivery option for other campuses</button>' : "")
-      + '<div class="lvdr-sum"><div class="lvdr-k2">What buyers will see</div>' + summary() + "</div>"
-      + (function (p) { return p.length ? '<div class="lvdr-err">' + p.map(function (x) { return "<div><i class=\"fa-solid fa-triangle-exclamation\"></i> " + E(x) + "</div>"; }).join("") + "</div>" : ""; })(problems());
-  }
-  function onClick(ev) {
-    var b = ev.target.closest("[data-a]"); if (!b || b.disabled) return;
-    var a = b.getAttribute("data-a"), i = Number(b.getAttribute("data-i")), r = ST.rules[i];
-    if (a === "mode") { r.mode = b.getAttribute("data-v"); render(); }
-    else if (a === "scope") { r.scope = b.getAttribute("data-v"); render(); }
-    else if (a === "del") { ST.rules.splice(i, 1); render(); }
-    else if (a === "unc") { r.campuses = r.campuses.filter(function (c) { return c !== b.getAttribute("data-c"); }); render(); }
-    else if (a === "add") {
-      var hasAll = ST.rules.some(function (x) { return x.scope === "all"; }), hasMine = ST.rules.some(function (x) { return x.scope === "mine"; });
-      ST.rules.push({ mode: "flat", fee: 0, perKm: 0, scope: !hasAll ? "all" : !hasMine && ST.vcampus ? "mine" : "selected", campuses: [] });
-      render();
-    } else if (a === "pickc" && window.lvOpenCampusPicker) {
-      window.lvCampuses().then(function () {
-        window.lvOpenCampusPicker({ title: "Campuses for this delivery option", multi: true, selected: r.campuses.slice(), onDone: function (ids) { r.campuses = (ids || []).filter(function (c) { return c && c !== "none" && c !== "all"; }); render(); } });
-      });
-    }
-  }
-  function onInput(ev) {
-    var f = ev.target.getAttribute("data-f"); if (!f) return;
-    var r = ST.rules[Number(ev.target.getAttribute("data-i"))]; if (!r) return;
-    r[f] = Math.max(0, Number(ev.target.value) || 0);
-    var ed = host(), sum = ed && ed.querySelector(".lvdr-sum"), err = ed && ed.querySelector(".lvdr-err");
-    if (sum) sum.innerHTML = '<div class="lvdr-k2">What buyers will see</div>' + summary();
-    var p = problems();
-    if (err && !p.length) err.remove();
-    else if (p.length) { if (!err) { err = document.createElement("div"); err.className = "lvdr-err"; ed.appendChild(err); } err.innerHTML = p.map(function (x) { return "<div><i class=\"fa-solid fa-triangle-exclamation\"></i> " + E(x) + "</div>"; }).join(""); }
-  }
-  // Levi's guided "add a listing" fills the old single setting: follow it while there is only one option for every campus
-  document.addEventListener("change", function (ev) {
-    if (!ST.on || ST.rules.length !== 1 || ST.rules[0].scope !== "all") return;
-    if (["prodDeliveryMode", "prodDeliveryFee", "prodDeliveryPerKm"].indexOf(ev.target && ev.target.id) < 0) return;
-    ST.rules[0] = legacyRule({ delivery_fee_mode: byId("prodDeliveryMode").value, delivery_fee: byId("prodDeliveryFee").value, delivery_fee_per_km: byId("prodDeliveryPerKm").value });
-    render();
-  }, true);
-  window.lvDrRead = function (isService) {
-    if (!ST.on) return undefined;
-    if (isService) return null;
-    var p = problems(); if (p.length) throw new Error(p[0]);
-    var rules = ST.rules.map(function (r) {
+  function toSave(rules) {
+    return rules.map(function (r) {
       var o = { mode: r.mode, scope: r.scope };
       if (r.mode === "flat") o.fee = Math.round(Number(r.fee) * 100) / 100;
       if (r.mode === "distance") o.perKm = Math.round(Number(r.perKm));
       if (r.scope === "selected") o.campuses = r.campuses.slice(0, 300);
       return o;
     });
-    // the single setting (cards, old screens) shows the option for "all campuses", or the first one
-    var main = rules.find(function (r) { return r.scope === "all"; }) || rules[0];
-    var set = function (id, v) { var el = byId(id); if (el) el.value = v; };
-    set("prodDeliveryMode", main.mode); set("prodDeliveryFee", main.mode === "flat" ? main.fee : 0); set("prodDeliveryPerKm", main.mode === "distance" ? main.perKm : 0);
-    return rules.length === 1 && main.scope === "all" ? null : rules;   // one option for every campus = the plain old setting
+  }
+  function legacyOf(rules) {   // the single setting kept for cards and older screens: the "everywhere" option, or the first
+    var m = rules.find(function (r) { return r.scope === "all"; }) || rules[0];
+    return { delivery_fee_mode: m.mode, delivery_fee: m.mode === "flat" ? m.fee : 0, delivery_fee_per_km: m.mode === "distance" ? m.perKm : 0 };
+  }
+  function Editor(hostEl, onChange) {
+    var self = this; this.el = hostEl; this.rules = [legacyRule(null)];
+    hostEl.classList.add("lde");
+    hostEl.addEventListener("click", function (ev) { self.click(ev); });
+    hostEl.addEventListener("input", function (ev) { self.input(ev); });
+    this.changed = function () { if (onChange) onChange(self.rules); };
+  }
+  Editor.prototype.set = function (rules) { this.rules = norm(rules && rules.length ? rules : [legacyRule(null)]); this.render(); };
+  Editor.prototype.problems = function () { return problemsOf(this.rules); };
+  Editor.prototype.taken = function (i) {
+    var t = {}, own = SHOP.vcampus;
+    this.rules.forEach(function (r, j) {
+      if (j === i) return;
+      if (r.scope === "mine" && own) t[own] = "Your campus option";
+      if (r.scope === "selected") r.campuses.forEach(function (c) { t[c] = "In option " + (j + 1); });
+    });
+    return t;
   };
-  setTimeout(function () { try { probe(); } catch (_) {} }, 4000);
+  Editor.prototype.render = function () {
+    var rules = this.rules, own = SHOP.vcampus, many = rules.length > 1;
+    var html = rules.map(function (r, i) {
+      var type = function (m) { return '<button type="button" class="lde-type' + (r.mode === m ? " on" : "") + '" data-a="mode" data-i="' + i + '" data-v="' + m + '" aria-pressed="' + (r.mode === m) + '"><span class="lde-type-ico">' + ico(m, 34) + '</span><b>' + TYPE[m][0] + "</b><small>" + TYPE[m][1] + '</small><i class="fa-solid fa-circle-check lde-tick"></i></button>'; };
+      var scope = function (s, label, dis) { return '<button type="button" class="lde-pill' + (r.scope === s ? " on" : "") + '" data-a="scope" data-i="' + i + '" data-v="' + s + '"' + (dis ? " disabled" : "") + ">" + label + "</button>"; };
+      return '<div class="lde-opt">'
+        + '<div class="lde-opt-top"><span class="lde-opt-ico">' + ico(r.mode, 40) + '</span><div class="lde-opt-t"><b>' + E(r.mode === "free" ? "Free delivery" : r.mode === "flat" ? (r.fee > 0 ? N(r.fee) + " delivery" : "Flat fee") : (r.perKm > 0 ? N(r.perKm) + " per km" : "By distance")) + "</b><small>" + E(whereText(r, rules, own)) + "</small></div>"
+        + (many ? '<button type="button" class="lde-del" data-a="del" data-i="' + i + '" aria-label="Remove this option"><i class="fa-regular fa-trash-can"></i></button>' : "") + "</div>"
+        + '<div class="lde-types">' + type("free") + type("flat") + type("distance") + "</div>"
+        + (r.mode === "flat" ? '<label class="lde-money"><span class="lde-cur">₦</span><input type="number" inputmode="numeric" min="1" step="50" data-f="fee" data-i="' + i + '" value="' + (r.fee || "") + '" placeholder="500" aria-label="Delivery fee in naira"><span class="lde-unit">per order</span></label>' : "")
+        + (r.mode === "distance" ? '<label class="lde-money"><span class="lde-cur">₦</span><input type="number" inputmode="numeric" min="1" max="1000" step="10" data-f="perKm" data-i="' + i + '" value="' + (r.perKm || "") + '" placeholder="200" aria-label="Fee per kilometre in naira"><span class="lde-unit">per km · max ₦1,000</span></label>' : "")
+        + '<div class="lde-cap">Which campuses?</div>'
+        + '<div class="lde-pills">' + scope("mine", own ? "My campus" : "My campus (not set)", !own) + scope("selected", "Selected") + scope("all", many ? "All others" : "All campuses") + "</div>"
+        + (r.scope === "mine" && own ? '<div class="lde-chips"><span class="lde-chip"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(own) : "") + "</span>" + E(campusName(own)) + "</span></div>" : "")
+        + (r.scope === "selected" ? '<div class="lde-chips">' + r.campuses.map(function (c) { return '<span class="lde-chip"><span class="lvdr-logo">' + (window.lvCampusLogoHtml ? window.lvCampusLogoHtml(c) : "") + "</span>" + E(campusName(c)) + '<button type="button" data-a="unc" data-i="' + i + '" data-c="' + E(c) + '" aria-label="Remove ' + E(campusName(c)) + '"><i class="fa-solid fa-xmark"></i></button></span>'; }).join("") + '<button type="button" class="lde-addc" data-a="pickc" data-i="' + i + '"><i class="fa-solid fa-plus"></i> ' + (r.campuses.length ? "Add or remove" : "Add campuses") + "</button></div>" : "")
+        + (r.scope === "all" && many ? '<p class="lde-hint">Every campus not listed in your other options.</p>' : "")
+        + "</div>";
+    }).join("");
+    if (rules.length < 10) html += '<button type="button" class="lde-more" data-a="add"><i class="fa-solid fa-plus"></i> Add delivery for other campuses</button>';
+    html += '<div class="lde-sum">' + this.sumHtml() + "</div>";
+    this.el.innerHTML = html;
+  };
+  Editor.prototype.sumHtml = function () {
+    var rules = this.rules, own = SHOP.vcampus, p = this.problems();
+    var rows = rules.map(function (r) { return '<li><span class="lde-sum-ico">' + ico(r.mode, 24) + "</span><span><b>" + E(r.scope === "selected" && r.campuses.length > 1 ? r.campuses.map(campusName).join(", ") : whereText(r, rules, own)) + "</b> " + E(ruleText(r)) + "</span></li>"; });
+    if (!rules.some(function (r) { return r.scope === "all"; })) rows.push('<li class="lde-sum-muted"><span class="lde-sum-ico"><i class="fa-solid fa-store"></i></span><span>Other campuses: <b>pickup only</b></span></li>');
+    return '<div class="lde-cap">What buyers see</div><ul>' + rows.join("") + "</ul>"
+      + (p.length ? '<div class="lde-err">' + p.map(function (x) { return '<div><i class="fa-solid fa-circle-exclamation"></i> ' + E(x) + "</div>"; }).join("") + "</div>" : "");
+  };
+  Editor.prototype.click = function (ev) {
+    var b = ev.target.closest("[data-a]"); if (!b || b.disabled || !this.el.contains(b)) return;
+    var self = this, a = b.getAttribute("data-a"), i = Number(b.getAttribute("data-i")), r = this.rules[i];
+    if (a === "mode") r.mode = b.getAttribute("data-v");
+    else if (a === "scope") r.scope = b.getAttribute("data-v");
+    else if (a === "del") this.rules.splice(i, 1);
+    else if (a === "unc") r.campuses = r.campuses.filter(function (c) { return c !== b.getAttribute("data-c"); });
+    else if (a === "add") {
+      var hasAll = this.rules.some(function (x) { return x.scope === "all"; }), hasMine = this.rules.some(function (x) { return x.scope === "mine"; });
+      this.rules.push({ mode: "flat", fee: 0, perKm: 0, scope: !hasMine && SHOP.vcampus ? "mine" : !hasAll ? "all" : "selected", campuses: [] });
+      // a new option for "my campus" goes first, so it reads top to bottom: my campus, picked campuses, everywhere else
+      this.rules.sort(function (x, y) { var o = { mine: 0, selected: 1, all: 2 }; return o[x.scope] - o[y.scope]; });
+    } else if (a === "pickc" && window.lvOpenCampusPicker) {
+      window.lvCampuses().then(function () {
+        var taken = self.taken(i);
+        window.lvOpenCampusPicker({ title: "Campuses for this option", multi: true, selected: r.campuses.slice(), taken: taken,
+          onDone: function (ids) { r.campuses = (ids || []).filter(function (c) { return c && c !== "none" && c !== "all" && !taken[c]; }); self.render(); self.changed(); } });
+      });
+      return;
+    } else return;
+    this.render(); this.changed();
+  };
+  Editor.prototype.input = function (ev) {
+    var f = ev.target.getAttribute("data-f"); if (!f) return;
+    var r = this.rules[Number(ev.target.getAttribute("data-i"))]; if (!r) return;
+    r[f] = Math.max(0, Number(ev.target.value) || 0);
+    var top = ev.target.closest(".lde-opt"), t = top && top.querySelector(".lde-opt-t b");
+    if (t) t.textContent = r.mode === "flat" ? (r.fee > 0 ? N(r.fee) + " delivery" : "Flat fee") : (r.perKm > 0 ? N(r.perKm) + " per km" : "By distance");
+    var sum = this.el.querySelector(".lde-sum"); if (sum) sum.innerHTML = this.sumHtml();
+    this.changed();
+  };
+  window.lvDrEditor = Editor;
+
+  /* the listing form */
+  var FORM = { on: false, ed: null };
+  function formHost() {
+    var box = byId("prodDeliverySettings"); if (!box) return null;
+    var h = byId("lvDrEditor");
+    if (!h) {
+      h = document.createElement("div"); h.id = "lvDrEditor"; box.appendChild(h);
+      var link = document.createElement("button"); link.type = "button"; link.className = "lde-link"; link.id = "lvDrAllLink";
+      link.innerHTML = '<i class="fa-solid fa-layer-group"></i> Set the same delivery for all your listings'; link.onclick = function () { window.lvDrOpenPage(); };
+      box.appendChild(link);
+      FORM.ed = new Editor(h);
+    }
+    return h;
+  }
+  function legacyEls() { return ["prodDeliveryMode", "prodDeliveryFlatRow", "prodDeliveryDistanceRow", "prodDeliveryHint"].map(byId).concat([document.querySelector("#prodDeliverySettings > label")]).filter(Boolean); }
+  window.lvDrLoad = function (p) {
+    var rules = p && Array.isArray(p.delivery_rules) && p.delivery_rules.length ? p.delivery_rules : [legacyRule(p)];
+    FORM.on = false;
+    probe().then(function (ok) {
+      if (!ok) return;
+      return ready().then(function () {
+        if (!formHost()) return;
+        FORM.on = true; legacyEls().forEach(function (el) { el.classList.add("lvdr-hide"); });
+        FORM.ed.set(rules);
+      });
+    });
+  };
+  // Levi's guided "add a listing" fills the old single setting: follow it while there is one option for every campus
+  document.addEventListener("change", function (ev) {
+    if (!FORM.on || !FORM.ed || FORM.ed.rules.length !== 1 || FORM.ed.rules[0].scope !== "all") return;
+    if (["prodDeliveryMode", "prodDeliveryFee", "prodDeliveryPerKm"].indexOf(ev.target && ev.target.id) < 0) return;
+    FORM.ed.set([legacyRule({ delivery_fee_mode: byId("prodDeliveryMode").value, delivery_fee: byId("prodDeliveryFee").value, delivery_fee_per_km: byId("prodDeliveryPerKm").value })]);
+  }, true);
+  window.lvDrRead = function (isService) {
+    if (!FORM.on || !FORM.ed) return undefined;
+    if (isService) return null;
+    var p = FORM.ed.problems(); if (p.length) throw new Error(p[0]);
+    var rules = toSave(FORM.ed.rules), L = legacyOf(rules);
+    var set = function (id, v) { var el = byId(id); if (el) el.value = v; };
+    set("prodDeliveryMode", L.delivery_fee_mode); set("prodDeliveryFee", L.delivery_fee); set("prodDeliveryPerKm", L.delivery_fee_per_km);
+    return rules.length === 1 && rules[0].scope === "all" ? null : rules;   // one option for every campus = the plain single setting
+  };
+
+  /* the package form */
+  var PKG = { on: false, ed: null };
+  window.lvDrPkgRules = function (id) {
+    return probePkg().then(function (ok) {
+      if (!ok) return null;
+      return sb.from("vendor_packages").select("delivery_rules").eq("id", id).maybeSingle().then(function (r) { return (r && r.data && r.data.delivery_rules) || null; });
+    });
+  };
+  window.lvDrPkgLoad = function (pkg) {
+    PKG.on = false; var sec = byId("pkgDeliverySec");
+    Promise.all([probe(), probePkg()]).then(function (ok) {
+      if (!ok[0] || !ok[1] || !sec) return;
+      return ready().then(function () {
+        if (!PKG.ed) PKG.ed = new Editor(byId("pkgDeliveryHost"));
+        var rules = pkg && Array.isArray(pkg.delivery_rules) && pkg.delivery_rules.length ? pkg.delivery_rules : [legacyRule({ delivery_fee_mode: SHOP.mode, delivery_fee: SHOP.fee, delivery_fee_per_km: SHOP.perKm })];
+        PKG.ed.set(rules); sec.classList.remove("hidden"); PKG.on = true;
+      });
+    });
+  };
+  window.lvDrPkgRead = function () {
+    if (!PKG.on || !PKG.ed) return undefined;
+    var p = PKG.ed.problems(); if (p.length) throw new Error(p[0]);
+    return toSave(PKG.ed.rules);
+  };
+
+  /* ---------------- the Delivery settings page: every listing, one tap to edit, or one setting for all ---------------- */
+  function thumb(x) { var ph = Array.isArray(x.photos) ? x.photos.filter(Boolean)[0] : null; return ph ? '<img src="' + E(ph) + '" alt="" loading="lazy" decoding="async">' : '<i class="fa-solid fa-box"></i>'; }
+  function rowSummary(x) {
+    var rules = Array.isArray(x.delivery_rules) && x.delivery_rules.length ? x.delivery_rules : [x.kind === "package" ? legacyRule({ delivery_fee_mode: SHOP.mode, delivery_fee: SHOP.fee, delivery_fee_per_km: SHOP.perKm }) : legacyRule(x)];
+    return { rules: rules, text: shortSummary(norm(rules)), mode: rules[0].mode, custom: Array.isArray(x.delivery_rules) && x.delivery_rules.length > 0 };
+  }
+  var PG = null;
+  window.lvDrOpenPage = function () {
+    var v = myVendor(); if (!v) { if (typeof showToast === "function") showToast("Open your shop first.", "info"); return; }
+    var old = byId("ldePage"); if (old) old.remove();
+    var w = document.createElement("div"); w.id = "ldePage"; w.className = "lde-page"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "Delivery settings");
+    w.innerHTML = '<div class="lde-top"><button type="button" class="lde-back" data-a="close" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2>Delivery settings</h2><p>How each listing gets to your buyers</p></div></div>'
+      + '<div class="lde-scroll"><div class="lde-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading your listings…</div></div>';
+    document.body.appendChild(w); document.documentElement.classList.add("lde-open");
+    w.addEventListener("click", function (ev) { pageClick(ev, w); });
+    try { localStorage.setItem("lv-dr-intro:" + v.id, "done"); } catch (_) {}
+    Promise.all([probe(), probePkg(), ready()]).then(function (ok) {
+      if (!ok[0]) { w.querySelector(".lde-scroll").innerHTML = '<div class="lde-card"><p>Delivery by campus is being switched on. Please check back soon.</p></div>'; return; }
+      var prods = sb.from("products").select("id,name,photos,listing_type,status,delivery_rules,delivery_fee_mode,delivery_fee,delivery_fee_per_km").eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").order("name");
+      var pkgs = ok[1] ? sb.from("vendor_packages").select("id,name,photos,status,delivery_rules").eq("vendor_id", v.id).order("name") : Promise.resolve({ data: [] });
+      return Promise.all([prods, pkgs]).then(function (res) {
+        var list = (res[0].data || []).map(function (x) { x.kind = x.listing_type === "rent" ? "rental" : "product"; return x; })
+          .concat((res[1].data || []).map(function (x) { x.kind = "package"; return x; }));
+        PG = { w: w, list: list, open: null, ed: null, allEd: null, all: false };
+        paint();
+      });
+    }).catch(function (e) { var s = w.querySelector(".lde-scroll"); if (s) s.innerHTML = '<div class="lde-card"><p>Couldn\'t load your listings. ' + E(e && e.message || "") + "</p></div>"; });
+  };
+  function paint() {
+    var w = PG.w, sc = w.querySelector(".lde-scroll"), n = PG.list.length;
+    var steps = '<div class="lde-hero"><div class="lde-hero-h"><span>' + ico("distance", 48) + "</span><div><b>Delivery by campus</b><small>Give each campus the delivery that makes sense.</small></div></div>"
+      + '<ol class="lde-steps"><li><span>' + ico("free", 30) + "</span><div><b>Pick a delivery type</b><small>Free, a flat fee, or a fee per km.</small></div></li>"
+      + "<li><span>" + ico("distance", 30) + "</span><div><b>Choose the campuses</b><small>Your campus, campuses you pick, or everywhere else. Each campus gets one option.</small></div></li>"
+      + "<li><span>" + ico("flat", 30) + "</span><div><b>Buyers see the right fee</b><small>They choose their campus at checkout. Pickup is always available.</small></div></li></ol></div>";
+    var allCard = '<div class="lde-card lde-allcard"><label class="lde-switch-row"><div><b>Same delivery for all listings</b><small>Set it once and use it for every product and package, like copying Monday to every day.</small></div><span class="lde-switch"><input type="checkbox" data-a="allsw"' + (PG.all ? " checked" : "") + '><i></i></span></label>'
+      + (PG.all ? '<div id="ldeAllEd"></div><button type="button" class="lde-save" data-a="applyall"><i class="fa-solid fa-check-double"></i> Use for all ' + n + " listing" + (n === 1 ? "" : "s") + "</button>" : "") + "</div>";
+    var rows = PG.list.map(function (x, i) {
+      var s = rowSummary(x), open = PG.open === i;
+      return '<div class="lde-item' + (open ? " open" : "") + (PG.all ? " dim" : "") + '"><button type="button" class="lde-row" data-a="row" data-i="' + i + '" aria-expanded="' + open + '">'
+        + '<span class="lde-thumb">' + thumb(x) + '</span><span class="lde-row-t"><b>' + E(x.name || "Untitled") + '</b><small><span class="lde-mini">' + ico(s.mode, 18) + "</span>" + E(s.text) + "</small></span>"
+        + '<span class="lde-kind lde-k-' + x.kind + '">' + (x.kind === "package" ? "Package" : x.kind === "rental" ? "Rental" : "Product") + '</span><i class="fa-solid fa-chevron-down lde-chev"></i></button>'
+        + (open ? '<div class="lde-panel"><div id="ldeRowEd"></div><div class="lde-actions"><button type="button" class="lde-ghost" data-a="copyall" data-i="' + i + '"><i class="fa-regular fa-copy"></i> Use for all listings</button><button type="button" class="lde-save" data-a="saverow" data-i="' + i + '">Save</button></div></div>' : "")
+        + "</div>";
+    }).join("");
+    sc.innerHTML = steps + allCard + '<div class="lde-cap lde-listcap">Your listings (' + n + ")</div>"
+      + (n ? '<div class="lde-list">' + rows + "</div>" : '<div class="lde-card"><p>You have no products or packages yet. Add one and come back here.</p></div>')
+      + '<p class="lde-foot"><i class="fa-solid fa-circle-info"></i> Services happen in person, so they have no delivery.</p>';
+    if (PG.all) { PG.allEd = PG.allEd && PG.allEd.el === byId("ldeAllEd") ? PG.allEd : new Editor(byId("ldeAllEd")); if (!PG.allRules) PG.allRules = rowSummary(PG.list[0] || {}).rules; PG.allEd.set(PG.allRules); PG.allEd.changed = function () { PG.allRules = PG.allEd.rules; }; }
+    if (PG.open != null && byId("ldeRowEd")) { PG.ed = new Editor(byId("ldeRowEd")); PG.ed.set(rowSummary(PG.list[PG.open]).rules); }
+  }
+  function saveOne(x, rules) {
+    var payload, q;
+    if (x.kind === "package") { payload = { delivery_rules: rules }; q = sb.from("vendor_packages").update(payload).eq("id", x.id); }
+    else { var single = rules.length === 1 && rules[0].scope === "all"; payload = Object.assign({ delivery_rules: single ? null : rules }, legacyOf(rules)); q = sb.from("products").update(payload).eq("id", x.id); }
+    return Promise.resolve(q).then(function (r) { if (r && r.error) throw r.error; Object.assign(x, payload); });
+  }
+  function saveAll(rules) {
+    var v = myVendor(), single = rules.length === 1 && rules[0].scope === "all";
+    var a = sb.from("products").update(Object.assign({ delivery_rules: single ? null : rules }, legacyOf(rules))).eq("vendor_id", v.id).eq("is_service", false);
+    var b = PG.list.some(function (x) { return x.kind === "package"; }) ? sb.from("vendor_packages").update({ delivery_rules: rules }).eq("vendor_id", v.id) : Promise.resolve({});
+    return Promise.all([a, b]).then(function (res) {
+      res.forEach(function (r) { if (r && r.error) throw r.error; });
+      PG.list.forEach(function (x) { x.delivery_rules = x.kind === "package" || !single ? rules : null; if (x.kind !== "package") Object.assign(x, legacyOf(rules)); });
+    });
+  }
+  function busy(btn, on) { if (!btn) return; if (on) { btn.dataset.l = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…'; } else { btn.disabled = false; if (btn.dataset.l) btn.innerHTML = btn.dataset.l; } }
+  function toast(m, t) { if (typeof showToast === "function") showToast(m, t || "success"); }
+  function confirmAll(n) {
+    var msg = "This replaces the delivery on all " + n + " listing" + (n === 1 ? "" : "s") + ". You can still change any one of them afterwards.";
+    return typeof showConfirmDialog === "function" ? showConfirmDialog(msg, { title: "Use for all listings?", okLabel: "Use for all" }) : Promise.resolve(window.confirm(msg));
+  }
+  function pageClick(ev, w) {
+    var b = ev.target.closest("[data-a]"); if (!b || !PG && b.getAttribute("data-a") !== "close") return;
+    var a = b.getAttribute("data-a"), i = Number(b.getAttribute("data-i"));
+    if (a === "close") { w.remove(); document.documentElement.classList.remove("lde-open"); return; }
+    if (a === "allsw") { PG.all = b.checked; PG.open = null; paint(); return; }
+    if (a === "row") { if (PG.all) return; PG.open = PG.open === i ? null : i; paint(); var it = w.querySelectorAll(".lde-item")[i]; if (it && PG.open != null) it.scrollIntoView({ block: "start", behavior: "smooth" }); return; }
+    var ed = a === "applyall" ? PG.allEd : PG.ed; if (!ed) return;
+    var p = ed.problems(); if (p.length) { toast(p[0], "error"); return; }
+    var rules = toSave(ed.rules);
+    if (a === "saverow") { busy(b, true); saveOne(PG.list[i], rules).then(function () { toast("Delivery saved."); PG.open = null; paint(); }, function (e) { busy(b, false); toast("Couldn't save: " + (e && e.message || "try again"), "error"); }); }
+    if (a === "applyall" || a === "copyall") {
+      confirmAll(PG.list.length).then(function (yes) {
+        if (!yes) return; busy(b, true);
+        saveAll(rules).then(function () { toast("Delivery set for all your listings."); PG.all = false; PG.open = null; PG.allRules = null; paint(); }, function (e) { busy(b, false); toast("Couldn't save: " + (e && e.message || "try again"), "error"); });
+      });
+    }
+  }
+
+  /* ---------------- tell shops about it once: Set up now / Later ---------------- */
+  function introDue(v) { try { var s = localStorage.getItem("lv-dr-intro:" + v.id); if (s === "done") return false; return !s || Date.now() > Number(s); } catch (_) { return false; } }
+  function intro() {
+    var v = myVendor(); if (!v || !introDue(v) || byId("ldeIntro")) return;
+    probe().then(function (ok) {
+      if (!ok) return;
+      return sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", v.id).eq("is_service", false).neq("status", "deleted").then(function (r) {
+        if (!r || r.error || !(r.count > 0) || !introDue(v)) return;
+        var w = document.createElement("div"); w.id = "ldeIntro"; w.className = "lde-intro"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "Delivery by campus");
+        w.innerHTML = '<div class="lde-intro-card"><div class="lde-intro-icons">' + ico("free", 56) + ico("flat", 56) + ico("distance", 56) + "</div>"
+          + "<h3>New: delivery by campus</h3><p>Free delivery on your campus, a flat fee on nearby campuses, per km everywhere else. Buyers choose their campus and see the right fee.</p>"
+          + '<button type="button" class="lde-save" data-a="go">Set up delivery</button><button type="button" class="lde-ghost" data-a="later">I\'ll do it later</button></div>';
+        document.body.appendChild(w);
+        w.addEventListener("click", function (ev) {
+          var b = ev.target.closest("[data-a]"); if (!b && ev.target !== w) return;
+          var a = b ? b.getAttribute("data-a") : "later";
+          try { localStorage.setItem("lv-dr-intro:" + v.id, a === "go" ? "done" : String(Date.now() + 3 * 864e5)); } catch (_) {}
+          w.remove(); if (a === "go") window.lvDrOpenPage();
+        });
+      });
+    });
+  }
+  setTimeout(function () { try { probe().then(function (ok) { window.lvDrHubRowOk = !!ok; }); intro(); } catch (_) {} }, 6000);
+
+  /* ---------------- product cards: the delivery line shows the type, for the buyer's campus ---------------- */
+  var RC = {}, VC = {}, PC = {}, want = [], wantT = null;
+  function cardLine(p) {
+    var item = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price) ? Number(p.discount_price) : Number(p.sale_price);
+    var rules = Array.isArray(p.delivery_rules) ? p.delivery_rules : RC[p.id], rule;
+    if (rules && rules.length) {
+      var me = window.lvMyCampusId ? window.lvMyCampusId() : "";
+      rule = me && me !== "none" ? pick(rules, VC[p.id] || (p.vendor && p.vendor.campus_id) || null, me) : (rules.find(function (r) { return r.scope === "all"; }) || null);
+      if (!rule && (!me || me === "none")) rule = rules[0];
+      if (!rule) return '<div class="product-card-total-line lvdb lvdb-pick" title="Not delivered to your campus"><i class="fa-solid fa-store" aria-hidden="true"></i><span class="product-card-total-label">Pickup only</span><strong>' + N(item) + "</strong></div>";
+    } else rule = legacyRule(p);
+    if (rule.mode === "free") return '<div class="product-card-total-line lvdb lvdb-free" title="Free delivery"><i class="fa-solid fa-gift" aria-hidden="true"></i><span class="product-card-total-label">Free delivery</span><strong>' + N(item) + "</strong></div>";
+    if (rule.mode === "distance") return '<div class="product-card-total-line lvdb lvdb-km" title="Delivery fee per km"><i class="fa-solid fa-route" aria-hidden="true"></i><span class="product-card-total-label">Delivery</span><strong>' + N(rule.perKm) + "/km</strong></div>";
+    return '<div class="product-card-total-line lvdb lvdb-flat" title="Total with ' + N(rule.fee) + ' delivery"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Total</span><strong>' + N(item + (Number(rule.fee) || 0)) + "</strong></div>";
+  }
+  function flushWant() {
+    var ids = want.splice(0, want.length); if (!ids.length || !OK) return;
+    for (var k = 0; k < ids.length; k += 100) (function (chunk) {
+      Promise.resolve(sb.from("products").select("id,delivery_rules,vendor:vendors(campus_id)").in("id", chunk)).then(function (r) {
+        (r && r.data || []).forEach(function (x) { RC[x.id] = x.delivery_rules || null; VC[x.id] = x.vendor && x.vendor.campus_id || null; });
+        chunk.forEach(function (id) { if (RC[id] === undefined) RC[id] = null; if (RC[id] && PC[id]) document.querySelectorAll('.product-card-wrap[data-product-id="' + id + '"] .product-card-total-line').forEach(function (el) { el.outerHTML = cardLine(PC[id]); }); });
+      }, function () {});
+    })(ids.slice(k, k + 100));
+  }
+  if (typeof window.productCardHtml === "function" && !window.productCardHtml.__lvdr) {
+    var pch0 = window.productCardHtml;
+    var pch1 = function (p) {
+      var html = pch0.apply(this, arguments);
+      try {
+        if (!p || p.is_service || p.sale_price == null || !/product-card-total-label">(Total|Delivery)</.test(html)) return html;
+        PC[p.id] = p;
+        if (OK && p.delivery_rules === undefined && RC[p.id] === undefined && want.indexOf(p.id) < 0) { want.push(p.id); clearTimeout(wantT); wantT = setTimeout(flushWant, 150); }
+        return html.replace(/<div class="product-card-total-line"[^>]*>[\s\S]*?<\/div>/, cardLine(p));
+      } catch (_) { return html; }
+    };
+    pch1.__lvdr = true; window.productCardHtml = pch1;
+    try { productCardHtml = pch1; } catch (_) {}
+  }
+
+  /* package cards: the same delivery types (the package's own options, else the shop's fee) */
+  var PRC = {}, PV = {}, pwant = [], pwantT = null;
+  function pkgLine(pkg) {
+    var v = pkg && pkg.vendor || {}, rules = Array.isArray(pkg.delivery_rules) ? pkg.delivery_rules : PRC[pkg.id], rule = null, me = window.lvMyCampusId ? window.lvMyCampusId() : "";
+    if (rules && rules.length) { rule = me && me !== "none" ? pick(rules, v.campus_id || PV[pkg.id] || null, me) : (rules.find(function (r) { return r.scope === "all"; }) || rules[0]); }
+    else rule = legacyRule({ delivery_fee_mode: v.delivery_fee_mode || (Number(v.delivery_fee) > 0 ? "flat" : "free"), delivery_fee: v.delivery_fee, delivery_fee_per_km: v.delivery_fee_per_km });
+    var a = ' data-lvdb-pkg="' + E(pkg.id) + '"';
+    return !rule ? '<div class="package-card-delivery lvdb-pick"' + a + '><i class="fa-solid fa-store"></i> Pickup only on your campus</div>'
+      : rule.mode === "free" ? '<div class="package-card-delivery lvdb-free"' + a + '><i class="fa-solid fa-gift"></i> Free delivery</div>'
+      : rule.mode === "distance" ? '<div class="package-card-delivery lvdb-km"' + a + '><i class="fa-solid fa-route"></i> Delivery ' + N(rule.perKm) + "/km</div>"
+      : '<div class="package-card-delivery lvdb-flat"' + a + '><i class="fa-solid fa-truck"></i> ' + N(rule.fee) + " delivery</div>";
+  }
+  function flushPkg() {
+    var ids = pwant.splice(0, pwant.length); if (!ids.length || !PK) return;
+    Promise.resolve(sb.from("vendor_packages").select("id,delivery_rules,vendor:vendors(campus_id)").in("id", ids.slice(0, 200))).then(function (r) {
+      (r && r.data || []).forEach(function (x) { PRC[x.id] = x.delivery_rules || null; PV[x.id] = x.vendor && x.vendor.campus_id || null; });
+      ids.forEach(function (id) { if (PRC[id] === undefined) PRC[id] = null; if (PRC[id] && PC["pkg:" + id]) document.querySelectorAll('[data-lvdb-pkg="' + id + '"]').forEach(function (el) { el.outerHTML = pkgLine(PC["pkg:" + id]); }); });
+    }, function () {});
+  }
+  if (typeof window.packageCardHtml === "function" && !window.packageCardHtml.__lvdr) {
+    var pkc0 = window.packageCardHtml;
+    var pkc1 = function (pkg) {
+      var html = pkc0.apply(this, arguments);
+      try {
+        if (!pkg || !pkg.id) return html;
+        PC["pkg:" + pkg.id] = pkg;
+        if (pkg.delivery_rules === undefined && PRC[pkg.id] === undefined && pwant.indexOf(pkg.id) < 0) {
+          probePkg().then(function (ok) { if (!ok) return; pwant.push(pkg.id); clearTimeout(pwantT); pwantT = setTimeout(flushPkg, 150); });
+        }
+        html = html.replace(/<div class="package-card-delivery[^"]*"[^>]*>[\s\S]*?<\/div>/, "");
+        return html.replace(/(<div class="package-card-vendor">[\s\S]*?<\/div>)/, "$1" + pkgLine(pkg));
+      } catch (_) { return html; }
+    };
+    pkc1.__lvdr = true; window.packageCardHtml = pkc1;
+    try { packageCardHtml = pkc1; } catch (_) {}
+  }
 })();

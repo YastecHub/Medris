@@ -228,7 +228,11 @@ export class CheckoutService {
           throw badRequest("one or more items in this package is no longer available");
         }
       }
-      const fee = input.delivery.method === "delivery" ? ((await checkout.shop(pkg.vendor_id))?.delivery_fee ?? "0") : "0";
+      // the package's own delivery options by campus (0042), otherwise the shop's delivery fee as before
+      const fee = input.delivery.method === "delivery"
+        ? ((await checkout.packageDeliveryFee(input.packageId, input.delivery.lat ?? null, input.delivery.lng ?? null, input.delivery.campusId ?? null)) ??
+          (await checkout.shop(pkg.vendor_id))?.delivery_fee ?? "0")
+        : "0";
       const id = await checkout.createOrder({
         buyerId: me.userId,
         vendorId: pkg.vendor_id,
