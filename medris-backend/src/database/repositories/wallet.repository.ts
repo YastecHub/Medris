@@ -79,12 +79,17 @@ export class WalletRepository {
   }
 
   /** People whose @tag starts with what was typed (never by name, so nobody can be found without their @tag). */
-  search(prefix: string, exceptUserId: string, limit = 6): Promise<WalletPerson[]> {
+  /** People by any part of their @tag or any word of their name ("query" finds "Bankole Korede"); the @tag that starts with it comes first. */
+  search(query: string, exceptUserId: string, limit = 8): Promise<WalletPerson[]> {
+    const esc = (t: string) => t.replace(/[\\%_]/g, (c) => "\\" + c);
+    const words = query.split(/\s+/).filter(Boolean).slice(0, 4);
+    const conds = words.map((w) => sql`(w.handle like ${"%" + esc(w) + "%"} or lower(u.name) like ${"%" + esc(w) + "%"})`);
+    const first = esc(words[0] ?? "");
     return jsonRows<WalletPerson>(
       this.db,
       sql`select w.user_id, w.handle, u.name, u.avatar_url, w.frozen from public.wallet_accounts w join public.users u on u.id = w.user_id
-          where w.handle like ${prefix.replace(/[\\%_]/g, (c) => "\\" + c) + "%"} and w.user_id <> ${exceptUserId} and u.suspended_at is null and u.role <> 'admin'
-          order by length(w.handle), w.handle limit ${limit}`,
+          where ${sql.join(conds, sql` and `)} and w.user_id <> ${exceptUserId} and u.suspended_at is null and u.role <> 'admin'
+          order by (w.handle like ${first + "%"}) desc, (lower(u.name) like ${first + "%"} or lower(u.name) like ${"% " + first + "%"}) desc, length(w.handle), w.handle limit ${limit}`,
     );
   }
 
@@ -259,6 +264,7 @@ export class WalletRepository {
       sql`select a.user_id, a.handle, u.name, u.role::text as role, a.balance_kobo::text as balance_kobo, a.frozen, a.frozen_reason, a.updated_at
           from public.wallet_accounts a join public.users u on u.id = a.user_id
           where (${like}::text is null or a.handle like ${like} or lower(u.name) like ${like})
+            and (${like}::text is not null or a.balance_kobo > 0 or a.frozen)   -- only wallets that hold money (or are on hold), unless searching
           order by a.balance_kobo desc, a.updated_at desc limit ${limit}`,
     );
   }

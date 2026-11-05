@@ -21,6 +21,25 @@ const PAID_OUT = ["processing", "success", "paid_manually"];
 export class RefundsService {
   constructor(private readonly db: () => DataContext) {}
 
+  /** Admin: what an order paid, what is left to refund (the shop's share, without Levromart's commission) and what already went back. */
+  async info(me: Identity, orderId: string) {
+    return this.db().asService(async (tx) => {
+      if (!(await new AccessRepository(tx).isAdmin(me.userId))) throw forbidden("Only admins can see this.");
+      const repo = new PaystackRefundsRepository(tx);
+      const order = await repo.lockOrder(orderId);
+      if (!order) throw notFound("Order not found.");
+      const payments = await repo.paidPayments(orderId);
+      const net = payments.reduce((a, p) => a + Number(p.net_kobo), 0);
+      const done = payments.reduce((a, p) => a + Number(p.refunded_kobo), 0);
+      const gross = await repo.grossPaidKobo(orderId);
+      const payout = await repo.payoutState(orderId);
+      return {
+        paid_kobo: String(gross), refundable_kobo: String(Math.max(0, net - done)), refunded_kobo: String(done), commission_kobo: String(Math.max(0, gross - net)),
+        paid_at: await repo.lastPaidAt(orderId), payout_status: payout?.status ?? null,
+      };
+    });
+  }
+
   /** Admin: refund an order (everything still refundable, or `amountNaira`). Queues the refund; the worker asks Paystack. */
   async refundOrder(me: Identity, orderId: string, input: { amountNaira?: number; reason: string }) {
     return this.db().asService(async (tx) => {

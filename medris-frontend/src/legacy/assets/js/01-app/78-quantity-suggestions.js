@@ -135,8 +135,14 @@ async function buyerCancelOrder(orderId, feePaid) {
     ? "You can ask for a refund until the vendor marks the order out for delivery. Your request goes to the shop and to Levromart. When the shop agrees (or Levromart decides in your favour) the order is cancelled and what you paid for the order goes back to your wallet. Paystack's payment fee is not refunded."
     : "Cancel this order? You have not paid yet, so there is nothing to refund.";
   if (!(await showConfirmDialog(msg, { title: feePaid ? "Ask for a refund?" : "Cancel this order?", okLabel: feePaid ? "Yes, ask for a refund" : "Yes, cancel it", cancelLabel: "Keep order", danger: true }))) return;
+  // a paid order: the reason is asked for and goes to the shop and to Levromart, so they can see why
+  let cancelReason = null;
+  if (feePaid) {
+    cancelReason = await showTextPromptDialog("Why do you want a refund?", "The shop and Levromart will read this.", { okLabel: "Send request", placeholder: "For example: it was a different size", required: true });
+    if (!cancelReason) return;
+  }
   try {
-    const { data, error } = await sb.rpc("buyer_cancel_order", { p_order_id: orderId });
+    const { data, error } = await sb.rpc("buyer_cancel_order", { p_order_id: orderId, ...(cancelReason ? { p_reason: String(cancelReason).trim().slice(0, 500) } : {}) });
     if (error) throw new Error(error.message || "Could not cancel this order.");
     if (data?.requested) showToast("Refund requested. The shop and Levromart have been told.", "success");
     else if (data?.refunded) showToast("Order cancelled. Your refund is on its way.", "success");

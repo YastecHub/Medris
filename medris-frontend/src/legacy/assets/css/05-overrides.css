@@ -7451,3 +7451,23 @@ html:root:root body #lvLeviSuggest button:nth-child(6n+4){--c:#b45309;--b:#fff4e
 html:root:root body #lvLeviSuggest button:nth-child(6n+5){--c:#be185d;--b:#fdeef5;--l:#f8c6dc}
 html:root:root body #lvLeviSuggest button:nth-child(6n+6){--c:#0e7490;--b:#e7f8fb;--l:#b4e6ef}
 html:root:root[data-theme="dark"] body #lvLeviSuggest button,html:root:root[data-theme="black"] body #lvLeviSuggest button{background:color-mix(in srgb,var(--c) 16%,#111)!important;border-color:color-mix(in srgb,var(--c) 40%,#111)!important;color:color-mix(in srgb,var(--c) 45%,#fff)!important;-webkit-text-fill-color:color-mix(in srgb,var(--c) 45%,#fff)!important}
+/* "I have received it": purple, same family as the shop's "Mark out for delivery" */
+.od-actions-receive .od-btn-received{background:linear-gradient(135deg,#8b5cf6,#6d28d9)!important;border:0!important;color:#fff!important;box-shadow:0 10px 22px -10px rgba(109,40,217,.75)!important}
+.od-actions-receive .od-btn-received i{color:#fff!important}
+body:has(#lvPromo) .lvs-hi{display:none!important}
+/* Pay sheet: dark text on the light card (the button text used to inherit white) */
+html:root body .lw-pay{background:#fff!important;color:#10231a!important;-webkit-text-fill-color:#10231a!important}
+html:root body .lw-pay b{color:#10231a!important;-webkit-text-fill-color:#10231a!important}
+html:root body .lw-pay small{color:#5b6b63!important;-webkit-text-fill-color:#5b6b63!important}
+html:root body .lw-pay > i{color:#8a97a0!important}
+html:root[data-theme="dark"] body .lw-pay,html:root[data-theme="black"] body .lw-pay{background:#151c19!important;border-color:#2a3530!important;color:#e7efe9!important;-webkit-text-fill-color:#e7efe9!important}
+html:root[data-theme="dark"] body .lw-pay b,html:root[data-theme="black"] body .lw-pay b{color:#e7efe9!important;-webkit-text-fill-color:#e7efe9!important}
+html:root[data-theme="dark"] body .lw-pay small,html:root[data-theme="black"] body .lw-pay small{color:#9fb0a7!important;-webkit-text-fill-color:#9fb0a7!important}
+.aw-wrow{display:flex!important;align-items:center;gap:.7rem;padding:.7rem 0!important;border-bottom:1px solid rgba(128,128,128,.18)}
+.aw-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:.82rem;flex:0 0 42px}
+.aw-wm{flex:1;min-width:0}.aw-wm b{display:block;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aw-wm small{display:block;color:#66766e;font-size:.76rem}
+.aw-wb{text-align:right}.aw-wb > b{display:block;font-size:.95rem;color:#15803d}.aw-wb .aw-acts{margin-top:.25rem}
+.aw-count{font-weight:700;margin:.5rem 0 .2rem}
+/* Map: while searching, the shop card, the shop circles, the category chips and the buttons step out of the way */
+body[data-view="vendorsMap"]:has(#vmpSugg:not(.hidden)) :is(#vmpChips,#vmpExpandedCard,#vmpRouteCard,#vmpRail,.vmp-fabs,#vmpLocate,#aiChatFab){display:none!important}
+.lv-nav-badge{position:absolute;top:6px;right:8px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font:800 .7rem/20px system-ui,sans-serif;text-align:center;font-style:normal;box-shadow:0 2px 6px rgba(239,68,68,.45)}

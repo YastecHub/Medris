@@ -56,6 +56,17 @@ export class PaystackRefundsRepository {
     );
   }
 
+  /** Everything the buyer paid for the order (naira to kobo), whichever way. */
+  async grossPaidKobo(orderId: string): Promise<number> {
+    const r = await jsonRow<{ k: string }>(this.db, sql`select coalesce(round(sum(amount) * 100), 0)::text as k from public.payments where order_id = ${orderId} and status = 'paid'`);
+    return Number(r?.k ?? 0);
+  }
+
+  async lastPaidAt(orderId: string): Promise<string | null> {
+    const r = await jsonRow<{ t: string | null }>(this.db, sql`select max(coalesce(paid_at, created_at))::text as t from public.payments where order_id = ${orderId} and status = 'paid'`);
+    return r?.t ?? null;
+  }
+
   async openRefund(orderId: string): Promise<{ id: string } | null> {
     return jsonRow(this.db, sql`select id from public.paystack_refunds where order_id = ${orderId} and status in ('pending', 'processing') limit 1`);
   }

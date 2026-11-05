@@ -494,6 +494,7 @@ export const RPC: Record<string, RpcEntry> = {
   // Levromart's own wallet: the commission (migration 0035)
   get_levromart_wallet: { run: (s, me) => s.platformWallet.summary(me) },
   get_levromart_wallet_history: { run: (s, me, a) => s.platformWallet.history(me, str(a.p_before)) },
+  admin_order_refund_info: { run: (s, me, a) => s.refunds.info(need(me), id(a.p_order_id)) },
   get_levromart_wallet_entry: { run: (s, me, a) => s.platformWallet.entry(me, str(a.p_id)) },
   set_levromart_payout_account: {
     run: (s, me, a) => s.platformWallet.setAccount(me, { bankCode: str(a.p_bank_code), accountNumber: str(a.p_account_number), confirmedName: str(a.p_confirmed_name), password: str(a.p_password) }),

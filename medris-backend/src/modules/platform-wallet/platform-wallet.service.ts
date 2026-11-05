@@ -14,7 +14,7 @@ type Tx = Parameters<Parameters<DataContext["asService"]>[0]>[0];
 export const PLATFORM_TRANSFER_PREFIX = "lvm_pw_";
 export const PLATFORM = {
   minWithdrawal: 10_000, // ₦100
-  withdrawalsPerDay: 5,
+  withdrawalsPerDay: 50,   // the super admin's password is the safeguard; no daily squeeze on Levromart's own money
   /** After Levromart's bank account is added or changed, nothing can be withdrawn for this long. */
   bankChangeWaitHours: 0, // no waiting after the payout account changes: the super admin's password is the safeguard
   /** Wrong passwords before the person must wait. */

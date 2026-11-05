@@ -136,7 +136,8 @@ export class CancellationsService {
         return { status: "rejected", refunded: 0 };
       }
       const o = await repo.order(c.order_id);
-      if (!o || o.status !== "confirmed") throw conflict("This order is no longer waiting to be delivered, so it cannot be cancelled this way.");
+      // an admin can cancel and refund at any point: confirmed, out for delivery, disputed, even completed (only an order that is already cancelled has nothing left to do)
+      if (!o || o.status === "cancelled") throw conflict("This order is already cancelled.");
       await repo.setCancelled(c.order_id);
       const refunded = await repo.queuedRefundKobo(c.order_id);
       await repo.decide(id, "approved", me.userId, null);

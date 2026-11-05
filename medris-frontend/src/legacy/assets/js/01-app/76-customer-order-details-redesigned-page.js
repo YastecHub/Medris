@@ -124,7 +124,9 @@ function customerOrderTopHtml(order, ctx) {
   </section>`;
   // ---- main actions
   const canContact = !!ctx.contactAllowed && order.vendor_id;
-  const canReceive = ctx.isCustomer !== false && ["handed_over", "returned"].includes(order.status);
+  // paid and the shop has not handed it over yet: the buyer can already say they have it (same place as the shop's "Mark out for delivery")
+  const paidSale = order.order_type === "sale" && !order.service_offer_id && (Array.isArray(order.payments) ? order.payments : []).some((p) => String(p.payment_type || "").trim().toLowerCase() === "sale_price" && p.status === "paid");
+  const canReceive = ctx.isCustomer !== false && (["handed_over", "returned"].includes(order.status) || (order.status === "confirmed" && paidSale));
   if (canReceive) h += `<div class="od-actions od-actions-receive"><button type="button" class="od-btn od-btn-primary od-btn-received" onclick="confirmReceivedOrder('${esc(order.id)}')"><i class="fa-solid fa-box-open"></i> I have received it</button></div>`;
   if (order.status === "pending" || canContact) {
     h += `<div class="od-actions">${order.status === "pending" ? `<button type="button" class="od-btn od-btn-primary" onclick="remindOrderVendor('${esc(order.id)}',this)"><i class="fa-solid fa-bell"></i> Remind vendor</button>` : ""}

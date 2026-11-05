@@ -26,6 +26,13 @@ function openAdminNavSheet() {
   wrap.id = "adminNavSheet"; wrap.className = "cc-backdrop";
   wrap.innerHTML = `<div class="cc-sheet admin-nav-sheet" role="dialog" aria-modal="true"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button><h3 style="margin:.2rem 0 .8rem;text-align:left;">Go to</h3><div class="admin-nav-grid">${tabs.map((b) => `<button type="button" class="admin-nav-item${b.classList.contains("active") ? " active" : ""}${(b.querySelector(".dash-tab-dot:not(.hidden)") && /[1-9]/.test(b.querySelector(".dash-tab-dot:not(.hidden)").textContent)) ? " has-alert" : ""}" data-v="${esc(b.dataset.adminView)}">${b.innerHTML}</button>`).join("")}</div></div>`;
   document.body.appendChild(wrap);
+  // red badges on the sections that are waiting for the admin: open disputes stay counted until every one is resolved
+  const BADGES = { adminDisputes: Number(window.__adminDisputeCount || 0), adminPayments: Number(window.__lvPayPending || 0) };
+  wrap.querySelectorAll(".admin-nav-item").forEach((it) => {
+    const n = BADGES[it.dataset.v]; if (!n) return;
+    it.style.position = "relative";
+    it.insertAdjacentHTML("beforeend", `<i class="lv-nav-badge">${n > 9 ? "9+" : n}</i>`);
+  });
   requestAnimationFrame(() => wrap.classList.add("open"));
   const close = () => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 180); };
   wrap.addEventListener("click", (e) => {

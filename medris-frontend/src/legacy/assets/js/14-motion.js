@@ -625,7 +625,12 @@
         refundedBy = {}; ((look[1] && look[1].data) || []).forEach(function (r) { if (r.order_id && r.status !== "failed" && r.status !== "abandoned") refundedBy[r.order_id] = (refundedBy[r.order_id] || 0) + Number(r.amount || 0); });
       } catch (_) {}
     }
-    var t = txByOrder[orderId] || {}, paid = Number(t.amount || 0), done = Number(refundedBy[orderId] || 0), left = Math.max(0, Math.round((paid - done) * 100) / 100);
+    var t = txByOrder[orderId] || {}, paid = Number(t.amount || 0), done = Number(refundedBy[orderId] || 0), left = Math.max(0, Math.round((paid - done) * 100) / 100), kept = 0;
+    // the server knows exactly what was paid and what is left to give back (the shop's share: Levromart's 3% commission stays with Levromart)
+    try {
+      var inf = await sb.rpc("admin_order_refund_info", { p_order_id: orderId });
+      if (inf && inf.data) { paid = Number(inf.data.paid_kobo) / 100; done = Number(inf.data.refunded_kobo) / 100; left = Number(inf.data.refundable_kobo) / 100; kept = Number(inf.data.commission_kobo) / 100; t = Object.assign({}, t, { paid_at: inf.data.paid_at || t.paid_at }); }
+    } catch (_) {}
     var o = null, bu = null, ve = null;
     try {
       o = (await sb.from("orders").select("id,buyer_id,vendor_id,total_amount,status,created_at").eq("id", orderId).maybeSingle()).data;
@@ -642,6 +647,7 @@
       row("Shop", esc((ve && ve.business_name) || t.business_name || "Shop")) +
       row("Order", "#" + esc(String(orderId).slice(0, 8).toUpperCase()) + (o && o.status ? "<small>" + esc(String(o.status).replace(/_/g, " ")) + "</small>" : "")) +
       row("Paid", naira(paid) + "<small>" + esc(when(t.paid_at || t.created_at)) + "</small>") +
+      (kept > 0 ? row("Levromart's commission", naira(kept) + "<small>not refunded</small>") : "") +
       (done > 0 ? row("Already refunded", naira(done)) : "") +
       row("You can refund up to", '<span class="rf-max">' + naira(left) + "</span>") +
       "</div>" +
@@ -3362,7 +3368,7 @@ window.lvAskCancel = async function (orderId) {
     var b = fromCookie();
     return Number(b.opens || 0) > Number(a.opens || 0) || Number(b.at || 0) > Number(a.at || 0) ? b : a;
   }
-  function gapFor(st) { return 2 + (Number(st.n || 0) % 2); }   // every 2nd, then every 3rd open, and so on
+  function gapFor(st) { return 4 + (Number(st.n || 0) % 3); }   // only now and then: every 4th, 5th or 6th open
   function save(s) {
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {}
     try { document.cookie = "lv_promo_v1=" + encodeURIComponent(JSON.stringify({ opens: s.opens, at: s.at, n: s.n, last: s.last, seen: s.seen })) + "; max-age=31536000; path=/; samesite=lax"; } catch (_) {}
@@ -3452,6 +3458,7 @@ window.lvAskCancel = async function (orderId) {
     if (st.opens < 2 || !onboarded()) return;
     if (Number(st.seen || 0) === st.opens) return;                      // already shown on this open
     if (st.last != null && st.opens - Number(st.last) < gapFor(st)) return;
+    if (Number(st.at || 0) && Date.now() - Number(st.at) < 20 * 3600 * 1000) return;   // and never twice in the same day
     // not on the home screen yet, or something else is open: look again a little later (for about half a minute)
     var later = function () { if (++tries < 8) setTimeout(maybe, 4000); };
     if (typeof currentView !== "undefined" && currentView !== "home") return later();
@@ -3966,7 +3973,19 @@ window.lvAskCancel = async function (orderId) {
   function repaint() { try { if (window.lvWalletRepaint) window.lvWalletRepaint(); } catch (_) {} try { if (window.lvRefundRepaint) window.lvRefundRepaint(); } catch (_) {} }
   window.lvW3Refresh = function () { return load(true).then(repaint); };
   // the wallet follows what happens to it (a rejected withdrawal, money received) without a page refresh
-  setInterval(function () { if (!document.hidden && signedIn() && W.data && document.querySelector(".lvw-card, .lw-card")) load(true).then(repaint); }, 25000);
+  // ...and at once when its notification arrives ("₦200 added to your wallet"), with a quick check every 5 seconds while it is on screen
+  var liveFor = null;
+  function listen() {
+    try {
+      if (!signedIn() || liveFor === session.user.id || typeof sb.channel !== "function") return;
+      liveFor = session.user.id; var uid = liveFor;
+      sb.channel("lv-wallet-live-" + uid + "-" + Date.now()).on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "user_id=eq." + uid }, function (p) {
+        var t = String(p && p.new && p.new.type || ""); if (/^(wallet|refund|payout|withdraw|order_refunded|payment)/i.test(t)) load(true).then(repaint);
+      }).subscribe();
+    } catch (_) {}
+  }
+  setInterval(listen, 4000);
+  setInterval(function () { if (!document.hidden && signedIn() && W.data && document.querySelector(".lvw-card, .lw-card")) load(true).then(repaint); }, 5000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden && signedIn() && W.data) load(true).then(repaint); });
   window.lvW3Eye = function () { W.hide = !W.hide; try { localStorage.setItem("lv-w3-hide", W.hide ? "1" : "0"); } catch (_) {} repaint(); };
 
@@ -4123,16 +4142,19 @@ window.lvAskCancel = async function (orderId) {
         sugg.parentNode.insertBefore(bx, sugg);
       }
     } catch (_) {}
+    var seq = 0;
     async function search() {
-      var q = to.value.trim().replace(/^@/, "").toLowerCase(); pick = null;
+      var q = to.value.trim().replace(/^@/, "").toLowerCase().replace(/\s+/g, " "); pick = null;
       if (q.length < 2) { sugg.innerHTML = ""; return; }
+      var my = ++seq;
       var r = await sb.rpc("find_wallet_people", { p_query: q });
+      if (my !== seq) return;   // a newer search is already on its way
       var list = (r && r.data) || [];
       var exact = list.find(function (p) { return p.handle === q; }); if (exact && list.length === 1) { pick = exact; paintPick(); return; }
       sugg.innerHTML = list.length ? list.map(function (p, i) { return '<button type="button" class="lw-person" data-i="' + i + '">' + (p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" alt="">' : '<span>' + esc(String(p.name || p.handle).slice(0, 1).toUpperCase()) + "</span>") + '<div><b>' + esc(p.name || "") + '</b><small>@' + esc(p.handle) + "</small></div></button>"; }).join("") : '<p class="lw-hint">Nobody has that @tag yet.</p>';
       sugg.__list = list;
     }
-    to.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(search, 250); });
+    to.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(search, 60); });
     sugg.addEventListener("click", function (e) { var b = e.target.closest("[data-i]"); if (!b) return; pick = sugg.__list[+b.dataset.i]; to.value = pick.handle; paintPick(); });
     if (prefill) search();
     m.querySelector("#lwSendGo").onclick = async function () {
@@ -4363,9 +4385,12 @@ window.lvAskCancel = async function (orderId) {
     return '<div class="aw-card"><div class="aw-h"><b><i class="fa-solid fa-wallet"></i> People\'s wallets</b><span class="aw-held">Held for people: <b>' + naira(d.held_kobo) + "</b></span></div>" +
       '<p class="aw-note">This money belongs to people\'s wallets and must always stay in the Paystack balance.</p>' +
       '<input class="aw-search" placeholder="Find a wallet: @tag or name" value="' + esc(q) + '" onkeydown="if(event.key===\'Enter\')lvAwSearch(this.value)">' +
-      (d.wallets || []).slice(0, 20).map(function (x) {
-        return '<div class="aw-row"><div><b>@' + esc(x.handle) + ' · ' + naira(x.balance_kobo) + '</b><small>' + esc(x.name || "") + " · " + esc(x.role || "") + (x.frozen ? ' · <span class="aw-hold">On hold' + (x.frozen_reason ? ": " + esc(x.frozen_reason) : "") + '</span>' : "") + '</small></div>' +
-          '<div class="aw-acts">' + (x.frozen ? '<button class="btn btn-sm" onclick="lvAwFreeze(\'' + esc(x.user_id) + '\',false)">Release</button>' : '<button class="btn btn-sm btn-danger" onclick="lvAwFreeze(\'' + esc(x.user_id) + '\',true)">Put on hold</button>') + "</div></div>";
+      '<p class="aw-note aw-count">' + (q ? "Wallets matching “" + esc(q) + "”" : "Wallets with money, biggest first") + " · " + (d.wallets || []).length + "</p>" +
+      (d.wallets && d.wallets.length ? "" : '<p class="aw-note">' + (q ? "No wallet matches." : "No wallet holds money right now.") + "</p>") +
+      (d.wallets || []).slice(0, 60).map(function (x) {
+        var h = 0, nm = String(x.name || x.handle || "?"); for (var k = 0; k < nm.length; k++) h = (h * 31 + nm.charCodeAt(k)) % 360;
+        var ini = nm.trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0] || ""; }).join("").toUpperCase();
+        return '<div class="aw-row aw-wrow"><span class="aw-av" style="background:linear-gradient(135deg,hsl(' + h + ',62%,52%),hsl(' + ((h + 38) % 360) + ',64%,36%))">' + esc(ini) + '</span><div class="aw-wm"><b>' + esc(x.name || "@" + x.handle) + '</b><small>@' + esc(x.handle) + " · " + esc(x.role || "") + (x.frozen ? ' · <span class="aw-hold">On hold' + (x.frozen_reason ? ": " + esc(x.frozen_reason) : "") + "</span>" : "") + '</small></div><div class="aw-wb"><b>' + naira(x.balance_kobo) + '</b><div class="aw-acts">' + (x.frozen ? '<button class="btn btn-sm" onclick="lvAwFreeze(\'' + esc(x.user_id) + '\',false)">Release</button>' : '<button class="btn btn-sm btn-danger" onclick="lvAwFreeze(\'' + esc(x.user_id) + '\',true)">Hold</button>') + "</div></div></div>";
       }).join("") + "</div>";
   }
   /* ---- Levromart's own wallet: the commission, withdrawn to Levromart's bank with the super admin's password (migration 0035) */
@@ -4414,7 +4439,7 @@ window.lvAskCancel = async function (orderId) {
     var wait = a && a.wait_hours > 0;
     return '<div class="aw-card lwa"><div class="lwa-card">' +
       '<div class="lwa-top"><div><small>' + (lf ? "Levromart's money · available" : "Levromart commission · available") + '</small><b class="lwa-bal">' + naira(d.balance_kobo) + '</b></div>' +
-        (d.can_manage ? '<button type="button" class="lwa-wd" onclick="lvLwWithdraw()"' + (!a || wait || Number(d.balance_kobo) < Number(d.min_withdrawal_kobo || 0) ? " disabled" : "") + '><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : "") + "</div>" +
+        (d.can_manage ? '<button type="button" class="lwa-wd" onclick="lvLwWithdraw()"><i class="fa-solid fa-building-columns"></i> Withdraw</button>' : "") + "</div>" +
       '<div class="lwa-bankrow"><i class="fa-solid fa-building-columns"></i><span>' + (a ? esc(a.bank_name || "") + " ···" + esc(a.last4) + " · " + esc(a.account_name) : "No payout account yet") + "</span>" +
         (d.can_manage ? '<button type="button" onclick="lvLwAccount()">' + (a ? "Change" : "Add") + "</button>" : "") + "</div>" +
       (wait ? '<div class="lwa-wait"><i class="fa-solid fa-shield-halved"></i> New payout account: withdrawals open in ' + a.wait_hours + " hour" + (a.wait_hours === 1 ? "" : "s") + ".</div>" : "") +
@@ -4445,7 +4470,10 @@ window.lvAskCancel = async function (orderId) {
     });
   }
   window.lvLwWithdraw = async function () {
-    var d = LW; if (!d || !d.account) return;
+    var d = LW;
+    if (!d) return;
+    if (!d.account) return showToast("Add Levromart's bank account first (tap Add next to the bank line).", "info");
+    if (Number(d.balance_kobo) < Number(d.min_withdrawal_kobo || 0)) return showToast("Levromart's wallet has " + naira(d.balance_kobo) + ". The bank cannot send less than " + naira(d.min_withdrawal_kobo) + " at a time.", "info");
     var raw = await showTextPromptDialog("Withdraw commission", "How much? Levromart's wallet has " + naira(d.balance_kobo) + ". It goes to " + (d.account.bank_name || "") + " ···" + d.account.last4 + ".", { okLabel: "Next", placeholder: "Amount in naira, up to " + (Number(d.balance_kobo) / 100).toLocaleString("en-NG") });
     if (!raw) return;
     var kobo = Math.round(Number(String(raw).replace(/[,\s₦]/g, "")) * 100);
@@ -6811,7 +6839,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
 (function () {
   "use strict";
   function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s); }
-  function K(k) { return typeof naira === "function" ? naira(k) : "₦" + (Number(k || 0) / 100).toLocaleString(); }   // amounts are in kobo here
+  function K(k) { return "₦" + (Number(k || 0) / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }   // these amounts are in kobo: 150 kobo is ₦1.50
   function NA(n) { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }                  // orders are in naira
   function when(t) { try { return new Date(t).toLocaleString("en-NG", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (_) { return String(t || ""); } }
   function who(name, handle) { return (name ? E(name) : "Someone") + (handle ? ' <span class="ltx-h">@' + E(handle) + "</span>" : ""); }
