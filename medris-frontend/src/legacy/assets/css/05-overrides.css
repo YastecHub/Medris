@@ -7420,3 +7420,22 @@ html:root:root:root:root body .lv-th-tile.active{border-color:#16a06a!important;
 .ltx-av-bank{background:#eef3f0!important;color:#41514a;font-size:1.05rem;text-shadow:none}
 :root[data-theme="dark"] .ltx-av{box-shadow:0 0 0 3px #151c19,0 4px 10px rgba(0,0,0,.4)}
 :root[data-theme="dark"] .ltx-av-bank,:root[data-theme="dark"] .ltx-av-img{background:#1f2925!important;color:#cfe3d8}
+/* Levi's product cards: an easy sideways swipe on phones */
+.lvw-pcards{touch-action:pan-x pan-y!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:none!important;scrollbar-width:none;padding-right:16px}
+.lvw-pcards::-webkit-scrollbar{display:none}
+.lvw-pcard{scroll-snap-align:none}
+.lvw-pcard img{pointer-events:none;-webkit-user-drag:none;user-select:none}
+/* ===== My Listings: a tidy Discarded items card (icon inside, in its own circle) and a round search bar ===== */
+html:root:root:root:root body #app .vl-discarded{display:flex!important;align-items:center!important;gap:.8rem!important;padding:.85rem 1rem!important;margin:0 0 .9rem!important;border:1px solid rgba(128,128,128,.24)!important;border-radius:18px!important;background:transparent!important;box-shadow:none!important;overflow:hidden}
+html:root:root:root:root body #app .vl-discarded > div{flex:1;min-width:0}
+html:root:root:root:root body #app .vl-discarded p{margin:.15rem 0 0!important;line-height:1.35}
+html:root:root:root:root body #app .vl-discarded-ico{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:50%!important;display:grid!important;place-items:center!important;background:#fef2f2!important;color:#dc2626!important;font-size:1rem!important;margin:0!important;position:static!important}
+html:root:root:root:root[data-theme="dark"] body #app .vl-discarded-ico{background:rgba(220,38,38,.15)!important;color:#f87171!important}
+html:root:root:root:root body #app .vl-discarded button{align-self:center}
+html:root:root:root:root body #app .vl-search,html:root:root:root:root body #app .vl-search-row{display:flex!important;align-items:center!important;gap:.6rem!important;border-radius:999px!important;border:1.5px solid rgba(128,128,128,.28)!important;padding:0 1.1rem!important;min-height:50px!important;background:transparent!important;box-shadow:none!important}
+html:root:root:root:root body #app .vl-search:focus-within{border-color:#16a06a!important;box-shadow:0 0 0 3px rgba(22,160,106,.12)!important}
+html:root:root:root:root body #app .vl-search input{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:.7rem 0!important;margin:0!important;border-radius:0!important}
+html:root:root:root:root body #app .vl-search > i{color:#7a8a82}
+html:root:root:root:root body #app .vl-tabs .vh-stat.active{box-shadow:0 0 0 3px rgba(255,255,255,.9),0 0 0 6px rgba(22,160,106,.55)!important}
+.lde-soon{margin:0;padding:.6rem .8rem;border-radius:14px;background:#eff6ff;color:#1e40af;font-size:.78rem;font-weight:600;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start}
+:root[data-theme="dark"] .lde-soon{background:rgba(59,130,246,.14);color:#bfdbfe}
