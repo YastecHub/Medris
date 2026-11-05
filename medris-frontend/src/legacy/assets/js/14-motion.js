@@ -5422,6 +5422,44 @@ window.lvAskCancel = async function (orderId) {
       return (r && r.data) || [];
     } catch (_) { return []; }
   }
+  // ---- how Levromart works: short, accurate answers to the common questions ----
+  window.lvLeviFaq = function (raw) {
+    var q = String(raw || "").toLowerCase();
+    var ask = /\b(how|why|when|what|where|can i|do i|will i|is there|explain|tell me)\b|\?\s*$/.test(q);
+    if (!ask) return null;
+    if (/\b(get paid|getting paid|receive (my )?(money|payment)|payout|my earnings|withdraw (my )?(earnings|money|sales)|when (do|will) i get (my )?money|paid for (my )?orders?)\b/.test(q)) return [
+      "**How you get paid on Levromart** 💰", "",
+      "1. **The buyer pays Levromart first**, in full, when they order (card, bank transfer or their Levromart wallet). You'll see the order as paid.",
+      "2. **You deliver or hand it over**, then mark the order as handed over.",
+      "3. **The money becomes yours** when the buyer taps *I have received it*, or automatically **24 hours** after delivery if they do nothing. Levromart keeps **3%** commission; the rest is yours.",
+      "4. **Move it to your wallet** from your Wallet. Money that is more than 24 hours old moves at once; newer money is checked by Levromart first.",
+      "5. **Withdraw to your bank** from the wallet (minimum ₦100). You need your 6-digit wallet PIN, and Paystack's small transfer fee is shown before you confirm.", "",
+      "Add your bank account in the Wallet first. Changing it needs your password, to keep your money safe."].join("\n");
+    if (/\b(refunds?|money back|cancel (my|an|the) order|return (an|my|the) (item|order))\b/.test(q)) return [
+      "**Refunds** 🔄", "",
+      "- Ask for a refund **within 24 hours** of placing the order, from the order page.",
+      "- The shop accepts or declines (and must say why). An accepted refund goes back to your **Levromart wallet** (or your card).",
+      "- After 24 hours a refund can't be requested, but you can still **raise a dispute** if what arrived is wrong, and Levromart will look into it."].join("\n");
+    if (/\b(commission|levromart('s)? (fee|cut|share)|(how much )?(does )?levromart (take|charge)s?|listing fees?|monthly fee)\b/.test(q)) return [
+      "**What Levromart charges** 🧾", "",
+      "- **Commission:** 3% of each sale, taken when the buyer pays. You receive the other 97%.",
+      "- **Or monthly:** ₦999 per listing a month instead of commission, for listings you choose.",
+      "- Wallet transfers and bank withdrawals have Paystack's small fee, always shown before you confirm."].join("\n");
+    if (/\b(set (up )?(my )?delivery|delivery (settings|options|fee)|charge (for )?delivery|free delivery)\b/.test(q) && /\b(how|where|can i|set|change)\b/.test(q)) return [
+      "**Setting your delivery** 🚚", "",
+      "- Open **Seller hub → Delivery settings** (or the Delivery part of any listing).",
+      "- Choose **Free**, a **Flat fee**, or a **fee per km**, and which campuses each one is for: your campus, chosen campuses, or all the others.",
+      "- Buyers choose their campus at checkout and see the right fee. Pickup is always available."].join("\n");
+    if (/\b(wallet|send money|transfer money|add money|top ?up|my pin|wallet pin)\b/.test(q) && !/\b(balance|how much (is|do i have|money))\b/.test(q)) return [
+      "**Your Levromart wallet** 👛", "",
+      "- **Add money** with Paystack, **send** to anyone by their @tag, **pay** for orders, and **withdraw** to your bank.",
+      "- Every movement of money needs your **6-digit wallet PIN**. Levromart will never ask you for it.",
+      "- Any fee (Paystack's) is shown before you confirm."].join("\n");
+    if (/\b(vendor of the week|points|leaderboard)\b/.test(q)) return [
+      "**Vendor of the week** 🏆", "",
+      "Shops earn points for completed sales and good reviews. The shop with the most points on each campus becomes **Vendor of the week** and is shown on Home."].join("\n");
+    return null;
+  };
   // ---- "add X and Y to my cart": find each item by name and put it in the cart, then say exactly what happened ----
   var cartWanted = 0;   // set when Levi has just asked "what would you like to add?"
   async function addNamed(text) {
@@ -5519,6 +5557,9 @@ window.lvAskCancel = async function (orderId) {
     var f = async function (text) {
       var q = String(text || "").toLowerCase();
       if (W && W.want) { var ans = typed(text); if (ans) return { handled: true, reply: ans }; }
+      // questions about how Levromart works are answered right away, never turned into a product search
+      var faq = window.lvLeviFaq ? window.lvLeviFaq(q) : null;
+      if (faq) { cartWanted = 0; return { handled: true, reply: faq }; }
       // the answer to "what would you like to add to your cart?" is the thing to add, not a new search
       if (cartWanted && Date.now() - cartWanted < 10 * 60000 && !/\?\s*$/.test(q) && !/\b(what|which|how|why|where|who|when|show|find|search|cheap|best)\b/.test(q)) {
         cartWanted = 0; return { handled: true, reply: await addNamed(text) };
@@ -6040,8 +6081,10 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   // a copy button under each of Levi's answers
   function decorate() {
     document.querySelectorAll("#aiChatMessages .ai-chat-msg.assistant").forEach(function (el) {
+      // never on the "Thinking… / Checking the shops…" line while Levi is still working
+      if (el.id === "aiChatTyping" || el.classList.contains("lvthink-row") || el.classList.contains("typing") || el.querySelector(".lvthink")) return;
       if (el.__lvCopy || el.querySelector(".lv-copy")) return; el.__lvCopy = 1;
-      if (!(el.textContent || "").trim() || el.classList.contains("typing")) return;
+      if (!(el.textContent || "").trim()) return;
       var b = document.createElement("button"); b.type = "button"; b.className = "lv-copy"; b.setAttribute("aria-label", "Copy answer"); b.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
       b.onclick = function (e) {
         e.stopPropagation();

@@ -7439,3 +7439,4 @@ html:root:root:root:root body #app .vl-search > i{color:#7a8a82}
 html:root:root:root:root body #app .vl-tabs .vh-stat.active{box-shadow:0 0 0 3px rgba(255,255,255,.9),0 0 0 6px rgba(22,160,106,.55)!important}
 .lde-soon{margin:0;padding:.6rem .8rem;border-radius:14px;background:#eff6ff;color:#1e40af;font-size:.78rem;font-weight:600;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start}
 :root[data-theme="dark"] .lde-soon{background:rgba(59,130,246,.14);color:#bfdbfe}
+#aiChatTyping .lv-copy,.lvthink-row .lv-copy,.ai-chat-msg:has(.lvthink) .lv-copy{display:none!important}
