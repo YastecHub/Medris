@@ -392,10 +392,11 @@
     // "settled" = this check recorded it; "duplicate" = the webhook or the every-minute check had already recorded it
     if (outcome === "paid" && info.settled === "amount_mismatch") showToast("Paystack took a different amount from your order total, so our team is checking this payment. You do not need to pay again; we will update your order.", "info");
     else if (outcome === "paid" && info.settled && !/^(applied|already_paid|ok|settled|duplicate)/.test(String(info.settled))) showToast("Paystack confirmed your payment, but we could not update your order yet. Please screenshot this and send it to support. Code: " + String(info.settled).slice(0, 140), "error");
-    else if (outcome === "paid") showToast("Paid. Thank you!", "success");
+    else if (outcome === "paid") { showToast("Paid. Thank you!", "success"); try { window.__lvPaidPage = { kind: "order", title: "Payment successful", orderId: orderId, ref: reference, via: "Paystack (card, bank transfer or USSD)", amountKobo: Math.round(Number(info.amount_kobo || info.amount || 0)) || 0 }; } catch (_) {} }
     else if (outcome === "failed") showToast("Payment not completed. You were not charged. Please try again.", "error");
     else showToast("We could not confirm that payment yet" + (info.status ? " (Paystack says: " + String(info.status) + ")" : "") + ". It may still be processing; check your order in a minute.", "info");
     if (orderId) { try { await navigate("orderDetail", { orderId: orderId }); } catch (_) {} }
+    if (window.__lvPaidPage) { var pg = window.__lvPaidPage; window.__lvPaidPage = null; try { window.lvTxPage(pg); } catch (_) {} }
   };
 
   // Order page: a short line saying the order was paid with Paystack (buyer and vendor wording)
@@ -674,6 +675,7 @@
         return show(res.error.message || "Something went wrong.");
       }
       m.remove(); showToast(naira(amt) + " refund sent for " + who + ". It shows in their refund wallet, or goes back to their card.", "success"); navigate(typeof currentView !== "undefined" && currentView === "adminDisputes" ? "adminDisputes" : "adminPayments", {}, false);
+      try { window.lvTxPage({ kind: "refund", title: "Refund sent", amountKobo: Math.round(amt * 100), shop: who, note: why, orderId: orderId, status: "Refunded", via: "Taken from the shop's share" }); } catch (_) {}
     });
     document.body.appendChild(m);
   }
@@ -735,7 +737,7 @@
     var age = w.shop_since ? Math.max(1, Math.floor((Date.now() - new Date(w.shop_since).getTime()) / 86400000)) : null;
     (window.__lvPayReg = window.__lvPayReg || {})["wd:" + w.id] = w;
     return '<div class="lv-ap-row lv-tap" data-lvd="wd:' + esc(w.id) + '"><div class="lv-ap-main"><b>' + naira(Number(w.amount_kobo) / 100) + "</b> " + chip + '<span class="badge ' + (w.status === "approved" ? "badge-success" : rej ? "badge-danger" : "badge-warning") + '">' + esc({ requested: "Waiting", approved: w.kind === "instant" ? "Sent at once" : "Approved", rejected: "Rejected" }[w.status] || w.status) + "</span> " + chg +
-      "<small>" + esc(w.business_name || "") + " · " + when(w.created_at) + (age ? " · shop " + age + " day" + (age === 1 ? "" : "s") + " old" : "") + (w.bank_name ? " · " + esc(w.bank_name) + (w.account_name ? " (" + esc(w.account_name) + ")" : "") : "") + (rej && w.reject_reason ? " · Reason: " + esc(w.reject_reason) : "") + "</small>" + links + '</div><div class="lv-ap-acts">' + acts + "</div></div>";
+      "<small>" + esc(w.business_name || "") + " · " + when(w.created_at) + (age ? " · shop " + age + " day" + (age === 1 ? "" : "s") + " old" : "") + (w.bank_name ? " · " + esc(w.bank_name) + (w.account_name ? " (" + esc(w.account_name) + ")" : "") : "") + (rej && w.reject_reason ? " · Reason: " + esc(w.reject_reason) : "") + (w.request_reason ? " · Shop says: " + esc(w.request_reason) : "") + "</small>" + links + '</div><div class="lv-ap-acts">' + acts + "</div></div>";
   }
   window.lvPayRange = function (r) { range = r; reuse = true; navigate("adminPayments", {}, false); };
 
@@ -3660,7 +3662,7 @@ window.lvAskCancel = async function (orderId) {
       '<div class="adp-block"><label>Reason</label><p>' + esc(d.reason || "") + '</p>' + ev + '</div>' +
       '<div class="adp-block"><label>Shop\'s reply</label>' + vResp + '</div>' +
       (claim ? '<div class="adp-claim"><div><strong>Payment claim: ' + money(claim.amount) + '</strong><small>The buyer reported a direct transfer that is not verified yet.</small></div><div class="adp-row"><button class="btn btn-sm" onclick="adminConfirmReportedPayment(\'' + esc(o.id) + '\')">Verify</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment(\'' + esc(o.id) + '\')">Reject</button></div></div>' : "") +
-      (paid > 0 ? '<div class="adp-money"><div><small>Paid by buyer</small><b>' + money(paid) + '</b></div><div><small>Refunded</small><b class="' + (back ? "adp-red" : "") + '">' + money(back) + '</b></div><button type="button" class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(o.id) + '\')"><i class="fa-solid fa-rotate-left"></i> Refund</button></div>' : "") +
+      (paid > 0 ? '<div class="adp-money"><div><small>Paid by buyer</small><b>' + money(paid) + '</b></div><div><small>Refunded</small><b class="' + (back ? "adp-red" : "") + '">' + money(back) + '</b></div>' + (back ? '<div class="adp-conf"><i class="fa-solid fa-circle-check"></i> ' + money(back) + ' of ' + money(paid) + ' refunded</div>' : "") + '<button type="button" class="btn btn-sm btn-outline" onclick="lvPayAct(\'refund\',\'' + esc(o.id) + '\')"><i class="fa-solid fa-rotate-left"></i> Refund</button></div>' : "") +
       '<div class="adp-links">' + (o.buyer_id && o.vendor_id ? '<button type="button" onclick="openDisputeChat(\'' + esc(o.buyer_id) + '\',\'' + esc(o.vendor_id) + '\')"><i class="fa-solid fa-comment-dots"></i> View chat</button>' : "") +
         '<button type="button" onclick="navigate(\'orderDetail\',{orderId:\'' + esc(o.id) + '\'})"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open order</button></div>' +
       '<div class="adp-resolve"><label for="notes-' + esc(d.id) + '">Resolution notes</label><textarea id="notes-' + esc(d.id) + '" rows="2" placeholder="What did you decide, and why?"></textarea>' +
@@ -3700,6 +3702,7 @@ window.lvAskCancel = async function (orderId) {
     var head = '<h2 class="adp-h"><i class="fa-solid fa-scale-balanced"></i> Disputes</h2>' + adminNavHtml("adminDisputes");
     if (res[0].error && res[1].error && res[2].error) return head + errorStateHtml(res[0].error);
     var open = res[0].data || [], resolved = res[3].data || [];
+    window.__adminDisputeCount = open.length; try { head = '<h2 class="adp-h"><i class="fa-solid fa-scale-balanced"></i> Disputes</h2>' + adminNavHtml("adminDisputes"); } catch (_) {}
     var unresolved = (res[1].data || []).filter(function (o) { return !open.some(function (d) { return String((d.order && d.order.id) || d.order_id || "") === String(o.id); }); });
     var confirmed = (res[2].data || []).filter(function (o) { var fee = o.order_type === "rental" ? "rental_fee" : "sale_price"; return !(o.payments || []).some(function (p) { return String(p.payment_type || "").toLowerCase() === fee && p.status === "paid"; }); });
     var checks = unresolved.length + confirmed.length;
@@ -3929,7 +3932,7 @@ window.lvAskCancel = async function (orderId) {
     var c = await ctx(null, w.vendor_id), body = m.querySelector(".lvpd-body"); if (!body) return;
     body.innerHTML = '<div class="lvpd-top">' + statusChip(w.status) + '<span class="lvpd-meth"><i class="fa-solid fa-hand-holding-dollar"></i> ' + (w.kind === "instant" ? "Sent at once" : "Needed approval") + "</span></div>" +
       '<div class="lvpd-who">' + person("From", "Levromart", "Paystack balance") + '<i class="fa-solid fa-arrow-right"></i>' + person("To (shop)", w.business_name || (c.shop && c.shop.business_name), esc([w.account_name, w.bank_name].filter(Boolean).join(" · "))) + "</div>" +
-      sec("Request", kv("Amount", naira(Number(w.amount_kobo) / 100)) + kv("Orders covered", String((w.order_ids || []).length)) + kv("Asked", esc(when(w.created_at))) + (w.decided_at ? kv("Decided", esc(when(w.decided_at))) : "") + (w.reject_reason ? kv("Reason given", esc(w.reject_reason)) : "") + (w.has_dispute ? kv("Dispute", "Has a disputed order", "lvpd-red") : "") + (w.account_changed_at ? kv("Bank account", "Changed " + esc(when(w.account_changed_at)), "lvpd-red") : ""));
+      sec("Request", kv("Amount", naira(Number(w.amount_kobo) / 100)) + kv("Orders covered", String((w.order_ids || []).length)) + kv("Asked", esc(when(w.created_at))) + (w.decided_at ? kv("Decided", esc(when(w.decided_at))) : "") + (w.request_reason ? kv("Shop's reason", esc(w.request_reason)) : "") + (w.reject_reason ? kv("Reason given", esc(w.reject_reason)) : "") + (w.has_dispute ? kv("Dispute", "Has a disputed order", "lvpd-red") : "") + (w.account_changed_at ? kv("Bank account", "Changed " + esc(when(w.account_changed_at)), "lvpd-red") : ""));
   }
   var BUILD = { tx: showTx, refund: showRefund, payout: showPayout, wd: showWd };
   window.lvPayDetail = function (key) { var kind = String(key).split(":")[0], row = (window.__lvPayReg || {})[key]; if (row && BUILD[kind]) BUILD[kind](row); };
@@ -4102,6 +4105,7 @@ window.lvAskCancel = async function (orderId) {
     }
     await load(true); repaint();
     showToast("Your wallet balance is updated.", "success");
+    try { var last = ((W.data && W.data.entries) || []).filter(function (e) { return e.kind === "topup"; })[0]; if (last) window.lvTxPage({ kind: "topup", title: "Money added", amountKobo: Math.abs(Number(last.amount_kobo)), ref: reference, when: last.created_at }); } catch (_) {}
   }
   // coming back from Paystack's page after a top-up
   try {
@@ -4121,6 +4125,7 @@ window.lvAskCancel = async function (orderId) {
     try {
       var benList = function (entries) { var seenB = {}, out = []; (entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seenB[e.counterparty_handle]) { seenB[e.counterparty_handle] = 1; out.push(e); } }); return out; };
       var ben = benList(d.entries);
+      try { var fv = (window.lvFavPeople ? window.lvFavPeople() : []).map(function (f) { return { kind: "transfer_out", counterparty_handle: f.handle, counterparty_name: f.name, counterparty_avatar: f.avatar_url }; }), seenF = {}; ben = fv.concat(ben).filter(function (e) { if (seenF[e.counterparty_handle]) return false; seenF[e.counterparty_handle] = 1; return true; }); } catch (_) {}
       var avatarOf = function (e) { return e.counterparty_avatar ? '<img src="' + esc(e.counterparty_avatar) + '" alt="" loading="lazy">' : esc(String(e.counterparty_name || e.counterparty_handle).slice(0, 1).toUpperCase()); };
       if (ben.length && !prefill) {
         var bx = document.createElement("div"); bx.className = "lw-ben";
@@ -4171,8 +4176,8 @@ window.lvAskCancel = async function (orderId) {
       var b = this; b.disabled = true; b.textContent = "Sending…";
       var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not send."); }
-      await load(true); repaint();
-      m.querySelector(".lvw-sheet-body").innerHTML = '<div class="lw-done"><span><i class="fa-solid fa-check"></i></span><b>' + short(amt) + ' sent</b><p>to ' + esc(pick.name || "") + ' (@' + esc(pick.handle) + ')</p><button type="button" class="btn lw-go" onclick="document.getElementById(\'lvW3Sheet\').remove()">Done</button></div>';
+      await load(true); repaint(); closeSheet();
+      try { window.lvTxPage({ kind: "sent", title: "Transfer successful", amountKobo: amt, feeKobo: fee, person: pick, note: note, ref: r.data && (r.data.id || r.data.reference) }); } catch (_) { showToast(short(amt) + " sent.", "success"); }
     };
   };
 
@@ -4208,22 +4213,48 @@ window.lvAskCancel = async function (orderId) {
       var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not withdraw."); }
       closeSheet(); await load(true); repaint();
-      showToast(short(amt) + " is on its way to your bank.", "success");
+      try { window.lvTxPage({ kind: "withdraw", title: "Withdrawal on its way", amountKobo: amt, feeKobo: fee, bank: a, ref: r.data && (r.data.id || r.data.reference) }); } catch (_) { showToast(short(amt) + " is on its way to your bank.", "success"); }
     };
   };
 
   window.lvW3MoveEarnings = async function () {
     var r0 = await sb.rpc("get_withdrawal_summary"); var s = (r0 && r0.data) || {};
-    var now = Number(s.to_wallet_now_kobo || 0), later = Number(s.to_wallet_approval_kobo || 0);
-    if (!now && !later) return showToast("There are no earnings ready to move yet.", "info");
-    var ok = await showConfirmDialog((now ? short(now) + " moves into your wallet now." : "") + (later ? (now ? " " : "") + short(later) + " is released 24 hours after it was paid. This protects you and your buyers: if a buyer reports a scam in that time, the money can still be refunded." : ""), { title: "Move earnings to your wallet", okLabel: "Move", cancelLabel: "Go back" });
-    if (!ok) return;
-    var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(now), 1]].concat(later ? [["Checked by Levromart first", short(later)]] : []), cta: "Move" });
-    if (!pin) return;
-    var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin });
-    if (r.error) return showToast(r.error.message || "Could not move your earnings.", "error");
-    showToast(Number(r.data.sent_kobo) > 0 ? short(r.data.sent_kobo) + " is now in your wallet." : "Request sent. We will message you when it is approved.", "success");
-    await load(true); repaint(); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
+    var list = (s.earnings || []).slice(), reqs = (s.recent || []).filter(function (w) { return w.destination === "wallet"; });
+    function ago(iso) { var h = (Date.now() - new Date(iso).getTime()) / 36e5; if (!(h >= 0)) return "just now"; if (h < 1) return Math.max(1, Math.round(h * 60)) + " min ago"; if (h < 48) return Math.floor(h) + " h ago"; return Math.floor(h / 24) + " days ago"; }
+    function left(iso) { var h = 24 - (Date.now() - new Date(iso).getTime()) / 36e5; if (h <= 0) return "now"; return h < 1 ? "in under 1 h" : "in " + Math.ceil(h) + " h"; }
+    if (!list.length && !reqs.length) return showToast("There are no earnings ready to move yet.", "info");
+    var chosen = {}; list.forEach(function (e) { if (e.state === "ready") chosen[e.order_id] = true; });
+    var reqHtml = reqs.length ? '<div class="lw-mv-h">Your requests</div>' + reqs.slice(0, 6).map(function (w) {
+      var st = { requested: "Waiting for Levromart", approved: "Approved", rejected: "Not approved" }[w.status] || w.status;
+      return '<div class="lw-mv-req ' + esc(w.status) + '"><div><b>' + short(w.amount_kobo) + '</b><small>' + esc(st) + " · asked " + ago(w.created_at) + '</small>' + (w.request_reason ? '<small>Your reason: ' + esc(w.request_reason) + '</small>' : "") + (w.status === "rejected" && w.reject_reason ? '<small class="lw-mv-bad">Reason from Levromart: ' + esc(w.reject_reason) + '</small>' : "") + '</div>' + (w.status === "requested" ? '<button type="button" data-cancel="' + esc(w.id) + '">Cancel</button>' : "") + '</div>';
+    }).join("") : "";
+    var m = sheet("Move earnings to your wallet", '<p class="lw-hint" style="margin-top:0">Choose the earnings you want in your wallet. Money paid 24 hours ago or more moves at once. Newer money needs Levromart to approve it, so tell us why you need it.</p><div id="lwMvList"></div><div id="lwMvSum" class="lw-mv-sum"></div><div id="lwMvWhy" hidden><label class="lw-l">Why do you need this money now?</label><textarea id="lwMvReason" class="lw-in" rows="2" maxlength="300" placeholder="For example: I need to restock today"></textarea></div><p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwMvGo">Continue</button>' + reqHtml);
+    var host = m.querySelector("#lwMvList");
+    host.innerHTML = list.length ? list.map(function (e) {
+      var dis = e.state === "held", tag = dis ? "Held: open dispute" : e.state === "ready" ? "Ready · earned " + ago(e.paid_at) : "Earned " + ago(e.paid_at) + " · ready " + left(new Date(new Date(e.paid_at).getTime() + 864e5).toISOString()) + " or ask now";
+      return '<label class="lw-mv-row' + (dis ? " off" : "") + '"><input type="checkbox" data-o="' + esc(e.order_id) + '"' + (chosen[e.order_id] ? " checked" : "") + (dis ? " disabled" : "") + '><div><b>' + short(e.net_kobo) + '</b><small>Order ' + esc(String(e.order_id).slice(0, 8).toUpperCase()) + " · " + esc(tag) + '</small></div></label>';
+    }).join("") : '<p class="muted" style="text-align:center">No earnings waiting right now.</p>';
+    function sum() {
+      var now = 0, later = 0; list.forEach(function (e) { if (!chosen[e.order_id]) return; if (e.state === "ready") now += e.net_kobo; else if (e.state === "needs_approval") later += e.net_kobo; });
+      m.querySelector("#lwMvSum").innerHTML = (now ? '<div><span>Moves now</span><b>' + short(now) + '</b></div>' : "") + (later ? '<div><span>Needs approval</span><b>' + short(later) + '</b></div>' : "") + (!now && !later ? '<small>Tick the earnings you want to move.</small>' : "");
+      m.querySelector("#lwMvWhy").hidden = !later; m.__now = now; m.__later = later;
+    }
+    sum();
+    host.onchange = function (ev) { var c = ev.target.closest("input[data-o]"); if (!c) return; chosen[c.dataset.o] = c.checked; sum(); };
+    m.addEventListener("click", function (ev) { var b = ev.target.closest("[data-cancel]"); if (b) { closeSheet(); window.lvCancelWdReq(b.dataset.cancel); } });
+    m.querySelector("#lwMvGo").onclick = async function () {
+      var ids = Object.keys(chosen).filter(function (k) { return chosen[k]; }), why = m.querySelector("#lwMvReason").value.trim();
+      if (!ids.length) return err(m, "Tick at least one earning to move.");
+      if (m.__later && why.length < 3) return err(m, "Please write why you need the newer money. An admin reads it.");
+      err(m, "");
+      var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(m.__now || 0), 1]].concat(m.__later ? [["Checked by Levromart first", short(m.__later)]] : []), cta: "Move" });
+      if (!pin) return;
+      var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin, p_order_ids: ids, p_reason: why || null });
+      if (r.error) return err(m, r.error.message || "Could not move your earnings.");
+      closeSheet();
+      showToast(Number(r.data.sent_kobo) > 0 ? short(r.data.sent_kobo) + " is now in your wallet." + (Number(r.data.requested_kobo) > 0 ? " The rest is waiting for approval." : "") : "Request sent. We will message you when it is approved.", "success");
+      await load(true); repaint(); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
+    };
   };
 
   window.lvW3Help = function () {
@@ -4290,7 +4321,8 @@ window.lvAskCancel = async function (orderId) {
       if (e.__newBank) h += '<li class="lw-bankhead"><i class="fa-solid fa-building-columns"></i> New payout bank: <b>' + esc(e.bank_name) + " ···" + esc(e.account_last4 || "") + "</b></li>";
       var k = KIND[e.kind] || ["Wallet", "fa-wallet", "in"], amt = Number(e.amount_kobo), st = e.kind === "withdrawal" ? e.withdrawal_status : "";
       var cls = st === "requested" || st === "processing" ? "wait" : k[2];
-      h += '<li><span class="lw-ico ' + cls + '"><i class="fa-solid ' + k[1] + '"></i></span><div class="lw-li"><strong>' + esc(entryTitle(e)) + '</strong><small>' + dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) +
+      (window.__lvHist = window.__lvHist || {})[e.id] = e;
+      h += '<li data-eid="' + esc(e.id) + '" tabindex="0" style="cursor:pointer"><span class="lw-ico ' + cls + '"><i class="fa-solid ' + k[1] + '"></i></span><div class="lw-li"><strong>' + esc(entryTitle(e)) + '</strong><small>' + dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) +
         (e.kind === "withdrawal" && e.bank_name ? " · " + esc(e.bank_name) + " ···" + esc(e.account_last4 || "") : "") + (st ? " · " + ({ requested: "Waiting for Levromart's check", processing: "On its way", success: "Sent", failed: "Not sent", reversed: "Returned", rejected: "Not approved" }[st] || st) : "") +
         (e.note && e.kind !== "order_payment" && e.kind !== "withdrawal" ? " · " + esc(e.note) : "") + '</small></div><b class="lw-amt ' + (amt > 0 ? "in" : cls === "wait" ? "wait" : "out") + '">' + (amt > 0 ? "+" : "−") + short(Math.abs(amt)) + "</b></li>";
     });
@@ -4305,6 +4337,7 @@ window.lvAskCancel = async function (orderId) {
       if (pick) { month = { y: pick.y, m: pick.m }; day = pick.d; paint(); }
     };
     body.querySelector(".lwh-search").oninput = function () { term = this.value.trim().toLowerCase(); paint(); };
+    body.addEventListener("click", function (ev) { var li = ev.target.closest("li[data-eid]"); if (!li) return; var e = (window.__lvHist || {})[li.getAttribute("data-eid")]; if (e && window.lvTxPage) window.lvTxPage({ entry: e, detail: true }); });
     paint();
   };
 
@@ -4330,8 +4363,8 @@ window.lvAskCancel = async function (orderId) {
       var r = await sb.rpc("wallet_pay_order", { p_order_id: orderId, p_pin: pin });
       if (r.error) { wb.disabled = false; return err(m, r.error.message || "Could not pay."); }
       closeSheet(); await load(true); repaint();
-      showToast("Paid from your wallet. Thank you!", "success");
-      try { await navigate("orderDetail", { orderId: orderId }); } catch (_) {}
+      try { navigate("orderDetail", { orderId: orderId }); } catch (_) {}
+      try { window.lvTxPage({ kind: "order", title: "Payment successful", amountKobo: need, feeKobo: fee, orderId: orderId, via: "Levromart wallet" }); } catch (_) { showToast("Paid from your wallet. Thank you!", "success"); }
     };
   };
 
@@ -6934,4 +6967,115 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var r = ev.target.closest && ev.target.closest(".lwa-row[data-eid]"); if (!r) return;
     ev.preventDefault(); open(r.getAttribute("data-eid"), r.getAttribute("data-e3d"));
   });
+})();
+
+/* Payment result / transaction details page (full screen, bank-app style) */
+(function () {
+  if (window.lvTxPage) return;
+  function nair(k) { return "₦" + (Number(k || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function when(d) { try { return new Date(d || Date.now()).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (_) { return ""; } }
+  var KINDS = { topup: "Money added", transfer_in: "Received", transfer_out: "Transfer", order_payment: "Order payment", refund_in: "Refund", refund_out: "Refund to a buyer", earnings_in: "Shop earnings", withdrawal: "Withdrawal", withdrawal_return: "Returned to wallet" };
+  function favs() { try { return JSON.parse(localStorage.getItem("lv-fav-people") || "[]"); } catch (_) { return []; } }
+  function fromEntry(e) {
+    var k = e.kind, amt = Math.abs(Number(e.amount_kobo || 0)), s = { kind: k, amountKobo: amt, when: e.created_at, ref: e.id, detail: true, status: "Successful", received: Number(e.amount_kobo) > 0 };
+    s.title = KINDS[k] || "Wallet";
+    if (k === "transfer_in" || k === "transfer_out") s.person = { name: e.counterparty_name, handle: e.counterparty_handle, avatar_url: e.counterparty_avatar };
+    if (k === "withdrawal") { s.bank = { bank_name: e.bank_name, last4: e.account_last4 }; s.status = ({ requested: "Waiting for Levromart's check", processing: "On its way", success: "Successful", failed: "Not sent", reversed: "Returned", rejected: "Not approved" })[e.withdrawal_status] || "Successful"; }
+    if (e.note) s.note = e.note;
+    return s;
+  }
+  function rowsOf(s) {
+    var r = [];
+    if (s.person) { r.push([s.received ? "From" : "To", (s.person.name || "") + (s.person.handle ? " (@" + s.person.handle + ")" : "")]); }
+    if (s.bank) r.push(["To bank", (s.bank.bank_name || "Your bank") + " ···" + (s.bank.last4 || s.bank.account_last4 || "") + (s.bank.account_name ? " · " + s.bank.account_name : "")]);
+    if (s.via) r.push(["Paid with", s.via]);
+    if (s.shop) r.push(["Shop", s.shop]);
+    if (s.amountKobo) r.push(["Amount", nair(s.amountKobo)]);
+    if (s.feeKobo) r.push(["Fee", nair(s.feeKobo)]);
+    if (s.feeKobo) r.push(["Total", nair(Number(s.amountKobo) + Number(s.feeKobo))]);
+    if (s.note) r.push([s.kind === "order_payment" ? "Order" : "Note", s.note]);
+    r.push(["Status", s.status || "Successful"]);
+    r.push(["Date", when(s.when)]);
+    if (s.ref) r.push(["Reference", String(s.ref).slice(0, 36)]);
+    return r;
+  }
+  function close() { var p = document.getElementById("lvTxPage"); if (p) { p.classList.add("out"); setTimeout(function () { p.remove(); }, 180); } document.body.classList.remove("lv-tx-open"); }
+  async function receiptBlob(s) {
+    var rows = rowsOf(s), W = 750, H = 420 + rows.length * 78, c = document.createElement("canvas"); c.width = W; c.height = H;
+    var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
+    x.fillStyle = "#4f2fd0"; x.fillRect(0, 0, W, 150);
+    x.fillStyle = "#fff"; x.font = "700 44px system-ui,Arial"; x.fillText("Levromart", 40, 92); x.font = "500 26px system-ui,Arial"; x.fillText("Transaction receipt", 40, 128);
+    x.fillStyle = "#12a150"; x.beginPath(); x.arc(W / 2, 235, 40, 0, 7); x.fill(); x.strokeStyle = "#fff"; x.lineWidth = 8; x.lineCap = "round"; x.beginPath(); x.moveTo(W / 2 - 18, 236); x.lineTo(W / 2 - 4, 250); x.lineTo(W / 2 + 20, 220); x.stroke();
+    x.fillStyle = "#111"; x.textAlign = "center"; x.font = "800 56px system-ui,Arial"; x.fillText(nair(s.amountKobo), W / 2, 335); x.font = "500 28px system-ui,Arial"; x.fillStyle = "#555"; x.fillText(s.title || "Successful", W / 2, 378);
+    x.textAlign = "left"; var y = 440;
+    rows.forEach(function (r) { x.fillStyle = "#777"; x.font = "500 26px system-ui,Arial"; x.fillText(r[0], 40, y); x.fillStyle = "#111"; x.font = "600 26px system-ui,Arial"; x.textAlign = "right"; var v = String(r[1]); while (x.measureText(v).width > 470 && v.length > 4) v = v.slice(0, -2); if (v !== String(r[1])) v += "…"; x.fillText(v, W - 40, y); x.textAlign = "left"; x.strokeStyle = "#eee"; x.lineWidth = 2; x.beginPath(); x.moveTo(40, y + 26); x.lineTo(W - 40, y + 26); x.stroke(); y += 78; });
+    return new Promise(function (res) { c.toBlob(res, "image/jpeg", .92); });
+  }
+  async function shareReceipt(s) {
+    var d = document.createElement("div"); d.className = "lv-tx-pick"; d.innerHTML = '<div class="lv-tx-pick-in"><div class="lv-tx-pick-h"><b>Send receipt to</b><button type="button" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><input type="search" placeholder="Search chats" class="lv-tx-pick-s"><div class="lv-tx-pick-l"><p class="muted" style="padding:1rem;text-align:center">Loading chats…</p></div></div>';
+    document.body.appendChild(d);
+    var list = [];
+    try { var r = await sb.rpc("list_my_conversations"); list = (r && r.data) || []; } catch (_) {}
+    var host = d.querySelector(".lv-tx-pick-l");
+    function paint(q) {
+      var rows = list.filter(function (c) { return !q || String(c.other_name || "").toLowerCase().indexOf(q) > -1; });
+      host.innerHTML = rows.length ? rows.map(function (c) { var av = c.other_avatar || c.other_logo || c.other_avatar_url; return '<button type="button" class="lv-tx-pick-r" data-id="' + E(c.id) + '"><span>' + (av ? '<img src="' + E(av) + '" alt="">' : E(String(c.other_name || "?").slice(0, 1).toUpperCase())) + '</span><b>' + E(c.other_name || "Chat") + '</b></button>'; }).join("") : '<p class="muted" style="padding:1rem;text-align:center">' + (list.length ? "No chat found." : "You have no chats yet. Receipts can only be shared inside Levromart chats.") + '</p>';
+    }
+    paint("");
+    d.querySelector(".lv-tx-pick-s").oninput = function () { paint(this.value.trim().toLowerCase()); };
+    d.onclick = async function (ev) {
+      if (ev.target === d || ev.target.closest("[data-x]")) return d.remove();
+      var b = ev.target.closest(".lv-tx-pick-r"); if (!b) return;
+      b.disabled = true; b.querySelector("b").textContent = "Sending…";
+      try {
+        var blob = await receiptBlob(s);
+        await sendPreparedChatImage(b.dataset.id, { blob: blob, caption: "", name: "levromart-receipt.jpg", type: "image/jpeg" }, null, null);
+        d.remove(); showToast("Receipt sent in the chat.", "success");
+      } catch (e) { b.disabled = false; showToast((e && e.message) || "Could not send the receipt.", "error"); d.remove(); }
+    };
+  }
+  window.lvTxPage = async function (spec) {
+    var s = spec.entry ? fromEntry(spec.entry) : Object.assign({ status: "Successful", when: Date.now() }, spec);
+    if (spec.detail) s.detail = true;
+    if (s.kind === "order" && s.orderId) {
+      try {
+        var q = await sb.from("orders").select("total_amount,delivery_fee,vendor:vendors(business_name)").eq("id", s.orderId).maybeSingle();
+        var o = q && q.data; if (o) { if (!s.amountKobo) s.amountKobo = Math.round(Number(o.total_amount || 0) * 100); if (o.vendor && o.vendor.business_name) s.shop = o.vendor.business_name; }
+      } catch (_) {}
+      s.note = s.note || "Order #" + String(s.orderId).slice(0, 8).toUpperCase();
+    }
+    close();
+    var done = !s.detail, ok = !/not sent|not approved|returned/i.test(s.status || "");
+    var p = document.createElement("div"); p.id = "lvTxPage"; p.className = "lv-tx";
+    var inKind = s.kind === "topup" || s.received;
+    var who = s.person ? (s.person.name || "@" + s.person.handle) : s.bank ? (s.bank.bank_name || "your bank") : s.shop || "";
+    var isFav = s.person && s.person.handle && favs().some(function (f) { return f.handle === s.person.handle; });
+    p.innerHTML = '<div class="lv-tx-top"><button type="button" class="lv-tx-x" data-x aria-label="Close"><i class="fa-solid fa-' + (done ? "xmark" : "arrow-left") + '"></i></button><span>' + E(done ? "" : "Transaction details") + '</span></div>' +
+      '<div class="lv-tx-hero"><div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' +
+      '<h2>' + E(done ? s.title : (s.title || "Transaction")) + '</h2><div class="lv-tx-amt">' + (done ? "" : inKind ? "+" : "−") + nair(s.amountKobo) + '</div>' + (who ? '<p class="lv-tx-sub">' + E((inKind && s.person ? "from " : s.kind === "topup" ? "" : "to ") + (s.kind === "topup" ? "your wallet" : who)) + '</p>' : "") + '<span class="lv-tx-pill' + (ok ? "" : " bad") + '">' + E(s.status || "Successful") + '</span></div>' +
+      '<div class="lv-tx-card" id="lvTxRows">' + rowsOf(s).map(function (r) { return '<div><span>' + E(r[0]) + '</span><b>' + E(r[1]) + '</b></div>'; }).join("") + '</div>' +
+      '<div class="lv-tx-acts"><button type="button" data-a="share"><i class="fa-solid fa-share-nodes"></i><span>Share receipt</span></button>' +
+      (s.person && s.person.handle && !s.received ? '<button type="button" data-a="fav"' + (isFav ? ' class="on"' : "") + '><i class="fa-' + (isFav ? "solid" : "regular") + ' fa-heart"></i><span>' + (isFav ? "In favourites" : "Add to favourites") + '</span></button>' : "") +
+      '<button type="button" data-a="add"><i class="fa-solid fa-plus"></i><span>Add money</span></button>' +
+      (s.orderId ? '<button type="button" data-a="order"><i class="fa-solid fa-bag-shopping"></i><span>View order</span></button>' : "") + '</div>' +
+      (done ? '<button type="button" class="btn lv-tx-done" data-x>Done</button>' : "");
+    document.body.appendChild(p); document.body.classList.add("lv-tx-open");
+    p.onclick = function (ev) {
+      if (ev.target.closest("[data-x]")) return close();
+      var b = ev.target.closest("[data-a]"); if (!b) return;
+      var a = b.dataset.a;
+      if (a === "share") shareReceipt(s);
+      else if (a === "add") { close(); try { window.lvW3Add(); } catch (_) {} }
+      else if (a === "order") { close(); try { navigate("orderDetail", { orderId: s.orderId }); } catch (_) {} }
+      else if (a === "fav") {
+        var f = favs(), i = f.findIndex(function (x) { return x.handle === s.person.handle; });
+        if (i > -1) f.splice(i, 1); else f.unshift({ handle: s.person.handle, name: s.person.name || "", avatar_url: s.person.avatar_url || "" });
+        try { localStorage.setItem("lv-fav-people", JSON.stringify(f.slice(0, 30))); } catch (_) {}
+        var on = i < 0; b.classList.toggle("on", on); b.innerHTML = '<i class="fa-' + (on ? "solid" : "regular") + ' fa-heart"></i><span>' + (on ? "In favourites" : "Add to favourites") + '</span>';
+        showToast(on ? "Added to your favourites." : "Removed from favourites.", "success");
+      }
+    };
+  };
+  window.lvFavPeople = favs;
 })();

@@ -123,7 +123,7 @@ describe("the Levromart wallet", () => {
     await payOrder(w, fresh);
     await handOver(w, fresh);
     await json(await api.post(w, `/orders/${fresh}/received`, w.buyer.token));
-    const r = await call("request_withdrawal", w.vendor.token, { p_destination: "wallet" });
+    const r = await call("request_withdrawal", w.vendor.token, { p_destination: "wallet", p_reason: "Need to restock today" });
     expect(r.status).toBe(200);
     expect(r.data.sent_kobo).toBe(388000); // 4000 - 3%
     expect(await balance(w.vendor.token)).toBe(388000);
@@ -135,7 +135,8 @@ describe("the Levromart wallet", () => {
     expect((await call("cancel_withdrawal_request", w.vendor.token, { p_request_id: open.id })).status).toBe(200);
     expect((await call("cancel_withdrawal_request", w.vendor.token, { p_request_id: open.id })).status).toBe(409);
     expect(await rowOf(w, `select status from public.vendor_payouts where order_id = $1`, [fresh])).toMatchObject({ status: "on_hold" });
-    const again = await call("request_withdrawal", w.vendor.token, { p_destination: "wallet" });
+    expect((await call("request_withdrawal", w.vendor.token, { p_destination: "wallet", p_order_ids: [fresh] })).status).toBe(400); // newer money needs a reason
+    const again = await call("request_withdrawal", w.vendor.token, { p_destination: "wallet", p_order_ids: [fresh], p_reason: "Supplier payment due" });
     expect(again.status).toBe(200);
     const open2 = await rowOf<any>(w, `select id from public.withdrawal_requests where status = 'requested' and destination = 'wallet'`);
     expect((await call("admin_decide_withdrawal", w.admin.token, { p_request_id: open2.id, p_decision: "approve" })).status).toBe(200);

@@ -44,6 +44,12 @@ export class WithdrawalsService {
         to_wallet_now_kobo: toWallet.instant.total,
         to_wallet_approval_kobo: toWallet.approval.total,
         open_wallet_request: await repo.openRequest(vendor.id, "wallet"),
+        earnings: (await repo.buckets(vendor.id)).filter((b) => Number(b.net_kobo) > 0).map((b) => ({
+          order_id: b.order_id,
+          net_kobo: Number(b.net_kobo),
+          paid_at: b.paid_at,
+          state: b.disputed ? "held" : b.paid_at && new Date(b.paid_at).getTime() <= Date.now() - INSTANT_AFTER_MS ? "ready" : "needs_approval",
+        })),
         bank_wait_hours: null as number | null, // no waiting after a bank change any more: the PIN is the safeguard
         min_kobo: MIN_WITHDRAWAL_KOBO,
         instant_kobo: plan.instant.total,
@@ -65,10 +71,10 @@ export class WithdrawalsService {
    * To the bank only: nothing for 24 hours after the bank account was added or changed, and the first withdrawal after
    * that is always checked by an admin.
    */
-  async request(me: Identity | null, destination: string | null = "bank", pin?: string | null) {
+  async request(me: Identity | null, destination: string | null = "bank", pin?: string | null, orderIds?: string[] | null, reason?: string | null) {
     if (!me) throw forbidden("Please log in to continue.");
     await this.pins.require(me.userId, pin);
-    if (destination === "wallet") return this.toWallet(me);
+    if (destination === "wallet") return this.toWallet(me, orderIds && orderIds.length ? orderIds : null, (reason ?? "").trim());
     return this.db().onBehalfOf(me, async (tx) => {
       const repo = new WithdrawalsRepository(tx);
       const vendor = await repo.vendor(me.userId);
@@ -221,13 +227,12 @@ export class WithdrawalsService {
   }
 
   /** Moves the shop's earnings into the owner's wallet: money 24 hours old or more at once, newer money after an admin approves. */
-  private async toWallet(me: Identity) {
+  private async toWallet(me: Identity, only: string[] | null = null, reason = "") {
     return this.db().onBehalfOf(me, async (tx) => {
       const repo = new WithdrawalsRepository(tx);
       const vendor = await repo.vendor(me.userId);
       if (!vendor) throw forbidden("Only shops have earnings to move.");
-      const plan = await this.plan(repo, vendor.id, true);
-      const open = await repo.openRequest(vendor.id, "wallet");
+      const plan = await this.plan(repo, vendor.id, true, false, only);
       const notify = new NotificationWriter(tx);
       let moved = 0;
       let asked = 0;
@@ -237,14 +242,16 @@ export class WithdrawalsService {
         moved = await creditWalletEarnings(tx, me.userId, buckets.map((b) => ({ payout_id: b.payout_id, order_id: b.order_id, net_kobo: b.net_kobo, commission_kobo: Number(b.commission_kobo) })));
         void id;
       }
-      if (!open && plan.approval.total > 0) {
+      // an older app that sends no choice and no reason only moves the money that is ready; asking for newer money needs a reason
+      if (plan.approval.total > 0 && (only || reason.length >= 3 || !plan.instant.total)) {
+        if (reason.length < 3) throw badRequest("Please tell Levromart why you need this money before it is 24 hours old. An admin reads it before deciding.");
         const id = await repo.insertRequest(vendor.id, "approval", plan.approval.orderIds, plan.approval.total, plan.disputedOrders.length > 0, "wallet");
         await repo.attach(id, plan.approval.payoutIds);
+        await repo.setRequestReason(id, reason.slice(0, 500));
         asked = plan.approval.total;
-        await notify.notifyAdmins("Move to wallet request", `${vendor.business_name ?? "A shop"} asked to move ${naira(asked)} of earnings paid less than 24 hours ago into its wallet.`, "adminPayments", { tab: "todo" }, me.userId);
+        await notify.notifyAdmins("Move to wallet request", `${vendor.business_name ?? "A shop"} asked to move ${naira(asked)} of earnings paid less than 24 hours ago into its wallet. Reason: ${reason.slice(0, 200)}`, "adminPayments", { tab: "todo" }, me.userId);
       }
       if (!moved && !asked) {
-        if (open && plan.approval.total > 0) throw conflict("You already have a request waiting for approval.");
         throw badRequest("There are no earnings ready to move yet.");
       }
       return { sent_kobo: moved, requested_kobo: asked, held_kobo: plan.held.total, has_dispute: plan.disputedOrders.length > 0 };
@@ -252,8 +259,8 @@ export class WithdrawalsService {
   }
 
 
-  private async plan(repo: WithdrawalsRepository, vendorId: string, toWallet = false, firstAfterChange = false) {
-    const buckets = await repo.buckets(vendorId);
+  private async plan(repo: WithdrawalsRepository, vendorId: string, toWallet = false, firstAfterChange = false, only: string[] | null = null) {
+    const buckets = (await repo.buckets(vendorId)).filter((b) => !only || only.includes(b.order_id));
     const recent = !toWallet && firstAfterChange;
     const cutoff = Date.now() - INSTANT_AFTER_MS;
     const group = () => ({ total: 0, orderIds: [] as string[], payoutIds: [] as string[] });

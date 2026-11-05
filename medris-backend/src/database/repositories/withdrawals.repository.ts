@@ -29,6 +29,7 @@ export type WithdrawalRow = {
   decided_at: string | null;
   created_at: string;
   destination?: string;
+  request_reason?: string | null;
 };
 
 /**
@@ -36,8 +37,10 @@ export type WithdrawalRow = {
  * keep working as before (bank only). The answer is remembered for a minute.
  */
 let destinationKnown: { has: boolean; at: number } | null = null;
+let reasonKnown: { has: boolean; at: number } | null = null;
 export function resetWithdrawalSchemaCache(): void {
   destinationKnown = null;
+  reasonKnown = null;
 }
 
 /** Withdrawals (migration 0017): the money waiting per order, and the requests for it. Service role only. */
@@ -52,6 +55,26 @@ export class WithdrawalsRepository {
     );
     destinationKnown = { has: r?.x === true, at: Date.now() };
     return destinationKnown.has;
+  }
+
+  async hasReason(): Promise<boolean> {
+    if (reasonKnown && Date.now() - reasonKnown.at < 60_000) return reasonKnown.has;
+    const r = await jsonRow<{ x: boolean }>(
+      this.db,
+      sql`select exists (select 1 from pg_catalog.pg_attribute where attrelid = to_regclass('public.withdrawal_requests') and attname = 'request_reason' and not attisdropped) as x`,
+    );
+    reasonKnown = { has: r?.x === true, at: Date.now() };
+    return reasonKnown.has;
+  }
+
+  private async reasonCol() {
+    return (await this.hasReason()) ? sql`w.request_reason` : sql`null::text`;
+  }
+
+  /** The words the shop wrote when it asked for money that Levromart has to approve. */
+  async setRequestReason(id: string, reason: string): Promise<void> {
+    if (!(await this.hasReason())) return;
+    await this.db.execute(sql`update public.withdrawal_requests set request_reason = ${reason} where id = ${id}`);
   }
 
   private async destCol() {
@@ -94,10 +117,12 @@ export class WithdrawalsRepository {
     );
   }
 
-  recent(vendorId: string, limit = 15): Promise<WithdrawalRow[]> {
+  async recent(vendorId: string, limit = 15): Promise<WithdrawalRow[]> {
+    const dest = await this.destCol();
+    const why = await this.reasonCol();
     return jsonRows<WithdrawalRow>(
       this.db,
-      sql`select w.id, w.vendor_id, null::text as business_name, null::uuid as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at
+      sql`select w.id, w.vendor_id, null::text as business_name, null::uuid as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, ${dest} as destination, ${why} as request_reason
           from public.withdrawal_requests w where w.vendor_id = ${vendorId} order by w.created_at desc limit ${limit}`,
     );
   }
@@ -189,9 +214,10 @@ export class WithdrawalsRepository {
   /** Requests for the admin screen, with what the admin must see before approving: open disputes and how long the shop has been around. */
   async adminList(status: string | null, limit: number): Promise<(WithdrawalRow & { disputes: number; dispute_orders: string[]; account_name: string | null; bank_name: string | null; shop_since: string; account_changed_at: string | null })[]> {
     const dest = await this.destCol();
+    const why = await this.reasonCol();
     return jsonRows(
       this.db,
-      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, ${dest} as destination,
+      sql`select w.id, w.vendor_id, v.business_name, v.user_id as vendor_user_id, w.status, w.kind, w.order_ids, w.amount_kobo::text as amount_kobo, w.has_dispute, w.reject_reason, w.decided_at, w.created_at, ${dest} as destination, ${why} as request_reason,
                  (select count(*)::int from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open') as disputes,
                  coalesce((select array_agg(distinct d.order_id) from public.disputes d join public.orders o on o.id = d.order_id where o.vendor_id = w.vendor_id and d.status = 'open'), '{}') as dispute_orders,
                  v.account_name, v.bank_name, v.created_at as shop_since,
