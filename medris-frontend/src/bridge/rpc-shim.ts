@@ -70,7 +70,9 @@ class BackendRpcCall implements PromiseLike<RpcResult> {
         }
         return fallback;
       }
-      return failure(err.message, err.code, err.status, err.details);
+      // An unexpected server error says only "Something went wrong": add a short reference so the exact line can be found in the server log.
+      const ref = err.code === "internal_error" && err.requestId ? ` (ref ${String(err.requestId).slice(0, 8)})` : "";
+      return failure(err.message + ref, err.code, err.status, err.details);
     }
   }
 
