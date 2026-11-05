@@ -297,7 +297,7 @@
 
   // Step 2: ask the server what to pay, show it, then continue to Paystack
   async function startPaystack(orderId) {
-    openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">Getting your payment ready…</h3></div><p class="muted" role="status" aria-live="polite">Please wait a moment.</p>');
+    openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">Getting your payment ready…</h3></div><p class="muted" role="status" aria-live="polite">Please wait a moment.</p><p class="lv-safe-pill"><span class="lv-safe-ic">' + (window.lvShieldHtml ? window.lvShieldHtml(22) : "") + '</span> Secured by Paystack. Your money is safe.</p>');
     var r = await window.levroData.payments.initialize(orderId);
     if (r.error || !r.data) {
       openModal('<div class="lv-pm-head"><h3 id="lvPmTitle">We could not start the payment</h3></div><p class="lv-pm-err" role="alert">' + esc((r.error && r.error.message) || "Please try again.") + '</p>' + (r.error && (r.error.code || r.error.status) ? '<p class="muted" style="font-size:.72rem;margin:.25rem 0 0">Code: ' + esc([r.error.code, r.error.status].filter(Boolean).join(" ")) + '</p>' : '') + '<div class="lv-pm-actions"><button type="button" class="btn" onclick="document.getElementById(\'lvPayModal\')?.remove()">Close</button></div>');
@@ -4217,12 +4217,34 @@ window.lvAskCancel = async function (orderId) {
     };
   };
 
+  function shieldSvg(sz) {
+    return '<svg class="lv-shield" width="' + (sz || 56) + '" height="' + (sz || 56) + '" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lvShG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset=".6" stop-color="#0f9d6a"/><stop offset="1" stop-color="#065f46"/></linearGradient></defs><path d="M32 3 57 12v18c0 16-10 27-25 32C17 57 7 46 7 30V12z" fill="url(#lvShG)"/><path d="M32 3 57 12v18c0 16-10 27-25 32z" fill="#fff" opacity=".12"/><path d="M32 3 7 12v18c0 16 10 27 25 32z" fill="#000" opacity=".06"/><path d="M20 32l9 9 16-19" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  window.lvShieldHtml = shieldSvg;
+  // when nothing can move yet: say why, and that the money is safe (never just "none")
+  function nothingToMove() {
+    sheet("Your earnings are safe", '<div class="lv-safe-hero">' + shieldSvg(72) + '</div><p class="lv-safe-p"><b>There is nothing to move right now.</b> Money from a sale shows here once the buyer confirms they received the order, or 24 hours after delivery if they do nothing.</p><p class="lv-safe-p">Just made a sale and do not see it yet? It can take a little longer than usual. It will appear here by itself, usually within 24 hours, and you will get a notification. Nothing is lost.</p><p class="lv-safe-pill"><i class="fa-solid fa-lock"></i> All payments are secured by Paystack. Levromart holds the money safely until it is yours.</p><button type="button" class="btn lw-go" onclick="document.getElementById(\'lvW3Sheet\').remove()">Got it</button>');
+  }
+  // the older way (the server has not been updated yet): all that is ready, or an approval request for the rest
+  async function legacyMove(s) {
+    var now = Number(s.to_wallet_now_kobo || 0), later = Number(s.to_wallet_approval_kobo || 0);
+    if (!now && !later) return nothingToMove();
+    var ok = await showConfirmDialog((now ? short(now) + " moves into your wallet now." : "") + (later ? (now ? " " : "") + short(later) + " is released 24 hours after it was paid. Your money stays safe in the meantime." : ""), { title: "Move earnings to your wallet", okLabel: "Move", cancelLabel: "Go back" });
+    if (!ok) return;
+    var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(now), 1]].concat(later ? [["Checked by Levromart first", short(later)]] : []), cta: "Move" });
+    if (!pin) return;
+    var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin });
+    if (r.error) return showToast(r.error.message || "We could not move your earnings just now. Your money is safe; please try again in a little while.", "error");
+    showToast(Number(r.data.sent_kobo) > 0 ? short(r.data.sent_kobo) + " is now in your wallet." : "Request sent. Your money is safe; we will message you when it is approved.", "success");
+    await load(true); repaint(); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
+  }
   window.lvW3MoveEarnings = async function () {
     var r0 = await sb.rpc("get_withdrawal_summary"); var s = (r0 && r0.data) || {};
     var list = (s.earnings || []).slice(), reqs = (s.recent || []).filter(function (w) { return w.destination === "wallet"; });
     function ago(iso) { var h = (Date.now() - new Date(iso).getTime()) / 36e5; if (!(h >= 0)) return "just now"; if (h < 1) return Math.max(1, Math.round(h * 60)) + " min ago"; if (h < 48) return Math.floor(h) + " h ago"; return Math.floor(h / 24) + " days ago"; }
     function left(iso) { var h = 24 - (Date.now() - new Date(iso).getTime()) / 36e5; if (h <= 0) return "now"; return h < 1 ? "in under 1 h" : "in " + Math.ceil(h) + " h"; }
-    if (!list.length && !reqs.length) return showToast("There are no earnings ready to move yet.", "info");
+    if (!Array.isArray(s.earnings)) return legacyMove(s);   // the server has not been updated yet: keep the old all-or-nothing way
+    if (!list.length && !reqs.length) return nothingToMove();
     var chosen = {}; list.forEach(function (e) { if (e.state === "ready") chosen[e.order_id] = true; });
     var reqHtml = reqs.length ? '<div class="lw-mv-h">Your requests</div>' + reqs.slice(0, 6).map(function (w) {
       var st = { requested: "Waiting for Levromart", approved: "Approved", rejected: "Not approved" }[w.status] || w.status;
@@ -4259,7 +4281,7 @@ window.lvAskCancel = async function (orderId) {
 
   window.lvW3Help = function () {
     var shop = typeof vendor !== "undefined" && vendor;
-    sheet("How your wallet works", '<ul class="lvw-how">' +
+    sheet("How your wallet works", '<div class="lv-safe-hero">' + shieldSvg(72) + '<b>Your money is safe</b><small>All payments are secured by Paystack, and your wallet is protected by your PIN. Nothing leaves your wallet unless you approve it.</small></div><ul class="lvw-how">' +
       '<li><b>One wallet.</b> Money you add, money people send you, refunds' + (shop ? " and your shop earnings" : "") + ' all land here. Your @tag is how people send you money.</li>' +
       '<li><b>Add money.</b> With your card, bank transfer or USSD through Paystack.</li>' +
       '<li><b>Pay for orders.</b> Choose "Levromart wallet" when you pay: no Paystack screens, quick and easy to track. The shop gets its share the usual way.</li>' +
@@ -4349,7 +4371,7 @@ window.lvAskCancel = async function (orderId) {
     var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? "" : " · not enough") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       (enough ? "" : '<button type="button" class="lw-link" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money to your wallet</button>') +
       '<button type="button" class="lw-pay" id="lwPayCard"><span class="lw-pay-ic p"><i class="fa-solid fa-credit-card"></i></span><div><b>Card, bank transfer or USSD</b><small>Through Paystack</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
-      '<p class="lw-err" hidden></p>');
+      '<p class="lw-err" hidden></p><p class="lv-safe-pill"><span class="lv-safe-ic">' + shieldSvg(22) + '</span> All payments are secured by Paystack.</p>');
     m.querySelector("#lwPayCard").onclick = function () { closeSheet(); paystackGo(); };
     var wb = m.querySelector("#lwPayWallet");
     wb.onclick = async function () {
@@ -5333,7 +5355,7 @@ window.lvAskCancel = async function (orderId) {
     }, 60);
   }
   function hint(placeholder) { var i = document.getElementById("aiChatInput"); if (i) { i.placeholder = placeholder; try { i.focus({ preventScroll: true }); } catch (_) {} } }
-  function resetHint() { var i = document.getElementById("aiChatInput"); if (i) i.placeholder = isVendor() ? "Add a product, ask what's selling…" : "Ask Levi anything…"; }
+  function resetHint() { var i = document.getElementById("aiChatInput"); if (i) i.placeholder = isVendor() ? "Add a product, add to cart, ask what's selling…" : "Ask Levi, or say \"add to cart\"…"; }
   function money(t) { var m = String(t).replace(/[,\s]/g, "").match(/(\d+(?:\.\d+)?)(k)?/i); if (!m) return null; var n = Number(m[1]) * (m[2] ? 1000 : 1); return n > 0 ? n : null; }
   function sectorsList() { try { return (typeof sectors !== "undefined" && sectors) || []; } catch (_) { return []; } }
   function catsFor(sectorId) { return (window.__categories || []).filter(function (c) { return !sectorId || String(c.sector_id) === String(sectorId); }); }
@@ -5621,6 +5643,7 @@ window.lvAskCancel = async function (orderId) {
   // "add to my cart" on its own: ask what, and suggest things to pick from
   async function askWhatToAdd() {
     cartWanted = Date.now();
+    try { hint("What should I add? Type the name…"); } catch (_) {}
     var list = (await latestProducts(12)).slice(0, 6);
     setTimeout(function () {
       if (!list.length) return;
@@ -5698,11 +5721,10 @@ window.lvAskCancel = async function (orderId) {
   }
   // vendors: ready-made suggestions when Levi opens with an empty chat, and a helpful placeholder
   function offer() {
-    if (!isVendor()) return;
     resetHint();
     var box = document.getElementById("aiChatMessages"); if (!box || box.querySelector(".lvw-vsug")) return;
     var row = document.createElement("div"); row.className = "lvw-chips lvw-vsug";
-    [["Add a listing for me", "Add a listing"], ["What's selling on Levromart?", "What's selling on Levromart?"], ["How is my shop doing?", "How is my shop doing?"]].forEach(function (s) {
+    (isVendor() ? [["Add to cart", "Add to cart"], ["Add a listing for me", "Add a listing"], ["What's selling on Levromart?", "What's selling on Levromart?"], ["How is my shop doing?", "How is my shop doing?"]] : [["Add to cart", "Add to cart"], ["What's selling on Levromart?", "What's selling on Levromart?"]]).forEach(function (s) {
       var b = document.createElement("button"); b.type = "button"; b.className = "lvw-chip"; b.textContent = s[0];
       b.onclick = function () { var i = document.getElementById("aiChatInput"); if (!i) return; i.value = s[1]; row.remove(); try { sendAiChatMessage(); } catch (_) {} };
       row.appendChild(b);
