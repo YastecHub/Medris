@@ -97,14 +97,14 @@ export class PlatformWalletRepository {
     return jsonRow<Record<string, unknown>>(
       this.db,
       sql`select e.id, e.kind, e.amount_kobo::text as amount_kobo, e.note, e.reference, e.created_at, e.order_id,
-                 v.id as vendor_id, v.business_name as shop_name, sw.handle as shop_handle,
+                 v.id as vendor_id, v.business_name as shop_name, sw.handle as shop_handle, v.logo_url as shop_avatar,
                  o.total_amount::text as order_total, o.delivery_fee::text as order_delivery_fee, o.status::text as order_status, o.created_at as order_created_at,
-                 ob.name as buyer_name, ob.email as buyer_email, bw.handle as buyer_handle,
+                 ob.name as buyer_name, ob.email as buyer_email, bw.handle as buyer_handle, ob.avatar_url as buyer_avatar,
                  t.id as transfer_id, t.amount_kobo::text as transfer_amount_kobo, t.note as transfer_note, t.created_at as transfer_created_at,
-                 fu.name as from_name, fw.handle as from_handle, tu.name as to_name, tw.handle as to_handle,
+                 fu.name as from_name, fw.handle as from_handle, fu.avatar_url as from_avatar, tu.name as to_name, tw.handle as to_handle, tu.avatar_url as to_avatar,
                  ww.id as user_withdrawal_id, ww.amount_kobo::text as user_withdrawal_amount_kobo, ww.status as user_withdrawal_status,
                  ww.bank_name as user_withdrawal_bank, ww.account_name as user_withdrawal_account_name, ww.account_last4 as user_withdrawal_last4,
-                 wu.name as user_withdrawal_name, wwa.handle as user_withdrawal_handle,
+                 wu.name as user_withdrawal_name, wwa.handle as user_withdrawal_handle, wu.avatar_url as user_withdrawal_avatar,
                  w.id as withdrawal_id, w.amount_kobo::text as withdrawal_amount_kobo, w.status as withdrawal_status, w.bank_name, w.account_name,
                  w.account_last4, w.transfer_reference, w.last_error, ru.name as requested_by_name
             from public.platform_wallet_entries e

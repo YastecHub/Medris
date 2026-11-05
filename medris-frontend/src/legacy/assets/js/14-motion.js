@@ -6647,8 +6647,17 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   function who(name, handle) { return (name ? E(name) : "Someone") + (handle ? ' <span class="ltx-h">@' + E(handle) + "</span>" : ""); }
   function row(label, value) { return value == null || value === "" ? "" : '<div class="ltx-row"><span>' + E(label) + "</span><b>" + value + "</b></div>"; }
   function initials(n) { return String(n || "?").trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0] || ""; }).join("").toUpperCase() || "?"; }
-  function party(label, name, handle, sub) {
-    return '<div class="ltx-party"><span class="ltx-av">' + E(initials(name)) + '</span><small>' + E(label) + "</small><b>" + E(name || "Someone") + "</b>" + (handle ? '<em>@' + E(handle) + "</em>" : "") + (sub ? "<em>" + E(sub) + "</em>" : "") + "</div>";
+  // a person or shop as the app shows them: their photo, or their initials on their own colour
+  function hue(t) { var h = 0; t = String(t || "?"); for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 360; return h; }
+  function avatar(name, pic, kind) {
+    var ini = E(initials(name)), h = hue(name), bg = "background:linear-gradient(135deg,hsl(" + h + ",62%,52%),hsl(" + ((h + 38) % 360) + ",64%,36%))";
+    if (kind === "bank") return '<span class="ltx-av ltx-av-bank"><i class="fa-solid fa-building-columns"></i></span>';
+    if (kind === "levromart") return '<span class="ltx-av ltx-av-img"><img src="/icon-192.png" alt=""></span>';
+    if (pic) return '<span class="ltx-av ltx-av-img" style="' + bg + '" data-ini="' + ini + '"><img src="' + E(pic) + '" alt="" loading="lazy" onerror="var p=this.parentNode;p.classList.remove(\'ltx-av-img\');p.textContent=p.getAttribute(\'data-ini\')"></span>';
+    return '<span class="ltx-av" style="' + bg + '">' + ini + "</span>";
+  }
+  function party(label, name, handle, sub, pic, kind) {
+    return '<div class="ltx-party">' + avatar(name, pic, kind) + '<small>' + E(label) + "</small><b>" + E(name || "Someone") + "</b>" + (handle ? '<em>@' + E(handle) + "</em>" : "") + (sub ? "<em>" + E(sub) + "</em>" : "") + "</div>";
   }
   function flow(a, b, amount) { return '<div class="ltx-flow">' + a + '<div class="ltx-arrow"><span>' + amount + '</span><i class="fa-solid fa-arrow-right-long"></i></div>' + b + "</div>"; }
   function status(s) {
@@ -6661,30 +6670,31 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var kind = d.kind;
     if (kind === "commission" || kind === "commission_reversed") {
       title = kind === "commission" ? "Commission (3%)" : "Commission taken back";
-      out += flow(party("Buyer", d.buyer_name, d.buyer_handle), party("Shop", d.shop_name, d.shop_handle), d.order_total ? NA(d.order_total) : "Order");
+      out += flow(party("Buyer", d.buyer_name, d.buyer_handle, null, d.buyer_avatar), party("Shop", d.shop_name, d.shop_handle, null, d.shop_avatar), d.order_total ? NA(d.order_total) : "Order");
       out += '<div class="ltx-card">' + row("Order", d.order_id ? '<a href="#" class="ltx-link" data-order="' + E(d.order_id) + '">#' + E(String(d.order_id).slice(0, 8).toUpperCase()) + "</a>" : "")
         + row("Order total", d.order_total != null ? NA(d.order_total) : "") + row("Delivery fee", d.order_delivery_fee != null && Number(d.order_delivery_fee) > 0 ? NA(d.order_delivery_fee) : "")
         + row("Levromart's 3%", (plus ? "+" : "−") + K(Math.abs(k))) + row("Order status", status(d.order_status)) + row("Buyer email", d.buyer_email ? E(d.buyer_email) : "") + "</div>";
     } else if (kind === "transaction_fee" || kind === "transaction_fee_return") {
       if (d.transfer_id) {
         title = "Transfer fee";
-        out += flow(party("From", d.from_name, d.from_handle), party("To", d.to_name, d.to_handle), K(d.transfer_amount_kobo));
+        out += flow(party("From", d.from_name, d.from_handle, null, d.from_avatar), party("To", d.to_name, d.to_handle, null, d.to_avatar), K(d.transfer_amount_kobo));
         out += '<div class="ltx-card">' + row("Amount sent", K(d.transfer_amount_kobo)) + row("Note", d.transfer_note ? "“" + E(d.transfer_note) + "”" : "") + row("Fee paid by", who(d.from_name, d.from_handle)) + row("Levromart's fee", (plus ? "+" : "−") + K(Math.abs(k))) + "</div>";
       } else if (d.user_withdrawal_id) {
         title = kind === "transaction_fee" ? "Withdrawal fee" : "Withdrawal fee given back";
-        out += flow(party("Wallet of", d.user_withdrawal_name, d.user_withdrawal_handle), party("Bank", d.user_withdrawal_bank || "Bank", null, d.user_withdrawal_last4 ? "···" + d.user_withdrawal_last4 : ""), K(d.user_withdrawal_amount_kobo));
+        out += flow(party("Wallet of", d.user_withdrawal_name, d.user_withdrawal_handle, null, d.user_withdrawal_avatar), party("Bank", d.user_withdrawal_bank || "Bank", null, d.user_withdrawal_last4 ? "···" + d.user_withdrawal_last4 : "", null, "bank"), K(d.user_withdrawal_amount_kobo));
         out += '<div class="ltx-card">' + row("Withdrawn", K(d.user_withdrawal_amount_kobo)) + row("Account name", d.user_withdrawal_account_name ? E(d.user_withdrawal_account_name) : "") + row("Status", status(d.user_withdrawal_status)) + row("Levromart's fee", (plus ? "+" : "−") + K(Math.abs(k))) + "</div>";
       } else if (d.order_id) {
         title = "Wallet payment fee";
-        out += flow(party("Buyer paid", d.buyer_name, d.buyer_handle), party("Shop", d.shop_name, d.shop_handle), d.order_total ? NA(d.order_total) : "Order");
+        out += flow(party("Buyer paid", d.buyer_name, d.buyer_handle, null, d.buyer_avatar), party("Shop", d.shop_name, d.shop_handle, null, d.shop_avatar), d.order_total ? NA(d.order_total) : "Order");
         out += '<div class="ltx-card">' + row("Paid with", "Levromart wallet") + row("Order", '<a href="#" class="ltx-link" data-order="' + E(d.order_id) + '">#' + E(String(d.order_id).slice(0, 8).toUpperCase()) + "</a>") + row("Order total", d.order_total != null ? NA(d.order_total) : "") + row("Fee paid by", who(d.buyer_name, d.buyer_handle)) + row("Levromart's fee", (plus ? "+" : "−") + K(Math.abs(k))) + "</div>";
       } else out += '<div class="ltx-card">' + row("What", E(d.note || "Transaction fee")) + row("Amount", K(Math.abs(k))) + "</div>";
     } else if (kind === "listing_fee") {
       title = "Monthly listing fee";
+      out += flow(party("Shop", d.shop_name, d.shop_handle, null, d.shop_avatar), party("To", "Levromart", null, null, null, "levromart"), "+" + K(k));
       out += '<div class="ltx-card">' + row("Shop", who(d.shop_name, d.shop_handle)) + row("What", E(d.note || "Monthly listing fee")) + row("Levromart got", "+" + K(k) + ' <small class="ltx-mute">after Paystack\'s fee</small>') + "</div>";
     } else if (kind === "withdrawal" || kind === "withdrawal_return") {
       title = kind === "withdrawal" ? "Levromart withdrawal" : "Withdrawal returned";
-      out += flow(party("From", "Levromart wallet"), party("To", d.bank_name || "Bank", null, d.account_last4 ? "···" + d.account_last4 : ""), K(d.withdrawal_amount_kobo || Math.abs(k)));
+      out += flow(party("From", "Levromart wallet", null, null, null, "levromart"), party("To", d.bank_name || "Bank", null, d.account_last4 ? "···" + d.account_last4 : "", null, "bank"), K(d.withdrawal_amount_kobo || Math.abs(k)));
       out += '<div class="ltx-card">' + row("Account name", d.account_name ? E(d.account_name) : "") + row("Status", status(d.withdrawal_status)) + row("Asked by", d.requested_by_name ? E(d.requested_by_name) : "") + row("Problem", d.last_error ? E(d.last_error) : "") + row("Bank reference", d.transfer_reference ? '<code>' + E(d.transfer_reference) + "</code>" : "") + "</div>";
     }
     out += '<div class="ltx-card ltx-refs">' + row("Date", E(when(d.created_at))) + (ref ? row("Reference", '<button type="button" class="ltx-copy" data-copy="' + E(ref) + '"><code>' + E(ref) + '</code> <i class="fa-regular fa-copy"></i></button>') : "") + row("Transaction ID", '<button type="button" class="ltx-copy" data-copy="' + E(d.id) + '"><code>' + E(String(d.id).slice(0, 8)) + '…</code> <i class="fa-regular fa-copy"></i></button>') + "</div>";
