@@ -4116,11 +4116,20 @@ window.lvAskCancel = async function (orderId) {
   window.lvW3Send = async function (prefill) {
     var d = await load(true); if (!d) return showToast("Your wallet is not available right now.", "error");
     var pick = null, myKey = key(), timer = 0;
-    var m = sheet("Transfer", '<label class="lw-l">To</label><div class="lw-to"><span>@</span><input id="lwTo" autocomplete="off" autocapitalize="off" placeholder="their tag" value="' + esc(prefill || "") + '"></div><div class="lw-sugg" id="lwSugg"></div>' +
-      '<label class="lw-l">Amount</label>' + amountField("lwSendAmt") + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + "</p>" +
+    var m = sheet("Transfer to Levromart user", (window.lvPayCarousel ? window.lvPayCarousel("send") : "") + '<div class="lw-card-box"><label class="lw-l">Recipient @tag</label><div class="lw-locked" id="lwLocked" hidden></div><div class="lw-to"><span>@</span><input id="lwTo" autocomplete="off" autocapitalize="off" placeholder="their tag" value="' + esc(prefill || "") + '"></div><div class="lw-sugg" id="lwSugg"></div>' +
+      '</div><div class="lw-card-box"><label class="lw-l">Amount</label>' + amountField("lwSendAmt") + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + "</p>" +
       '<label class="lw-l">Note (optional)</label><input id="lwNote" class="lw-in" maxlength="140" placeholder="What is it for?">' +
-      '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwSendGo">Continue</button>');
+      '</div><p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwSendGo">Continue</button>', "lw-full");
     var to = m.querySelector("#lwTo"), sugg = m.querySelector("#lwSugg");
+    // the chosen person is locked in: picture, name and @tag, with Change
+    function paintPick() {
+      var box = m.querySelector("#lwLocked"), field = m.querySelector(".lw-to"), ben = m.querySelector(".lw-ben");
+      if (!pick) { box.hidden = true; field.hidden = false; if (ben) ben.hidden = false; return; }
+      box.innerHTML = '<span class="lw-locked-av">' + (pick.avatar_url ? '<img src="' + esc(pick.avatar_url) + '" alt="">' : esc(String(pick.name || pick.handle).slice(0, 1).toUpperCase())) + '</span><div><b>' + esc(pick.name || ("@" + pick.handle)) + ' <i class="fa-solid fa-circle-check"></i></b><small>@' + esc(pick.handle) + ' · Levromart wallet</small></div><button type="button" id="lwChange">Change</button>';
+      box.hidden = false; field.hidden = true; sugg.innerHTML = ""; if (ben) ben.hidden = true;
+      box.querySelector("#lwChange").onclick = function () { pick = null; to.value = ""; paintPick(); to.focus(); };
+      try { m.querySelector("#lwSendAmt").focus(); } catch (_) {}
+    }
     // people sent to before (beneficiaries): their picture and first name; one tap fills the tag in, "View all" lists everyone
     try {
       var benList = function (entries) { var seenB = {}, out = []; (entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seenB[e.counterparty_handle]) { seenB[e.counterparty_handle] = 1; out.push(e); } }); return out; };
@@ -4129,7 +4138,10 @@ window.lvAskCancel = async function (orderId) {
       var avatarOf = function (e) { return e.counterparty_avatar ? '<img src="' + esc(e.counterparty_avatar) + '" alt="" loading="lazy">' : esc(String(e.counterparty_name || e.counterparty_handle).slice(0, 1).toUpperCase()); };
       if (ben.length && !prefill) {
         var bx = document.createElement("div"); bx.className = "lw-ben";
-        bx.innerHTML = '<div class="lw-ben-h"><small>Recent</small><button type="button" data-all>View all</button></div><div>' + ben.slice(0, 6).map(function (e) { return '<button type="button" data-h="' + esc(e.counterparty_handle) + '"><span>' + avatarOf(e) + '</span>' + esc(String(e.counterparty_name || "@" + e.counterparty_handle).split(" ")[0]) + '</button>'; }).join("") + '</div>';
+        var recentB = benList(d.entries), favB = (window.lvFavPeople ? window.lvFavPeople() : []).map(function (f) { return { counterparty_handle: f.handle, counterparty_name: f.name, counterparty_avatar: f.avatar_url }; });
+        var rowsOf = function (list) { return list.length ? list.slice(0, 8).map(function (e) { return '<button type="button" class="lw-benrow2" data-h="' + esc(e.counterparty_handle) + '"><span>' + avatarOf(e) + '</span><div><b>' + esc(e.counterparty_name || "@" + e.counterparty_handle) + '</b><small>@' + esc(e.counterparty_handle) + '</small></div><i class="fa-solid fa-chevron-right"></i></button>'; }).join("") : '<p class="lw-hint" style="padding:.8rem 0">Nobody here yet. Tap the heart on a receipt to add a favourite.</p>'; };
+        bx.innerHTML = '<div class="lw-ben-tabs"><button type="button" data-tab="r" class="on">Recents</button><button type="button" data-tab="f">Favourites</button><button type="button" data-all aria-label="Search all"><i class="fa-solid fa-magnifying-glass"></i></button></div><div class="lw-ben-list" data-p="r">' + rowsOf(recentB) + '</div><div class="lw-ben-list" data-p="f" hidden>' + rowsOf(favB) + '</div>';
+        bx.addEventListener("click", function (ev) { var t = ev.target.closest("[data-tab]"); if (!t) return; ev.stopPropagation(); bx.querySelectorAll("[data-tab]").forEach(function (x) { x.classList.toggle("on", x === t); }); bx.querySelectorAll(".lw-ben-list").forEach(function (l) { l.hidden = l.dataset.p !== t.dataset.tab; }); }, true);
         bx.onclick = async function (ev) {
           var b = ev.target.closest("button"); if (!b) return;
           if (b.hasAttribute("data-all")) {
@@ -4144,7 +4156,7 @@ window.lvAskCancel = async function (orderId) {
           }
           if (b.dataset.h) { to.value = b.dataset.h; search(); }
         };
-        sugg.parentNode.insertBefore(bx, sugg);
+        m.querySelector(".lvw-sheet-body").appendChild(bx);
       }
     } catch (_) {}
     var seq = 0;
@@ -4170,10 +4182,10 @@ window.lvAskCancel = async function (orderId) {
       var amt = readAmount("lwSendAmt"), note = m.querySelector("#lwNote").value.trim();
       if (!pick) return err(m, "Choose who to send to from the list.");
       if (amt < 10000) return err(m, "The smallest amount is ₦100.");
-      if (amt > Number(d.balance_kobo)) return err(m, "You only have " + money(d.balance_kobo, true) + ". Add money first.");
+      if (amt > Number(d.balance_kobo)) return err(m, "This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
       err(m, "");
       var fee = window.lvWalletFee(amt);
-      if (amt + fee > Number(d.balance_kobo)) return err(m, "You need " + money(amt + fee, true) + ". You have " + money(d.balance_kobo, true) + ".");
+      if (amt + fee > Number(d.balance_kobo)) return err(m, "This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
       var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
       if (!pin) return;
       if (!(await window.lvRepeatCheck("send:" + pick.handle + ":" + amt, { title: "Repeat transaction detected", text: "You sent " + short(amt) + " to " + (pick.name || "@" + pick.handle) + " a moment ago. Do you want to send it again?", okLabel: "Send again", cancelLabel: "No, cancel" }))) return;
@@ -4204,7 +4216,7 @@ window.lvAskCancel = async function (orderId) {
       return;
     }
     var a = d.account, most = Number(d.withdrawable_now_kobo || 0);
-    var m = sheet("Withdraw", '<div class="lw-bank"><span class="ve-bank-ico lw-bank-logo" data-bank-code="' + esc(a.bank_code || bankCodeOf(a.bank_name)) + '"><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
+    var m = sheet("Withdraw", (window.lvPayCarousel ? window.lvPayCarousel("withdraw") : "") + '<div class="lw-bank"><span class="ve-bank-ico lw-bank-logo" data-bank-code="' + esc(a.bank_code || bankCodeOf(a.bank_name)) + '"><i class="fa-solid fa-building-columns"></i></span><div><b>' + esc(a.bank_name || "Your bank") + ' ···' + esc(a.last4 || "") + '</b><small>' + esc(a.account_name || "") + "</small></div></div>" +
       '<label class="lw-l">Amount</label>' + amountField("lwWdAmt", "") + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + '</p>' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwWdGo">Continue</button>');
     m.querySelector("#lwWdGo").onclick = async function () {
@@ -4216,7 +4228,7 @@ window.lvAskCancel = async function (orderId) {
       if (amt < 10000) return err(m, "The smallest withdrawal is ₦100.");
       var fee = window.lvWalletFee(amt);
       // like a bank app: never say "the most you can take is…"; explain that the transfer has a small fee and invite a slightly smaller amount
-      if (amt + fee > Number(d.balance_kobo) || amt > most) return err(m, "This amount exceeds what can be transferred after Paystack's transfer charges. Please enter a lower amount.");
+      if (amt + fee > Number(d.balance_kobo) || amt > most) return err(m, "This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
       var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
       if (!pin) return;
       if (!(await window.lvRepeatCheck("wd:" + amt, { title: "Repeat transaction detected", text: "You withdrew " + short(amt) + " a moment ago. Do you want to withdraw the same amount again?", okLabel: "Withdraw again", cancelLabel: "No, cancel" }))) return;
@@ -4275,16 +4287,35 @@ window.lvAskCancel = async function (orderId) {
         '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwMvGo">Move to wallet</button>' : '<p class="lv-safe-p">Nothing is ready to move right now. Your earnings are safe and will show here.</p>') +
       '<div class="lw-mv-links"><button type="button" id="lwMvReqs">My requests' + (waiting ? " (" + waiting + " waiting)" : "") + ' <i class="fa-solid fa-chevron-right"></i></button><button type="button" id="lwMvList">Earnings breakdown <i class="fa-solid fa-chevron-right"></i></button></div>');
     function ago(iso) { var h = (Date.now() - new Date(iso).getTime()) / 36e5; if (!(h >= 0)) return "just now"; if (h < 1) return Math.max(1, Math.round(h * 60)) + " min ago"; if (h < 48) return Math.floor(h) + " h ago"; return Math.floor(h / 24) + " days ago"; }
-    function sub(title, html) { var mm = sheet(title, html + '<button type="button" class="lw-link" id="lwMvBack"><i class="fa-solid fa-arrow-left"></i> Back</button>'); mm.querySelector("#lwMvBack").onclick = function () { window.lvW3MoveEarnings(); }; return mm; }
+    function ic3(name, sz) { return window.lv3dIcon && window.LV3D && window.LV3D[name] ? window.lv3dIcon(name, sz || 44) : ""; }
+    // a full page (not a drawer), with Back: My requests and Earnings breakdown
+    function page(title, html) {
+      closeSheet();
+      var old = document.getElementById("lvMvPage"); if (old) old.remove();
+      var pg = document.createElement("div"); pg.id = "lvMvPage"; pg.className = "lv-mvp";
+      pg.innerHTML = '<div class="lv-mvp-top"><button type="button" class="lv-tx-x" data-back aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><b>' + esc(title) + '</b><span></span></div><div class="lv-mvp-body">' + html + '</div>';
+      document.body.appendChild(pg);
+      pg.addEventListener("click", function (ev) { if (ev.target.closest("[data-back]")) { pg.remove(); window.lvW3MoveEarnings(); } });
+      return pg;
+    }
     m.querySelector("#lwMvList").onclick = function () {
-      sub("Earnings breakdown", s.earnings.length ? '<div class="lw-mv-rows">' + s.earnings.map(function (e) { var tag = e.state === "held" ? "Held: open dispute" : e.state === "ready" ? "Ready" : "Ready in " + Math.max(1, Math.ceil(24 - (Date.now() - new Date(e.paid_at).getTime()) / 36e5)) + " h"; return '<div><b>' + short(e.net_kobo) + '</b><small>Order ' + esc(String(e.order_id).slice(0, 8).toUpperCase()) + " · earned " + ago(e.paid_at) + " · " + tag + '</small></div>'; }).join("") + '</div>' : '<p class="muted">No earnings yet.</p>');
+      var tot = { ready: 0, wait: 0, held: 0 };
+      s.earnings.forEach(function (e) { if (e.state === "held") tot.held += e.net_kobo; else if (e.state === "ready") tot.ready += e.net_kobo; else tot.wait += e.net_kobo; });
+      page("Earnings breakdown", '<div class="lv-mvp-sum"><div><small>Ready</small><b>' + short(tot.ready) + '</b></div><div><small>Within 24 h</small><b>' + short(tot.wait) + '</b></div><div><small>On hold</small><b>' + short(tot.held) + '</b></div></div>' +
+        (s.earnings.length ? '<div class="lv-mvp-list">' + s.earnings.map(function (e) {
+          var st = e.state === "held" ? ["Held: open dispute", "dispute", "bad"] : e.state === "ready" ? ["Ready to move", "tx-ready", "ok"] : ["Ready in " + Math.max(1, Math.ceil(24 - (Date.now() - new Date(e.paid_at).getTime()) / 36e5)) + " h", "tx-pending", "wait"];
+          return '<div class="lv-mvp-row"><span class="lv-mvp-ic">' + ic3(st[1]) + '</span><div><b>Order ' + esc(String(e.order_id).slice(0, 8).toUpperCase()) + '</b><small>Earned ' + ago(e.paid_at) + '</small></div><div class="lv-mvp-r"><b>' + short(e.net_kobo) + '</b><em class="' + st[2] + '">' + esc(st[0]) + '</em></div></div>';
+        }).join("") + '</div>' : '<div class="lv-mvp-empty">' + ic3("empty-bank", 96) + '<p>No earnings yet.</p></div>'));
     };
     m.querySelector("#lwMvReqs").onclick = function () {
-      var mm = sub("My requests", reqs.length ? '<div class="lw-mv-rows">' + reqs.slice(0, 15).map(function (w) {
-        var st = { requested: "Waiting for Levromart", approved: "Approved", rejected: "Not approved" }[w.status] || w.status;
-        return '<div class="' + esc(w.status) + '"><span><b>' + short(w.amount_kobo) + '</b><small>' + esc(st) + " · " + ago(w.created_at) + '</small>' + (w.request_reason ? '<small>Your reason: ' + esc(w.request_reason) + '</small>' : "") + (w.status === "rejected" && w.reject_reason && w.reject_reason !== "Cancelled by the shop" ? '<small class="lw-mv-bad">Levromart: ' + esc(w.reject_reason) + '</small>' : "") + '</span>' + (w.status === "requested" ? '<button type="button" data-cancel="' + esc(w.id) + '">Cancel</button>' : "") + '</div>';
-      }).join("") + '</div>' : '<p class="muted">You have not made a request yet.</p>');
-      mm.addEventListener("click", function (ev) { var b = ev.target.closest("[data-cancel]"); if (b) { closeSheet(); window.lvCancelWdReq(b.dataset.cancel); } });
+      var pg = page("My requests", reqs.length ? '<div class="lv-mvp-list">' + reqs.slice(0, 30).map(function (w) {
+        var cancelled = w.status === "rejected" && w.reject_reason === "Cancelled by the shop";
+        var st = cancelled ? ["Cancelled", "order-cancelled", "bad"] : { requested: ["Waiting for Levromart", "tx-pending", "wait"], approved: ["Approved", "withdrawal-approved", "ok"], rejected: ["Not approved", "withdrawal-rejected", "bad"] }[w.status] || [w.status, "general", "wait"];
+        return '<div class="lv-mvp-row lv-mvp-req"><span class="lv-mvp-ic">' + ic3(st[1]) + '</span><div><b>' + short(w.amount_kobo) + '</b><small>' + ago(w.created_at) + '</small>' +
+          (w.request_reason ? '<p>Your reason: ' + esc(w.request_reason) + '</p>' : "") + (w.status === "rejected" && w.reject_reason && !cancelled ? '<p class="bad">Levromart: ' + esc(w.reject_reason) + '</p>' : "") +
+          '</div><div class="lv-mvp-r"><em class="' + st[2] + '">' + esc(st[0]) + '</em>' + (w.status === "requested" ? '<button type="button" data-cancel="' + esc(w.id) + '">Cancel</button>' : "") + '</div></div>';
+      }).join("") + '</div>' : '<div class="lv-mvp-empty">' + ic3("requests", 96) + '<p>You have not made a request yet.</p></div>');
+      pg.addEventListener("click", function (ev) { var b = ev.target.closest("[data-cancel]"); if (b) { pg.remove(); window.lvCancelWdReq(b.dataset.cancel); } });
     };
     if (!list.length) return;
     var amtEl = m.querySelector("#lwMvAmt"), info = m.querySelector("#lwMvInfo");
@@ -4351,18 +4382,26 @@ window.lvAskCancel = async function (orderId) {
       if (!next.length) break; oldest = oldest.concat(next); all = all.concat(next.filter(function (e) { return !isFee(e); }));
     }
     var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    body.innerHTML = '<div class="lwh-monthbar"><button type="button" id="lwhPrev" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="lwh-pick" id="lwhMonth" aria-label="Pick a date"></button><button type="button" id="lwhNext" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button></div><div class="lwh-sum" id="lwhSum"></div><div class="lwh-tools"><div class="lwh-chips">' + [["all", "All"], ["in", "Money in"], ["out", "Money out"]].map(function (c) { return '<button type="button" data-f="' + c[0] + '" class="' + (c[0] === "all" ? "on" : "") + '">' + c[1] + "</button>"; }).join("") + '</div><input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off"></div><div id="lwhList"></div>';
+    var TYPES = [["all", "All types"], ["in", "Money in"], ["out", "Money out"], ["transfer", "Transfers"], ["order_payment", "Order payments"], ["withdrawal", "Withdrawals"], ["topup", "Money added"], ["refund", "Refunds"], ["earnings_in", "Shop earnings"]];
+    var STATUS = [["all", "All status"], ["ok", "Successful"], ["wait", "Pending"], ["bad", "Failed"]], status = "all";
+    body.innerHTML = '<div class="lwh-filters"><label class="lwh-sel"><select id="lwhType">' + TYPES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join("") + '</select><i class="fa-solid fa-caret-down"></i></label><label class="lwh-sel"><select id="lwhStatus">' + STATUS.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join("") + '</select><i class="fa-solid fa-caret-down"></i></label><button type="button" class="lwh-sbtn" id="lwhSearchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button></div>' +
+      '<input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off" hidden>' +
+      '<div class="lwh-card"><div class="lwh-head"><div><button type="button" class="lwh-pick" id="lwhMonth" aria-label="Pick a month"></button><div class="lwh-io" id="lwhSum"></div></div><button type="button" class="lwh-an" id="lwhAnalysis">Analysis</button></div>' +
+      '<span hidden><button type="button" id="lwhPrev"></button><button type="button" id="lwhNext"></button><div class="lwh-chips"></div></span><div id="lwhList"></div></div>';
     function inPeriod(e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m && (!day || d.getDate() === day); }
     function paint() {
       var inP = all.filter(inPeriod), tin = 0, tout = 0;
       inP.forEach(function (e) { var a = Number(e.amount_kobo); if (a > 0) tin += a; else tout += -a; });
-      body.querySelector("#lwhMonth").innerHTML = (day ? day + " " : "") + MONTHS[month.m] + " " + month.y + ' <i class="fa-solid fa-chevron-down"></i>';
+      body.querySelector("#lwhMonth").innerHTML = (day ? day + " " : "") + MONTHS[month.m].slice(0, 3) + (month.y !== cur.y ? " " + month.y : "") + ' <i class="fa-solid fa-caret-down"></i>';
       body.querySelector("#lwhNext").disabled = month.y === cur.y && month.m === cur.m;
       var sum = body.querySelector("#lwhSum");
-      sum.innerHTML = '<div class="lwh-sum-c in"><small>Money in</small><b>' + esc(short(tin)) + '</b></div><div class="lwh-sum-c out"><small>Money out</small><b>' + esc(short(tout)) + "</b></div>";
+      sum.innerHTML = '<span>In ' + esc(short(tin)) + '</span><span>Out ' + esc(short(tout)) + '</span>';
       var rows = inP.filter(function (e) {
         var amt = Number(e.amount_kobo);
         if (filter === "in" && amt <= 0) return false; if (filter === "out" && amt >= 0) return false;
+        if (filter === "transfer" && !/^transfer_/.test(e.kind)) return false; if (filter === "refund" && !/^refund_/.test(e.kind)) return false;
+        if (["order_payment", "withdrawal", "topup", "earnings_in"].indexOf(filter) > -1 && e.kind !== filter) return false;
+        if (status !== "all") { var ws = e.kind === "withdrawal" ? String(e.withdrawal_status || "success") : "success"; var g = /requested|processing|pending/.test(ws) ? "wait" : /failed|reversed|rejected/.test(ws) ? "bad" : "ok"; if (g !== status) return false; }
         if (!term) return true;
         return (entryTitle(e) + " " + (e.note || "") + " " + (e.counterparty_name || "") + " " + (e.bank_name || "")).toLowerCase().indexOf(term) > -1;
       });
@@ -4386,6 +4425,10 @@ window.lvAskCancel = async function (orderId) {
     });
       return '<div class="lw-hist">' + h + "</ul></div>";
     }
+    body.querySelector("#lwhType").onchange = function () { filter = this.value; paint(); };
+    body.querySelector("#lwhStatus").onchange = function () { status = this.value; paint(); };
+    body.querySelector("#lwhSearchBtn").onclick = function () { var f = body.querySelector(".lwh-search"); f.hidden = !f.hidden; if (!f.hidden) f.focus(); };
+    body.querySelector("#lwhAnalysis").onclick = function () { if (window.lvWalletAnalysis) window.lvWalletAnalysis(all, month); };
     body.querySelector(".lwh-chips").onclick = function (e) { var b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; body.querySelectorAll(".lwh-chips button").forEach(function (x) { x.classList.toggle("on", x === b); }); paint(); };
     body.querySelector("#lwhPrev").onclick = function () { day = null; month = month.m === 0 ? { y: month.y - 1, m: 11 } : { y: month.y, m: month.m - 1 }; paint(); };
     body.querySelector("#lwhNext").onclick = function () { if (month.y === cur.y && month.m === cur.m) return; day = null; month = month.m === 11 ? { y: month.y + 1, m: 0 } : { y: month.y, m: month.m + 1 }; paint(); };
@@ -4413,7 +4456,7 @@ window.lvAskCancel = async function (orderId) {
     wb.onclick = async function () {
       if (wb.disabled) return;
       var fee = (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0) ? 0 : (need ? window.lvWalletFee(need) : 0);   // the first 3 orders paid from the wallet are free
-      if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + ". You have " + money(bal, true) + ".");
+      if (need && need + fee > bal) return err(m, "Your wallet balance does not cover this order and its transfer charges. Please add money or pay another way.");
       var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Total from your wallet", short(need + fee), 1]], cta: "Pay " + short(need + fee) });
       if (!pin) return;
       if (!(await showConfirmDialog("Pay " + short(need) + " for this order from your Levromart wallet?", { title: "Pay for this order", okLabel: "Yes, pay", cancelLabel: "No, go back" }))) return;
@@ -5603,7 +5646,7 @@ window.lvAskCancel = async function (orderId) {
       "2. **You deliver or hand it over**, then mark the order as handed over.",
       "3. **The money becomes yours** when the buyer taps *I have received it*, or automatically **24 hours** after delivery if they do nothing. Levromart keeps **3%** commission; the rest is yours.",
       "4. **Move it to your wallet** from your Wallet. Money that is more than 24 hours old moves at once; newer money is checked by Levromart first.",
-      "5. **Withdraw to your bank** from the wallet (minimum ₦100). You need your 6-digit wallet PIN, and Paystack's small transfer fee is shown before you confirm.", "",
+      "5. **Withdraw to your bank** from the wallet (minimum ₦100). You need your 6-digit wallet PIN, and the small transfer charge is shown before you confirm.", "",
       "Add your bank account in the Wallet first. Changing it needs your password, to keep your money safe."].join("\n");
     if (/\b(refunds?|money back|cancel (my|an|the) order|return (an|my|the) (item|order))\b/.test(q)) return [
       "**Refunds** 🔄", "",
@@ -7121,7 +7164,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var who = s.person ? (s.person.name || "@" + s.person.handle) : s.bank ? (s.bank.bank_name || "your bank") : s.shop || "";
     var isFav = s.person && s.person.handle && favs().some(function (f) { return f.handle === s.person.handle; });
     p.innerHTML = '<div class="lv-tx-top"><button type="button" class="lv-tx-x" data-x aria-label="Close"><i class="fa-solid fa-' + (done ? "xmark" : "arrow-left") + '"></i></button><span>' + E(done ? "" : "Transaction details") + '</span></div>' +
-      '<div class="lv-tx-hero"><div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' +
+      (done ? "" : '<div class="lv-tx-logo"><img src="/icon-512.png" alt="Levromart" width="64" height="64"></div>') + '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? "" : "<!--") + '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' + (done ? "" : "-->") +
       '<h2>' + E(done ? s.title : (s.title || "Transaction")) + '</h2><div class="lv-tx-amt">' + (done ? "" : inKind ? "+" : "−") + nair(s.amountKobo) + '</div>' + (who ? '<p class="lv-tx-sub">' + E((inKind && s.person ? "from " : s.kind === "topup" ? "" : "to ") + (s.kind === "topup" ? "your wallet" : who)) + '</p>' : "") + '<span class="lv-tx-pill' + (ok ? "" : " bad") + '">' + E(s.status || "Successful") + '</span></div>' +
       '<div class="lv-tx-card" id="lvTxRows">' + rowsOf(s).map(function (r) { return '<div><span>' + E(r[0]) + '</span><b>' + E(r[1]) + '</b></div>'; }).join("") + '</div>' +
       '<div class="lv-tx-acts"><button type="button" data-a="share">' + ic("moved-up", "fa-share-nodes") + '<span>Share receipt</span></button>' +
@@ -7197,3 +7240,149 @@ window.lvGoToNewOrder = function (orderId) {
   ["checkoutCartAll", "checkoutCartVendor", "buyNow", "confirmRental", "buyPackageFromDetail", "buyPackage"].forEach(guard);
   setTimeout(function () { ["checkoutCartAll", "checkoutCartVendor", "buyNow", "confirmRental", "buyPackageFromDetail", "buyPackage"].forEach(guard); }, 1500);
 })();
+
+/* ===== Pull to refresh (like bank apps): drag down at the top of any page, the Levromart mark spins, and the page,
+   the wallet and the counts are fetched again. Works the same on iPhone and Android (the browser's own pull-to-reload is
+   switched off so it never reloads the whole app). ===== */
+(function () {
+  "use strict";
+  if (window.__lvPtr) return; window.__lvPtr = true;
+  var el = document.createElement("div"); el.id = "lvPtr"; el.setAttribute("aria-hidden", "true");
+  el.innerHTML = '<div class="lvptr-ring"><img src="/icon-512.png" alt="" width="40" height="40"></div>';
+  function mount() { if (!document.getElementById("lvPtr") && document.body) document.body.appendChild(el); }
+  if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+  var startY = 0, startX = 0, pull = 0, active = false, busy = false, MAX = 120, GO = 76;
+  function blocked(t) {
+    if (busy) return true;
+    if ((window.scrollY || document.documentElement.scrollTop || 0) > 0) return true;
+    if (document.querySelector(".modal:not(.hidden), .lvw-sheet-wrap, .lv-tx, #aiChatPanel:not(.hidden), .cc-backdrop, .lvpin-wrap, #lvPinSheet")) return true;
+    for (var n = t; n && n !== document.body; n = n.parentElement) {
+      if (n.scrollTop > 0) return true;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(n.tagName)) return true;
+      if (n.classList && (n.classList.contains("leaflet-container") || n.classList.contains("map"))) return true;
+    }
+    return false;
+  }
+  function set(p) { pull = p; var k = Math.min(1, p / GO); el.style.transform = "translate(-50%," + (Math.min(p, MAX) - 64) + "px)"; el.style.opacity = String(Math.min(1, p / 40)); el.querySelector(".lvptr-ring").style.transform = "rotate(" + (k * 300) + "deg) scale(" + (0.7 + k * 0.3) + ")"; el.classList.toggle("ready", p >= GO); }
+  document.addEventListener("touchstart", function (e) { if (e.touches.length !== 1 || blocked(e.target)) { active = false; return; } active = true; startY = e.touches[0].clientY; startX = e.touches[0].clientX; pull = 0; }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!active) return;
+    var dy = e.touches[0].clientY - startY, dx = Math.abs(e.touches[0].clientX - startX);
+    if (dy <= 0 || dx > dy || (window.scrollY || 0) > 0) { if (pull) reset(); active = dy > -4 && dx <= Math.abs(dy); return; }
+    set(dy * 0.5);
+  }, { passive: true });
+  function reset() { el.classList.remove("spin", "ready"); el.style.transition = "transform .25s ease, opacity .25s ease"; set(0); setTimeout(function () { el.style.transition = ""; }, 260); }
+  document.addEventListener("touchend", function () {
+    if (!active) return; active = false;
+    if (pull < GO) return reset();
+    busy = true; el.style.transition = "transform .2s ease"; set(GO); el.classList.add("spin");
+    var done = function () { setTimeout(function () { busy = false; reset(); }, 350); };
+    var jobs = [];
+    try { if (typeof __ordersTabCache !== "undefined") __ordersTabCache.clear(); } catch (_) {}
+    try { if (window.__levroClearReadCache) window.__levroClearReadCache(); } catch (_) {}
+    try { if (window.lvW3Refresh) jobs.push(window.lvW3Refresh()); } catch (_) {}
+    try { if (window.lvWalletReload) jobs.push(window.lvWalletReload()); } catch (_) {}
+    try { if (typeof refreshNotifications === "function") jobs.push(refreshNotifications()); } catch (_) {}
+    try { if (typeof navigate === "function" && typeof currentView !== "undefined") jobs.push(navigate(currentView, Object.assign({}, typeof currentViewParams !== "undefined" ? currentViewParams : {}), false)); } catch (_) {}
+    var t = setTimeout(done, 8000);
+    Promise.all(jobs.map(function (j) { return Promise.resolve(j).catch(function () {}); })).then(function () { clearTimeout(t); setTimeout(done, 300); });
+  }, { passive: true });
+})();
+
+/* ===== Payments carousel (Transfer and Withdraw pages): a few bright banners that slide by themselves ===== */
+(function () {
+  "use strict";
+  var SLIDES = {
+    send: [
+      ["First 3 order payments free", "Pay for orders with your wallet: your first three are on us.", "cash", "#0f9a69,#06402e"],
+      ["Instant, to any @tag", "Money arrives in their wallet the moment you send it.", "tx-paid", "#5b3fe0,#2a1a78"],
+      ["Protected by your PIN", "Nothing leaves your wallet without your 6-digit PIN.", "withdrawal-approved", "#2f6bff,#1a3fa8"],
+      ["Save your favourites", "Tap the heart on a receipt to send again in one tap.", "points", "#f59e0b,#b45309"]
+    ],
+    withdraw: [
+      ["To any Nigerian bank", "Send your money to your own account, any time.", "payout-sent", "#0f9a69,#06402e"],
+      ["Usually in minutes", "Most withdrawals arrive within minutes.", "tx-onway", "#2f6bff,#1a3fa8"],
+      ["Protected by your PIN", "Every withdrawal needs your 6-digit PIN.", "withdrawal-approved", "#5b3fe0,#2a1a78"]
+    ]
+  };
+  window.lvPayCarousel = function (kind) {
+    var list = SLIDES[kind] || SLIDES.send, id = "lvpc" + Math.random().toString(36).slice(2, 7);
+    var ic = function (n) { return window.lv3dIcon && window.LV3D && window.LV3D[n] ? window.lv3dIcon(n, 92) : ""; };
+    setTimeout(function () {
+      var el = document.getElementById(id); if (!el) return;
+      var track = el.querySelector(".lvpc-track"), dots = el.querySelectorAll(".lvpc-dots i"), i = 0;
+      var go = function (n) { i = (n + list.length) % list.length; track.style.transform = "translateX(" + (-100 * i) + "%)"; dots.forEach(function (d, k) { d.classList.toggle("on", k === i); }); };
+      var t = setInterval(function () { if (!document.body.contains(el)) return clearInterval(t); go(i + 1); }, 3800);
+      var sx = 0; el.addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; }, { passive: true });
+      el.addEventListener("touchend", function (e) { var dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); }, { passive: true });
+    }, 50);
+    return '<div class="lvpc" id="' + id + '"><div class="lvpc-track">' + list.map(function (s) {
+      return '<div class="lvpc-slide" style="background:linear-gradient(135deg,' + s[3] + ')"><div class="lvpc-txt"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span></div><div class="lvpc-ic">' + ic(s[2]) + '</div></div>';
+    }).join("") + '</div><div class="lvpc-dots">' + list.map(function (_, k) { return '<i class="' + (k ? "" : "on") + '"></i>'; }).join("") + '</div></div>';
+  };
+})();
+
+/* ===== Wallet analysis (from Transaction history → Analysis): Expenses / Income by month, a daily chart, where the money
+   went, and Levi's read of it. While this page is open Levi's button shows a chart icon. ===== */
+(function () {
+  "use strict";
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  var CAT = { topup: "Money added", transfer_in: "Received", transfer_out: "Transfers", order_payment: "Order payments", refund_in: "Refunds", refund_out: "Refunds to buyers", earnings_in: "Shop earnings", withdrawal: "Withdrawals", withdrawal_return: "Returned" };
+  var COLORS = ["#10a36d", "#7c4dff", "#2f6bff", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899"];
+  function N(k) { return "₦" + (Number(k || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function E(v) { return typeof esc === "function" ? esc(v) : String(v); }
+  window.lvWalletAnalysis = function (all, start) {
+    var now = new Date(), month = { y: (start && start.y) || now.getFullYear(), m: start ? start.m : now.getMonth() }, tab = "out";
+    var old = document.getElementById("lvAnPage"); if (old) old.remove();
+    var pg = document.createElement("div"); pg.id = "lvAnPage"; pg.className = "lv-mvp lv-an";
+    pg.innerHTML = '<div class="lv-mvp-top"><button type="button" class="lv-tx-x" data-back aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><b>Statistical analysis</b><span></span></div>' +
+      '<div class="lv-an-tabs"><button type="button" data-t="out" class="on">Expenses</button><button type="button" data-t="in">Income</button></div><div id="lvAnBody"></div>';
+    document.body.appendChild(pg); document.body.classList.add("lv-analysis-open");
+    var fab = document.getElementById("aiChatFab"), chartIc = null;
+    if (fab) { chartIc = document.createElement("img"); chartIc.className = "lv-fab-chart"; chartIc.src = "/icons3d/lv/chart.webp"; chartIc.alt = ""; fab.appendChild(chartIc); }
+    var close = function () { pg.remove(); document.body.classList.remove("lv-analysis-open"); if (chartIc) chartIc.remove(); };
+    pg.addEventListener("click", function (ev) {
+      if (ev.target.closest("[data-back]")) return close();
+      var t = ev.target.closest("[data-t]"); if (t) { tab = t.dataset.t; pg.querySelectorAll("[data-t]").forEach(function (x) { x.classList.toggle("on", x === t); }); return paint(); }
+      var mv = ev.target.closest("[data-mv]"); if (mv) { var d = Number(mv.dataset.mv); month = { y: month.y + (month.m + d < 0 ? -1 : month.m + d > 11 ? 1 : 0), m: (month.m + d + 12) % 12 }; return paint(); }
+      if (ev.target.closest("[data-ask]")) { close(); try { if (typeof openAiChat === "function") openAiChat(); else document.getElementById("aiChatFab").click(); } catch (_) {} setTimeout(function () { var i = document.getElementById("aiChatInput"); if (i) { i.value = "Analyse my wallet spending for " + MONTHS[month.m] + " " + month.y + " and give me tips to save."; i.focus(); } }, 450); }
+    });
+    function paint() {
+      var rows = all.filter(function (e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m && (tab === "out" ? Number(e.amount_kobo) < 0 : Number(e.amount_kobo) > 0); });
+      var total = rows.reduce(function (a, e) { return a + Math.abs(Number(e.amount_kobo)); }, 0);
+      var days = new Date(month.y, month.m + 1, 0).getDate(), byDay = new Array(days).fill(0);
+      rows.forEach(function (e) { byDay[new Date(e.created_at).getDate() - 1] += Math.abs(Number(e.amount_kobo)); });
+      var max = Math.max.apply(null, byDay.concat([1]));
+      var W = 340, H = 150, bw = W / days;
+      var bars = byDay.map(function (v, i) { var h = Math.round((v / max) * (H - 20)); return '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (H - h) + '" width="' + Math.max(2, bw - 2).toFixed(1) + '" height="' + Math.max(v ? 3 : 0, h) + '" rx="2" fill="' + (tab === "out" ? "#ef6b5b" : "#10a36d") + '"/>'; }).join("");
+      var cats = {}; rows.forEach(function (e) { var c = CAT[e.kind] || "Other"; cats[c] = (cats[c] || 0) + Math.abs(Number(e.amount_kobo)); });
+      var list = Object.keys(cats).map(function (k) { return [k, cats[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+      var acc = 0, R = 52, C = 2 * Math.PI * R;
+      var donut = list.map(function (c, i) { var frac = c[1] / (total || 1), seg = '<circle r="' + R + '" cx="70" cy="70" fill="none" stroke="' + COLORS[i % COLORS.length] + '" stroke-width="22" stroke-dasharray="' + (frac * C).toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-acc * C).toFixed(2) + '" transform="rotate(-90 70 70)"/>'; acc += frac; return seg; }).join("");
+      var busiest = byDay.indexOf(max), prevRows = all.filter(function (e) { var d = new Date(e.created_at), pm = (month.m + 11) % 12, py = month.m ? month.y : month.y - 1; return d.getFullYear() === py && d.getMonth() === pm && (tab === "out" ? Number(e.amount_kobo) < 0 : Number(e.amount_kobo) > 0); });
+      var prevTotal = prevRows.reduce(function (a, e) { return a + Math.abs(Number(e.amount_kobo)); }, 0);
+      var change = prevTotal ? Math.round(((total - prevTotal) / prevTotal) * 100) : null;
+      var tips = [];
+      if (rows.length) {
+        tips.push((tab === "out" ? "You spent " : "You received ") + "<b>" + N(total) + "</b> in " + rows.length + " transaction" + (rows.length === 1 ? "" : "s") + ".");
+        if (list[0]) tips.push("Most of it was <b>" + E(list[0][0]) + "</b> (" + Math.round((list[0][1] / total) * 100) + "%).");
+        if (max > 0) tips.push("Your busiest day was <b>" + (busiest + 1) + " " + MONTHS[month.m].slice(0, 3) + "</b> (" + N(max) + ").");
+        if (change !== null) tips.push("That is <b>" + (change >= 0 ? change + "% more" : Math.abs(change) + "% less") + "</b> than last month.");
+        if (tab === "out") tips.push("Tip: your first 3 order payments with the wallet are free. Paying with the wallet saves card charges.");
+      } else tips.push("No " + (tab === "out" ? "spending" : "income") + " this month yet.");
+      pg.querySelector("#lvAnBody").innerHTML =
+        '<div class="lv-an-month"><button type="button" data-mv="-1" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button><b>' + MONTHS[month.m].slice(0, 3) + "." + month.y + '</b><button type="button" data-mv="1" aria-label="Next month"' + (month.y === now.getFullYear() && month.m === now.getMonth() ? " disabled" : "") + '><i class="fa-solid fa-chevron-right"></i></button></div>' +
+        '<div class="lv-an-total"><small>Total ' + rows.length + ' ' + (tab === "out" ? "expenses" : "income") + '</small><b>' + N(total) + '</b></div>' +
+        '<div class="lv-an-card"><div class="lv-an-h">Daily ' + (tab === "out" ? "expenses" : "income") + '</div><svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" class="lv-an-bars"><line x1="0" y1="' + H + '" x2="' + W + '" y2="' + H + '" stroke="rgba(127,127,127,.3)"/>' + bars + '<text x="0" y="' + (H + 15) + '" font-size="10" fill="#8a85a8">1</text><text x="' + (W / 2 - 6) + '" y="' + (H + 15) + '" font-size="10" fill="#8a85a8">' + Math.ceil(days / 2) + '</text><text x="' + (W - 14) + '" y="' + (H + 15) + '" font-size="10" fill="#8a85a8">' + days + '</text></svg></div>' +
+        '<div class="lv-an-card"><div class="lv-an-h">Where it ' + (tab === "out" ? "went" : "came from") + '</div>' + (list.length ? '<div class="lv-an-donut"><svg viewBox="0 0 140 140" width="140" height="140">' + donut + '</svg><ul>' + list.map(function (c, i) { return '<li><i style="background:' + COLORS[i % COLORS.length] + '"></i><span>' + E(c[0]) + '</span><b>' + N(c[1]) + '</b></li>'; }).join("") + '</ul></div>' : '<p class="muted">Nothing to show.</p>') + '</div>' +
+        '<div class="lv-an-card lv-an-levi"><div class="lv-an-levi-h">' + (window.lv3dIcon ? window.lv3dIcon("chart", 52) : "") + '<div><b>Levi\'s analysis</b><small>Your money this month, in plain words</small></div></div><ul>' + tips.map(function (t) { return "<li>" + t + "</li>"; }).join("") + '</ul><button type="button" class="btn lw-go" data-ask>Ask Levi about my money</button></div>';
+    }
+    paint();
+  };
+})();
+// on the analysis page, Levi's (chart) button closes the page and asks Levi about this month
+document.addEventListener("click", function (e) {
+  if (!document.body.classList.contains("lv-analysis-open") || !e.target.closest || !e.target.closest("#aiChatFab")) return;
+  var ask = document.querySelector("#lvAnPage [data-ask]"); if (!ask) return;
+  e.preventDefault(); e.stopPropagation(); ask.click();
+}, true);

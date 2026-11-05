@@ -177,7 +177,7 @@ export class WalletService {
         if (!theirs) throw notFound("That wallet is not available.");
         if (mine.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
         if (theirs.frozen) throw badRequest("That wallet cannot receive money right now.");
-        if (Number(mine.balance_kobo) < amount + fee) throw badRequest(`You do not have enough in your wallet. You need ${naira(amount + fee)}. Your balance is ${naira(mine.balance_kobo)}.`);
+        if (Number(mine.balance_kobo) < amount + fee) throw badRequest("This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
         if ((await repo.sentTodayKobo(user.userId)) + amount > WALLET.maxSentPerDay) throw badRequest(`You can send up to ${naira(WALLET.maxSentPerDay)} in 24 hours.`);
         const transferId = await repo.insertTransfer(user.userId, to.user_id, amount, note, key);
         if (!transferId) throw conflict("This transfer was already sent.");
@@ -280,7 +280,7 @@ export class WalletService {
         if (!w) throw notFound("Wallet not found.");
         if (w.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
         const fee = (await repo.orderPaymentCount(user.userId)) < FREE_WALLET_ORDER_PAYMENTS ? 0 : walletFeeKobo(amount);
-        if (Number(w.balance_kobo) < amount + fee) throw badRequest(`Your wallet has ${naira(w.balance_kobo)}. You need ${naira(amount + fee)} for this order.`);
+        if (Number(w.balance_kobo) < amount + fee) throw badRequest("Your wallet balance does not cover this order and its transfer charges. Please add money or pay another way.");
         const reference = `lvm_ord_${orderId.replace(/-/g, "").slice(0, 8)}_w${crypto.randomBytes(8).toString("hex")}`;
         const after = await repo.move(user.userId, -amount, "order_payment", { reference, orderId, note: o.vendor_name ? `Paid ${o.vendor_name}` : "Order payment" });
         if (after == null) throw badRequest("You do not have enough in your wallet.");
@@ -325,7 +325,7 @@ export class WalletService {
         const amount = amountKobo == null ? withdrawableKobo(balance) : Number(amountKobo);
         if (!Number.isInteger(amount) || amount < WALLET.minWithdrawal) throw badRequest(`The smallest withdrawal is ${naira(WALLET.minWithdrawal)}.`);
         const fee = walletFeeKobo(amount);
-        if (amount + fee > balance) throw badRequest("This amount exceeds what can be transferred after Paystack's transfer charges. Please enter a lower amount.");
+        if (amount + fee > balance) throw badRequest("This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
         if ((await repo.withdrawalsToday(user.userId)) >= WALLET.withdrawalsPerDay) throw badRequest(`You can withdraw ${WALLET.withdrawalsPerDay} times in 24 hours. Please try again tomorrow.`);
         const reference = WALLET_TRANSFER_PREFIX + crypto.randomBytes(12).toString("hex");
         const id = await repo.insertWithdrawal({ userId: user.userId, amountKobo: amount, feeKobo: fee, status: "processing", reviewReason: null, reference, account });
