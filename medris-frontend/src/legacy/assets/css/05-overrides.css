@@ -7414,3 +7414,9 @@ html:root:root:root:root body .lv-th-tile.active{border-color:#16a06a!important;
 :root[data-theme="dark"] .ltx-h,:root[data-theme="dark"] .ltx-party em,:root[data-theme="dark"] .ltx-link{color:#86efac}
 :root[data-theme="dark"] .ltx-amt.in{color:#4ade80}:root[data-theme="dark"] .ltx-amt.out{color:#f87171}
 :root[data-theme="dark"] .ltx-grab{background:#33403a}
+.ltx-av{width:46px;height:46px;font-size:.88rem;letter-spacing:.02em;box-shadow:0 0 0 3px #fff,0 4px 10px rgba(16,24,40,.12);text-shadow:0 1px 1px rgba(0,0,0,.15)}
+.ltx-av-img{overflow:hidden;padding:0;background:#eef3f0}
+.ltx-av-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ltx-av-bank{background:#eef3f0!important;color:#41514a;font-size:1.05rem;text-shadow:none}
+:root[data-theme="dark"] .ltx-av{box-shadow:0 0 0 3px #151c19,0 4px 10px rgba(0,0,0,.4)}
+:root[data-theme="dark"] .ltx-av-bank,:root[data-theme="dark"] .ltx-av-img{background:#1f2925!important;color:#cfe3d8}
