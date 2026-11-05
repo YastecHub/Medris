@@ -4229,11 +4229,13 @@ window.lvAskCancel = async function (orderId) {
   async function legacyMove(s) {
     var now = Number(s.to_wallet_now_kobo || 0), later = Number(s.to_wallet_approval_kobo || 0);
     if (!now && !later) return nothingToMove();
+    var why = "";
+    if (later) { why = await showTextPromptDialog("Why do you need it now?", "Part of this money is less than 24 hours old, so Levromart checks it first. Tell us why you need it now. An admin reads this before deciding.", { okLabel: "Continue", required: true }); if (!why) return; }
     var ok = await showConfirmDialog((now ? short(now) + " moves into your wallet now." : "") + (later ? (now ? " " : "") + short(later) + " is released 24 hours after it was paid. Your money stays safe in the meantime." : ""), { title: "Move earnings to your wallet", okLabel: "Move", cancelLabel: "Go back" });
     if (!ok) return;
     var pin = await window.lvPinGate({ title: "Move earnings to your wallet", rows: [["Moves now", short(now), 1]].concat(later ? [["Checked by Levromart first", short(later)]] : []), cta: "Move" });
     if (!pin) return;
-    var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin });
+    var r = await sb.rpc("request_withdrawal", { p_destination: "wallet", p_pin: pin, p_reason: why || null });
     if (r.error) return showToast(r.error.message || "We could not move your earnings just now. Your money is safe; please try again in a little while.", "error");
     showToast(Number(r.data.sent_kobo) > 0 ? short(r.data.sent_kobo) + " is now in your wallet." : "Request sent. Your money is safe; we will message you when it is approved.", "success");
     await load(true); repaint(); try { if (window.lvWalletReload) window.lvWalletReload(); } catch (_) {}
@@ -5861,8 +5863,8 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
   "use strict";
   // a text ending in a space is put in the box for the person to finish; "!" runs an action instead of asking
   var VENDOR = [["How is my shop doing?", "How is my shop doing?"], ["My reviews", "What are customers saying about my shop?"], ["What are buyers searching for?", "What are buyers searching for on Levromart?"], ["Set up delivery", "!delivery"], ["Add a listing", "Add a listing"], ["Add to my cart", "Add to my cart"], ["How do I get paid?", "How do I get paid for my orders?"]];
-  var SHOPPER = [["Best-rated shops for…", "Which shops have the best reviews for "], ["Closest vendor", "Which vendor is closest to me?"], ["Delivery to my campus", "How much is delivery to my campus for "], ["Where is my order?", "Where is my latest order?"], ["What's selling?", "What's selling on Levromart?"], ["How do refunds work?", "How do refunds work on Levromart?"]];
-  var HINTS = { v: ["Ask Levi anything…", "How is my shop doing this week?", "What are customers saying about my shop?", "What should I list next?"], s: ["Ask Levi anything…", "Best-rated shops for sneakers?", "Who delivers free to my campus?", "Closest shop selling phone cases?", "Where is my order?"] };
+  var SHOPPER = [["Add to my cart", "Add to my cart"], ["Best-rated shops for…", "Which shops have the best reviews for "], ["Closest vendor", "Which vendor is closest to me?"], ["Delivery to my campus", "How much is delivery to my campus for "], ["Where is my order?", "Where is my latest order?"], ["What's selling?", "What's selling on Levromart?"], ["How do refunds work?", "How do refunds work on Levromart?"]];
+  var HINTS = { v: ["Ask Levi anything…", "Add something to my cart…", "Add a product or add to cart…", "How is my shop doing this week?", "What are customers saying about my shop?", "What should I list next?"], s: ["Ask Levi anything…", "Add something to my cart…", "Add a product to cart…", "Best-rated shops for sneakers?", "Who delivers free to my campus?", "Closest shop selling phone cases?", "Where is my order?"] };
   var hintI = 0;
   setInterval(function () {
     var input = document.getElementById("aiChatInput"), panel = document.getElementById("aiChatPanel");
