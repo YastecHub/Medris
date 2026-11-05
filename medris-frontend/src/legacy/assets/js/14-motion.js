@@ -4382,7 +4382,7 @@ window.lvAskCancel = async function (orderId) {
     else if (e.kind === "withdrawal") { ic = "fa-building-columns"; cls = e.withdrawal_status === "success" ? "out" : e.withdrawal_status === "failed" || e.withdrawal_status === "reversed" ? "fail" : "wait"; title = "Withdrawal"; sub += " · " + (e.bank_name || "Bank") + " ···" + (e.account_last4 || "") + " · " + ({ success: "Sent", processing: "On its way", failed: "Not sent", reversed: "Returned" }[e.withdrawal_status] || ""); }
     else { ic = "fa-arrow-rotate-left"; cls = "back"; title = "Withdrawal returned"; }
     var three = { commission: "chart", commission_reversed: "order-cancelled", transaction_fee: "bars", transaction_fee_return: "moved-up", listing_fee: "monthly-listing", withdrawal: cls === "fail" ? "withdrawal-rejected" : cls === "wait" ? "tx-pending" : "payout-sent", withdrawal_return: "withdrawal-rejected" }[e.kind] || "tx-all";
-    return '<div class="lwa-row"><span class="lwa-ic lwa-ic3d ' + cls + '">' + (window.lv3dIcon ? window.lv3dIcon(three, 30) : '<i class="fa-solid ' + ic + '"></i>') + '</span><div class="lwa-mid"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></div><span class="lwa-amt ' + cls + '">' + (plus ? "+" : "−") + naira(Math.abs(k)) + "</span></div>";
+    return '<div class="lwa-row" role="button" tabindex="0" data-eid="' + esc(e.id) + '" data-e3d="' + three + '" aria-label="' + esc(title) + ', details"><span class="lwa-ic lwa-ic3d ' + cls + '">' + (window.lv3dIcon ? window.lv3dIcon(three, 30) : '<i class="fa-solid ' + ic + '"></i>') + '</span><div class="lwa-mid"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></div><span class="lwa-amt ' + cls + '">' + (plus ? "+" : "−") + naira(Math.abs(k)) + "</span></div>";
   }
   var lwAll = false, lwTab = "all";
   var LW_KINDS = { commission: ["commission", "commission_reversed"], listing: ["listing_fee"], fees: ["transaction_fee", "transaction_fee_return"], withdrawals: ["withdrawal", "withdrawal_return"] };
@@ -6633,4 +6633,97 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     pkc1.__lvdr = true; window.packageCardHtml = pkc1;
     try { packageCardHtml = pkc1; } catch (_) {}
   }
+})();
+
+
+/* ===== Admin: tap a line of Levromart's transaction history and a sheet slides up with everything behind it: who paid,
+   from whom to whom, the order, the shop, the bank, the references. ===== */
+(function () {
+  "use strict";
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s); }
+  function K(k) { return typeof naira === "function" ? naira(k) : "₦" + (Number(k || 0) / 100).toLocaleString(); }   // amounts are in kobo here
+  function NA(n) { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }                  // orders are in naira
+  function when(t) { try { return new Date(t).toLocaleString("en-NG", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (_) { return String(t || ""); } }
+  function who(name, handle) { return (name ? E(name) : "Someone") + (handle ? ' <span class="ltx-h">@' + E(handle) + "</span>" : ""); }
+  function row(label, value) { return value == null || value === "" ? "" : '<div class="ltx-row"><span>' + E(label) + "</span><b>" + value + "</b></div>"; }
+  function initials(n) { return String(n || "?").trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0] || ""; }).join("").toUpperCase() || "?"; }
+  function party(label, name, handle, sub) {
+    return '<div class="ltx-party"><span class="ltx-av">' + E(initials(name)) + '</span><small>' + E(label) + "</small><b>" + E(name || "Someone") + "</b>" + (handle ? '<em>@' + E(handle) + "</em>" : "") + (sub ? "<em>" + E(sub) + "</em>" : "") + "</div>";
+  }
+  function flow(a, b, amount) { return '<div class="ltx-flow">' + a + '<div class="ltx-arrow"><span>' + amount + '</span><i class="fa-solid fa-arrow-right-long"></i></div>' + b + "</div>"; }
+  function status(s) {
+    var map = { success: ["Sent", "ok"], processing: ["On its way", "wait"], requested: ["Waiting for approval", "wait"], failed: ["Failed", "bad"], reversed: ["Returned", "bad"], rejected: ["Rejected", "bad"], completed: ["Completed", "ok"], cancelled: ["Cancelled", "bad"] };
+    var m = map[s] || [String(s || "").replace(/_/g, " "), "wait"];
+    return s ? '<span class="ltx-chip ltx-' + m[1] + '">' + E(m[0]) + "</span>" : "";
+  }
+  function body(d) {
+    var k = Number(d.amount_kobo), plus = k > 0, ref = d.reference || "", out = "", title = d.note || "Transaction";
+    var kind = d.kind;
+    if (kind === "commission" || kind === "commission_reversed") {
+      title = kind === "commission" ? "Commission (3%)" : "Commission taken back";
+      out += flow(party("Buyer", d.buyer_name, d.buyer_handle), party("Shop", d.shop_name, d.shop_handle), d.order_total ? NA(d.order_total) : "Order");
+      out += '<div class="ltx-card">' + row("Order", d.order_id ? '<a href="#" class="ltx-link" data-order="' + E(d.order_id) + '">#' + E(String(d.order_id).slice(0, 8).toUpperCase()) + "</a>" : "")
+        + row("Order total", d.order_total != null ? NA(d.order_total) : "") + row("Delivery fee", d.order_delivery_fee != null && Number(d.order_delivery_fee) > 0 ? NA(d.order_delivery_fee) : "")
+        + row("Levromart's 3%", (plus ? "+" : "−") + K(Math.abs(k))) + row("Order status", status(d.order_status)) + row("Buyer email", d.buyer_email ? E(d.buyer_email) : "") + "</div>";
+    } else if (kind === "transaction_fee" || kind === "transaction_fee_return") {
+      if (d.transfer_id) {
+        title = "Transfer fee";
+        out += flow(party("From", d.from_name, d.from_handle), party("To", d.to_name, d.to_handle), K(d.transfer_amount_kobo));
+        out += '<div class="ltx-card">' + row("Amount sent", K(d.transfer_amount_kobo)) + row("Note", d.transfer_note ? "“" + E(d.transfer_note) + "”" : "") + row("Fee paid by", who(d.from_name, d.from_handle)) + row("Levromart's fee", (plus ? "+" : "−") + K(Math.abs(k))) + "</div>";
+      } else if (d.user_withdrawal_id) {
+        title = kind === "transaction_fee" ? "Withdrawal fee" : "Withdrawal fee given back";
+        out += flow(party("Wallet of", d.user_withdrawal_name, d.user_withdrawal_handle), party("Bank", d.user_withdrawal_bank || "Bank", null, d.user_withdrawal_last4 ? "···" + d.user_withdrawal_last4 : ""), K(d.user_withdrawal_amount_kobo));
+        out += '<div class="ltx-card">' + row("Withdrawn", K(d.user_withdrawal_amount_kobo)) + row("Account name", d.user_withdrawal_account_name ? E(d.user_withdrawal_account_name) : "") + row("Status", status(d.user_withdrawal_status)) + row("Levromart's fee", (plus ? "+" : "−") + K(Math.abs(k))) + "</div>";
+      } else if (d.order_id) {
+        title = "Wallet payment fee";
+        out += flow(party("Buyer paid", d.buyer_name, d.buyer_handle), party("Shop", d.shop_name, d.shop_handle), d.order_total ? NA(d.order_total) : "Order");
+        out += '<div class="ltx-card">' + row("Paid with", "Levromart wallet") + row("Order", '<a href="#" class="ltx-link" data-order="' + E(d.order_id) + '">#' + E(String(d.order_id).slice(0, 8).toUpperCase()) + "</a>") + row("Order total", d.order_total != null ? NA(d.order_total) : "") + row("Fee paid by", who(d.buyer_name, d.buyer_handle)) + row("Levromart's fee", (plus ? "+" : "−") + K(Math.abs(k))) + "</div>";
+      } else out += '<div class="ltx-card">' + row("What", E(d.note || "Transaction fee")) + row("Amount", K(Math.abs(k))) + "</div>";
+    } else if (kind === "listing_fee") {
+      title = "Monthly listing fee";
+      out += '<div class="ltx-card">' + row("Shop", who(d.shop_name, d.shop_handle)) + row("What", E(d.note || "Monthly listing fee")) + row("Levromart got", "+" + K(k) + ' <small class="ltx-mute">after Paystack\'s fee</small>') + "</div>";
+    } else if (kind === "withdrawal" || kind === "withdrawal_return") {
+      title = kind === "withdrawal" ? "Levromart withdrawal" : "Withdrawal returned";
+      out += flow(party("From", "Levromart wallet"), party("To", d.bank_name || "Bank", null, d.account_last4 ? "···" + d.account_last4 : ""), K(d.withdrawal_amount_kobo || Math.abs(k)));
+      out += '<div class="ltx-card">' + row("Account name", d.account_name ? E(d.account_name) : "") + row("Status", status(d.withdrawal_status)) + row("Asked by", d.requested_by_name ? E(d.requested_by_name) : "") + row("Problem", d.last_error ? E(d.last_error) : "") + row("Bank reference", d.transfer_reference ? '<code>' + E(d.transfer_reference) + "</code>" : "") + "</div>";
+    }
+    out += '<div class="ltx-card ltx-refs">' + row("Date", E(when(d.created_at))) + (ref ? row("Reference", '<button type="button" class="ltx-copy" data-copy="' + E(ref) + '"><code>' + E(ref) + '</code> <i class="fa-regular fa-copy"></i></button>') : "") + row("Transaction ID", '<button type="button" class="ltx-copy" data-copy="' + E(d.id) + '"><code>' + E(String(d.id).slice(0, 8)) + '…</code> <i class="fa-regular fa-copy"></i></button>') + "</div>";
+    return { title: title, html: out, plus: plus, k: k };
+  }
+  function open(id, icon) {
+    var old = document.getElementById("ltxSheet"); if (old) old.remove();
+    var m = document.createElement("div"); m.id = "ltxSheet"; m.className = "ltx-wrap";
+    m.innerHTML = '<div class="ltx-sheet" role="dialog" aria-modal="true" aria-label="Transaction details"><div class="ltx-grab" aria-hidden="true"></div><button type="button" class="ltx-x" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button><div class="ltx-in"><div class="ltx-load"><i class="fa-solid fa-spinner fa-spin"></i> Loading details…</div></div></div>';
+    document.body.appendChild(m);
+    requestAnimationFrame(function () { m.classList.add("on"); });
+    var close = function () { m.classList.remove("on"); setTimeout(function () { m.remove(); }, 260); };
+    m.addEventListener("click", function (ev) {
+      if (ev.target === m || ev.target.closest("[data-x]")) return close();
+      var c = ev.target.closest("[data-copy]");
+      if (c) { try { navigator.clipboard.writeText(c.getAttribute("data-copy")); if (typeof showToast === "function") showToast("Copied.", "success"); } catch (_) {} return; }
+      var o = ev.target.closest("[data-order]");
+      if (o) { ev.preventDefault(); close(); try { navigate("orderDetail", { orderId: o.getAttribute("data-order") }); } catch (_) {} }
+    });
+    // drag the sheet down to close it
+    var sh = m.querySelector(".ltx-sheet"), y0 = null, dy = 0;
+    sh.addEventListener("touchstart", function (e) { if (sh.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+    sh.addEventListener("touchmove", function (e) { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); sh.style.transform = "translateY(" + dy + "px)"; }, { passive: true });
+    sh.addEventListener("touchend", function () { if (y0 == null) return; y0 = null; sh.style.transform = ""; if (dy > 90) close(); });
+    Promise.resolve(sb.rpc("get_levromart_wallet_entry", { p_id: id })).then(function (r) {
+      var box = m.querySelector(".ltx-in"); if (!box) return;
+      if (!r || r.error || !r.data) { box.innerHTML = '<p class="ltx-load">Couldn\'t load the details. ' + E(r && r.error && r.error.message || "") + "</p>"; return; }
+      var b = body(r.data);
+      box.innerHTML = '<div class="ltx-head"><span class="ltx-ico">' + (window.lv3dIcon ? window.lv3dIcon(icon || "tx-all", 56) : "") + '</span><small>' + E(b.title) + '</small><b class="ltx-amt ' + (b.plus ? "in" : "out") + '">' + (b.plus ? "+" : "−") + K(Math.abs(b.k)) + '</b><span class="ltx-when">' + E(when(r.data.created_at)) + "</span></div>" + b.html;
+    }, function () { var box = m.querySelector(".ltx-in"); if (box) box.innerHTML = '<p class="ltx-load">Couldn\'t load the details. Check your connection.</p>'; });
+  }
+  window.lvAdminTxOpen = open;
+  document.addEventListener("click", function (ev) {
+    var r = ev.target.closest && ev.target.closest(".lwa-row[data-eid]"); if (!r) return;
+    open(r.getAttribute("data-eid"), r.getAttribute("data-e3d"));
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    var r = ev.target.closest && ev.target.closest(".lwa-row[data-eid]"); if (!r) return;
+    ev.preventDefault(); open(r.getAttribute("data-eid"), r.getAttribute("data-e3d"));
+  });
 })();

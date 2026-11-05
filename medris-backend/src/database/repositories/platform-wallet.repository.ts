@@ -89,6 +89,44 @@ export class PlatformWalletRepository {
     );
   }
 
+  /**
+   * One line of Levromart's wallet with everything behind it, for the admin's detail sheet: the order (buyer, shop,
+   * total), the transfer (from whom to whom), the person's withdrawal, or Levromart's own withdrawal (bank, who asked).
+   */
+  entry(id: string) {
+    return jsonRow<Record<string, unknown>>(
+      this.db,
+      sql`select e.id, e.kind, e.amount_kobo::text as amount_kobo, e.note, e.reference, e.created_at, e.order_id,
+                 v.id as vendor_id, v.business_name as shop_name, sw.handle as shop_handle,
+                 o.total_amount::text as order_total, o.delivery_fee::text as order_delivery_fee, o.status::text as order_status, o.created_at as order_created_at,
+                 ob.name as buyer_name, ob.email as buyer_email, bw.handle as buyer_handle,
+                 t.id as transfer_id, t.amount_kobo::text as transfer_amount_kobo, t.note as transfer_note, t.created_at as transfer_created_at,
+                 fu.name as from_name, fw.handle as from_handle, tu.name as to_name, tw.handle as to_handle,
+                 ww.id as user_withdrawal_id, ww.amount_kobo::text as user_withdrawal_amount_kobo, ww.status as user_withdrawal_status,
+                 ww.bank_name as user_withdrawal_bank, ww.account_name as user_withdrawal_account_name, ww.account_last4 as user_withdrawal_last4,
+                 wu.name as user_withdrawal_name, wwa.handle as user_withdrawal_handle,
+                 w.id as withdrawal_id, w.amount_kobo::text as withdrawal_amount_kobo, w.status as withdrawal_status, w.bank_name, w.account_name,
+                 w.account_last4, w.transfer_reference, w.last_error, ru.name as requested_by_name
+            from public.platform_wallet_entries e
+            left join public.vendors v on v.id = e.vendor_id
+            left join public.wallet_accounts sw on sw.user_id = v.user_id
+            left join public.orders o on o.id = e.order_id
+            left join public.users ob on ob.id = o.buyer_id
+            left join public.wallet_accounts bw on bw.user_id = o.buyer_id
+            left join public.wallet_transfers t on e.reference like 'fee:transfer:%' and t.id::text = split_part(e.reference, ':', 3)
+            left join public.users fu on fu.id = t.from_user
+            left join public.wallet_accounts fw on fw.user_id = t.from_user
+            left join public.users tu on tu.id = t.to_user
+            left join public.wallet_accounts tw on tw.user_id = t.to_user
+            left join public.wallet_withdrawals ww on (e.reference like 'fee:withdrawal:%' or e.reference like 'fee_return:withdrawal:%') and ww.id::text = split_part(e.reference, ':', 3)
+            left join public.users wu on wu.id = ww.user_id
+            left join public.wallet_accounts wwa on wwa.user_id = ww.user_id
+            left join public.platform_withdrawals w on w.id = e.withdrawal_id
+            left join public.users ru on ru.id = w.requested_by
+           where e.id = ${id}::uuid`,
+    );
+  }
+
   account(): Promise<PlatformAccount | null> {
     return jsonRow<PlatformAccount>(
       this.db,

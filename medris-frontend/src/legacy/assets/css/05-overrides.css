@@ -7366,3 +7366,51 @@ html:root:root:root:root body .lv-th-tile.active{border-color:#16a06a!important;
 .lde-page *,.lde *,.lde-intro *{box-sizing:border-box}
 .lde-scroll{box-sizing:border-box}
 :root[data-theme="dark"] .lde-money input{color:#e7efe9}
+
+/* ===== Admin: transaction details sheet (tap a line of Levromart's history) ===== */
+.lwa-row[data-eid]{cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:14px;transition:background .15s}
+.lwa-row[data-eid]:active{background:rgba(15,157,88,.07)}
+.ltx-wrap{position:fixed;inset:0;z-index:10060;background:rgba(10,20,15,0);display:flex;align-items:flex-end;justify-content:center;transition:background .25s}
+.ltx-wrap.on{background:rgba(10,20,15,.5)}
+.ltx-sheet{position:relative;width:100%;max-width:560px;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch;background:#f6f8f7;color:#10231a;border-radius:26px 26px 0 0;padding:.5rem 1rem calc(1.2rem + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);box-sizing:border-box}
+.ltx-wrap.on .ltx-sheet{transform:none}
+.ltx-sheet *{box-sizing:border-box}
+.ltx-grab{width:42px;height:5px;border-radius:999px;background:#cfd8d4;margin:.2rem auto .6rem}
+.ltx-x{position:absolute;top:.7rem;right:.8rem;width:36px;height:36px;border-radius:50%;border:0;background:#e9efec;color:#10231a;cursor:pointer}
+.ltx-load{text-align:center;color:#66766e;padding:2rem 0}
+.ltx-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.15rem;padding:.4rem 0 1rem}
+.ltx-ico img{width:56px;height:56px}
+.ltx-head small{font-size:.85rem;font-weight:700;color:#41514a;margin-top:.3rem}
+.ltx-amt{font-size:2rem;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+.ltx-amt.in{color:#15803d}.ltx-amt.out{color:#b91c1c}
+.ltx-when{font-size:.78rem;color:#66766e}
+.ltx-flow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.4rem;background:#fff;border:1px solid #e6ece9;border-radius:20px;padding:.9rem .7rem;margin-bottom:.7rem}
+.ltx-party{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;gap:.1rem}
+.ltx-party small{font-size:.68rem;font-weight:800;color:#7a8a82;text-transform:uppercase;letter-spacing:.05em}
+.ltx-party b{font-size:.86rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ltx-party em{font-style:normal;font-size:.74rem;color:#0b6b3d;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ltx-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#34d399,#0b6b3d);color:#fff;font-weight:800;font-size:.85rem;margin-bottom:.15rem}
+.ltx-arrow{display:flex;flex-direction:column;align-items:center;gap:.1rem;color:#0f9d58;font-size:1.2rem}
+.ltx-arrow span{font-size:.72rem;font-weight:800;color:#10231a;background:#effaf4;border-radius:999px;padding:.15rem .5rem;white-space:nowrap}
+.ltx-card{background:#fff;border:1px solid #e6ece9;border-radius:20px;padding:.3rem .9rem;margin-bottom:.7rem}
+.ltx-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.65rem 0;border-bottom:1px solid #eef2f0;font-size:.86rem}
+.ltx-row:last-child{border-bottom:0}
+.ltx-row > span{color:#66766e;flex:0 0 auto}
+.ltx-row > b{text-align:right;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.ltx-h{color:#0b6b3d;font-weight:600}
+.ltx-mute{color:#7a8a82;font-weight:500}
+.ltx-link{color:#0b6b3d;text-decoration:underline}
+.ltx-copy{border:0;background:#f1f5f3;border-radius:10px;padding:.25rem .5rem;color:#10231a;cursor:pointer;font:inherit;font-size:.78rem;display:inline-flex;align-items:center;gap:.35rem;max-width:100%}
+.ltx-copy code{font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
+.ltx-chip{display:inline-block;font-size:.72rem;font-weight:800;border-radius:999px;padding:.2rem .6rem}
+.ltx-ok{background:#dcfce7;color:#15803d}.ltx-wait{background:#fef3c7;color:#b45309}.ltx-bad{background:#fee2e2;color:#b91c1c}
+:root[data-theme="dark"] .ltx-sheet{background:#0e1412;color:#e7efe9}
+:root[data-theme="dark"] .ltx-flow,:root[data-theme="dark"] .ltx-card{background:#151c19;border-color:#25302b}
+:root[data-theme="dark"] .ltx-row{border-color:#202a26}
+:root[data-theme="dark"] .ltx-row > span,:root[data-theme="dark"] .ltx-when,:root[data-theme="dark"] .ltx-party small,:root[data-theme="dark"] .ltx-load{color:#9fb0a7}
+:root[data-theme="dark"] .ltx-head small{color:#cfe3d8}
+:root[data-theme="dark"] .ltx-x,:root[data-theme="dark"] .ltx-copy{background:#1f2925;color:#e7efe9}
+:root[data-theme="dark"] .ltx-arrow span{background:#0f2e20;color:#bbf7d0}
+:root[data-theme="dark"] .ltx-h,:root[data-theme="dark"] .ltx-party em,:root[data-theme="dark"] .ltx-link{color:#86efac}
+:root[data-theme="dark"] .ltx-amt.in{color:#4ade80}:root[data-theme="dark"] .ltx-amt.out{color:#f87171}
+:root[data-theme="dark"] .ltx-grab{background:#33403a}
