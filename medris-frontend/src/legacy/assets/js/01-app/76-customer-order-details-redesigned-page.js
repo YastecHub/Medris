@@ -158,7 +158,7 @@ function customerOrderTopHtml(order, ctx) {
     const mapHref = hasPin ? `https://www.google.com/maps/search/?api=1&query=${order.buyer_lat},${order.buyer_lng}` : (order.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}` : "");
     const hasEta = v.lat != null && v.lng != null;
     h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Information</h3>${hasEta && v.id ? `<a class="od-link" href="#" onclick="openVendorDistanceMap('${esc(v.id)}');return false;"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
-      <div class="od-delivery"><div><span class="od-muted">Delivery to</span><strong>${esc(order.delivery_address || "Address not provided")}</strong></div>
+      <div class="od-delivery"><div><span class="od-muted">Delivery to</span><strong>${esc(order.delivery_address || "Address not provided")}</strong></div>${order.delivery_campus_id ? `<div><span class="od-muted">Campus</span><strong>${esc(window.lvDrCampusName ? window.lvDrCampusName(order.delivery_campus_id) : order.delivery_campus_id)}</strong></div>` : ""}
       ${hasEta ? `<div class="od-eta"><span class="od-muted">Estimated delivery</span><strong id="orderEtaLine"></strong></div>` : ""}</div></section>`;
   } else {
     const addr = [v.address, v.city].filter(Boolean).map(esc).join(", ");

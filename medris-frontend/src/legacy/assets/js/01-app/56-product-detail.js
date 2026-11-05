@@ -119,7 +119,7 @@ window.renderProductDetail = async function(productId, opts){
 
 async function __levroOriginalRenderProductDetail(productId, opts) {
   const dry = !!(opts && opts.dry);
-  const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
+  const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, campus_id, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const __base = window.__lvPdBase; window.__lvPdBase = null;
@@ -179,6 +179,7 @@ async function __levroOriginalRenderProductDetail(productId, opts) {
 
   const productGalleryVariantMetaHtml = productVariants.length ? `<div class="product-gallery-variant-meta" id="productGalleryVariantMeta"><span class="product-gallery-variant-label">Selected variety:</span><strong id="productGalleryVariantName">${esc(productVariants[0].name || "Selected variety")}</strong><strong id="productGalleryVariantPrice">Price: ${naira(Number(effectivePrice(productVariants[0]) ?? productVariants[0].rental_rate ?? 0))}</strong></div>` : "";
 
+  if (!product.is_service && window.lvDrRegister) { window.lvDrRegister("buy", [product], product.vendor); window.lvDrRegister("rent", [product], product.vendor); }
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
@@ -584,6 +585,7 @@ async function confirmRental(vendorId, productId) {
     p_delivery_method: delivery.method,
     p_delivery_address: delivery.address,
     p_delivery_phone: delivery.phone,
+    ...(delivery.campusId ? { p_delivery_campus_id: delivery.campusId } : {}),
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_buyer_lng: buyerLocation?.lng ?? null,
   });
@@ -713,6 +715,7 @@ async function buyNow(vendorId, productId) {
     p_delivery_method: delivery.method,
     p_delivery_address: delivery.address,
     p_delivery_phone: delivery.phone,
+    ...(delivery.campusId ? { p_delivery_campus_id: delivery.campusId } : {}),
     p_buyer_note: byId("buyNote")?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_variant_id: selectedVariant?.id || null,
@@ -733,7 +736,7 @@ window.lvPdPrefetch = function (id) {
   const run = (b) => Promise.resolve(b.then((r) => r)).catch((e) => ({ data: null, error: e }));
   const first = run(sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id', id).maybeSingle());
   const base = Promise.all([
-    run(sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", id).maybeSingle()),
+    run(sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, campus_id, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", id).maybeSingle()),
     run(sb.from("product_variants").select("*").eq("product_id", id).order("sort_order", { ascending: true }).order("created_at", { ascending: true })),
     run(sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id", id).maybeSingle()),
   ]);

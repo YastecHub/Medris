@@ -71,6 +71,7 @@ async function renderCart() {
     const feeLines = vItems.map((it) => ({ name: it.product.name, mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Math.min(1000, Number(it.product.delivery_fee_per_km) || 0) }));
     const cartFlatFee = feeLines.reduce((n, l) => n + (l.mode === "flat" ? l.fee : 0), 0);
     const cartDistanceLine = feeLines.find((l) => l.mode === "distance" && l.perKm > 0);
+    if (window.lvDrRegister) window.lvDrRegister(`cart-${v.id}`, vItems.map((it) => it.product), v);
     const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, cartFlatFee, v.lat, v.lng, cartDistanceLine ? "distance" : "flat", cartDistanceLine ? cartDistanceLine.perKm : 0, "", subtotal)
       .replace(`id="cart-${v.id}DeliveryFields"`, `id="cart-${v.id}DeliveryFields" data-fee-lines="${JSON.stringify(feeLines).replace(/"/g, "&quot;")}"`);
     // The live item / delivery / total breakdown lives in its own Order summary card.
@@ -247,7 +248,7 @@ async function checkoutCartAll() {
       const { data: orderId, error } = await sb.rpc("create_cart_order", {
         p_vendor_id: p.vendorId,
         p_items: p.group.items.map((it) => ({ product_id: it.product.id, quantity: it.quantity, variant_id: it.variant?.id || null })),
-        p_delivery_method: p.delivery.method, p_delivery_address: p.delivery.address, p_delivery_phone: p.delivery.phone,
+        p_delivery_method: p.delivery.method, p_delivery_address: p.delivery.address, p_delivery_phone: p.delivery.phone, ...(p.delivery.campusId ? { p_delivery_campus_id: p.delivery.campusId } : {}),
         p_buyer_note: byId(`cartNote-${p.vendorId}`)?.value.trim() || null,
         p_buyer_lat: buyerLocation?.lat ?? null, p_buyer_lng: buyerLocation?.lng ?? null,
       });
@@ -292,6 +293,7 @@ async function checkoutCartVendor(vendorId) {
     p_delivery_method: delivery.method,
     p_delivery_address: delivery.address,
     p_delivery_phone: delivery.phone,
+    ...(delivery.campusId ? { p_delivery_campus_id: delivery.campusId } : {}),
     p_buyer_note: byId(`cartNote-${vendorId}`)?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_buyer_lng: buyerLocation?.lng ?? null,
