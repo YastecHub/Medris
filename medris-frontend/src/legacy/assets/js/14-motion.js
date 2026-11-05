@@ -4379,7 +4379,7 @@ window.lvAskCancel = async function (orderId) {
     var wb = m.querySelector("#lwPayWallet");
     wb.onclick = async function () {
       if (wb.disabled) return;
-      var fee = need ? window.lvWalletFee(need) : 0;
+      var fee = 0;   // paying an order from the wallet is free
       if (need && need + fee > bal) return err(m, "You need " + money(need + fee, true) + ". You have " + money(bal, true) + ".");
       var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Total from your wallet", short(need + fee), 1]], cta: "Pay " + short(need + fee) });
       if (!pin) return;
@@ -5908,7 +5908,7 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
   var LEN = 6;
   // Paystack's local fee on an amount (kobo): 1.5%, plus 100 naira from 2,500 naira, at most 2,000 naira. The server decides the
   // real fee; this only shows it. The same numbers live in medris-backend/src/integrations/paystack/fees.ts.
-  window.lvWalletFee = function (kobo) { kobo = Math.round(Number(kobo) || 0); if (kobo <= 0) return 0; return Math.min(200000, Math.ceil(kobo * 0.015) + (kobo >= 250000 ? 10000 : 0)); };
+  window.lvWalletFee = function (kobo) { kobo = Math.round(Number(kobo) || 0); if (kobo <= 0) return 0; return Math.min(Math.floor(kobo * 0.05), 200000, Math.ceil(kobo * 0.015) + (kobo >= 250000 ? 10000 : 0)); };   // Paystack's rate, never more than 5%
   function naira(k) { try { return "₦" + (Number(k) / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }); } catch (_) { return "₦" + k; } }
   function close() { var m = document.getElementById("lvPinSheet"); if (m) m.remove(); }
   function frame(title, inner) {
