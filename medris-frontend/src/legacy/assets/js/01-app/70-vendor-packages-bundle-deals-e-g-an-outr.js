@@ -75,6 +75,7 @@ async function showPackageModal() {
     byId("pkgLikeVisibility").value=engagement?.like_visibility||"everyone";byId("pkgAllowComments").checked=engagement?.allow_comments!==false;byId("pkgCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPackagePhotos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
     renderExistingPackagePhotos();
+    window.lvDrPkgLoad?.(pkg);
     (pkg.items || []).forEach((it) => { selectedQty[it.product_id] = it.quantity; });
   } else {
     byId("packageModalTitle").textContent = "Add New Package";
@@ -83,6 +84,7 @@ async function showPackageModal() {
     byId("pkgName").value = "";
     byId("pkgDesc").value = "";
     byId("pkgPrice").value = "";
+    window.lvDrPkgLoad?.(null);
   }
 
   const renderPkgItems = (myProducts) => {
@@ -224,6 +226,9 @@ async function savePackage() {
     const billing_model = byId("pkgBillingModel")?.value || "commission";
     const isNewPackage = !editingPackageId;
     const payload = { vendor_id: vendor.id, name, description: byId("pkgDesc").value.trim() || null, price, photos };
+    // delivery by campus for this package (0042); undefined until the database has it
+    const pkgDeliveryRules = window.lvDrPkgRead ? window.lvDrPkgRead() : undefined;
+    if (pkgDeliveryRules !== undefined) payload.delivery_rules = pkgDeliveryRules;
     if (isNewPackage) {
       payload.billing_model = billing_model;
       payload.billing_status = billing_model === "monthly" ? "pending_payment" : "active";
