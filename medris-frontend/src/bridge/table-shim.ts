@@ -13,9 +13,12 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appConfig } from "@/config/env";
+import { pauseReads } from "@/services/api/v1-client";
 
 type Fetch = typeof fetch;
 const PAUSE_MS = 60_000;
+/** A table read that the backend has not answered in this long is read from Supabase instead (a sick backend must not freeze pages). */
+const READ_TIMEOUT_MS = 6_000;
 /** The last "ready" answer is remembered this long, so the first queries of the next visit go straight to the backend. */
 const REMEMBER_MS = 6 * 60 * 60_000;
 const READY_KEY = "medris:data-api-ready";
@@ -48,6 +51,7 @@ export function installTables(client: SupabaseClient, enabled: () => boolean): v
   let ready: boolean | null = rememberedReady();
   let checking: Promise<void> | null = null;
   let pausedUntil = 0;
+  let readsPausedUntil = 0;   // a slow or failing backend moves reads only; writes keep going to the backend
 
   const check = () =>
     (checking ??= fetch(`${appConfig.backendUrl}/api/v1/data-api`, { headers: { Accept: "application/json" } })
@@ -65,22 +69,40 @@ export function installTables(client: SupabaseClient, enabled: () => boolean): v
 
   rest.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    if (!enabled() || ready !== true || Date.now() < pausedUntil || !url.startsWith(supabaseBase)) {
+    const method = String(init?.method ?? "GET").toUpperCase();
+    const isRead = method === "GET" || method === "HEAD";
+    if (!enabled() || ready !== true || Date.now() < pausedUntil || (isRead && Date.now() < readsPausedUntil) || !url.startsWith(supabaseBase)) {
       if (enabled() && ready === null) void check();
       return original(input, init);
     }
-    const method = String(init?.method ?? "GET").toUpperCase();
-    const isRead = method === "GET" || method === "HEAD";
     let response: Response;
+    let signal = init?.signal ?? undefined;
+    if (isRead && typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      const limit = AbortSignal.timeout(READ_TIMEOUT_MS);
+      signal = init?.signal ? (typeof AbortSignal.any === "function" ? AbortSignal.any([init.signal, limit]) : init.signal) : limit;
+    }
     try {
-      response = await original(backendBase + url.slice(supabaseBase.length), init);
+      response = await original(backendBase + url.slice(supabaseBase.length), signal === init?.signal ? init : { ...init, signal });
     } catch (err) {
-      if ((err as { name?: string } | null)?.name === "AbortError") throw err; // the caller cancelled it
+      const name = (err as { name?: string } | null)?.name;
+      if (name === "AbortError" || name === "TimeoutError") {
+        if (init?.signal?.aborted) throw err; // the caller cancelled it
+        if (isRead) {
+          // too slow: read from Supabase now, and keep reading from there for a minute
+          readsPausedUntil = Date.now() + PAUSE_MS;
+          pauseReads(PAUSE_MS);
+          return original(input, init);
+        }
+      }
       pausedUntil = Date.now() + PAUSE_MS;
       remember(false);
       return original(input, init); // never left the browser: safe for reads and writes
     }
-    if (isRead && (response.status === 502 || response.status === 503 || response.status === 504)) return original(input, init);
+    if (isRead && response.status >= 500) {
+      readsPausedUntil = Date.now() + PAUSE_MS;
+      pauseReads(PAUSE_MS);
+      return original(input, init);
+    }
     // A write answered 503 by PostgREST itself (PGRST0xx: no database connection, or starting) did not run.
     // (Heroku's own 503 - a timeout - is HTML, and the write may have run: it is not repeated.)
     if (response.status === 503) {
