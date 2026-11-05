@@ -7564,3 +7564,6 @@ html:root:root body .admin-nav-sheet .admin-nav-item i.fa-solid,html:root:root b
 html:root:root body .admin-nav-sheet .admin-nav-item .lv-nav-badge{position:absolute;top:.3rem;right:.4rem}
 html:root:root body .admin-nav-sheet .admin-nav-grid,html:root:root body .admin-nav-sheet .admin-nav-grp{align-self:stretch!important;width:100%!important;max-width:none!important;box-sizing:border-box}
 html:root:root body .admin-nav-sheet h3{align-self:flex-start;text-align:left!important}
+
+/* every Continue / Done / Send button in the wallet sheets and result page: label centred */
+html:root:root body .lw-go,html:root:root body .lv-tx-done{display:flex!important;align-items:center;justify-content:center;text-align:center;width:100%}
