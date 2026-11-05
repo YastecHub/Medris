@@ -14,7 +14,7 @@
  * Any other function, or a call with options (head/count), goes straight to Supabase as before.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { V1Error, pauseBackend, v1Request } from "@/services/api/v1-client";
+import { V1Error, pauseBackend, pauseReads, v1Request } from "@/services/api/v1-client";
 import { RPC_READS, isBackendRpc } from "@/services/api/rpc-functions";
 
 type RpcResult = { data: unknown; error: { message: string; code: string; details: unknown; hint: string } | null; count: null; status: number; statusText: string };
@@ -56,7 +56,8 @@ class BackendRpcCall implements PromiseLike<RpcResult> {
       // A backend without this endpoint (deployed before it existed) answers the plain route-level 404: nothing ran.
       const endpointMissing = err.status === 404 && err.code === "not_found" && err.message === "Not found.";
       if (endpointMissing) pauseBackend(5 * 60_000); // until the backend is updated: check again in 5 minutes
-      const retry = endpointMissing || (RPC_READS.has(this.name) ? err.isUnavailable || err.status === 429 : err.notSent);
+      if (RPC_READS.has(this.name) && (err.status >= 500 || err.code === "timeout")) pauseReads(45_000);
+      const retry = endpointMissing || (RPC_READS.has(this.name) ? err.isUnavailable || err.status === 429 || err.status >= 500 || err.code === "timeout" : err.notSent);
       if (retry) {
         if (!warned.shown) {
           warned.shown = true;
