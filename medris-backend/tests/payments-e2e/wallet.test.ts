@@ -78,6 +78,18 @@ describe("the Levromart wallet", () => {
     await w.db.query(`update public.wallet_accounts set frozen = false where user_id = $1`, [w.buyer.id]);
   });
 
+  it("after the first 3 wallet order payments the usual fee applies (Paystack's rate, at most 5%)", async () => {
+    await reset();
+    await w.db.query(`delete from public.wallet_entries`);
+    await fund(w.buyer.id, 3000000);
+    for (let i = 0; i < 3; i++) await w.db.query(`insert into public.wallet_entries (user_id, kind, amount_kobo, balance_after_kobo, reference) values ($1, 'order_payment', -100, 0, $2)`, [w.buyer.id, "seed-order-" + i]);
+    expect((await call("get_levro_wallet", w.buyer.token)).data.free_order_payments_left).toBe(0);
+    const o = await newOrder(w, 5000);
+    const r = await call("wallet_pay_order", w.buyer.token, { p_order_id: o });
+    expect(r.status).toBe(200);
+    expect(r.data.fee_kobo).toBe("17500"); // 1.5% + ₦100, under the 5% cap
+  });
+
   it("transfer fees follow Paystack's rate but never exceed 5% of the amount", async () => {
     await reset();
     await fund(w.buyer.id, 2000000);
@@ -106,7 +118,7 @@ describe("the Levromart wallet", () => {
     const o = await newOrder(w, 5000);
     const r = await call("wallet_pay_order", w.buyer.token, { p_order_id: o });
     expect(r.status).toBe(200);
-    expect(r.data.fee_kobo).toBe("0"); // paying an order from the wallet is free
+    expect(r.data.fee_kobo).toBe("0"); // one of the first 3 wallet order payments: free
     expect(await balance(w.buyer.token)).toBe(500000); // 1,000,000 - 500,000 order, no fee
     expect((await rowOf<any>(w, `select coalesce(sum(amount_kobo),0)::text as k from public.platform_wallet_entries where kind = 'transaction_fee'`)).k).toBe("0");
     expect(w.paystack.callsTo("POST", "/transaction/initialize")).toHaveLength(0);

@@ -30,12 +30,12 @@ export const WALLET = {
 /**
  * What Levromart charges on a wallet transfer or withdrawal: Paystack's local fee on that amount (1.5% + ₦100 from
  * ₦2,500, at most ₦2,000; see integrations/paystack/fees.ts) but never more than 5% of the amount. It goes to Levromart's
- * own wallet. Paying an order from the wallet carries no fee.
+ * own wallet. Paying an order from the wallet is free for a person's first 3 orders, then carries the same fee.
  */
 export const WALLET_FEE_MAX_PERCENT = 0.05;
 export const walletFeeKobo = (amountKobo: number): number => (amountKobo > 0 ? Math.min(paystackFeeOn(amountKobo), Math.floor(amountKobo * WALLET_FEE_MAX_PERCENT)) : 0);
-/** Paying an order from the wallet is free: the money already carried Paystack's fee when it was added. */
-export const ORDER_PAYMENT_FEE_KOBO = 0;
+/** The first few orders a person pays from the wallet carry no fee; after that the usual fee (Paystack's rate, at most 5%) applies. */
+export const FREE_WALLET_ORDER_PAYMENTS = 3;
 
 /** The most that can be sent to a bank from `balance` when the fee comes out of the same balance. */
 export function withdrawableKobo(balanceKobo: number): number {
@@ -101,6 +101,7 @@ export class WalletService {
             ? { bank_name: account.bank_name, account_name: account.account_name, last4: account.last4, source: account.source, changed_hours_ago: Math.floor(account.age_hours) }
             : null,
           limits: WALLET,
+          free_order_payments_left: Math.max(0, FREE_WALLET_ORDER_PAYMENTS - (await repo.orderPaymentCount(user.userId))),
           pin: null as { has_pin: boolean; locked_minutes: number } | null,
           entries: await repo.entries(user.userId, 40, null),
           withdrawals: await repo.recentWithdrawals(user.userId, 10),
@@ -278,7 +279,7 @@ export class WalletService {
         const [w] = await repo.lock([user.userId]);
         if (!w) throw notFound("Wallet not found.");
         if (w.frozen) throw forbidden("Your wallet is on hold. Please contact Levromart support.");
-        const fee = ORDER_PAYMENT_FEE_KOBO;
+        const fee = (await repo.orderPaymentCount(user.userId)) < FREE_WALLET_ORDER_PAYMENTS ? 0 : walletFeeKobo(amount);
         if (Number(w.balance_kobo) < amount + fee) throw badRequest(`Your wallet has ${naira(w.balance_kobo)}. You need ${naira(amount + fee)} for this order.`);
         const reference = `lvm_ord_${orderId.replace(/-/g, "").slice(0, 8)}_w${crypto.randomBytes(8).toString("hex")}`;
         const after = await repo.move(user.userId, -amount, "order_payment", { reference, orderId, note: o.vendor_name ? `Paid ${o.vendor_name}` : "Order payment" });
