@@ -597,7 +597,10 @@
     window.__levroLeviLiveFallbackV2=true;
     window.fetchLeviReply=async function(payload){
       const out=await priorFetch.apply(this,arguments);
-      if(!isGenericLeviReply(out?.reply))return out;
+      // isGenericLeviReply lives in 03-…-vendor-logic-fixes.js's own scope: calling it by name here threw a ReferenceError after
+      // every answer from Levi's AI, so the answer was dropped and an offline fallback was shown instead
+      const generic=window.__lvIsGenericLeviReply;
+      if(typeof generic!=='function'||!generic(out?.reply))return out;
       const latest=[...(payload?.messages||[])].reverse().find(m=>m?.role==='user')?.content||'';
       const live=await leviLiveMarketplaceFallback(latest);
       if(live)return {...out,reply:live};

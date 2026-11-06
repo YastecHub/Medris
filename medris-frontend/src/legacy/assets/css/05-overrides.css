@@ -6095,11 +6095,6 @@ html:root:root body .lvw3 .lw-acts button{display:flex;flex-direction:column;ali
 .lw-chips button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-weight:700;font-size:.8rem;cursor:pointer}
 html:root:root body .lw-go{width:100%;min-height:50px;margin-top:16px;border-radius:999px;font-weight:800;font-size:.95rem}
 .lw-sugg{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.lw-person{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px solid #eceff3;background:#fff;text-align:left;cursor:pointer;width:100%}
-.lw-person.on{border-color:#16a34a;background:#f0fdf4}
-.lw-person img,.lw-person>span{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;background:#e6f8ef;color:#047857;font-weight:800}
-.lw-person div{flex:1;min-width:0;display:flex;flex-direction:column}.lw-person b{font-size:.88rem}.lw-person small{font-size:.74rem;color:#6b7280}
-.lw-person>i{color:#16a34a}
 .lw-bank{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:#f6f7f9}
 .lw-bank>span{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e8f0fe;color:#1a73e8}
 .lw-bank div{display:flex;flex-direction:column}.lw-bank small{font-size:.76rem;color:#6b7280}
@@ -6127,7 +6122,7 @@ b.lw-amt{font-size:.9rem;white-space:nowrap}
 :root[data-theme="dark"] .lw-sheet .lw-l{color:#cbd5e1}
 :root[data-theme="dark"] .lw-amt,:root[data-theme="dark"] .lw-to,:root[data-theme="dark"] .lw-in{background:#2d333b;border-color:rgba(255,255,255,.1)}
 :root[data-theme="dark"] .lw-amt input,:root[data-theme="dark"] .lw-to input,:root[data-theme="dark"] .lw-in{color:#e9ebed}
-:root[data-theme="dark"] .lw-person,:root[data-theme="dark"] .lw-pay,:root[data-theme="dark"] .lw-chips button{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
+:root[data-theme="dark"] .lw-pay,:root[data-theme="dark"] .lw-chips button{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
 :root[data-theme="dark"] .lw-bank{background:#2d333b}:root[data-theme="dark"] .lw-list li{border-color:rgba(255,255,255,.06)}
 :root[data-theme="dark"] .lw-amt.out{color:#e9ebed}
 html:root:root body .lw-to input,html:root:root body .lw-amt input{border:0!important;box-shadow:none!important;padding:0!important;background:transparent!important;outline:none!important}
@@ -6485,7 +6480,7 @@ html[data-theme="dark"]:root body #aiChatPanel .lvthink-mark{background:#34d399}
 :root[data-theme="black"] .lw-sheet .lw-l{color:#cbd5e1}
 :root[data-theme="black"] .lw-amt,:root[data-theme="black"] .lw-to,:root[data-theme="black"] .lw-in{background:#2d333b;border-color:rgba(255,255,255,.1)}
 :root[data-theme="black"] .lw-amt input,:root[data-theme="black"] .lw-to input,:root[data-theme="black"] .lw-in{color:#e9ebed}
-:root[data-theme="black"] .lw-person,:root[data-theme="black"] .lw-pay,:root[data-theme="black"] .lw-chips button{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
+:root[data-theme="black"] .lw-pay,:root[data-theme="black"] .lw-chips button{background:#2d333b;border-color:rgba(255,255,255,.1);color:#e9ebed}
 :root[data-theme="black"] .lw-bank{background:#2d333b}:root[data-theme="black"] .lw-list li{border-color:rgba(255,255,255,.06)}
 :root[data-theme="black"] .lw-amt.out{color:#e9ebed}
 :root[data-theme="black"] .aw-card{background:#22272e;border-color:rgba(255,255,255,.08)}
@@ -6952,9 +6947,6 @@ html:root body i.vendor-inline-verified{color:#1d9bf0!important}
 .lwh-chips button.on{background:#16a06a;border-color:#16a06a;color:#fff}
 .lwh-search{width:100%;padding:.6rem .8rem;border-radius:12px;border:1.5px solid rgba(128,128,128,.35);background:transparent;color:inherit;font:inherit}
 .lwh-more{display:block;margin:12px auto;border:0;background:rgba(22,160,106,.12);color:#0b8a5f;font:inherit;font-weight:800;border-radius:999px;padding:8px 18px;cursor:pointer}
-.lw-ben{margin:2px 0 8px}.lw-ben small{display:block;opacity:.7;font-weight:700;margin-bottom:4px}
-.lw-ben div{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.lw-ben button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:inherit;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;max-width:64px}
-.lw-ben button span{width:40px;height:40px;border-radius:50%;background:rgba(22,160,106,.15);color:#0b8a5f;display:flex;align-items:center;justify-content:center;font-weight:800}
 
 /* Levi: black mode is pure black with white text (like a chat app), dark mode stays charcoal */
 html[data-theme="black"]:root body #aiChatPanel{background:#000!important;--lvl-soft:#1b1b1d;--lvl-line:rgba(255,255,255,.12)}
@@ -7117,15 +7109,6 @@ html:root:root:root:root body #app .vmpage .vmp-locate.is-loading i,html:root:ro
 .od-actions-receive{margin:.2rem 0 .6rem}
 .od-actions-receive .od-btn-received{width:100%;justify-content:center;font-size:1rem;padding:.9rem 1rem;box-shadow:0 8px 20px -8px rgba(22,160,106,.7)}
 
-/* beneficiaries: pictures, and a View all list */
-.lw-ben-h{display:flex;align-items:center;justify-content:space-between}.lw-ben-h button{border:0;background:none;color:#0b8a5f;font:inherit;font-size:.78rem;font-weight:800;cursor:pointer}
-.lw-ben button span,.lw-benrow span{overflow:hidden}
-.lw-ben button span img,.lw-benrow span img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
-.lw-benlist{display:flex;flex-direction:column;margin-top:.6rem}
-.lw-benrow{display:flex;align-items:center;gap:.7rem;border:0;background:none;color:inherit;font:inherit;text-align:left;padding:.55rem .2rem;border-bottom:1px solid rgba(128,128,128,.15);cursor:pointer}
-.lw-benrow[hidden]{display:none}
-.lw-benrow span{flex:none;width:42px;height:42px;border-radius:50%;background:rgba(22,160,106,.15);color:#0b8a5f;display:flex;align-items:center;justify-content:center;font-weight:800}
-.lw-benrow b{flex:1;font-weight:700}.lw-benrow small{opacity:.6}
 .lv-row-ico img.lv3di{width:30px;height:30px;object-fit:contain;display:block}
 .lv-row-ico:has(img.lv3di){background:transparent!important}
 
@@ -7586,17 +7569,6 @@ html:root:root body .lw-go,html:root:root body .lv-tx-done{display:flex!importan
 html:root:root body .lf-cancel,html:root:root body #productModal .lf-cancel,html:root:root body #packageModal .lf-cancel{background:#fdecec!important;color:#d32f2f!important;border:1.5px solid #f4b4b4!important;box-shadow:none!important}
 :root[data-theme="dark"] .lf-cancel,:root[data-theme="black"] .lf-cancel{background:rgba(229,72,77,.16)!important;color:#ff8a8d!important;border-color:rgba(229,72,77,.45)!important}
 
-/* pull to refresh */
-html,body{overscroll-behavior-y:contain}
-#lvPtr{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top));z-index:2147482000;transform:translate(-50%,-64px);opacity:0;pointer-events:none}
-#lvPtr .lvptr-ring{width:52px;height:52px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 8px 22px rgba(0,0,0,.18);position:relative}
-#lvPtr .lvptr-ring::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:3px solid transparent;border-top-color:#10a36d;border-right-color:#10a36d;opacity:0}
-#lvPtr .lvptr-ring img{width:40px;height:40px;border-radius:12px}
-#lvPtr.ready .lvptr-ring::after,#lvPtr.spin .lvptr-ring::after{opacity:1}
-#lvPtr.spin .lvptr-ring{animation:lvPtrSpin .8s linear infinite}
-@keyframes lvPtrSpin{to{transform:rotate(360deg)}}
-:root[data-theme="dark"] #lvPtr .lvptr-ring,:root[data-theme="black"] #lvPtr .lvptr-ring{background:#1d1d26}
-
 /* My requests / Earnings breakdown pages */
 .lv-mvp{position:fixed;inset:0;z-index:2147483000;background:var(--bg,#f6f6fb);color:var(--text,#14122e);overflow:auto;padding:max(12px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom));animation:lvTxIn .22s ease}
 .lv-mvp-top{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-bottom:10px}.lv-mvp-top b{font-size:1.1rem}.lv-mvp-top span{width:40px}
@@ -7611,10 +7583,10 @@ html,body{overscroll-behavior-y:contain}
 .lv-mvp-empty{text-align:center;padding:3rem 0;color:var(--muted,#667)}.lv-mvp-empty img{margin:0 auto}
 :root[data-theme="dark"] .lv-mvp,:root[data-theme="black"] .lv-mvp{background:#0b0b10;color:#f2f2f6}:root[data-theme="dark"] .lv-mvp-list,:root[data-theme="dark"] .lv-mvp-sum>div{background:#17171f}
 /* receipt / transaction details: Levromart logo on top of the card, like a bank receipt */
-.lv-tx-logo{display:flex;justify-content:center;margin:6px 0 -38px;position:relative;z-index:2}
-.lv-tx-logo img{width:76px;height:76px;border-radius:50%;border:6px solid var(--bg,#f6f6fb);background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.12)}
-.lv-tx-hero-d{background:var(--card,#fff);border-radius:20px;padding:46px 16px 18px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
-:root[data-theme="dark"] .lv-tx-logo img,:root[data-theme="black"] .lv-tx-logo img{border-color:#0b0b10}:root[data-theme="dark"] .lv-tx-hero-d,:root[data-theme="black"] .lv-tx-hero-d{background:#17171f}
+.lv-tx-hero-d{background:var(--card,#fff);border-radius:20px;padding:22px 16px 18px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+/* the receipt's Levromart mark: flat, inside the card, nothing around it */
+.lv-tx-logo{display:flex;justify-content:center;margin:0 0 4px}.lv-tx-logo svg{display:block;width:60px;height:60px}
+:root[data-theme="dark"] .lv-tx-hero-d,:root[data-theme="black"] .lv-tx-hero-d{background:#17171f}
 
 /* Transfer as a full page; carousel; locked recipient; recents / favourites */
 .lw-full{align-items:stretch!important}
@@ -7629,19 +7601,7 @@ html,body{overscroll-behavior-y:contain}
 .lvpc-txt b{display:block;font-size:1.15rem;font-weight:900;letter-spacing:-.01em}.lvpc-txt span{display:block;font-size:.82rem;opacity:.9;margin-top:4px;max-width:15rem}
 .lvpc-ic{flex:none}.lvpc-ic img{width:86px;height:86px;filter:drop-shadow(0 8px 12px rgba(0,0,0,.3))}
 .lvpc-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px}.lvpc-dots i{width:6px;height:4px;border-radius:2px;background:rgba(255,255,255,.45);transition:width .3s}.lvpc-dots i.on{width:18px;background:#fff}
-.lw-locked{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:rgba(16,163,109,.08);border:1.5px solid rgba(16,163,109,.35)}
-.lw-locked-av{width:52px;height:52px;border-radius:50%;overflow:hidden;background:#10a36d;color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.2rem;flex:none}.lw-locked-av img{width:100%;height:100%;object-fit:cover}
-.lw-locked div{flex:1;min-width:0}.lw-locked b{display:block;font-size:1.02rem}.lw-locked b i{color:#10a36d;font-size:.85rem}.lw-locked small{color:var(--muted,#667)}
-.lw-locked button{border:0;background:none;color:#0d8a43;font-weight:800}
-.lw-ben{background:var(--card,#fff);border-radius:20px;padding:6px 16px 10px;box-shadow:0 1px 8px rgba(0,0,0,.06);margin-top:12px}
-.lw-ben-tabs{display:flex;align-items:center;gap:18px;border-bottom:1px solid rgba(127,127,127,.15)}
-.lw-ben-tabs button{border:0;background:none;padding:.8rem 0;font-weight:700;color:var(--muted,#667);font-size:1rem;position:relative}
-.lw-ben-tabs button.on{color:#0d8a43}.lw-ben-tabs button.on::after{content:"";position:absolute;left:20%;right:20%;bottom:-1px;height:3px;border-radius:2px;background:#10a36d}
-.lw-ben-tabs [data-all]{margin-left:auto;color:#0d8a43}
-.lw-benrow2{display:flex;align-items:center;gap:12px;width:100%;padding:.7rem 0;border:0;border-bottom:1px solid rgba(127,127,127,.1);background:none;color:inherit;text-align:left}
-.lw-benrow2 span{width:44px;height:44px;border-radius:50%;overflow:hidden;background:#10a36d;color:#fff;display:grid;place-items:center;font-weight:800;flex:none}.lw-benrow2 span img{width:100%;height:100%;object-fit:cover}
-.lw-benrow2 div{flex:1;min-width:0}.lw-benrow2 b{display:block}.lw-benrow2 small{color:var(--muted,#667)}.lw-benrow2 i{opacity:.4;font-size:.75rem}
-:root[data-theme="dark"] .lw-card-box,:root[data-theme="dark"] .lw-ben,:root[data-theme="black"] .lw-card-box,:root[data-theme="black"] .lw-ben{background:#17171f}
+:root[data-theme="dark"] .lw-card-box,:root[data-theme="black"] .lw-card-box{background:#17171f}
 :root[data-theme="dark"] .lw-full .lvw-sheet-body,:root[data-theme="black"] .lw-full .lvw-sheet-body{background:#0b0b10}
 
 /* history: filters, month at top left with small In / Out, Analysis button */
@@ -7669,3 +7629,69 @@ html,body{overscroll-behavior-y:contain}
 body.lv-analysis-open #aiChatFab>*:not(.lv-fab-chart){opacity:0!important}
 .lv-fab-chart{position:absolute!important;inset:10%;width:80%!important;height:80%!important;object-fit:contain;z-index:5;pointer-events:none;opacity:1!important}
 body.lv-analysis-open #aiChatFab{z-index:2147483001!important}
+
+/* ===== Transfer page: the recipient field, its suggestions, and Recents / Favourites =====
+   Anything given the `hidden` attribute inside the wallet pages really is hidden (a few of these elements set their own
+   display, which used to win over `hidden`: an empty green bar showed above the @tag field and both lists showed at once). */
+.lvw-sheet-wrap [hidden],.lvw-page [hidden],.lv-mvp [hidden]{display:none!important}
+/* one person: picture, then name over @tag (each on its own line, cut with … when long) */
+.lw-pp-av{flex:none;width:44px;height:44px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#e3f6ee;color:#0b7d52;font-weight:800;font-size:1.05rem;line-height:1}
+.lw-pp-av img{width:100%;height:100%;object-fit:cover;display:block}
+.lw-pp-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left}
+.lw-pp-txt b{display:block;font-size:.95rem;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lw-pp-txt small{display:block;font-size:.8rem;font-weight:500;line-height:1.3;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the chosen recipient, in place of the field */
+.lw-locked{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 12px;border-radius:16px;background:rgba(16,163,109,.08)}
+.lw-locked .lw-pp-txt b i{color:#10a36d;font-size:.78rem;margin-left:3px}
+.lw-locked button{flex:none;border:0;background:none;color:#0d8a43;font:inherit;font-size:.9rem;font-weight:700;padding:0 10px;min-height:44px;cursor:pointer}
+/* suggestions under the field */
+.lw-sugg{display:flex;flex-direction:column;gap:0;margin-top:6px}
+.lw-sugg:empty{display:none}
+.lw-sugg-cap{margin:4px 8px 0;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
+/* a tappable person row (suggestions, Recents, Favourites, Beneficiaries) */
+.lw-person,.lw-pp-row{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;margin:0;padding:8px;border:0;border-radius:14px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lw-person>i,.lw-pp-row>i{flex:none;width:16px;text-align:center;font-size:.72rem;color:#9ca3af}
+.lw-person:active,.lw-pp-row:active{background:rgba(16,163,109,.09)}
+@media (hover:hover){.lw-person:hover,.lw-pp-row:hover{background:rgba(16,163,109,.06)}}
+/* Recents / Favourites: on the page itself (no extra card), a two-way switch and a search button */
+.lw-pp{margin:8px 0 0;padding:0 4px}
+.lw-pp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 8px}
+.lw-pp-tabs{display:inline-flex;padding:3px;border-radius:999px;background:rgba(120,120,128,.12)}
+.lw-pp-tabs button{border:0;margin:0;background:none;color:#6b7280;font:inherit;font-size:.88rem;font-weight:700;padding:0 16px;min-height:36px;border-radius:999px;cursor:pointer}
+.lw-pp-tabs button.on{background:#fff;color:#0d8a43;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.lw-pp-all{flex:none;width:44px;height:44px;border:0;border-radius:50%;background:none;color:#374151;display:grid;place-items:center;font-size:1rem;cursor:pointer}
+.lw-pp-all:active{background:rgba(120,120,128,.14)}
+.lw-pp-list,.lw-pp-all-list{display:flex;flex-direction:column}
+.lw-pp-all-list{margin-top:8px}
+/* nobody here yet */
+.lw-pp-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:20px 16px 12px}
+.lw-pp-empty-ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(16,163,109,.1);color:#10a36d;margin-bottom:6px}
+.lw-pp-empty b{font-size:.95rem}
+.lw-pp-empty small{font-size:.82rem;line-height:1.4;color:#6b7280;max-width:17rem}
+:is([data-theme="dark"],[data-theme="black"]) .lw-pp-av{background:rgba(16,163,109,.2);color:#6ee7b7}
+:is([data-theme="dark"],[data-theme="black"]) :is(.lw-pp-txt small,.lw-sugg-cap,.lw-pp-empty small,.lw-pp-tabs button){color:#9aa3b2}
+:is([data-theme="dark"],[data-theme="black"]) .lw-pp-tabs{background:rgba(255,255,255,.08)}
+:is([data-theme="dark"],[data-theme="black"]) .lw-pp-tabs button.on{background:#2b2b36;color:#4ade80;box-shadow:none}
+:is([data-theme="dark"],[data-theme="black"]) .lw-pp-all{color:#e5e7eb}
+:is([data-theme="dark"],[data-theme="black"]) .lw-locked{background:rgba(16,163,109,.14)}
+:is([data-theme="dark"],[data-theme="black"]) .lw-locked button{color:#4ade80}
+
+/* the Transfer page is one page: the whole of it has the page colour (not a white frame around a grey body) */
+.lw-full .lvw-sheet{background:var(--bg,#f4f5f8)}
+:root[data-theme="dark"] .lw-full .lvw-sheet,:root[data-theme="black"] .lw-full .lvw-sheet{background:#0b0b10}
+
+/* Transaction history: the search button is a plain round icon, not a square box */
+.lwh-filters{align-items:center}
+html body .lwh-sbtn,:root[data-theme="dark"] .lwh-sbtn,:root[data-theme="black"] .lwh-sbtn{flex:none;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;color:inherit;display:grid;place-items:center;font-size:1rem;cursor:pointer}
+html body .lwh-sbtn:active{background:rgba(120,120,128,.14)}
+
+/* ===== Levi with a subject (Analysis mode, a listing): a slim bar under his header ===== */
+#aiChatPanel .lv-levi-mode{display:flex;align-items:center;gap:8px;margin:0 12px 8px;padding:4px 4px 4px 12px;border-radius:999px;background:rgba(16,163,109,.16);color:#0b7d52;font-size:.82rem;font-weight:700;line-height:1.2;flex:none}
+#aiChatPanel .lv-levi-mode span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#aiChatPanel .lv-levi-mode button{flex:none;border:0;margin:0;background:rgba(255,255,255,.75);color:inherit;font:inherit;font-size:.78rem;font-weight:700;border-radius:999px;padding:0 12px;min-height:30px;cursor:pointer}
+:is([data-theme="dark"],[data-theme="black"]) #aiChatPanel .lv-levi-mode{background:rgba(16,163,109,.2);color:#6ee7b7}
+:is([data-theme="dark"],[data-theme="black"]) #aiChatPanel .lv-levi-mode button{background:rgba(255,255,255,.1)}
+/* on the wallet's Analysis page, Levi's chat opens above the page (closing it goes back to the page) */
+html:root:root:root body.lv-analysis-open #aiChatPanel{z-index:2147483002!important}
+/* the listing pop-up's "Ask Levi about my listing": a full-width row above View / Close */
+#vendorProductDetailsModal.vld-modal .modal-content>.flex .vld-levi{grid-column:1 / -1;background:#10a36d;color:#fff;border-color:#10a36d;gap:8px}
