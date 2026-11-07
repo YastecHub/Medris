@@ -469,6 +469,8 @@
     if (GENERIC_LEVI_PATTERNS.some((re) => re.test(text))) return true;
     return /^(?:i couldn't get a useful answer|i can help with|try asking me|ask me what to buy|i'm levi)/i.test(text);
   }
+  // shared with the live marketplace fallback in 06-part.js, which runs in its own scope
+  window.__lvIsGenericLeviReply = isGenericLeviReply;
   function leviSpecificFallback(text) {
     const q = leviNormaliseText(text);
     if (/\bwhat('?s| is) in my cart\b|\bshow my cart\b/.test(q)) {

@@ -3760,6 +3760,45 @@ window.lvAskCancel = async function (orderId) {
   "use strict";
   function chip(t, cls) { return '<span class="vld-chip' + (cls ? " " + cls : "") + '">' + esc(t) + "</span>"; }
   function row(ic, k, v) { return '<div class="vld-row"><span class="vld-ic"><i class="fa-solid ' + ic + '"></i></span><span class="vld-k">' + k + '</span><b>' + v + "</b></div>"; }
+  // Levi's subject for one of the shop's own listings: what he is told, his opening line and the questions offered
+  function listingMode(productId, d) {
+    var p = d.p || {}, name = p.name || "this listing";
+    var price = function () {
+      var out = [];
+      if (p.sale_price != null) out.push("sale price " + naira(p.sale_price) + (p.discount_price != null && Number(p.discount_price) < Number(p.sale_price) ? " (discounted to " + naira(p.discount_price) + ")" : ""));
+      if (p.rental_rate != null) out.push("rent " + naira(p.rental_rate) + (p.rental_rate_unit ? " per " + p.rental_rate_unit : ""));
+      if (p.service_price != null) out.push("service price " + naira(p.service_price));
+      return out.join("; ");
+    };
+    return {
+      id: "listing:" + productId,
+      placeholder: "Ask about this listing…",
+      icon: "fa-tag",
+      label: "Listing · " + name,
+      topic: function () { return 'my listing "' + name + '"'; },
+      intro: function () {
+        var pr = price();
+        return "Let's work on your listing **" + name + "**" + (pr ? " (" + pr + ")" : "") + ". I can improve the description, check the price against similar items on Levromart, spot missing details and suggest how to make it more attractive to buyers. What would you like to do?";
+      },
+      chips: [["Improve my description", "Rewrite my listing's description so it sells better."], ["Is my price right?", "Is my price right for this listing? Compare it with similar items on Levromart."], ["What's missing?", "What information is missing from this listing?"], ["Make it more attractive", "How can I make this listing more attractive to buyers?"]],
+      context: function () {
+        var photos = Array.isArray(p.photos) ? p.photos.length : 0, vr = Array.isArray(p.variants) ? p.variants : [];
+        return ["The user is the shop owner and opened Levi from this listing in My Listings. Help them improve this listing. You can call get_product with productId " + productId + " for its public page, and search_products to compare prices of similar items. Do not invent facts about the item; ask when something is unknown.",
+          "Listing id: " + productId,
+          "Name: " + name,
+          "Type: " + (p.is_service ? "service" : (p.listing_type || "sale")) + (p.category && p.category.name ? "; category: " + p.category.name : ""),
+          "Status: " + (p.status || "unknown"),
+          price() ? "Price: " + price() : "Price: not set",
+          p.is_service ? "" : p.track_quantity === false ? "Stock: always available" : (p.quantity_available != null ? "Stock: " + p.quantity_available + (p.quantity_total != null ? " of " + p.quantity_total : "") + " available" : ""),
+          "Description: " + (p.description ? String(p.description).slice(0, 900) : "(none)"),
+          "Photos: " + photos,
+          vr.length ? "Varieties: " + vr.slice(0, 8).map(function (v) { return v.name + (v.price != null ? " " + naira(v.price) : ""); }).join(", ") : "",
+          "Views: " + Number(p.view_count || 0) + "; saved by " + Number(d.favCount || 0) + " people; sales so far " + naira(d.revenue || 0),
+          d.topRegion ? "Sells best in: " + d.topRegion.city : "",
+          p.created_at ? "Listed on: " + String(p.created_at).slice(0, 10) : ""].filter(Boolean).join("\n");
+      }
+    };
+  }
   window.showVendorProductDetails = function (productId) {
     var d = (window.__vlDetailsRaw || {})[productId], old = (window.__vendorProductCardDetails || {})[productId];
     if (!d && !old) return;
@@ -3783,6 +3822,17 @@ window.lvAskCancel = async function (orderId) {
     } else body.innerHTML = old.html;
     var viewBtn = document.getElementById("vendorProductDetailsViewBtn");
     if (viewBtn) viewBtn.onclick = function () { modal.classList.add("hidden"); navigate("productDetail", { productId: productId }); };
+    // "Ask Levi about my listing": Levi opens on this listing, with its details, to help with the description, price and photos
+    var askBtn = document.getElementById("vendorProductDetailsLeviBtn");
+    if (!askBtn && viewBtn && viewBtn.parentNode) {
+      askBtn = document.createElement("button"); askBtn.type = "button"; askBtn.id = "vendorProductDetailsLeviBtn"; askBtn.className = "btn btn-sm vld-levi";
+      askBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Ask Levi about my listing';
+      viewBtn.parentNode.insertBefore(askBtn, viewBtn);
+    }
+    if (askBtn) askBtn.onclick = function () {
+      modal.classList.add("hidden");
+      if (window.lvAskLevi) window.lvAskLevi(listingMode(productId, d ? d : { p: { id: productId, name: old && old.name } }));
+    };
     modal.classList.add("vld-modal");
     modal.classList.remove("hidden");
   };
@@ -4116,63 +4166,103 @@ window.lvAskCancel = async function (orderId) {
   window.lvW3Send = async function (prefill) {
     var d = await load(true); if (!d) return showToast("Your wallet is not available right now.", "error");
     var pick = null, myKey = key(), timer = 0;
-    var m = sheet("Transfer to Levromart user", (window.lvPayCarousel ? window.lvPayCarousel("send") : "") + '<div class="lw-card-box"><label class="lw-l">Recipient @tag</label><div class="lw-locked" id="lwLocked" hidden></div><div class="lw-to"><span>@</span><input id="lwTo" autocomplete="off" autocapitalize="off" placeholder="their tag" value="' + esc(prefill || "") + '"></div><div class="lw-sugg" id="lwSugg"></div>' +
+    // the recipient: a label, then the @tag field. Once someone is chosen, their picture, name and @tag take the field's place (with Change).
+    var m = sheet("Transfer to Levromart user", (window.lvPayCarousel ? window.lvPayCarousel("send") : "") +
+      '<div class="lw-card-box"><label class="lw-l" for="lwTo">Recipient @tag</label><div class="lw-locked" id="lwLocked" hidden></div><div class="lw-to"><span>@</span><input id="lwTo" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="their tag" value="' + esc(prefill || "") + '"></div><div class="lw-sugg" id="lwSugg"></div>' +
       '</div><div class="lw-card-box"><label class="lw-l">Amount</label>' + amountField("lwSendAmt") + '<p class="lw-hint">Balance ' + money(d.balance_kobo, true) + "</p>" +
       '<label class="lw-l">Note (optional)</label><input id="lwNote" class="lw-in" maxlength="140" placeholder="What is it for?">' +
       '</div><p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwSendGo">Continue</button>', "lw-full");
     var to = m.querySelector("#lwTo"), sugg = m.querySelector("#lwSugg");
+    // people sent to before, newest first, one per @tag; favourites (the heart on a receipt) are kept on this phone
+    var people = function (entries) { var seen = {}, out = []; (entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seen[e.counterparty_handle]) { seen[e.counterparty_handle] = 1; out.push({ handle: e.counterparty_handle, name: e.counterparty_name || "", avatar_url: e.counterparty_avatar || "" }); } }); return out; };
+    var recent = people(d.entries), favs = [];
+    try { favs = (window.lvFavPeople ? window.lvFavPeople() : []).filter(function (f) { return f && f.handle; }).map(function (f) { return { handle: f.handle, name: f.name || "", avatar_url: f.avatar_url || "" }; }); } catch (_) {}
+    var avatar = function (p) { return '<span class="lw-pp-av">' + (p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" alt="" loading="lazy">' : esc(String(p.name || p.handle).trim().slice(0, 1).toUpperCase())) + "</span>"; };
+    var personRow = function (p, i, cls) { return '<button type="button" class="' + cls + '" data-i="' + i + '">' + avatar(p) + '<span class="lw-pp-txt"><b>' + esc(p.name || "@" + p.handle) + '</b><small>@' + esc(p.handle) + '</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>'; };
+
     // the chosen person is locked in: picture, name and @tag, with Change
     function paintPick() {
-      var box = m.querySelector("#lwLocked"), field = m.querySelector(".lw-to"), ben = m.querySelector(".lw-ben");
-      if (!pick) { box.hidden = true; field.hidden = false; if (ben) ben.hidden = false; return; }
-      box.innerHTML = '<span class="lw-locked-av">' + (pick.avatar_url ? '<img src="' + esc(pick.avatar_url) + '" alt="">' : esc(String(pick.name || pick.handle).slice(0, 1).toUpperCase())) + '</span><div><b>' + esc(pick.name || ("@" + pick.handle)) + ' <i class="fa-solid fa-circle-check"></i></b><small>@' + esc(pick.handle) + ' · Levromart wallet</small></div><button type="button" id="lwChange">Change</button>';
-      box.hidden = false; field.hidden = true; sugg.innerHTML = ""; if (ben) ben.hidden = true;
-      box.querySelector("#lwChange").onclick = function () { pick = null; to.value = ""; paintPick(); to.focus(); };
-      try { m.querySelector("#lwSendAmt").focus(); } catch (_) {}
+      var box = m.querySelector("#lwLocked"), field = m.querySelector(".lw-to"), pp = m.querySelector(".lw-pp");
+      if (!pick) { box.hidden = true; box.innerHTML = ""; field.hidden = false; if (pp) pp.hidden = false; return; }
+      box.innerHTML = avatar(pick) + '<span class="lw-pp-txt"><b>' + esc(pick.name || ("@" + pick.handle)) + ' <i class="fa-solid fa-circle-check" aria-hidden="true"></i></b><small>@' + esc(pick.handle) + '</small></span><button type="button" id="lwChange">Change</button>';
+      box.hidden = false; field.hidden = true; sugg.innerHTML = ""; sugg.__list = null; if (pp) pp.hidden = true;
+      box.querySelector("#lwChange").onclick = function () { pick = null; to.value = ""; paintPick(); to.focus(); showRecentSuggestions(); };
+      try { m.querySelector("#lwSendAmt").focus({ preventScroll: true }); } catch (_) {}
     }
-    // people sent to before (beneficiaries): their picture and first name; one tap fills the tag in, "View all" lists everyone
-    try {
-      var benList = function (entries) { var seenB = {}, out = []; (entries || []).forEach(function (e) { if (e.kind === "transfer_out" && e.counterparty_handle && !seenB[e.counterparty_handle]) { seenB[e.counterparty_handle] = 1; out.push(e); } }); return out; };
-      var ben = benList(d.entries);
-      try { var fv = (window.lvFavPeople ? window.lvFavPeople() : []).map(function (f) { return { kind: "transfer_out", counterparty_handle: f.handle, counterparty_name: f.name, counterparty_avatar: f.avatar_url }; }), seenF = {}; ben = fv.concat(ben).filter(function (e) { if (seenF[e.counterparty_handle]) return false; seenF[e.counterparty_handle] = 1; return true; }); } catch (_) {}
-      var avatarOf = function (e) { return e.counterparty_avatar ? '<img src="' + esc(e.counterparty_avatar) + '" alt="" loading="lazy">' : esc(String(e.counterparty_name || e.counterparty_handle).slice(0, 1).toUpperCase()); };
-      if (ben.length && !prefill) {
-        var bx = document.createElement("div"); bx.className = "lw-ben";
-        var recentB = benList(d.entries), favB = (window.lvFavPeople ? window.lvFavPeople() : []).map(function (f) { return { counterparty_handle: f.handle, counterparty_name: f.name, counterparty_avatar: f.avatar_url }; });
-        var rowsOf = function (list) { return list.length ? list.slice(0, 8).map(function (e) { return '<button type="button" class="lw-benrow2" data-h="' + esc(e.counterparty_handle) + '"><span>' + avatarOf(e) + '</span><div><b>' + esc(e.counterparty_name || "@" + e.counterparty_handle) + '</b><small>@' + esc(e.counterparty_handle) + '</small></div><i class="fa-solid fa-chevron-right"></i></button>'; }).join("") : '<p class="lw-hint" style="padding:.8rem 0">Nobody here yet. Tap the heart on a receipt to add a favourite.</p>'; };
-        bx.innerHTML = '<div class="lw-ben-tabs"><button type="button" data-tab="r" class="on">Recents</button><button type="button" data-tab="f">Favourites</button><button type="button" data-all aria-label="Search all"><i class="fa-solid fa-magnifying-glass"></i></button></div><div class="lw-ben-list" data-p="r">' + rowsOf(recentB) + '</div><div class="lw-ben-list" data-p="f" hidden>' + rowsOf(favB) + '</div>';
-        bx.addEventListener("click", function (ev) { var t = ev.target.closest("[data-tab]"); if (!t) return; ev.stopPropagation(); bx.querySelectorAll("[data-tab]").forEach(function (x) { x.classList.toggle("on", x === t); }); bx.querySelectorAll(".lw-ben-list").forEach(function (l) { l.hidden = l.dataset.p !== t.dataset.tab; }); }, true);
-        bx.onclick = async function (ev) {
-          var b = ev.target.closest("button"); if (!b) return;
-          if (b.hasAttribute("data-all")) {
-            var all = d.entries || [];
-            try { var more = await sb.rpc("get_levro_wallet_history", { p_before: (all[all.length - 1] || {}).created_at || null }); all = all.concat((more && more.data) || []); } catch (_) {}
-            var full = benList(all), sh = document.createElement("div"); sh.className = "lvw-sheet-wrap";
-            sh.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true"><div class="lvw-sheet-grab"></div><div class="lvw-sheet-head"><h3>Beneficiaries</h3><button type="button" class="lvw-eye lvw-eye-dark" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body"><input class="lwh-search" type="search" placeholder="Search name or @tag" autocomplete="off"><div class="lw-benlist">' + full.map(function (e) { return '<button type="button" class="lw-benrow" data-h="' + esc(e.counterparty_handle) + '" data-s="' + esc(((e.counterparty_name || "") + " " + e.counterparty_handle).toLowerCase()) + '"><span>' + avatarOf(e) + '</span><b>' + esc(e.counterparty_name || "@" + e.counterparty_handle) + '</b><small>@' + esc(e.counterparty_handle) + '</small></button>'; }).join("") + '</div></div></div>';
-            document.body.appendChild(sh);
-            sh.querySelector(".lwh-search").oninput = function () { var t = this.value.trim().toLowerCase(); sh.querySelectorAll(".lw-benrow").forEach(function (r) { r.hidden = !!t && r.dataset.s.indexOf(t) < 0; }); };
-            sh.onclick = function (e2) { if (e2.target === sh || e2.target.closest("[data-x]")) return sh.remove(); var r = e2.target.closest(".lw-benrow"); if (r) { to.value = r.dataset.h; sh.remove(); search(); } };
-            return;
-          }
-          if (b.dataset.h) { to.value = b.dataset.h; search(); }
-        };
-        m.querySelector(".lvw-sheet-body").appendChild(bx);
-      }
-    } catch (_) {}
+    // someone chosen from a list we already have (Recents, Favourites, the suggestions): lock them in at once, then check the
+    // @tag still belongs to a wallet and take the latest name and picture
+    async function choose(p) {
+      if (!p || !p.handle) return;
+      pick = { handle: p.handle, name: p.name || "", avatar_url: p.avatar_url || "" }; to.value = p.handle; paintPick();
+      try {
+        var r = await sb.rpc("find_wallet_people", { p_query: p.handle });
+        var hit = ((r && r.data) || []).find(function (x) { return x.handle === p.handle; });
+        if (pick && pick.handle === p.handle) {
+          if (hit) { pick = hit; paintPick(); }
+          else if (r && !r.error) { pick = null; to.value = p.handle; paintPick(); sugg.innerHTML = '<p class="lw-hint">Nobody has that @tag any more.</p>'; }
+        }
+      } catch (_) {}
+    }
+    function suggestions(list, caption) {
+      sugg.__list = list;
+      sugg.innerHTML = (caption ? '<p class="lw-sugg-cap">' + esc(caption) + "</p>" : "") + list.map(function (p, i) { return personRow(p, i, "lw-person"); }).join("");
+    }
+    // tapping the empty field shows the people sent to most recently (favourites first)
+    function showRecentSuggestions() {
+      if (pick || to.value.trim()) return;
+      var seen = {}, list = favs.concat(recent).filter(function (p) { if (seen[p.handle]) return false; seen[p.handle] = 1; return true; }).slice(0, 5);
+      if (list.length) suggestions(list, "Recent"); else sugg.innerHTML = "";
+    }
+
+    // Recents / Favourites under the form
+    if (!prefill) {
+      var pp = document.createElement("section"); pp.className = "lw-pp"; pp.setAttribute("aria-label", "People you send to");
+      var listHtml = function (list, empty) {
+        return list.length ? list.slice(0, 8).map(function (p, i) { return personRow(p, i, "lw-pp-row"); }).join("") :
+          '<div class="lw-pp-empty"><span class="lw-pp-empty-ic"><i class="fa-solid ' + empty[0] + '" aria-hidden="true"></i></span><b>' + empty[1] + '</b><small>' + empty[2] + "</small></div>";
+      };
+      pp.innerHTML = '<div class="lw-pp-head"><div class="lw-pp-tabs" role="tablist"><button type="button" role="tab" data-tab="r" aria-selected="true" class="on">Recents</button><button type="button" role="tab" data-tab="f" aria-selected="false">Favourites</button></div>' +
+        '<button type="button" class="lw-pp-all" data-all aria-label="Search everyone you have sent to"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button></div>' +
+        '<div class="lw-pp-list" data-p="r" role="tabpanel">' + listHtml(recent, ["fa-clock-rotate-left", "No recent transfers", "People you send money to will show here."]) + "</div>" +
+        '<div class="lw-pp-list" data-p="f" role="tabpanel" hidden>' + listHtml(favs, ["fa-heart", "No favourites yet", "Tap the heart on a receipt to keep someone here."]) + "</div>";
+      pp.addEventListener("click", async function (ev) {
+        var t = ev.target.closest("[data-tab]");
+        if (t) {
+          pp.querySelectorAll("[data-tab]").forEach(function (x) { var on = x === t; x.classList.toggle("on", on); x.setAttribute("aria-selected", on ? "true" : "false"); });
+          pp.querySelectorAll(".lw-pp-list").forEach(function (l) { l.hidden = l.dataset.p !== t.dataset.tab; });
+          return;
+        }
+        var row = ev.target.closest(".lw-pp-row");
+        if (row) { var src = row.closest(".lw-pp-list").dataset.p === "f" ? favs : recent; return choose(src[+row.dataset.i]); }
+        if (!ev.target.closest("[data-all]")) return;
+        // everyone ever sent to, with a search box
+        var all = d.entries || [];
+        try { var more = await sb.rpc("get_levro_wallet_history", { p_before: (all[all.length - 1] || {}).created_at || null }); all = all.concat((more && more.data) || []); } catch (_) {}
+        var full = people(all), sh = document.createElement("div"); sh.className = "lvw-sheet-wrap";
+        sh.innerHTML = '<div class="lvw-sheet" role="dialog" aria-modal="true" aria-label="Beneficiaries"><div class="lvw-sheet-grab"></div><div class="lvw-sheet-head"><h3>Beneficiaries</h3><button type="button" class="lvw-eye lvw-eye-dark" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="lvw-sheet-body"><input class="lwh-search" type="search" placeholder="Search name or @tag" autocomplete="off"><div class="lw-pp-all-list">' +
+          (full.length ? full.map(function (p, i) { return personRow(p, i, "lw-pp-row").replace("<button ", '<button data-s="' + esc(((p.name || "") + " " + p.handle).toLowerCase()) + '" '); }).join("") : '<div class="lw-pp-empty"><span class="lw-pp-empty-ic"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></span><b>No transfers yet</b><small>People you send money to will show here.</small></div>') + "</div></div></div>";
+        document.body.appendChild(sh);
+        sh.querySelector(".lwh-search").oninput = function () { var q = this.value.trim().toLowerCase(); sh.querySelectorAll(".lw-pp-row").forEach(function (r) { r.hidden = !!q && r.dataset.s.indexOf(q) < 0; }); };
+        sh.onclick = function (e2) { if (e2.target === sh || e2.target.closest("[data-x]")) return sh.remove(); var r = e2.target.closest(".lw-pp-row"); if (r) { sh.remove(); choose(full[+r.dataset.i]); } };
+      });
+      m.querySelector(".lvw-sheet-body").appendChild(pp);
+    }
+
     var seq = 0;
     async function search() {
       var q = to.value.trim().replace(/^@/, "").toLowerCase().replace(/\s+/g, " "); pick = null;
-      if (q.length < 2) { sugg.innerHTML = ""; return; }
+      if (!q) { showRecentSuggestions(); return; }
+      if (q.length < 2) { sugg.innerHTML = ""; sugg.__list = null; return; }
       var my = ++seq;
       var r = await sb.rpc("find_wallet_people", { p_query: q });
       if (my !== seq) return;   // a newer search is already on its way
       var list = (r && r.data) || [];
       var exact = list.find(function (p) { return p.handle === q; }); if (exact && list.length === 1) { pick = exact; paintPick(); return; }
-      sugg.innerHTML = list.length ? list.map(function (p, i) { return '<button type="button" class="lw-person" data-i="' + i + '">' + (p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" alt="">' : '<span>' + esc(String(p.name || p.handle).slice(0, 1).toUpperCase()) + "</span>") + '<div><b>' + esc(p.name || "") + '</b><small>@' + esc(p.handle) + "</small></div></button>"; }).join("") : '<p class="lw-hint">Nobody has that @tag yet.</p>';
-      sugg.__list = list;
+      if (list.length) suggestions(list, ""); else { sugg.__list = null; sugg.innerHTML = '<p class="lw-hint">Nobody has that @tag yet.</p>'; }
     }
     to.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(search, 60); });
-    sugg.addEventListener("click", function (e) { var b = e.target.closest("[data-i]"); if (!b) return; pick = sugg.__list[+b.dataset.i]; to.value = pick.handle; paintPick(); });
+    to.addEventListener("focus", showRecentSuggestions);
+    sugg.addEventListener("click", function (e) { var b = e.target.closest("[data-i]"); if (!b || !sugg.__list) return; choose(sugg.__list[+b.dataset.i]); });
     if (prefill) search();
     m.querySelector("#lwSendGo").onclick = async function () {
       var goBtn = this; if (goBtn.__busy) return; goBtn.__busy = true;   // a second tap while this one is working does nothing
@@ -5946,6 +6036,8 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
   setInterval(function () {
     var input = document.getElementById("aiChatInput"), panel = document.getElementById("aiChatPanel");
     if (!input || !panel || panel.classList.contains("hidden") || input.value || document.activeElement === input) return;
+    var md = window.lvLeviMode ? window.lvLeviMode() : null;
+    if (md) { input.placeholder = md.placeholder || "Ask Levi about this…"; return; }
     var list = HINTS[isVendor() ? "v" : "s"]; hintI = (hintI + 1) % list.length; input.placeholder = list[hintI];
   }, 3500);
   function isVendor() { try { return typeof vendor !== "undefined" && !!vendor && !!vendor.id; } catch (_) { return false; } }
@@ -5955,8 +6047,9 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
     var row = input.closest(".ai-chat-input-row, .ai-chat-form, form, div") || input.parentNode;
     var host = row.parentNode; if (!host) return;
     var el = document.getElementById("lvLeviSuggest");
-    var list = isVendor() ? VENDOR : SHOPPER;
-    var key = isVendor() ? "v" : "s";
+    var md = window.lvLeviMode ? window.lvLeviMode() : null;   // Analysis mode / a listing: that subject's questions
+    var list = md && md.chips ? md.chips : isVendor() ? VENDOR : SHOPPER;
+    var key = md ? "m:" + md.id : isVendor() ? "v" : "s";
     if (el && el.dataset.k === key) return;
     if (el) el.remove();
     el = document.createElement("div"); el.id = "lvLeviSuggest"; el.className = "lvw-ph"; el.dataset.k = key;
@@ -7158,13 +7251,15 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
       s.note = s.note || "Order #" + String(s.orderId).slice(0, 8).toUpperCase();
     }
     close();
+    // the flat Levromart brand mark (the app icon's arcs and dot, white on brand green): no ring, shadow or depth
+    var LV_FLAT_LOGO = '<svg viewBox="0 0 64 64" width="60" height="60" role="img" aria-label="Levromart"><defs><linearGradient id="lvTxLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2bbb7d"/><stop offset="1" stop-color="#0e7a4e"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#lvTxLogoG)"/><g fill="none" stroke="#fff" stroke-width="5.2" stroke-linecap="round"><path d="M25.5 44.3A13.9 13.9 0 0 1 25.5 19.7"/><path d="M38.5 19.7A13.9 13.9 0 0 1 38.5 44.3"/></g><circle cx="32" cy="32" r="5.8" fill="#fff"/></svg>';
     var done = !s.detail, ok = !/not sent|not approved|returned/i.test(s.status || "");
     var p = document.createElement("div"); p.id = "lvTxPage"; p.className = "lv-tx";
     var inKind = s.kind === "topup" || s.received;
     var who = s.person ? (s.person.name || "@" + s.person.handle) : s.bank ? (s.bank.bank_name || "your bank") : s.shop || "";
     var isFav = s.person && s.person.handle && favs().some(function (f) { return f.handle === s.person.handle; });
     p.innerHTML = '<div class="lv-tx-top"><button type="button" class="lv-tx-x" data-x aria-label="Close"><i class="fa-solid fa-' + (done ? "xmark" : "arrow-left") + '"></i></button><span>' + E(done ? "" : "Transaction details") + '</span></div>' +
-      (done ? "" : '<div class="lv-tx-logo"><img src="/icon-512.png" alt="Levromart" width="64" height="64"></div>') + '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? "" : "<!--") + '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' + (done ? "" : "-->") +
+      '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' : '<div class="lv-tx-logo">' + LV_FLAT_LOGO + "</div>") +
       '<h2>' + E(done ? s.title : (s.title || "Transaction")) + '</h2><div class="lv-tx-amt">' + (done ? "" : inKind ? "+" : "−") + nair(s.amountKobo) + '</div>' + (who ? '<p class="lv-tx-sub">' + E((inKind && s.person ? "from " : s.kind === "topup" ? "" : "to ") + (s.kind === "topup" ? "your wallet" : who)) + '</p>' : "") + '<span class="lv-tx-pill' + (ok ? "" : " bad") + '">' + E(s.status || "Successful") + '</span></div>' +
       '<div class="lv-tx-card" id="lvTxRows">' + rowsOf(s).map(function (r) { return '<div><span>' + E(r[0]) + '</span><b>' + E(r[1]) + '</b></div>'; }).join("") + '</div>' +
       '<div class="lv-tx-acts"><button type="button" data-a="share">' + ic("moved-up", "fa-share-nodes") + '<span>Share receipt</span></button>' +
@@ -7241,54 +7336,6 @@ window.lvGoToNewOrder = function (orderId) {
   setTimeout(function () { ["checkoutCartAll", "checkoutCartVendor", "buyNow", "confirmRental", "buyPackageFromDetail", "buyPackage"].forEach(guard); }, 1500);
 })();
 
-/* ===== Pull to refresh (like bank apps): drag down at the top of any page, the Levromart mark spins, and the page,
-   the wallet and the counts are fetched again. Works the same on iPhone and Android (the browser's own pull-to-reload is
-   switched off so it never reloads the whole app). ===== */
-(function () {
-  "use strict";
-  if (window.__lvPtr) return; window.__lvPtr = true;
-  var el = document.createElement("div"); el.id = "lvPtr"; el.setAttribute("aria-hidden", "true");
-  el.innerHTML = '<div class="lvptr-ring"><img src="/icon-512.png" alt="" width="40" height="40"></div>';
-  function mount() { if (!document.getElementById("lvPtr") && document.body) document.body.appendChild(el); }
-  if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
-  var startY = 0, startX = 0, pull = 0, active = false, busy = false, MAX = 120, GO = 76;
-  function blocked(t) {
-    if (busy) return true;
-    if ((window.scrollY || document.documentElement.scrollTop || 0) > 0) return true;
-    if (document.querySelector(".modal:not(.hidden), .lvw-sheet-wrap, .lv-tx, #aiChatPanel:not(.hidden), .cc-backdrop, .lvpin-wrap, #lvPinSheet")) return true;
-    for (var n = t; n && n !== document.body; n = n.parentElement) {
-      if (n.scrollTop > 0) return true;
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(n.tagName)) return true;
-      if (n.classList && (n.classList.contains("leaflet-container") || n.classList.contains("map"))) return true;
-    }
-    return false;
-  }
-  function set(p) { pull = p; var k = Math.min(1, p / GO); el.style.transform = "translate(-50%," + (Math.min(p, MAX) - 64) + "px)"; el.style.opacity = String(Math.min(1, p / 40)); el.querySelector(".lvptr-ring").style.transform = "rotate(" + (k * 300) + "deg) scale(" + (0.7 + k * 0.3) + ")"; el.classList.toggle("ready", p >= GO); }
-  document.addEventListener("touchstart", function (e) { if (e.touches.length !== 1 || blocked(e.target)) { active = false; return; } active = true; startY = e.touches[0].clientY; startX = e.touches[0].clientX; pull = 0; }, { passive: true });
-  document.addEventListener("touchmove", function (e) {
-    if (!active) return;
-    var dy = e.touches[0].clientY - startY, dx = Math.abs(e.touches[0].clientX - startX);
-    if (dy <= 0 || dx > dy || (window.scrollY || 0) > 0) { if (pull) reset(); active = dy > -4 && dx <= Math.abs(dy); return; }
-    set(dy * 0.5);
-  }, { passive: true });
-  function reset() { el.classList.remove("spin", "ready"); el.style.transition = "transform .25s ease, opacity .25s ease"; set(0); setTimeout(function () { el.style.transition = ""; }, 260); }
-  document.addEventListener("touchend", function () {
-    if (!active) return; active = false;
-    if (pull < GO) return reset();
-    busy = true; el.style.transition = "transform .2s ease"; set(GO); el.classList.add("spin");
-    var done = function () { setTimeout(function () { busy = false; reset(); }, 350); };
-    var jobs = [];
-    try { if (typeof __ordersTabCache !== "undefined") __ordersTabCache.clear(); } catch (_) {}
-    try { if (window.__levroClearReadCache) window.__levroClearReadCache(); } catch (_) {}
-    try { if (window.lvW3Refresh) jobs.push(window.lvW3Refresh()); } catch (_) {}
-    try { if (window.lvWalletReload) jobs.push(window.lvWalletReload()); } catch (_) {}
-    try { if (typeof refreshNotifications === "function") jobs.push(refreshNotifications()); } catch (_) {}
-    try { if (typeof navigate === "function" && typeof currentView !== "undefined") jobs.push(navigate(currentView, Object.assign({}, typeof currentViewParams !== "undefined" ? currentViewParams : {}), false)); } catch (_) {}
-    var t = setTimeout(done, 8000);
-    Promise.all(jobs.map(function (j) { return Promise.resolve(j).catch(function () {}); })).then(function () { clearTimeout(t); setTimeout(done, 300); });
-  }, { passive: true });
-})();
-
 /* ===== Payments carousel (Transfer and Withdraw pages): a few bright banners that slide by themselves ===== */
 (function () {
   "use strict";
@@ -7331,6 +7378,47 @@ window.lvGoToNewOrder = function (orderId) {
   var COLORS = ["#10a36d", "#7c4dff", "#2f6bff", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899"];
   function N(k) { return "₦" + (Number(k || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function E(v) { return typeof esc === "function" ? esc(v) : String(v); }
+  // Levi's Analysis mode for the month on screen: what he is told (figures, categories, the month's transactions) and the
+  // questions offered. `state()` gives the page's current transactions and month, so moving to another month moves Levi too.
+  function analysisMode(state) {
+    function monthRows(all, y, m) { return all.filter(function (e) { var d = new Date(e.created_at); return d.getFullYear() === y && d.getMonth() === m; }); }
+    function split(rows) {
+      var o = { out: 0, outN: 0, inn: 0, inN: 0, outCat: {}, inCat: {} };
+      rows.forEach(function (e) { var a = Number(e.amount_kobo), c = CAT[e.kind] || "Other"; if (a < 0) { o.out -= a; o.outN++; o.outCat[c] = (o.outCat[c] || 0) - a; } else if (a > 0) { o.inn += a; o.inN++; o.inCat[c] = (o.inCat[c] || 0) + a; } });
+      return o;
+    }
+    function cats(obj) { return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).map(function (k) { return k + " " + N(obj[k]); }).join(", ") || "none"; }
+    return {
+      id: "analysis",
+      placeholder: "Ask about your money this month…",
+      sticky: true,   // stays on while the analysis page is open, even if the chat is closed and opened again
+      icon: "fa-chart-pie",
+      label: function () { var st = state(); return "Analysis mode · " + MONTHS[st.month.m] + " " + st.month.y; },
+      intro: function () {
+        var st = state(), cur = split(monthRows(st.all, st.month.y, st.month.m)), when = MONTHS[st.month.m] + " " + st.month.y;
+        if (!cur.outN && !cur.inN) return "I'm in **Analysis mode** for **" + when + "**. There are no wallet transactions that month yet. Ask me anything about your money, or pick another month on the page.";
+        return "I'm in **Analysis mode** for **" + when + "**: **" + N(cur.out) + "** went out in " + cur.outN + " transaction" + (cur.outN === 1 ? "" : "s") + " and **" + N(cur.inn) + "** came in. What would you like to know?";
+      },
+      chips: [["Where did my money go?", "Where did most of my money go this month?"], ["Compare with last month", "How does this month compare with last month?"], ["Help me spend less", "How can I spend less next month?"], ["Summarise my income", "Summarise the money that came in this month."]],
+      context: function () {
+        var st = state(), y = st.month.y, m = st.month.m, rows = monthRows(st.all, y, m), cur = split(rows);
+        var py = m ? y : y - 1, pm = (m + 11) % 12, prev = split(monthRows(st.all, py, pm));
+        var byDay = {}; rows.forEach(function (e) { var a = Number(e.amount_kobo); if (a < 0) { var d = new Date(e.created_at).getDate(); byDay[d] = (byDay[d] || 0) - a; } });
+        var busiest = Object.keys(byDay).sort(function (a, b) { return byDay[b] - byDay[a]; })[0];
+        var lines = rows.slice(0, 40).map(function (e) {
+          var d = new Date(e.created_at), a = Number(e.amount_kobo), who = e.counterparty_name || (e.counterparty_handle ? "@" + e.counterparty_handle : "") || e.bank_name || "";
+          return "- " + d.getDate() + " " + MONTHS[m].slice(0, 3) + ": " + (CAT[e.kind] || e.kind) + " " + (a < 0 ? "-" : "+") + N(Math.abs(a)) + (who ? " (" + who + ")" : "") + (e.note ? " note: " + String(e.note).slice(0, 60) : "");
+        });
+        return ["The user opened Levi from the Analysis page of their Levromart wallet (Analysis mode). Answer about their wallet money for " + MONTHS[m] + " " + y + " using these figures from the app. Amounts are in naira. Be specific and practical, and do not invent transactions.",
+          "Money out: " + N(cur.out) + " in " + cur.outN + " transactions. By category: " + cats(cur.outCat) + ".",
+          "Money in: " + N(cur.inn) + " in " + cur.inN + " transactions. By category: " + cats(cur.inCat) + ".",
+          busiest ? "Busiest spending day: " + busiest + " " + MONTHS[m] + " (" + N(byDay[busiest]) + ")." : "",
+          "Previous month (" + MONTHS[pm] + " " + py + "): out " + N(prev.out) + " in " + prev.outN + " transactions; in " + N(prev.inn) + " in " + prev.inN + " transactions.",
+          lines.length ? "This month's transactions (newest first" + (rows.length > 40 ? ", first 40 of " + rows.length : "") + "):\n" + lines.join("\n") : "No transactions this month."].filter(Boolean).join("\n");
+      },
+      topic: function () { var st = state(); return "my wallet for " + MONTHS[st.month.m] + " " + st.month.y; }
+    };
+  }
   window.lvWalletAnalysis = function (all, start) {
     var now = new Date(), month = { y: (start && start.y) || now.getFullYear(), m: start ? start.m : now.getMonth() }, tab = "out";
     var old = document.getElementById("lvAnPage"); if (old) old.remove();
@@ -7340,12 +7428,19 @@ window.lvGoToNewOrder = function (orderId) {
     document.body.appendChild(pg); document.body.classList.add("lv-analysis-open");
     var fab = document.getElementById("aiChatFab"), chartIc = null;
     if (fab) { chartIc = document.createElement("img"); chartIc.className = "lv-fab-chart"; chartIc.src = "/icons3d/lv/chart.webp"; chartIc.alt = ""; fab.appendChild(chartIc); }
-    var close = function () { pg.remove(); document.body.classList.remove("lv-analysis-open"); if (chartIc) chartIc.remove(); };
+    // while this page is open, Levi works in Analysis mode: tapping his (chart) button, or "Ask Levi about my money", opens the
+    // usual Levi chat on top of this page, with this month's figures handed to him
+    var levi = analysisMode(function () { return { all: all, month: month }; });
+    if (window.lvSetLeviMode) window.lvSetLeviMode(levi);
+    var close = function () {
+      pg.remove(); document.body.classList.remove("lv-analysis-open"); if (chartIc) chartIc.remove();
+      if (window.lvLeviMode && window.lvLeviMode() === levi) window.lvSetLeviMode(null);
+    };
     pg.addEventListener("click", function (ev) {
       if (ev.target.closest("[data-back]")) return close();
       var t = ev.target.closest("[data-t]"); if (t) { tab = t.dataset.t; pg.querySelectorAll("[data-t]").forEach(function (x) { x.classList.toggle("on", x === t); }); return paint(); }
       var mv = ev.target.closest("[data-mv]"); if (mv) { var d = Number(mv.dataset.mv); month = { y: month.y + (month.m + d < 0 ? -1 : month.m + d > 11 ? 1 : 0), m: (month.m + d + 12) % 12 }; return paint(); }
-      if (ev.target.closest("[data-ask]")) { close(); try { if (typeof openAiChat === "function") openAiChat(); else document.getElementById("aiChatFab").click(); } catch (_) {} setTimeout(function () { var i = document.getElementById("aiChatInput"); if (i) { i.value = "Analyse my wallet spending for " + MONTHS[month.m] + " " + month.y + " and give me tips to save."; i.focus(); } }, 450); }
+      if (ev.target.closest("[data-ask]") && window.lvAskLevi) window.lvAskLevi(levi);
     });
     function paint() {
       var rows = all.filter(function (e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m && (tab === "out" ? Number(e.amount_kobo) < 0 : Number(e.amount_kobo) > 0); });
@@ -7376,13 +7471,133 @@ window.lvGoToNewOrder = function (orderId) {
         '<div class="lv-an-card"><div class="lv-an-h">Daily ' + (tab === "out" ? "expenses" : "income") + '</div><svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" class="lv-an-bars"><line x1="0" y1="' + H + '" x2="' + W + '" y2="' + H + '" stroke="rgba(127,127,127,.3)"/>' + bars + '<text x="0" y="' + (H + 15) + '" font-size="10" fill="#8a85a8">1</text><text x="' + (W / 2 - 6) + '" y="' + (H + 15) + '" font-size="10" fill="#8a85a8">' + Math.ceil(days / 2) + '</text><text x="' + (W - 14) + '" y="' + (H + 15) + '" font-size="10" fill="#8a85a8">' + days + '</text></svg></div>' +
         '<div class="lv-an-card"><div class="lv-an-h">Where it ' + (tab === "out" ? "went" : "came from") + '</div>' + (list.length ? '<div class="lv-an-donut"><svg viewBox="0 0 140 140" width="140" height="140">' + donut + '</svg><ul>' + list.map(function (c, i) { return '<li><i style="background:' + COLORS[i % COLORS.length] + '"></i><span>' + E(c[0]) + '</span><b>' + N(c[1]) + '</b></li>'; }).join("") + '</ul></div>' : '<p class="muted">Nothing to show.</p>') + '</div>' +
         '<div class="lv-an-card lv-an-levi"><div class="lv-an-levi-h">' + (window.lv3dIcon ? window.lv3dIcon("chart", 52) : "") + '<div><b>Levi\'s analysis</b><small>Your money this month, in plain words</small></div></div><ul>' + tips.map(function (t) { return "<li>" + t + "</li>"; }).join("") + '</ul><button type="button" class="btn lw-go" data-ask>Ask Levi about my money</button></div>';
+      if (window.lvLeviModeRefresh) window.lvLeviModeRefresh();
     }
     paint();
   };
 })();
-// on the analysis page, Levi's (chart) button closes the page and asks Levi about this month
-document.addEventListener("click", function (e) {
-  if (!document.body.classList.contains("lv-analysis-open") || !e.target.closest || !e.target.closest("#aiChatFab")) return;
-  var ask = document.querySelector("#lvAnPage [data-ask]"); if (!ask) return;
-  e.preventDefault(); e.stopPropagation(); ask.click();
-}, true);
+
+/* ===== Levi with a subject: Analysis mode (the wallet's Analysis page) and "Ask Levi about my listing" =====
+   This is the same Levi chat (same conversation, history, voice and AI): a mode only adds a bar under Levi's header saying what
+   he is looking at, an opening line, suggested questions, and, with each question, the figures from the app he needs to answer
+   it. The mode ends with Exit, when the chat closes (a listing), or when the analysis page closes (Analysis mode). */
+(function () {
+  "use strict";
+  var mode = null, introduced = null;
+  function val(v) { try { return typeof v === "function" ? v() : v; } catch (_) { return ""; } }
+  function panel() { return document.getElementById("aiChatPanel"); }
+  function isOpen() { var p = panel(); return !!p && !p.classList.contains("hidden"); }
+  function E(v) { return typeof esc === "function" ? esc(v) : String(v); }
+
+  window.lvLeviMode = function () { return mode; };
+  window.lvSetLeviMode = function (m) { if (m !== mode) introduced = null; mode = m || null; paint(); refreshStrip(); placeholder(); if (mode && isOpen()) enter(); };
+  window.lvLeviModeRefresh = function () { paint(); };
+  // open Levi on a subject (from a button on the page)
+  window.lvAskLevi = function (m) {
+    if (typeof session !== "undefined" && !session) { if (typeof showLogin === "function") showLogin(); return; }
+    if (m && m !== mode) { introduced = null; mode = m; }
+    if (window.lvOpenLevi) window.lvOpenLevi(); else if (!isOpen() && typeof toggleAiChat === "function") toggleAiChat();
+    setTimeout(enter, 0);
+  };
+
+  // the bar under Levi's header: what he is looking at, and Exit
+  function paint() {
+    var p = panel(); if (!p) return;
+    var bar = document.getElementById("lvLeviModeBar");
+    if (!mode) { if (bar) bar.remove(); return; }
+    if (!bar) {
+      bar = document.createElement("div"); bar.id = "lvLeviModeBar"; bar.className = "lv-levi-mode"; bar.setAttribute("role", "status");
+      var head = p.querySelector(".drawer-header");
+      p.insertBefore(bar, head ? head.nextSibling : p.firstChild);
+      bar.addEventListener("click", function (e) { if (e.target.closest("[data-exit]")) { e.stopPropagation(); window.lvSetLeviMode(null); } });
+    }
+    bar.innerHTML = '<i class="fa-solid ' + E(mode.icon || "fa-wand-magic-sparkles") + '" aria-hidden="true"></i><span>' + E(val(mode.label)) + '</span><button type="button" data-exit>Exit</button>';
+  }
+  // the suggested questions above the message box follow the mode (the strip is rebuilt when it is missing)
+  function refreshStrip() { var s = document.getElementById("lvLeviSuggest"); if (s) s.remove(); }
+
+  // Levi has just opened (or a mode was chosen while he is open): show the bar, then his opening line once per subject
+  function placeholder() {
+    var i = document.getElementById("aiChatInput"); if (!i) return;
+    if (mode) i.placeholder = mode.placeholder || "Ask Levi about this…";
+    else if (/^Ask (Levi )?about /.test(i.placeholder)) i.placeholder = "Ask Levi anything…";
+  }
+  function enter() {
+    if (!mode || !isOpen()) return;
+    paint(); refreshStrip(); placeholder();
+    document.querySelectorAll("#aiChatMessages .lvw-vsug").forEach(function (x) { x.remove(); });   // the general vendor suggestions
+    if (introduced === mode) return;
+    var m = mode, tries = 0;
+    introduced = m;
+    // a saved conversation may still be loading: wait until the messages have settled so the opening line comes last
+    (function wait(lastCount) {
+      var box = document.getElementById("aiChatMessages"), n = box ? box.children.length : 0;
+      if (mode !== m || !isOpen()) { if (introduced === m) introduced = null; return; }
+      if ((n === 0 || n !== lastCount) && tries++ < 15) return setTimeout(function () { wait(n); }, 120);
+      try {
+        var text = val(m.intro);
+        if (text && typeof appendAiChatMessage === "function") {
+          appendAiChatMessage("assistant", text);
+          if (typeof persistAiMessage === "function") persistAiMessage("assistant", text);
+          if (typeof scrollAiChatToBottom === "function") scrollAiChatToBottom();
+        }
+      } catch (_) {}
+    })(-1);
+  }
+
+  // what Levi is told with each question while a mode is on: the app's figures, just before the question, and a note on the
+  // question saying what it is about (so a short question such as "is my price right?" is answered about this subject)
+  function wrapFetch() {
+    if (typeof fetchLeviReply !== "function" || fetchLeviReply.__lvMode) return;
+    var orig = fetchLeviReply;
+    var f = function (payload) {
+      if (mode && payload && Array.isArray(payload.messages)) {
+        try {
+          var msgs = payload.messages.slice(), i = msgs.length - 1;
+          while (i >= 0 && msgs[i].role !== "user") i--;
+          var ctx = String(val(mode.context) || "").slice(0, 4500);
+          if (i >= 0 && ctx) {
+            var last = Object.assign({}, msgs[i], { content: String(msgs[i].content || "") + "\n\n(Levi: this question is about " + val(mode.topic) + ".)" });
+            msgs.splice(i, 1, { role: "user", content: "APP CONTEXT FOR LEVI (added by the Levromart app, not typed by the user):\n" + ctx }, last);
+            payload = Object.assign({}, payload, { messages: msgs });
+          }
+        } catch (_) {}
+      }
+      return orig.call(this, payload);
+    };
+    f.__lvMode = true;
+    window.fetchLeviReply = f; try { fetchLeviReply = f; } catch (_) {}
+  }
+  // in a mode, questions go to Levi's AI with the subject, not to the quick built-in answers (which would, for example, start
+  // the "add a listing" flow for "how can I sell this listing faster?")
+  function wrapLocal() {
+    if (typeof resolveLeviLocalAction !== "function" || resolveLeviLocalAction.__lvMode) return;
+    var orig = resolveLeviLocalAction;
+    var g = async function (text) { if (mode) return { handled: false }; return orig.apply(this, arguments); };
+    g.__lvMode = true; g.__lvVendor = orig.__lvVendor;
+    window.resolveLeviLocalAction = g; try { resolveLeviLocalAction = g; } catch (_) {}
+  }
+  // a new chat in a mode starts with the opening line again
+  function wrapNewChat() {
+    if (typeof startNewAiChat !== "function" || startNewAiChat.__lvMode) return;
+    var orig = startNewAiChat;
+    var h = function () { var r = orig.apply(this, arguments); if (mode) { introduced = null; setTimeout(enter, 0); } return r; };
+    h.__lvMode = true;
+    window.startNewAiChat = h; try { startNewAiChat = h; } catch (_) {}
+  }
+  function wire() { wrapFetch(); wrapLocal(); wrapNewChat(); }
+  wire(); setTimeout(wire, 1500);
+
+  // Levi opening or closing by any route (his button, a link, the close button)
+  var was = null;
+  function watch() {
+    var p = panel(); if (!p) return setTimeout(watch, 500);
+    new MutationObserver(function () {
+      var open = isOpen(); if (open === was) return; was = open;
+      if (open) { if (mode) enter(); }
+      else if (mode && !mode.sticky) window.lvSetLeviMode(null);
+    }).observe(p, { attributes: true, attributeFilter: ["class"] });
+    was = isOpen();
+  }
+  watch();
+})();
