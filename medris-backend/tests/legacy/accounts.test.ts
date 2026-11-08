@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
-import { accessToken, buildTestApp, seedUser, seedVendor, uuid } from "../support/fixtures.js";
+import { accessToken, buildTestApp, seedOrder, seedProduct, seedUser, seedVendor, uuid } from "../support/fixtures.js";
 import { jsonRequest, setTestEnv, stubFetch } from "../helpers.js";
 
 /**
@@ -61,19 +61,40 @@ describe("account actions (/api/delete-account)", () => {
     expect(await db.query(`select 1 from public.users where id = $1`, [user.id])).toHaveLength(1);
   });
 
-  it("still deletes when the app's Delete account screen sends no action", async () => {
+  it("still deletes when the app's Delete account screen sends no action, keeping a copy, the files and a locked login", async () => {
     const user = await seedUser(db);
-    const { calls } = stubFetch([
-      { method: "POST", match: "/storage/v1/object/list/", json: [] },
-      { method: "DELETE", match: `/auth/v1/admin/users/${user.id}`, json: {} },
-    ]);
+    const { calls } = stubFetch([{ method: "PUT", match: `/auth/v1/admin/users/${user.id}`, json: {} }]);
     const res = await app.fetch(jsonRequest("/api/delete-account", { accessToken: await accessToken(user.id) }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ deleted: true });
     expect(await db.query(`select 1 from public.users where id = $1`, [user.id])).toHaveLength(0);
-    expect(calls.some((c) => c.method === "DELETE" && c.url.includes(`/auth/v1/admin/users/${user.id}`))).toBe(true);
-    // avatars + vendor-docs listed for the user's own folder
-    expect(calls.filter((c) => c.url.includes("/storage/v1/object/list/")).map((c) => JSON.parse(c.body!).prefix)).toEqual([user.id, user.id]);
+    // the login is locked (banned), never erased, and no files are removed
+    const ban = calls.find((c) => c.method === "PUT" && c.url.includes(`/auth/v1/admin/users/${user.id}`));
+    expect(JSON.parse(ban!.body!)).toEqual({ ban_duration: "876000h" });
+    expect(calls.some((c) => c.method === "DELETE" || c.url.includes("/storage/"))).toBe(false);
+    // migration 0044: the deleted profile is kept and can be put back
+    expect(await db.query(`select 1 from public.deleted_records where table_name = 'users' and row_id = $1`, [user.id])).toHaveLength(1);
+    const [{ n }] = await db.query<{ n: number }>(`select public.restore_deleted_account($1) as n`, [user.id]);
+    expect(n).toBeGreaterThan(0);
+    expect(await db.query(`select 1 from public.users where id = $1`, [user.id])).toHaveLength(1);
+  });
+
+  it("a deleted shop comes back whole: profile, shop, listings and completed orders (migration 0044)", async () => {
+    const owner = await seedUser(db, { role: "vendor" });
+    const buyer = await seedUser(db);
+    const vendor = await seedVendor(db, owner.id);
+    const productId = await seedProduct(db, vendor.id);
+    const orderId = await seedOrder(db, buyer.id, vendor.id, { status: "completed", productIds: [productId] });
+    stubFetch([{ method: "PUT", match: `/auth/v1/admin/users/${owner.id}`, json: {} }]);
+    const res = await app.fetch(jsonRequest("/api/delete-account", { accessToken: await accessToken(owner.id) }));
+    expect(res.status).toBe(200);
+    expect(await db.query(`select 1 from public.vendors where id = $1`, [vendor.id])).toHaveLength(0);
+    await db.query(`select public.restore_deleted_account($1)`, [owner.id]);
+    expect(await db.query(`select 1 from public.users where id = $1`, [owner.id])).toHaveLength(1);
+    expect(await db.query(`select 1 from public.vendors where id = $1`, [vendor.id])).toHaveLength(1);
+    expect(await db.query(`select 1 from public.products where id = $1`, [productId])).toHaveLength(1);
+    expect(await db.query(`select 1 from public.orders where id = $1`, [orderId])).toHaveLength(1);
+    expect(await db.query(`select 1 from public.order_items where order_id = $1`, [orderId])).toHaveLength(1);
   });
 
   it("blocks vendor account deletion while orders are active or commission is owed", async () => {

@@ -604,21 +604,6 @@ async function deleteAccount(body, res) {
     }
   }
 
-  // Capture conversations before the SQL wipe so their storage attachments
-  // can also be removed.
-  let conversationIds = [];
-  const conversationFilter = vendorIds.length
-    ? `or=(buyer_id.eq.${uid},vendor_id.in.(${vendorIds.join(",")}))`
-    : `buyer_id=eq.${uid}`;
-  const conversationResponse = await fetch(
-    `${supabaseUrl}/rest/v1/conversations?${conversationFilter}&select=id`,
-    { headers: svcHeaders }
-  );
-  if (conversationResponse.ok) {
-    const rows = await readJson(conversationResponse);
-    conversationIds = (Array.isArray(rows) ? rows : []).map(row => row.id).filter(Boolean);
-  }
-
   // The SQL function performs the FK-safe public-table deletion. It MUST
   // delete chat_usage before users; otherwise PostgreSQL rejects the wipe.
   // Called with the user's own token: delete_my_account() only deletes the caller's own
@@ -636,57 +621,18 @@ async function deleteAccount(body, res) {
     });
   }
 
-  async function listStorage(bucket, prefix) {
-    if (!prefix) return [];
-    const response = await fetch(`${supabaseUrl}/storage/v1/object/list/${encodeURIComponent(bucket)}`, {
-      method: "POST",
-      headers: svcHeaders,
-      body: JSON.stringify({ prefix, limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } })
-    });
-    if (!response.ok) return [];
-    const rows = await readJson(response);
-    return (Array.isArray(rows) ? rows : []).filter(row => row?.name && !String(row.name).endsWith("/"));
-  }
-
-  async function removeStorage(bucket, names) {
-    if (!names.length) return;
-    const response = await fetch(`${supabaseUrl}/storage/v1/object/remove`, {
-      method: "POST",
-      headers: svcHeaders,
-      body: JSON.stringify(names.map(name => ({ bucket_id: bucket, name })))
-    });
-    if (!response.ok) throw new Error(`Could not delete files from ${bucket}.`);
-  }
-
-  const storageTargets = [
-    ["avatars", [uid]],
-    ["vendor-docs", [uid]],
-    ["vendor-logos", vendorIds],
-    ["product-photos", vendorIds],
-    ["chat-attachments", conversationIds.map(id => `conv/${id}`)]
-  ];
-
-  for (const [bucket, prefixes] of storageTargets) {
-    for (const prefix of prefixes) {
-      const objects = await listStorage(bucket, prefix);
-      await removeStorage(bucket, objects.map(object => object.name));
-    }
-  }
-
-  // Hard-delete the Auth identity. Supabase documents that a normal admin
-  // delete removes the auth.users row and cascades its sessions/refresh
-  // tokens. Existing access JWTs cannot be retroactively changed, so the
-  // frontend also validates the current user before treating a session as
-  // logged in.
-  const authDeleteResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${uid}`, {
-    method: "DELETE",
-    headers: svcHeaders
+  // Files (photos, documents, chat attachments) are kept, and the login is locked instead of erased, so a deleted
+  // account can be put back (migration 0044 keeps a copy of every deleted row: public.restore_deleted_account).
+  const banResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${uid}`, {
+    method: "PUT",
+    headers: svcHeaders,
+    body: JSON.stringify({ ban_duration: "876000h" })
   });
 
-  if (!authDeleteResponse.ok) {
-    const detail = await authDeleteResponse.text().catch(() => "");
+  if (!banResponse.ok) {
+    const detail = await banResponse.text().catch(() => "");
     return res.status(500).json({
-      error: detail || "Marketplace data was deleted, but the authentication account could not be removed."
+      error: detail || "Marketplace data was deleted, but the login could not be closed."
     });
   }
 
