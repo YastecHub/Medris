@@ -486,6 +486,49 @@ async function registerAccount(body, res) {
 /* ============================================================
    DELETE ACCOUNT
    ============================================================ */
+// Re-creates a missing public.users row for the signed-in account (for example after an Auth account was deleted and
+// re-created with a new id). Never deletes anything and never grants a role above "buyer". Same as the backend's
+// ensureProfile (medris-backend/src/modules/accounts/accounts.service.ts).
+async function ensureProfile(body, res) {
+  const accessToken = String(body?.accessToken || "");
+  if (!accessToken) return res.status(400).json({ error: "accessToken is required." });
+  const supabaseUrl = env("SUPABASE_URL");
+  const anonKey = env("SUPABASE_ANON_KEY");
+  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !anonKey || !serviceKey) return res.status(500).json({ error: "Supabase server configuration is incomplete." });
+  const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` } });
+  const me = await readJson(userResponse);
+  if (!userResponse.ok || !me?.id) return res.status(401).json({ error: "Invalid or expired session. Please log in again." });
+  const headers = serviceHeaders(serviceKey);
+  const existing = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=id`, { headers });
+  if (!existing.ok) return res.status(502).json({ error: "Could not check the account profile." });
+  const rows = await readJson(existing);
+  if (Array.isArray(rows) && rows.length) return res.status(200).json({ ok: true, created: false });
+  const meta = me.user_metadata || {};
+  const email = String(me.email || meta.email || "");
+  const provider = String(me.app_metadata?.provider || "");
+  const insert = await fetch(`${supabaseUrl}/rest/v1/users`, {
+    method: "POST",
+    headers: { ...headers, Prefer: "resolution=ignore-duplicates,return=minimal" },
+    body: JSON.stringify({
+      id: me.id,
+      name: String(meta.name || meta.full_name || (email ? email.split("@")[0] : "") || "Levromart user"),
+      email: email && !email.includes("@accounts.levromart.app") ? email : null,
+      phone: String(meta.phone || ""),
+      city: String(meta.city || "Lagos"),
+      role: "buyer",
+      role_selected: true,
+      has_password: provider === "" || provider === "email",
+      avatar_url: String(meta.avatar_url || meta.picture || "")
+    })
+  });
+  if (!insert.ok && insert.status !== 409) {
+    const detail = await readJson(insert);
+    return res.status(500).json({ error: detail?.message || "Could not repair the account profile." });
+  }
+  return res.status(200).json({ ok: true, created: true });
+}
+
 async function deleteAccount(body, res) {
   const accessToken = body?.accessToken;
   if (!accessToken) return res.status(400).json({ error: "accessToken is required." });
@@ -767,7 +810,11 @@ module.exports = async function handler(req, res) {
 
     if (action === "account-exists" || action === "check-email") return accountExists(body, res);
     if (action === "register") return registerAccount(body, res);
-    return deleteAccount(body, res);
+    if (action === "ensure-profile") return ensureProfile(body, res);
+    // Only the Delete account screen (no action) or an explicit "delete" deletes an account. Anything else is refused:
+    // the app's "ensure-profile" request used to fall through to here and wiped the signed-in person's account.
+    if (action === "" || action === "delete" || action === "delete-account") return deleteAccount(body, res);
+    return res.status(400).json({ error: "Unknown account action." });
   } catch (error) {
     console.error("Levromart account API error:", error);
     return res.status(500).json({ error: error?.message || "Could not complete the account request." });
