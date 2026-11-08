@@ -11,7 +11,9 @@ async function ensureCustomerProfile(errorEl = null) {
     const userId = session.user.id;
     const { data: existing, error: readError } = await sb.from("users").select("id").eq("id", userId).maybeSingle();
     if (readError) {
+      // the check itself failed (network, slow server): not a missing profile, so nothing is "repaired"
       console.warn("Could not check buyer profile:", readError);
+      return true;
     }
     if (existing?.id) return true;
 
