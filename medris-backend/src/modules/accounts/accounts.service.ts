@@ -4,7 +4,6 @@ import { UsersRepository } from "../../database/repositories/users.repository.js
 import { VendorsRepository } from "../../database/repositories/vendors.repository.js";
 import { findPgError } from "../../database/errors.js";
 import { SupabaseAuthAdmin, SupabaseAuthError, fetchAuthUser } from "../../integrations/supabase-auth.js";
-import { SupabaseStorage } from "../../integrations/storage/index.js";
 import { normalizePhone, phoneAlias } from "../../lib/format.js";
 import { identityFromAccessToken } from "../auth/caller.js";
 import type { ServiceResult } from "../../shared/types/service.js";
@@ -232,8 +231,6 @@ export async function deleteAccount(body: Record<string, unknown>): Promise<Serv
     }
   }
 
-  // Capture conversations before the SQL wipe so their storage attachments can be removed too.
-  const conversationIds = await data.asService((tx) => new VendorsRepository(tx).conversationIds(uid, vendorIds)).catch(() => [] as string[]);
 
   // The port of delete_my_account() performs the FK-safe deletion of public tables. It only
   // deletes the caller's own account (or any, for an admin), as the SQL function did.
@@ -248,25 +245,11 @@ export async function deleteAccount(body: Record<string, unknown>): Promise<Serv
     };
   }
 
-  const storageTargets: [string, string[]][] = [
-    ["avatars", [uid]],
-    ["vendor-docs", [uid]],
-    ["vendor-logos", vendorIds],
-    ["product-photos", vendorIds],
-    ["chat-attachments", conversationIds.map((id) => `conv/${id}`)],
-  ];
-  for (const [bucket, prefixes] of storageTargets) {
-    const storage = SupabaseStorage.fromEnv(bucket);
-    for (const prefix of prefixes) {
-      const objects = await storage.list(prefix);
-      await storage.remove(objects);
-    }
-  }
-
-  // Hard-delete the Auth identity (cascades its sessions and refresh tokens).
-  const removed = await SupabaseAuthAdmin.fromEnv().deleteUser(uid);
-  if (!removed.ok) {
-    return { status: 500, body: { error: removed.detail || "Marketplace data was deleted, but the authentication account could not be removed." } };
+  // Files are kept and the login is locked instead of erased, so a deleted account can be put back
+  // (migration 0044 keeps a copy of every deleted row: public.restore_deleted_account).
+  const locked = await SupabaseAuthAdmin.fromEnv().banUser(uid);
+  if (!locked.ok) {
+    return { status: 500, body: { error: locked.detail || "Marketplace data was deleted, but the login could not be closed." } };
   }
   return { status: 200, body: { deleted: true } };
 }

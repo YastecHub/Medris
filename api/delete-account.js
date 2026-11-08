@@ -486,6 +486,49 @@ async function registerAccount(body, res) {
 /* ============================================================
    DELETE ACCOUNT
    ============================================================ */
+// Re-creates a missing public.users row for the signed-in account (for example after an Auth account was deleted and
+// re-created with a new id). Never deletes anything and never grants a role above "buyer". Same as the backend's
+// ensureProfile (medris-backend/src/modules/accounts/accounts.service.ts).
+async function ensureProfile(body, res) {
+  const accessToken = String(body?.accessToken || "");
+  if (!accessToken) return res.status(400).json({ error: "accessToken is required." });
+  const supabaseUrl = env("SUPABASE_URL");
+  const anonKey = env("SUPABASE_ANON_KEY");
+  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !anonKey || !serviceKey) return res.status(500).json({ error: "Supabase server configuration is incomplete." });
+  const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` } });
+  const me = await readJson(userResponse);
+  if (!userResponse.ok || !me?.id) return res.status(401).json({ error: "Invalid or expired session. Please log in again." });
+  const headers = serviceHeaders(serviceKey);
+  const existing = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=id`, { headers });
+  if (!existing.ok) return res.status(502).json({ error: "Could not check the account profile." });
+  const rows = await readJson(existing);
+  if (Array.isArray(rows) && rows.length) return res.status(200).json({ ok: true, created: false });
+  const meta = me.user_metadata || {};
+  const email = String(me.email || meta.email || "");
+  const provider = String(me.app_metadata?.provider || "");
+  const insert = await fetch(`${supabaseUrl}/rest/v1/users`, {
+    method: "POST",
+    headers: { ...headers, Prefer: "resolution=ignore-duplicates,return=minimal" },
+    body: JSON.stringify({
+      id: me.id,
+      name: String(meta.name || meta.full_name || (email ? email.split("@")[0] : "") || "Levromart user"),
+      email: email && !email.includes("@accounts.levromart.app") ? email : null,
+      phone: String(meta.phone || ""),
+      city: String(meta.city || "Lagos"),
+      role: "buyer",
+      role_selected: true,
+      has_password: provider === "" || provider === "email",
+      avatar_url: String(meta.avatar_url || meta.picture || "")
+    })
+  });
+  if (!insert.ok && insert.status !== 409) {
+    const detail = await readJson(insert);
+    return res.status(500).json({ error: detail?.message || "Could not repair the account profile." });
+  }
+  return res.status(200).json({ ok: true, created: true });
+}
+
 async function deleteAccount(body, res) {
   const accessToken = body?.accessToken;
   if (!accessToken) return res.status(400).json({ error: "accessToken is required." });
@@ -561,21 +604,6 @@ async function deleteAccount(body, res) {
     }
   }
 
-  // Capture conversations before the SQL wipe so their storage attachments
-  // can also be removed.
-  let conversationIds = [];
-  const conversationFilter = vendorIds.length
-    ? `or=(buyer_id.eq.${uid},vendor_id.in.(${vendorIds.join(",")}))`
-    : `buyer_id=eq.${uid}`;
-  const conversationResponse = await fetch(
-    `${supabaseUrl}/rest/v1/conversations?${conversationFilter}&select=id`,
-    { headers: svcHeaders }
-  );
-  if (conversationResponse.ok) {
-    const rows = await readJson(conversationResponse);
-    conversationIds = (Array.isArray(rows) ? rows : []).map(row => row.id).filter(Boolean);
-  }
-
   // The SQL function performs the FK-safe public-table deletion. It MUST
   // delete chat_usage before users; otherwise PostgreSQL rejects the wipe.
   // Called with the user's own token: delete_my_account() only deletes the caller's own
@@ -593,57 +621,18 @@ async function deleteAccount(body, res) {
     });
   }
 
-  async function listStorage(bucket, prefix) {
-    if (!prefix) return [];
-    const response = await fetch(`${supabaseUrl}/storage/v1/object/list/${encodeURIComponent(bucket)}`, {
-      method: "POST",
-      headers: svcHeaders,
-      body: JSON.stringify({ prefix, limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } })
-    });
-    if (!response.ok) return [];
-    const rows = await readJson(response);
-    return (Array.isArray(rows) ? rows : []).filter(row => row?.name && !String(row.name).endsWith("/"));
-  }
-
-  async function removeStorage(bucket, names) {
-    if (!names.length) return;
-    const response = await fetch(`${supabaseUrl}/storage/v1/object/remove`, {
-      method: "POST",
-      headers: svcHeaders,
-      body: JSON.stringify(names.map(name => ({ bucket_id: bucket, name })))
-    });
-    if (!response.ok) throw new Error(`Could not delete files from ${bucket}.`);
-  }
-
-  const storageTargets = [
-    ["avatars", [uid]],
-    ["vendor-docs", [uid]],
-    ["vendor-logos", vendorIds],
-    ["product-photos", vendorIds],
-    ["chat-attachments", conversationIds.map(id => `conv/${id}`)]
-  ];
-
-  for (const [bucket, prefixes] of storageTargets) {
-    for (const prefix of prefixes) {
-      const objects = await listStorage(bucket, prefix);
-      await removeStorage(bucket, objects.map(object => object.name));
-    }
-  }
-
-  // Hard-delete the Auth identity. Supabase documents that a normal admin
-  // delete removes the auth.users row and cascades its sessions/refresh
-  // tokens. Existing access JWTs cannot be retroactively changed, so the
-  // frontend also validates the current user before treating a session as
-  // logged in.
-  const authDeleteResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${uid}`, {
-    method: "DELETE",
-    headers: svcHeaders
+  // Files (photos, documents, chat attachments) are kept, and the login is locked instead of erased, so a deleted
+  // account can be put back (migration 0044 keeps a copy of every deleted row: public.restore_deleted_account).
+  const banResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${uid}`, {
+    method: "PUT",
+    headers: svcHeaders,
+    body: JSON.stringify({ ban_duration: "876000h" })
   });
 
-  if (!authDeleteResponse.ok) {
-    const detail = await authDeleteResponse.text().catch(() => "");
+  if (!banResponse.ok) {
+    const detail = await banResponse.text().catch(() => "");
     return res.status(500).json({
-      error: detail || "Marketplace data was deleted, but the authentication account could not be removed."
+      error: detail || "Marketplace data was deleted, but the login could not be closed."
     });
   }
 
@@ -767,7 +756,11 @@ module.exports = async function handler(req, res) {
 
     if (action === "account-exists" || action === "check-email") return accountExists(body, res);
     if (action === "register") return registerAccount(body, res);
-    return deleteAccount(body, res);
+    if (action === "ensure-profile") return ensureProfile(body, res);
+    // Only the Delete account screen (no action) or an explicit "delete" deletes an account. Anything else is refused:
+    // the app's "ensure-profile" request used to fall through to here and wiped the signed-in person's account.
+    if (action === "" || action === "delete" || action === "delete-account") return deleteAccount(body, res);
+    return res.status(400).json({ error: "Unknown account action." });
   } catch (error) {
     console.error("Levromart account API error:", error);
     return res.status(500).json({ error: error?.message || "Could not complete the account request." });

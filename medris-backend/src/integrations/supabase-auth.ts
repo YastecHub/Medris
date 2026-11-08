@@ -91,7 +91,13 @@ export class SupabaseAuthAdmin {
     return response.ok ? { ok: true } : { ok: false, message: body.msg || body.error_description || body.message };
   }
 
-  /** Hard-deletes a login account (cascades its sessions and refresh tokens). */
+  /** Locks a login for good (about 100 years) without erasing it, so a deleted account can be put back. */
+  async banUser(userId: string): Promise<{ ok: boolean; detail: string }> {
+    const response = await this.request(`users/${encodeURIComponent(userId)}`, { method: "PUT", body: JSON.stringify({ ban_duration: "876000h" }) });
+    return { ok: response.ok, detail: response.ok ? "" : await response.text().catch(() => "") };
+  }
+
+  /** Hard-deletes a login account (cascades its sessions and refresh tokens). Only for a sign-up that failed half way. */
   async deleteUser(userId: string): Promise<{ ok: boolean; detail: string }> {
     const response = await this.request(`users/${encodeURIComponent(userId)}`, { method: "DELETE" });
     return { ok: response.ok, detail: response.ok ? "" : await response.text().catch(() => "") };

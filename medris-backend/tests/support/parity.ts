@@ -180,7 +180,8 @@ function maskRow(row: Record<string, unknown>, isNew: boolean, extra: (string | 
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(row)) {
     const extraHit = extra.some((m) => (typeof m === "string" ? m === key : m.test(key)));
-    const newId = isNew && key === "id";
+    // a new row's id, and the transaction id stamped on kept copies of deleted rows (migration 0044), differ between runs
+    const newId = isNew && (key === "id" || key === "txid");
     out[key] = extraHit || newId ? "<volatile>" : maskTimestamps(value);
   }
   return out;
