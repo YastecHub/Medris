@@ -24,9 +24,31 @@
 /* ---- levromart-payout-setup-gate-js ---- */
 (function(){
   let gate=null;
-  function closeGate(){gate?.remove();gate=null;}
+  function closeGate(){
+    try {
+      if (typeof session !== "undefined" && session?.user?.id) {
+        sessionStorage.setItem("lv_payout_nudge_dismissed_" + session.user.id, "1");
+      }
+    } catch (_) {}
+    window.__lvPayoutNudgeDismissed = true;
+    gate?.remove();
+    gate=null;
+  }
   window.__levroCheckPayoutSetup=function(){
-    if(!session?.user?.id||!vendor?.id||vendor.paystack_subaccount_code)return;
+    const hasPayout = typeof window.vendorHasPayoutAccount === "function"
+      ? window.vendorHasPayoutAccount(vendor)
+      : !!(vendor && (vendor.paystack_subaccount_code || vendor.transfer_recipient_code || vendor.payout_verified_at || (vendor.account_number && vendor.bank_code)));
+    const dismissed = (() => {
+      try {
+        return typeof session !== "undefined" && session?.user?.id
+          ? sessionStorage.getItem("lv_payout_nudge_dismissed_" + session.user.id) === "1"
+          : false;
+      } catch (_) {
+        return !!window.__lvPayoutNudgeDismissed;
+      }
+    })();
+    const isVendorAccount = (typeof profile !== "undefined" && profile?.role === "vendor") || (typeof vendor !== "undefined" && vendor && vendor.verification_status === "approved");
+    if (!session?.user?.id || !isVendorAccount || !vendor?.id || hasPayout || dismissed) return;
     if(gate)return;
     gate=document.createElement("div");
     gate.className="levromart-payout-gate-backdrop";

@@ -92,7 +92,7 @@
   </div>
 </div>
 
-<div id="vendorPayoutNudgeModal" class="modal hidden">
+<div id="vendorPayoutNudgeModal" class="modal hidden" onclick="if(event.target===this) dismissVendorPayoutNudge()">
   <div class="modal-content" style="max-width:400px;">
     <h3><i class="fa-solid fa-money-bill-transfer"></i> Set up your payout account</h3>
     <p class="muted" style="margin:0.6rem 0 1rem;">You haven't added a bank account yet, so Levromart can't pay you for any sales. It only takes a minute, and you won't be asked again once it's set up.</p>

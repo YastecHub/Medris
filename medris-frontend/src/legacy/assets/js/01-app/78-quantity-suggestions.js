@@ -58,7 +58,10 @@ async function confirmOrderAsVendor(orderId) {
   showToast("Order confirmed.", "success");
   // If payout isn't set up yet, send the vendor straight there -- money for
   // this order can't reach them otherwise once it's paid.
-  if (vendor && !vendor.paystack_subaccount_code) {
+  const hasPayout = typeof window.vendorHasPayoutAccount === "function"
+    ? window.vendorHasPayoutAccount(vendor)
+    : !!(vendor && (vendor.paystack_subaccount_code || vendor.transfer_recipient_code || vendor.payout_verified_at || (vendor.account_number && vendor.bank_code)));
+  if (vendor && !hasPayout) {
     await window.openVendorPayoutSetup?.();
     return;
   }

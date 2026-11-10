@@ -872,7 +872,8 @@ function finVendorRowHtml(v, seesFinancials) {
   const owed = Number(v.commission_owed || 0);
   const live = !!v.is_active;
   const ver = v.verification_status === "verified" ? "" : v.verification_status === "rejected" ? `<i class="fa-solid fa-circle-xmark fin-ico bad" title="Rejected"></i>` : `<i class="fa-solid fa-clock fin-ico warn" title="Pending verification"></i>`;
-  const bank = v.paystack_subaccount_code ? `<i class="fa-solid fa-building-columns fin-ico ok" title="Payouts set up"></i>` : `<i class="fa-solid fa-building-columns fin-ico warn" title="Payouts not set up"></i>`;
+  const hasBank = !!(v.paystack_subaccount_code || v.account_number);
+  const bank = hasBank ? `<i class="fa-solid fa-building-columns fin-ico ok" title="Payouts set up"></i>` : `<i class="fa-solid fa-building-columns fin-ico warn" title="Payouts not set up"></i>`;
   const state = live ? "" : `<i class="fa-solid fa-circle-pause fin-ico bad" title="Paused"></i>`;
   const due = v.commission_due_at ? new Date(v.commission_due_at).toLocaleDateString("en-NG", {day:"numeric",month:"short",year:"numeric"}) : "";
   const dr = Number(v.commission_days_remaining);
@@ -902,7 +903,7 @@ async function refreshAdminFinanceVendors() {
   if (!wrap) return;
   const { data: vendors, error } = await sb.rpc("admin_list_vendor_payouts");
   if (error || !Array.isArray(vendors)) return;
-  const sig = JSON.stringify(vendors.map((v) => [v.vendor_id, v.is_active, v.commission_owed, v.verification_status, !!v.paystack_subaccount_code]));
+  const sig = JSON.stringify(vendors.map((v) => [v.vendor_id, v.is_active, v.commission_owed, v.verification_status, !!(v.paystack_subaccount_code || v.account_number)]));
   if (wrap.dataset.sig === sig) return;
   wrap.dataset.sig = sig;
   if (__adminFinanceData) __adminFinanceData.vendors = vendors;
