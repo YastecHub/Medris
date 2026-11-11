@@ -27,6 +27,7 @@
     { "source": "/s/:id", "destination": "/api/delete-account?storefront=:id" },
     { "source": "/p/:id", "destination": "/api/delete-account?product=:id" },
     { "source": "/k/:id", "destination": "/api/delete-account?package=:id" },
+    { "source": "/l/:id", "destination": "/api/delete-account?levi=:id" },
     {
       "source": "/",
       "has": [{ "type": "query", "key": "storefront" }],
