@@ -260,7 +260,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   // Customers get the redesigned page; vendors and admins keep the working layout below.
   const newView = isCustomer && !isVendor && profile?.role !== "admin";
-  const chatOpenStates = ["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
+  const chatOpenStates = ["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000) || (order.status === "cancelled" && Date.now() - new Date(order.cancelled_at || order.status_changed_at || order.created_at || 0).getTime() < 30 * 60 * 1000);
   if (newView) html = customerOrderTopHtml(order, { isCustomer, sourcePerspective, contactAllowed: chatOpenStates && !!order.vendor_id });
   if (isCustomer) html += orderQtyProposalHtml(order, "customer");
   // Vendors get the matching redesign. Privacy is unchanged: anonymous until accepted, name only after.
