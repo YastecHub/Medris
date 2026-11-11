@@ -40,6 +40,7 @@ export class PresenceService {
     if (!me) return { last_seen_at: null };
     const other = await this.db().asService((tx) => new PresenceRepository(tx).otherSide(me.userId, conversationId));
     if (!other) return { last_seen_at: null };
+    if (await this.db().asService((tx) => new PresenceRepository(tx).hidesStatus(other))) return { last_seen_at: null };
     const signIn = await this.db().asAuthReader((tx) => new PresenceRepository(tx).lastSignIn(other));
     return { last_seen_at: await this.db().asService((tx) => new PresenceRepository(tx).lastSeen(other, signIn)) };
   }

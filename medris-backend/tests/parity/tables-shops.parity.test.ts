@@ -42,6 +42,7 @@ describe("parity: table queries - shops", () => {
     "admin_paused",
     "request_campus_scope",
     "whatsapp_alerts",
+    "show_online_status",
   ];
   const publicView = (row: Record<string, unknown> | null) => {
     if (!row) return row;
