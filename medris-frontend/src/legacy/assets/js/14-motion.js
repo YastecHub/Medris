@@ -7999,9 +7999,10 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
       var id = m[1];
       a.setAttribute("data-lv-pres", "1");
       try { if (typeof isOwnVendorId === "function" && isOwnVendorId(id)) continue; } catch (_) {}
-      var host = a.closest("p") || a;
       var el = document.createElement("div"); el.className = "sf-presence pd-presence"; el.hidden = true;
-      host.insertAdjacentElement("afterend", el);
+      // inside the "Vendor:" line, right under the shop's name (a sibling would be moved by the page's flex ordering)
+      if (a.classList.contains("product-detail-vendor-link")) a.insertAdjacentElement("afterend", el);
+      else a.insertAdjacentElement("beforeend", el);
       (function (el, id) {
         var paint = function (d) { var h = d ? line(d.online, d.last_seen_at) : ""; el.innerHTML = h; el.hidden = !h; };
         var c = cache[id];
