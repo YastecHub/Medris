@@ -174,7 +174,6 @@ async function renderVendorDashboard() {
       ${hubRow('<img class="vh-3d" src="/icons3d/lv/suggestions.webp" alt="" loading="lazy" decoding="async">', "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
       ${hubRow('<img class="vh-3d" src="/icons3d/lv/support.webp" alt="" loading="lazy" decoding="async">', "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
     </div>
-    <div class="vh-list vh-list-single">${hubRow('<img class="vh-3d" src="/icons3d/lv/settings.webp" alt="" loading="lazy" decoding="async">', "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
   </div>`;
 
   return html;

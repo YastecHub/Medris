@@ -456,7 +456,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
-  } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml && !window.__levroCategorySwitch) {
+  } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml && !window.__levroCategorySwitch && !window.__lvUseSnap) {
     // Reuse a previously rendered real page while the original renderer refreshes it.
     app.innerHTML = cachedRouteHtml;
     __slideEnterNow(app);
@@ -471,7 +471,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // below still refreshes the data in the background and replaces this content
   // only when the fresh render is ready. This prevents the Home fallback/loading
   // state from ever becoming the visible result of a slow or transient request.
-  if (view === "home" && app && !reactView && !routeHtmlCache.has(cacheKey) && !window.__levroCategorySwitch) {
+  if (view === "home" && app && !reactView && !routeHtmlCache.has(cacheKey) && !window.__levroCategorySwitch && !window.__lvUseSnap) {
     let painted = false;
     try { painted = paintHomeFromLocalCatalog(false); } catch (err) {
       console.warn("[Levromart startup] Cached homepage paint failed.", err);
