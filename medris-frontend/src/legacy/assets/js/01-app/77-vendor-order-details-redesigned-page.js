@@ -59,7 +59,7 @@ function vendorOrderTopHtml(order, ctx) {
   h += `<section class="od-card order-buyer-card">`;
   if (ctx.accepted) {
     const nm = ctx.contact?.name || "Customer";
-    h += `<div class="od-vendor">${avatarFallbackHtml(nm, "3.4rem", "od-vendor-logo", nm, order.buyer_id || nm)}
+    h += `<div class="od-vendor">${ctx.contact?.avatar_url ? profileAvatarHtml(ctx.contact.avatar_url, nm, "3.4rem", { extraClass: "od-vendor-logo" }) : avatarFallbackHtml(nm, "3.4rem", "od-vendor-logo", nm, order.buyer_id || nm)}
       <div class="od-vendor-copy"><strong>${esc(nm)}</strong><span class="od-muted">${isDelivery ? "Delivery" : "Pickup"} customer</span></div></div>`;
     h += `<div class="od-cust-actions">${ctx.chatWindowOpen ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="messageCustomerFromOrder('${esc(order.id)}')" aria-label="Message customer"><i class="fa-regular fa-comment-dots"></i> Message</button>
       <button type="button" class="od-btn od-btn-light od-btn-small" onclick="callCustomerFromOrder('${esc(order.id)}')" aria-label="Call customer"><i class="fa-solid fa-phone"></i> Call</button>` : ""}
@@ -269,6 +269,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   let vContact = {};
   if (isVendor && vAccepted) {
     try { const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: orderId }); vContact = (contact && contact[0]) || {}; } catch (_) { vContact = {}; }
+    try { const { data: av } = await sb.rpc("get_order_buyer_avatar", { p_order_id: orderId }); if (av && av[0] && av[0].avatar_url) vContact = { ...vContact, avatar_url: av[0].avatar_url }; } catch (_) {}
   }
   if (newVendorView) html = vendorOrderTopHtml(order, { accepted: vAccepted, chatWindowOpen: vChatWindowOpen, contact: vContact, feePaid, canSeeLocation: ["pending", "confirmed"].includes(String(order.status || "")) });
 

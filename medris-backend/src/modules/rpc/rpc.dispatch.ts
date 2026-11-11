@@ -338,6 +338,7 @@ export const RPC: Record<string, RpcEntry> = {
     limit: L.orders,
   },
   get_order_buyer_contact: { run: (s, me, a) => s.orderActions.buyerContact(me, id(a.p_order_id)) },
+  get_order_buyer_avatar: { run: (s, me, a) => s.orderActions.buyerAvatar(me, id(a.p_order_id)) },
   get_orders_buyer_names: { run: (s, me, a) => s.orderActions.buyerNames(me, ids(a.p_order_ids)) },
   remind_all_orders: { run: (s, me) => s.orderActions.remindAll(me), limit: L.orders },
   send_order_reminder: { run: (s, me, a) => s.orderActions.remind(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },
