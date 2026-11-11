@@ -95,3 +95,8 @@ decides who can see orders and chat - the most sensitive part of the app.
   design so customers never get confused about who they are talking to; (b) several businesses per owner - needs the
   one-shop-per-user rule (`vendors.user_id` unique, used in ~40 places) to be lifted and a business switcher; that is a
   separate, larger change best done after the team workspace has been used for a while.
+- **Step 4 (done, migration 0061):** team members can answer the shop's chats from the team workspace ("Chats" tab).
+  The customer sees the shop's name and logo on the message and its alert, never the staff member; team members also get the
+  shop's "new message" alerts. Chat rules (closed chats, message requests) apply to them as to the owner.
+- **Still not built:** several businesses per owner (needs `vendors.user_id` unique lifted and a business switcher in
+  about 40 places). Recommended only after the team workspace has been used for a while.

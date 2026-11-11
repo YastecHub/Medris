@@ -103,6 +103,33 @@ export class OrderActionsRepository {
       join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid order by m.created_at`);
   }
 
+  /** The shop's conversations for the team workspace, newest first, with the customer's name and the unread count. */
+  async teamChats(vendorId: string): Promise<unknown[]> {
+    return jsonRows(this.db, sql`select c.id, (select u.name from public.users u where u.id = c.buyer_id) as buyer_name,
+        (select m.body from public.messages m where m.conversation_id = c.id and m.deleted_at is null order by m.created_at desc limit 1) as last_body,
+        (select max(m.created_at) from public.messages m where m.conversation_id = c.id) as last_at,
+        (select count(*)::int from public.messages m where m.conversation_id = c.id and m.sender_id = c.buyer_id and m.read_at is null and m.deleted_at is null) as unread
+      from public.conversations c where c.vendor_id = ${vendorId}::uuid
+      order by (select max(m.created_at) from public.messages m where m.conversation_id = c.id) desc nulls last limit 50`);
+  }
+
+  async conversationVendor(conversationId: string): Promise<{ vendor_id: string; buyer_id: string } | null> {
+    return jsonRow(this.db, sql`select vendor_id, buyer_id from public.conversations where id = ${conversationId}::uuid`);
+  }
+
+  /** The last 100 messages of a conversation, oldest first; the customer's unread messages are marked read. */
+  async teamMessages(conversationId: string, buyerId: string): Promise<unknown[]> {
+    await this.db.execute(sql`update public.messages set read_at = now() where conversation_id = ${conversationId}::uuid and sender_id = ${buyerId}::uuid and read_at is null`);
+    return jsonRows(this.db, sql`select id, sender_id, body, created_at, (sender_id = ${buyerId}::uuid) as from_customer from (
+        select id, sender_id, body, created_at from public.messages where conversation_id = ${conversationId}::uuid and deleted_at is null order by created_at desc limit 100) x
+      order by created_at`);
+  }
+
+  async insertTeamMessage(conversationId: string, senderId: string, body: string): Promise<string> {
+    const [row] = rowsOf<{ id: string }>(await this.db.execute(sql`insert into public.messages (conversation_id, sender_id, body) values (${conversationId}::uuid, ${senderId}::uuid, ${body}) returning id`));
+    return row!.id;
+  }
+
   /** The shop's orders for the team workspace. The customer's name stays hidden while an order is still pending. */
   async teamOrders(vendorId: string, activeOnly: boolean): Promise<unknown[]> {
     return jsonRows(this.db, sql`select o.id, o.status::text as status, o.order_type::text as order_type, o.delivery_method::text as delivery_method,
