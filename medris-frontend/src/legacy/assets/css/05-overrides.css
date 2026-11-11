@@ -7886,3 +7886,35 @@ html:root:root:root body #app#app .storefront-profile.sf-snap .sf-cover::after,h
 .sf-presence[hidden]{display:none}
 .sf-pdot{width:.55rem;height:.55rem;border-radius:50%;background:#9ca3af;flex:none}
 .sf-pdot.on{background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.2)}
+
+/* Levi's floating button: flat green, no glow, ring or shadow */
+html body #aiChatFab .lv-fab-badge{filter:none!important}
+html body #aiChatFab,html body #aiChatFab::before,html body #aiChatFab::after{box-shadow:none!important}
+
+/* swipe teaser: light card with Levi's flat mark, not a dark bar */
+html body #lvSwipeHint{background:var(--card,#fff)!important;color:var(--text,#111)!important;box-shadow:0 8px 26px rgba(0,0,0,.18)!important;border:1px solid var(--border,rgba(128,128,128,.25))!important;padding:.4rem 1rem .4rem .5rem!important}
+html body #lvSwipeHint .lvsh-levi{display:inline-flex;width:2.4rem;height:2.4rem}
+html body #lvSwipeHint .lvsh-levi svg{width:100%;height:100%}
+
+/* selected variety: flat on the page (no purple box), a thin line under it */
+html:root:root:root:root:root:root:root:root:root:root body #app#app .card:has(#buyQty) .selected-variant-summary,
+html:root:root:root:root:root:root:root:root:root:root body #app#app .selected-variant-summary.sv-card,
+html[data-theme="dark"]:root:root:root:root:root:root:root:root:root:root body #app#app .card:has(#buyQty) .selected-variant-summary,
+html[data-theme="black"]:root:root:root:root:root:root:root:root:root:root body #app#app .card:has(#buyQty) .selected-variant-summary{background:transparent!important;background-image:none!important;border:0!important;border-bottom:1px solid var(--border,rgba(128,128,128,.25))!important;border-radius:0!important;box-shadow:none!important;padding:.5rem 0 .7rem!important}
+
+/* storefront Follow button: a little higher and to the right; Levi's mark with a plus instead of the person icon; the check spins in */
+html:root:root:root body #app#app .storefront-profile .storefront-public-actions{transform:translate(.6rem,-1.6rem)}
+html:root:root:root body #app#app .follow-btn-icon i.fa-user-plus{font-size:0!important;width:1.15rem;height:1.15rem;display:inline-block;position:relative;background:currentColor;-webkit-mask:url(/lv-mark.svg) center/contain no-repeat;mask:url(/lv-mark.svg) center/contain no-repeat}
+html:root:root:root body #app#app .follow-btn-icon i.fa-user-plus::before{content:none!important}
+html:root:root:root body #app#app .follow-btn-icon:has(i.fa-user-plus) .follow-btn-label::before{content:"+";font-weight:900;margin-right:.25rem}
+@keyframes lvFollowSpin{from{transform:rotate(-360deg) scale(.3);opacity:0}to{transform:none;opacity:1}}
+html:root:root:root body #app#app .follow-btn-icon i.fa-check{animation:lvFollowSpin .55s cubic-bezier(.2,.9,.3,1.2)}
+
+/* map / grid switch: the same blue as "View shop" and "Follow" (no indigo) */
+html:root:root:root:root body #app .vmpage .vmp-view-switch{background:#e8f0fe!important}
+html:root:root:root:root body #app .vmpage .vmp-view-switch button{color:#1a73e8!important}
+html:root:root:root:root body #app .vmpage .vmp-view-switch button.active{background:#1a73e8!important;color:#fff!important;box-shadow:none!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch{background:rgba(26,115,232,.22)!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button{color:#8ab4f8!important}
+html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button.active{background:#1a73e8!important;color:#fff!important}
+html:root:root:root:root:root:root body #app#app#app .storefront-profile .storefront-public-actions{transform:translate(.6rem,-1.6rem)!important}

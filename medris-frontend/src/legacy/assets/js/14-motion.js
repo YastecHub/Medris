@@ -3361,7 +3361,16 @@ window.lvAskCancel = async function (orderId) {
     if (seen() || document.getElementById("lvSwipeHint")) return;
     var d = document.createElement("div");
     d.id = "lvSwipeHint"; d.setAttribute("aria-hidden", "true");
-    d.innerHTML = '<span class="lvsh-a l"><i class="fa-solid fa-chevron-left"></i><i class="fa-solid fa-chevron-left"></i></span><b>Swipe for the next product</b><span class="lvsh-a r"><i class="fa-solid fa-chevron-right"></i><i class="fa-solid fa-chevron-right"></i></span>';
+    // Levi's flat mark "drags" the page a little to the left and lets go, twice: a teaser, the page is not really swiped
+    d.innerHTML = '<span class="lvsh-levi">' + (window.lvMascotSvg || "") + '</span><b>Swipe for the next product</b>';
+    var page = document.getElementById("app"), lv = d.querySelector(".lvsh-levi");
+    try {
+      if (lv && lv.animate) {
+        var move = [{ transform: "translateX(0)" }, { transform: "translateX(-46px)", offset: .5 }, { transform: "translateX(0)" }];
+        lv.animate(move, { duration: 1300, iterations: 2, easing: "ease-in-out" });
+        if (page && page.animate) page.animate([{ transform: "translateX(0)" }, { transform: "translateX(-26px)", offset: .5 }, { transform: "translateX(0)" }], { duration: 1300, iterations: 2, easing: "ease-in-out" });
+      }
+    } catch (_) {}
     document.body.appendChild(d);
     try { localStorage.setItem(KEY, "1"); } catch (_) {}
     var gone = false;
