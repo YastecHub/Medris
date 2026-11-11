@@ -595,7 +595,7 @@ async function subscribeToConversation(conversationId) {
       if (activeConversationId !== conversationId) return;
       if (payload.new.sender_id === session.user.id) {
         const timeText = document.querySelector(`.chat-bubble[data-msg-id="${payload.new.id}"] .chat-time-text`);
-        if (timeText) timeText.innerHTML = `${new Date(payload.new.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${messageTicksHtml(payload.new)}`;
+        if (timeText) timeText.innerHTML = `${new Date(payload.new.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit" })}${messageTicksHtml(payload.new)}`;
       }
       const reactRow = document.querySelector(`.msg-reactions-row[data-reactions-for="${payload.new.id}"]`);
       if (reactRow) reactRow.innerHTML = reactionsRowHtml(payload.new);
@@ -1148,7 +1148,7 @@ async function chatCatchUp() {
       const want = m.read_at ? "read" : m.delivered_at ? "delivered" : "sent";
       if (tt && tt.dataset.tickState !== want) {
         tt.dataset.tickState = want;
-        tt.innerHTML = `${new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${messageTicksHtml(m)}`;
+        tt.innerHTML = `${new Date(m.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit" })}${messageTicksHtml(m)}`;
       }
     }
     let gotIncoming = false;

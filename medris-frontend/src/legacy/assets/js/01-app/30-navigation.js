@@ -781,8 +781,12 @@ async function navigate(view, params = {}, pushHistory = true) {
     const y = window.__levroProfScroll[view];
     requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
   } else if (!pushHistory && view === "home" && previousView !== "home" && Number.isFinite(window.__levroHomeScrollY)) {
+    // back to the exact spot: the list below may still be drawing, so keep returning to it until the page is tall enough (or the person scrolls)
     const y = window.__levroHomeScrollY;
-    requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    let moved = false; const stop = () => { moved = true; };
+    window.addEventListener("touchstart", stop, { once: true, passive: true }); window.addEventListener("wheel", stop, { once: true, passive: true });
+    const restore = (n) => { if (moved) return; window.scrollTo({ top: y, behavior: "auto" }); if (Math.abs(window.scrollY - y) > 4 && n > 0) setTimeout(() => restore(n - 1), 100); };
+    requestAnimationFrame(() => restore(30));
   } else if (pushHistory || previousView !== view) {
     if (view !== "home" || window.scrollY === homeStartScroll) {
       window.scrollTo({ left: 0, top: 0, behavior: "auto" });
