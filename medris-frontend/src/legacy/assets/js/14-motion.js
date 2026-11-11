@@ -1083,7 +1083,7 @@
     });
   }
   // leaving a screen by any route (taps, links, the bottom bar) remembers where you were
-  document.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest("a, button, [onclick], .card, .product-card-wrap")) remember(); }, true);
+  document.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest("a, button, [onclick], .card, .product-card-wrap")) { try { var pc = e.target.closest(".product-card-wrap[data-product-id]"); if (pc) window.__lvLastCard = pc.getAttribute("data-product-id"); } catch (_) {} remember(); } }, true);
   addEventListener("pagehide", remember);
   if (typeof orig === "function") {
     var flying = {};
@@ -1119,6 +1119,8 @@
         if (pushHistory === false) {            // Back / forward: return to where this screen was left
           var k = keyOf(false), y = k != null ? scrolls[k] : undefined;
           if (Number.isFinite(y)) { window.scrollTo({ top: y, behavior: "instant" }); restore(y); }
+          // the product you opened is brought back into view (centred) if the saved spot left it off screen
+          if (view === "home" && window.__lvLastCard) { var lc = window.__lvLastCard; [60, 400, 1200].forEach(function (ms) { setTimeout(function () { try { var el = document.querySelector('.product-card-wrap[data-product-id="' + lc + '"]'); if (!el) return; var r = el.getBoundingClientRect(); if (r.bottom < 60 || r.top > innerHeight - 60) el.scrollIntoView({ block: "center", behavior: "instant" }); } catch (_) {} }, ms); }); }
         }
       } catch (_) {}
       return r;
@@ -4501,7 +4503,7 @@ window.lvAskCancel = async function (orderId) {
       (shop ? '<li><b>Shop earnings.</b> When a buyer confirms an order, your share (the sale minus Levromart\'s 3% commission) is ready. Earnings are released 24 hours after the payment. This protects you and your buyers: if a buyer reports a scam in that time, the money can still be refunded. A refund comes out of your share.</li>' : '<li><b>Refunds.</b> If an order is cancelled or a problem is settled in your favour, the refund comes into your wallet. It is paid out of the shop\'s share.</li>') +
       '<li><b>Your PIN.</b> A 6-digit PIN protects every payment, transfer and withdrawal, like a bank app. Keep it to yourself: Levromart will never ask for it.</li>' +
       '<li><b>Withdraw.</b> To your own bank account, at any time, with your PIN. You can change your bank account whenever you like. Only a shop\'s earnings paid in the last 24 hours wait for a check by Levromart.</li>' +
-      '</ul><button type="button" class="lw-link lw-tag-change" onclick="lvW3ChangeTag()"><i class="fa-solid fa-pen"></i> Change my @tag</button>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
+      '</ul><div style="display:flex;justify-content:flex-end"><button type="button" class="lw-link lw-tag-change" onclick="lvW3ChangeTag()"><i class="fa-solid fa-pen"></i> Change my @tag</button></div>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
 
   // the full history: grouped by day, a new-bank header when withdrawals start going to a different account
@@ -7994,6 +7996,8 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
 
 /* a flat "no image" picture for listings without a photo (cards, shop strips and the product page) */
 window.lvNoImageHtml = function (seed) {
-  var h = 160; try { h = stableAvatarHue(String(seed || "x")); } catch (_) {}
-  return '<span class="lv-noimg" role="img" aria-label="No image available" style="--ni-h:' + h + '"><svg viewBox="0 0 64 64" width="46" height="46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="12" width="46" height="40" rx="9"/><circle cx="24" cy="26" r="4.5" fill="currentColor" stroke="none" opacity=".85"/><path d="M12 45l13-13 9 9 7-7 11 11" opacity=".9"/></svg><span>No photo yet</span></span>';
+  // soft lilac / peach / rose / sky colours only (never green or yellow)
+  var HUES = [268, 18, 338, 204, 288, 12, 252, 350], h = HUES[0];
+  try { h = HUES[stableAvatarHue(String(seed || "x")) % HUES.length]; } catch (_) {}
+  return '<span class="lv-noimg" role="img" aria-label="No photo yet" style="--ni-h:' + h + '"><svg viewBox="0 0 64 64" width="48" height="48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 22h36l-3 30a4 4 0 0 1-4 3.6H21a4 4 0 0 1-4-3.6z"/><path d="M24 22v-3a8 8 0 0 1 16 0v3"/><path d="M50 8l1.6 4.4L56 14l-4.4 1.6L50 20l-1.6-4.4L44 14l4.4-1.6z" fill="currentColor" stroke="none"/></svg></span>';
 };
