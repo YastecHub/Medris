@@ -1057,7 +1057,7 @@
   var heights = {};
   try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
   function view0() { try { return currentView; } catch (_) { return ""; } }
-  var pageSnaps = {};
+  var pageSnaps = {}, snapAt = {};
   window.lvDropPageSnaps = function () { pageSnaps = {}; vendorsSnap = null; };
   var vendorsSnap = null;   // the Vendors page as it looked when we left it (grid/list only), so Back can show it at once
   function remember() {
@@ -1065,8 +1065,8 @@
       var a = document.getElementById("app"), m = null; try { m = localStorage.getItem("levromart_vendors_view"); } catch (_) {}
       if (a && view0() === "vendors" && m !== "map" && a.querySelector("#vendorsGrid .vd-card, #vendorsGrid > *:not(.vd-skel)")) vendorsSnap = a.innerHTML;
       // Home and a shop's page are remembered the same way, so Back shows them at once instead of rebuilding them
-      if (a && view0() === "home" && a.querySelector(".lv-act-grid")) pageSnaps.home = a.innerHTML;
-      else if (a && view0() === "storefront" && a.querySelector(".storefront-profile-name")) { var sp = history.state && history.state.params; if (sp && sp.vendorId) pageSnaps["storefront|" + sp.vendorId] = a.innerHTML; }
+      if (a && view0() === "home" && a.querySelector(".lv-act-grid")) { pageSnaps.home = a.innerHTML; snapAt.home = Date.now(); }
+      else if (a && view0() === "storefront" && a.querySelector(".storefront-profile-name")) { var sp = history.state && history.state.params; if (sp && sp.vendorId) { pageSnaps["storefront|" + sp.vendorId] = a.innerHTML; snapAt["storefront|" + sp.vendorId] = Date.now(); } }
     } catch (_) {}
     var k = keyOf(true);
     if (!k) return;
@@ -1109,9 +1109,18 @@
         try { document.getElementById("app").innerHTML = vendorsSnap; } catch (_) {}
       }
       if (pushHistory === false && view0() !== view && (view === "home" || view === "storefront")) {
-        try { var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId); if (pageSnaps[sk]) document.getElementById("app").innerHTML = pageSnaps[sk]; } catch (_) {}
+        try {
+          var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId);
+          if (pageSnaps[sk]) {
+            document.getElementById("app").innerHTML = pageSnaps[sk];
+            // the page itself is then "drawn" from this same saved copy (no waiting for the network, no blank), so every normal
+            // step after drawing a page still runs
+            if (Date.now() - (snapAt[sk] || 0) < 600000) window.__lvUseSnap = { view: view, html: pageSnaps[sk], vendorId: params && params.vendorId };
+          }
+        } catch (_) {}
       }
       var r = await orig.apply(this, arguments);
+      window.__lvUseSnap = null;
       if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
       try {
         var st = history.state;
@@ -1126,6 +1135,17 @@
       return r;
     };
   }
+  (function () {
+    var rh = window.renderHome, rs = window.renderStorefront;
+    if (typeof rh === "function") window.renderHome = async function () {
+      var u = window.__lvUseSnap; if (u && u.view === "home") { window.__lvUseSnap = null; return u.html; }
+      return rh.apply(this, arguments);
+    };
+    if (typeof rs === "function") window.renderStorefront = async function (vid) {
+      var u = window.__lvUseSnap; if (u && u.view === "storefront" && String(u.vendorId) === String(vid)) { window.__lvUseSnap = null; return u.html; }
+      return rs.apply(this, arguments);
+    };
+  })();
   window.lvGoBack = function (fallback) {
     if (depth() > 0) history.back();
     else if (typeof navigate === "function") navigate(fallback || "home");
