@@ -320,7 +320,7 @@ function productCardHtml(p) {
   // A product with no photo of its own falls back to the vendor's logo
   // filling the whole image slot, rather than a bare "No image" icon --
   // every card ends up with an actual picture in it.
-  const noImageFallback = lvNoImageHtml();
+  const noImageFallback = lvNoImageHtml(p.id);
   // "Buy price" + the flat delivery fee, added up for you, so the number on
   // the card is what you'd actually pay with delivery -- not just the item
   // price with the delivery cost left to discover later. Distance-priced

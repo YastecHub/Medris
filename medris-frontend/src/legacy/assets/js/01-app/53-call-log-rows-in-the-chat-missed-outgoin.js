@@ -67,7 +67,7 @@ async function chatSyncCallLogs(force) {
 })();
 function chatBubbleHtml(m) {
   const mine = m.sender_id === session.user.id;
-  const time = new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const time = new Date(m.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit" });
   if (m.deleted_at) {
     return `<div class="chat-bubble-wrap ${mine ? "mine" : "theirs"}">
       <div class="chat-bubble ${mine ? "mine" : "theirs"} deleted" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}"><span class="chat-bubble-text muted" style="font-style:italic;"><i class="fa-solid fa-ban"></i> This message was deleted</span><span class="chat-time"><span class="chat-time-text">${time}</span></span></div>

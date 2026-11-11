@@ -159,7 +159,7 @@ async function renderMessages(conversationId) {
     html += `<div class="chat-thread"><div class="chat-messages">${(messages || []).map((m) => {
       const isCustomer = m.sender_id === p.buyer_id;
       const senderName = isCustomer ? (p.buyer_name || "Customer") : (p.vendor_name || "Vendor");
-      const time = new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const time = new Date(m.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit" });
       return `<div class="chat-bubble ${isCustomer ? "theirs" : "mine"}"><strong style="display:block;font-size:0.72rem;opacity:0.8;">${esc(senderName)}</strong>${esc(maskSensitiveNumbers(m.body))}<span class="chat-time">${time}</span></div>`;
     }).join("")}</div></div>`;
     return html;
@@ -314,6 +314,9 @@ function sanitizeFilename(name) {
 // attachment_url is really just the storage path -- the actual viewable
 // URL has to be freshly signed each time it's displayed.
 const attachmentUrlCache = new Map();
+// signed picture links are kept on the phone for the rest of their hour, so reopening a chat shows its pictures at once
+(function () { try { const o = JSON.parse(localStorage.getItem("lv-att-urls") || "{}"); Object.keys(o).forEach((k) => { if (o[k] && o[k].expiresAt > Date.now() + 60000) attachmentUrlCache.set(k, o[k]); }); } catch (_) {} })();
+function persistAttachmentUrls() { try { const o = {}; [...attachmentUrlCache.entries()].slice(-80).forEach(([k, v]) => { o[k] = v; }); localStorage.setItem("lv-att-urls", JSON.stringify(o)); } catch (_) {} }
 async function resolveAttachmentUrl(path) {
   if (!path) return null;
   const cached = attachmentUrlCache.get(path);
@@ -327,11 +330,22 @@ async function resolveVisibleAttachments(root) {
   const els = [...(root || document).querySelectorAll("[data-attachment-path]:not([data-resolved])")];
   if (!els.length) return;
   els.forEach(el => el.setAttribute("data-resolved", "1"));
+  // what is already known is shown straight away
+  const pending = [];
+  els.forEach((el) => {
+    const c = attachmentUrlCache.get(el.dataset.attachmentPath);
+    if (c && c.expiresAt > Date.now() + 60000) {
+      el.dataset.resolvedUrl = c.url; if (el.tagName === 'A') el.href = c.url;
+      const im = el.tagName === 'IMG' ? el : el.querySelector('img'); if (im) { im.src = c.url; im.loading = 'eager'; im.decoding = 'async'; }
+    } else pending.push(el);
+  });
+  if (!pending.length) return;
+  els.length = 0; pending.forEach((e) => els.push(e));
   const uniquePaths=[...new Set(els.map(el=>el.dataset.attachmentPath).filter(Boolean))];
   let signedMap=new Map();
   try {
     const {data,error}=await sb.storage.from("chat-attachments").createSignedUrls(uniquePaths,3600);
-    if(!error && data) uniquePaths.forEach((path,i)=>{ const u=data[i]?.signedUrl; if(u) signedMap.set(path,u); });
+    if(!error && data) { uniquePaths.forEach((path,i)=>{ const u=data[i]?.signedUrl; if(u) { signedMap.set(path,u); attachmentUrlCache.set(path,{url:u,expiresAt:Date.now()+55*60*1000}); } }); persistAttachmentUrls(); }
   } catch(_) {}
   await Promise.all(els.map(async (el)=>{
     const path=el.dataset.attachmentPath;

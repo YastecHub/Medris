@@ -284,13 +284,15 @@
   window.openVendorDirectPayment = async function (orderId) {
     var args = arguments;
     if (!orderId || typeof session === "undefined" || !session) return origDirect.apply(this, args);
-    var on = await paystackOn();
+    // already known to be on (the app checks at start): open the choice at once, nothing is waited for
+    var known = onCache !== null ? onCache : window.__lvPaystackKnownOn;
+    var on = known === true ? true : await paystackOn();
     if (!on) return origDirect.apply(this, args);
     // pay with the Levromart wallet (no fee) or with Paystack
     if (window.lvW3ChoosePay) {
-      var total = null;
-      try { var o = (await sb.from("orders").select("total_amount").eq("id", orderId).maybeSingle()).data; total = o && o.total_amount; } catch (_) {}
-      return window.lvW3ChoosePay(orderId, total, function () { return startPaystack(orderId); });
+      // the order's total is looked up in the background; the sheet does not wait for it
+      var totalP = Promise.resolve(sb.from("orders").select("total_amount").eq("id", orderId).maybeSingle()).catch(function () { return null; });
+      return window.lvW3ChoosePay(orderId, null, function () { return startPaystack(orderId); }, totalP);
     }
     return startPaystack(orderId);
   };
@@ -4586,10 +4588,16 @@ window.lvAskCancel = async function (orderId) {
   };
 
   // paying for an order: choose the wallet (no fee) or Paystack
-  window.lvW3ChoosePay = async function (orderId, total, paystackGo) {
-    var d = W.data || await load(false);   // open at once from the last known wallet; the server re-checks the balance when paying
-    if (W.data) load(true).catch(function () {});
-    if (!d || d.frozen) return paystackGo();
+  window.lvW3ChoosePay = async function (orderId, total, paystackGo, totalP) {
+    var d = W.data;   // open at once from the last known wallet; the server re-checks the balance when paying
+    if (!d) {
+      // nothing known yet: show the choice straight away (Paystack works now), and add the wallet when its balance arrives
+      var q = sheet("How do you want to pay?", '<p class="lw-hint" id="lwQuickHint">Checking your wallet…</p><button type="button" class="lw-pay" id="lwPayCard"><span class="lw-pay-ic p"><i class="fa-solid fa-credit-card"></i></span><div><b>Card, bank transfer or USSD</b><small>Through Paystack</small></div><i class="fa-solid fa-chevron-right"></i></button>');
+      q.querySelector("#lwPayCard").onclick = function () { closeSheet(); paystackGo(); };
+      d = await load(false);
+      if (!document.getElementById("lvW3Sheet")) return;   // closed meanwhile
+      if (!d || d.frozen) { var h = q.querySelector("#lwQuickHint"); if (h) h.remove(); return; }
+    } else if (W.data) load(true).catch(function () {});
     var bal = Number(d.balance_kobo), need = Math.round(Number(total || 0) * 100), enough = need > 0 ? bal >= need : bal > 0;
     var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? "" : " · not enough") + (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0 ? " · " + d.free_order_payments_left + " free payment" + (d.free_order_payments_left === 1 ? "" : "s") + " left" : "") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
       (enough ? "" : '<button type="button" class="lw-link" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money to your wallet</button>') +
@@ -4597,6 +4605,10 @@ window.lvAskCancel = async function (orderId) {
       '<p class="lw-err" hidden></p><p class="lv-safe-pill"><span class="lv-safe-ic">' + shieldSvg(22) + '</span> All payments are secured by Paystack.</p>');
     m.querySelector("#lwPayCard").onclick = function () { closeSheet(); paystackGo(); };
     var wb = m.querySelector("#lwPayWallet");
+    if (totalP && !need) totalP.then(function (r) {
+      var t = r && r.data && r.data.total_amount; if (t == null) return;
+      need = Math.round(Number(t) * 100); if (bal < need && wb) { wb.disabled = true; var sm = wb.querySelector("small"); if (sm && sm.textContent.indexOf("not enough") < 0) sm.textContent += " · not enough"; }
+    });
     wb.onclick = async function () {
       if (wb.disabled) return;
       var fee = (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0) ? 0 : (need ? window.lvWalletFee(need) : 0);   // the first 3 orders paid from the wallet are free
@@ -5276,7 +5288,7 @@ window.lvAskCancel = async function (orderId) {
     if (T === "order_status_changed") return /complet/i.test(t) ? "order-completed" : /confirm/i.test(t) ? "order-confirmed" : /hand|deliver/i.test(t) ? "handed-over" : /dispute/i.test(t) ? "dispute" : null;
     var M = { order_reminder: "order-reminder", new_order: "new-order", order_placed: "new-order", payment_confirmed: "order-confirmed", payment_received: "tx-paid",
       new_dispute: "dispute", dispute_reopened: "dispute", dispute_resolved: "order-completed", points: "points", points_winner: "vendor-of-week", vendor_of_the_week: "vendor-of-week",
-      vendor_follow: "stat-followers", vendor_follow_update: "new-listing", stock_alert: "new-listing", new_listing: "new-listing", new_review: "reviews", new_message: "requests",
+      vendor_follow: "stat-followers", suggestion_reply: "suggestions", vendor_follow_update: "new-listing", stock_alert: "new-listing", new_listing: "new-listing", new_review: "reviews", new_message: "requests",
       withdrawal_approved: "withdrawal-approved", withdrawal_rejected: "withdrawal-rejected", payout_failed: "withdrawal-rejected", payout_sent: "payout-sent", refund_sent: "payout-sent",
       wallet_topup: "cash", wallet_hold: "tx-pending", wallet_withdrawal_sent: "payout-sent", wallet_withdrawal_rejected: "withdrawal-rejected", wallet_withdrawal_failed: "withdrawal-rejected", wallet_received: "tx-paid",
       payout_on_hold: "tx-pending", payment_unresolved_24h: "tx-pending", product_wishlisted: "stat-wishlist", leaderboard_up: "moved-up", rank_up: "moved-up" };
@@ -7981,6 +7993,7 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
 })();
 
 /* a flat "no image" picture for listings without a photo (cards, shop strips and the product page) */
-window.lvNoImageHtml = function () {
-  return '<span class="lv-noimg" role="img" aria-label="No image available"><svg viewBox="0 0 48 48" width="42" height="42" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="9" width="34" height="30" rx="6"/><circle cx="18" cy="20" r="3.2"/><path d="M9 35l9-9 6 6 5-5 10 10"/><path d="M6 6l36 36" /></svg><span>No image</span></span>';
+window.lvNoImageHtml = function (seed) {
+  var h = 160; try { h = stableAvatarHue(String(seed || "x")); } catch (_) {}
+  return '<span class="lv-noimg" role="img" aria-label="No image available" style="--ni-h:' + h + '"><svg viewBox="0 0 64 64" width="46" height="46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="12" width="46" height="40" rx="9"/><circle cx="24" cy="26" r="4.5" fill="currentColor" stroke="none" opacity=".85"/><path d="M12 45l13-13 9 9 7-7 11 11" opacity=".9"/></svg><span>No photo yet</span></span>';
 };
