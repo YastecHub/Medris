@@ -7724,3 +7724,20 @@ html body b.lw-amt,html:root body b.lw-amt,:root[data-theme="dark"] b.lw-amt,:ro
 .lv-hg .hg-left{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums}
 .lv-hg small{color:var(--text-muted);font-size:.78rem}
 .od-status>.lv-hg{grid-column:1/-1;margin-top:.4rem}
+/* Chat: sent bubble a touch deeper (like WhatsApp) so the ticks stand out; time then ticks at the far right */
+:root{--chat-mine-bg:#1f7a55}
+:root[data-theme="dark"],:root[data-theme="black"]{--chat-mine-bg:#14583e}
+html body .chat-bubble.mine .chat-tick{color:rgba(255,255,255,.78)!important}
+html body .chat-bubble.mine .chat-tick.read{color:#53bdeb!important;text-shadow:none!important}
+html body .chat-bubble .chat-time{display:flex!important;justify-content:flex-end;align-items:center;gap:.3rem;width:100%}
+html body .chat-bubble .chat-time-text{display:inline-flex;align-items:center;gap:.28rem}
+html body .chat-bubble.mine .chat-tick{font-size:.82rem;margin-left:.1rem}
+/* Typing: three bouncing dots in a small bubble at the bottom left, like WhatsApp (no text) */
+html body .chat-typing-indicator{display:inline-flex;align-items:center;margin:.35rem 0 .2rem .6rem;padding:.6rem .85rem;border-radius:18px 18px 18px 6px;background:var(--card);border:1px solid var(--border);align-self:flex-start;width:max-content}
+html body .chat-typing-indicator.hidden{display:none!important}
+html body .chat-typing-indicator>span:last-child{display:none}
+html body .chat-typing-dots{display:inline-flex;gap:.28rem;align-items:center}
+html body .chat-typing-dots i{width:7px;height:7px;border-radius:50%;background:#8a9a93;display:block;animation:lvTypingBounce 1s infinite ease-in-out}
+html body .chat-typing-dots i:nth-child(2){animation-delay:.15s}
+html body .chat-typing-dots i:nth-child(3){animation-delay:.3s}
+@keyframes lvTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.55}30%{transform:translateY(-5px);opacity:1}}
