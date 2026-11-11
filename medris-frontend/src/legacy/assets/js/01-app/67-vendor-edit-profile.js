@@ -857,6 +857,8 @@ async function lvOpenTeamPage() {
       <div>${rows.length ? rows.map((m) => `<div class="flex" style="align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid rgba(128,128,128,.2)">
           <div style="flex:1;min-width:0"><b>${esc(m.name || "Member")}</b><div class="muted" style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis">${esc(m.email || "")} · ${esc(LV_ROLE_LABEL[m.role] || m.role)}</div></div>
           <button type="button" class="btn btn-sm btn-outline" data-rm="${esc(m.user_id)}">Remove</button></div>`).join("") : `<p class="muted">No team members yet.</p>`}</div>
+      <div style="margin:1.2rem 0 0;padding:.8rem;border-radius:12px;background:rgba(31,138,91,.1)"><b>Running another business?</b>
+        <div class="muted" style="font-size:.88rem;margin-top:.2rem">Each business has its own Levromart account (its own earnings, bank details and storefront). To manage a second business from your main login: create an account for that business, open its Team page, and add your main account as <b>Manager</b>. It then appears as "Work for ..." in your profile menu, with its orders and chats, without logging out.</div></div>
       <h3 style="margin:1.4rem 0 .5rem;font-size:1rem">Add a team member</h3>
       <input id="lvTeamWho" type="text" inputmode="email" placeholder="Their e-mail or phone number" style="width:100%;box-sizing:border-box" />
       <select id="lvTeamRole" style="width:100%;box-sizing:border-box;margin-top:.5rem"><option value="staff">Staff - orders and chats</option><option value="manager">Manager - orders, chats and listings</option></select>

@@ -100,3 +100,9 @@ decides who can see orders and chat - the most sensitive part of the app.
   shop's "new message" alerts. Chat rules (closed chats, message requests) apply to them as to the owner.
 - **Still not built:** several businesses per owner (needs `vendors.user_id` unique lifted and a business switcher in
   about 40 places). Recommended only after the team workspace has been used for a while.
+- **Several businesses per owner - decision (11 Nov 2026):** done through the team system instead of lifting the
+  one-shop-per-account rule. Each business keeps its own account, earnings, bank details, billing and commission (3% per
+  sale, as decided); the owner adds their main account as Manager of the other business and works on its orders and
+  chats from "Work for ..." without logging out. This avoids rewriting ~40 places that assume one shop per account
+  (earnings, billing, payouts). Missing for managers: editing listings from the workspace (the `listings` permission
+  exists in the database). A true one-account-many-shops model remains possible later as its own, carefully tested project.
