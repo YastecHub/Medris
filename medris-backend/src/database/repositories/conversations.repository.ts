@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { Executor } from "../client.js";
 import { rowsOf } from "../client.js";
 import { jsonRow, jsonRows } from "../json.js";
+import { uuidArray } from "../arrays.js";
 
 export interface ConversationListItem {
   conversation_id: string;
@@ -89,6 +90,20 @@ export class ConversationsRepository {
   async create(buyerId: string, vendorId: string): Promise<string> {
     const [row] = rowsOf<{ id: string }>(await this.db.execute(sql`insert into public.conversations (buyer_id, vendor_id) values (${buyerId}, ${vendorId}) returning id`));
     return row!.id;
+  }
+
+  /** Who sent the latest message of each of the caller's conversations, and whether it was delivered / read (for the ticks on the chat list). */
+  lastStatus(userId: string, conversationIds: string[]): Promise<{ conversation_id: string; last_sender_id: string | null; delivered_at: string | null; read_at: string | null }[]> {
+    if (!conversationIds.length) return Promise.resolve([]);
+    return jsonRows(
+      this.db,
+      sql`select distinct on (m.conversation_id) m.conversation_id, m.sender_id as last_sender_id, m.delivered_at, m.read_at
+          from public.messages m
+          join public.conversations c on c.id = m.conversation_id
+          join public.vendors v on v.id = c.vendor_id
+          where m.conversation_id = any(${uuidArray(conversationIds.slice(0, 100))}) and (c.buyer_id = ${userId}::uuid or v.user_id = ${userId}::uuid)
+          order by m.conversation_id, m.created_at desc`,
+    );
   }
 
   /** list_my_conversations(): open conversations, pinned first, then by latest message. */
