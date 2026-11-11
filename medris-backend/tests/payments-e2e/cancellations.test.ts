@@ -8,13 +8,16 @@ describe("cancelling paid orders", () => {
   const call = async (name: string, token: string, body: Record<string, unknown> = {}) => json(await api.post(w, `/rpc/${name}`, token, body));
   const refundsOf = (orderId: string) => w.db.query<{ amount_kobo: string; status: string }>(`select amount_kobo::text, status from public.paystack_refunds where order_id = $1`, [orderId]);
 
-  it("a refund can only be asked for within 24 hours of the order", async () => {
+  it("a refund can still be asked for after 24 hours: the request says so, and the shop or an admin decides", async () => {
     const o = await newOrder(w, 5000);
     await payOrder(w, o);
     await w.db.query(`update public.orders set created_at = now() - interval '25 hours' where id = $1`, [o]);
     const r = await call("buyer_cancel_order", w.buyer.token, { p_order_id: o });
-    expect(r.status).toBe(400);
-    expect(String(r.body?.error?.message ?? r.body?.message ?? JSON.stringify(r.body))).toMatch(/within 24 hours/);
+    expect(r.status).toBe(200);
+    expect(r.data).toMatchObject({ cancelled: false, requested: true });
+    expect(await refundsOf(o)).toHaveLength(0); // nothing moves until someone agrees
+    const req = await rowOf(w, `select reason from public.cancellation_requests where order_id = $1`, [o]);
+    expect(String(req?.reason ?? "")).toMatch(/more than 24 hours/);
   });
 
   it("the buyer cancelling a paid order asks for a refund; nothing moves until the shop (or an admin) agrees", async () => {
@@ -73,14 +76,16 @@ describe("cancelling paid orders", () => {
     }
   });
 
-  it("nobody else can cancel it, and the buyer cannot once it is out for delivery", async () => {
+  it("nobody else can cancel it; once it is out for delivery the buyer can still ask for a refund (the shop or an admin decides)", async () => {
     const o = await newOrder(w, 4000);
     await payOrder(w, o);
     expect((await call("buyer_cancel_order", w.buyer2.token, { p_order_id: o })).status).toBe(403);
     await handOver(w, o);
     const r = await call("buyer_cancel_order", w.buyer.token, { p_order_id: o });
-    expect(r.status).toBe(400);
-    expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [o]))?.s).toBe("handed_over");
+    expect(r.status).toBe(200);
+    expect(r.data).toMatchObject({ cancelled: false, requested: true });
+    expect((await rowOf(w, `select status::text as s from public.orders where id = $1`, [o]))?.s).toBe("handed_over"); // still on until decided
+    expect(await refundsOf(o)).toHaveLength(0);
   });
 
   it("an unpaid order is cancelled without any refund", async () => {

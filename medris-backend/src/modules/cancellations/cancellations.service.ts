@@ -8,7 +8,7 @@ const orderLink = (orderId: string) => ({ targetView: "orderDetail", targetParam
 
 /**
  * Cancelling an order that has been paid for (migration 0018).
- *   - The buyer may cancel until the vendor marks it out for delivery: everything paid for the order (not Paystack's fee) goes back.
+ *   - The buyer may cancel until the order is completed (also while it is out for delivery). A paid order becomes a refund request that the shop or an admin decides; everything paid for the order (not Paystack's fee) goes back when approved.
  *   - A shop cannot cancel a paid order itself. It asks, an admin decides; approving cancels the order and refunds the buyer.
  * The refund itself is queued by the database the moment the order becomes cancelled (migration 0008), whoever cancelled it.
  */
@@ -27,13 +27,13 @@ export class CancellationsService {
       const o = await repo.order(orderId);
       if (!o) throw notFound("Order not found.");
       if (o.buyer_id !== me.userId) throw forbidden("Only the buyer can cancel this order.");
-      if (!["pending", "confirmed"].includes(o.status)) throw badRequest("This order can no longer be cancelled: it is already out for delivery or finished. If something is wrong, report an issue from the order page.");
+      if (!["pending", "confirmed", "handed_over"].includes(o.status)) throw badRequest("This order can no longer be cancelled: it is completed or already closed. If something is wrong, report an issue from the order page.");
       const notify = new NotificationWriter(tx);
       if (o.paid) {
         // a refund can only be asked for within 24 hours of the order: Paystack cannot investigate money after it has been sent on
-        if (o.refund_window_over) throw badRequest("A refund can only be requested within 24 hours of placing the order. If something is wrong with what you received, report an issue from the order page.");
+        // after 24 hours Paystack may no longer be able to return the money by itself: the request is still taken, and the shop or an admin decides how it is paid back (the note below tells them)
         if (await repo.open(orderId)) throw conflict("You have already asked for a refund on this order.");
-        const reason = (reasonInput ?? "").trim() || "The buyer wants to cancel and be refunded.";
+        const reason = ((reasonInput ?? "").trim() || "The buyer wants to cancel and be refunded.") + (o.refund_window_over ? " (asked more than 24 hours after the order was placed)" : "") + (o.status === "handed_over" ? " (the order is already out for delivery)" : "");
         const id = await repo.insert(orderId, me.userId, reason.slice(0, 500), "buyer");
         await notify.create({ userId: o.vendor_user_id, type: "refund_requested", title: "Refund request", body: "The buyer cancelled this paid order and asked for a refund. Refund them, or tell them why not.", ...orderLink(orderId), actorId: me.userId });
         await notify.notifyAdmins("Refund request", `A buyer asked for a refund on a paid order from ${o.business_name ?? "a shop"}: ${reason.slice(0, 120)}`, "adminPayments", { tab: "todo" }, me.userId);
@@ -86,7 +86,7 @@ export class CancellationsService {
         return { status: "requested", vendor_decision: "declined" };
       }
       const o = await repo.order(c.order_id);
-      if (!o || !["pending", "confirmed"].includes(o.status)) throw conflict("This order is no longer waiting to be delivered, so it cannot be cancelled this way.");
+      if (!o || !["pending", "confirmed", "handed_over"].includes(o.status)) throw conflict("This order is no longer open, so it cannot be cancelled this way.");
       await repo.setCancelled(c.order_id);
       const refunded = await repo.queuedRefundKobo(c.order_id);
       await repo.decide(id, "approved", me.userId, null);
