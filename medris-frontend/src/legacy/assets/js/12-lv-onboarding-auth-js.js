@@ -1253,14 +1253,10 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   };
 
   // Levi, the assistant: the Levromart app icon as a glassy badge (exact logo mark) with an "AI" spark and a live dot
-  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset=".55" stop-color="#0f9d6a"/><stop offset="1" stop-color="#065f46"/></linearGradient><linearGradient id="lvcr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6bff"/><stop offset="1" stop-color="#3dffb4"/></linearGradient></defs>'
-   +'<ellipse cx="40" cy="75" rx="19" ry="3" fill="rgba(0,0,0,.2)"/>'
-   +'<rect x="9" y="9" width="62" height="62" rx="20" fill="none" stroke="url(#lvcr)" stroke-width="2.2" opacity=".9"/>'
-   +'<rect x="13" y="13" width="54" height="54" rx="17" fill="url(#lvcg)"/>'
-   +'<path d="M13 30q0-17 17-17h20q17 0 17 17v1q-27 -9-54 0z" fill="#fff" opacity=".16"/>'
-   +'<g transform="translate(15 15) scale(.5)"><path d="M34.61 67.09A23 23 0 0 1 42.89 28.12" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><path d="M65.39 32.91A23 23 0 0 1 57.11 71.88" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><circle class="lvc-eye" cx="50" cy="50" r="9.8" fill="#fff"/></g>'
-   +'<g transform="translate(58 14)"><circle r="9.5" fill="#1b0d3d"/><circle r="9.5" fill="none" stroke="#ffd21f" stroke-width="1.6"/><path d="M0 -5l1.5 3.5 3.5 1.5-3.5 1.5L0 5l-1.5-3.5-3.5-1.5 3.5-1.5z" fill="#ffd21f"/></g>'
-   +'<circle class="lvc-ant" cx="16" cy="64" r="3.4" fill="#3dffb4"/></svg>';
+  // Levi: flat green with the white arc-and-dot mark (no gloss, rim or shadow)
+  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true">'
+   +'<rect x="8" y="8" width="64" height="64" rx="20" fill="#22a36b"/>'
+   +'<g transform="translate(14 14) scale(.52)"><path d="M34.61 67.09A23 23 0 0 1 42.89 28.12" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><path d="M65.39 32.91A23 23 0 0 1 57.11 71.88" fill="none" stroke="#fff" stroke-width="10.3" stroke-linecap="round"/><circle class="lvc-eye" cx="50" cy="50" r="9.8" fill="#fff"/></g></svg>';
   window.lvMascotSvg=MASCOT;
   var LINES=["Hi! I'm Levi. Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
 
