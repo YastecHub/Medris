@@ -829,12 +829,42 @@ function lvChangeBank() {
 // Rules live in the database (migrations 0057-0060): a manager handles orders, chat and listings, staff handle orders and
 // chat; bank details, wallet, billing and settings stay with the owner. The customer always sees the shop's name.
 window.lvMyTeams = window.lvMyTeams || [];
+window.lvTeamInvites = window.lvTeamInvites || [];
 async function lvLoadMyTeams() {
   try {
-    if (!session || (typeof vendor !== "undefined" && vendor)) { window.lvMyTeams = []; return; }
-    const { data } = await sb.rpc("get_my_shop_teams");
-    window.lvMyTeams = Array.isArray(data) ? data : [];
-  } catch (_) { window.lvMyTeams = []; }
+    if (!session) { window.lvMyTeams = []; window.lvTeamInvites = []; return; }
+    const [t, i] = await Promise.all([sb.rpc("get_my_shop_teams"), sb.rpc("get_my_team_invites")]);
+    window.lvMyTeams = Array.isArray(t.data) ? t.data : [];
+    window.lvTeamInvites = Array.isArray(i.data) ? i.data : [];
+  } catch (_) { window.lvMyTeams = []; window.lvTeamInvites = []; }
+  if (window.lvTeamInvites.length) setTimeout(lvShowTeamInvite, 1200);
+}
+// "<Shop> invited you to their team" - the person decides (nobody is added without saying yes)
+function lvShowTeamInvite() {
+  const inv = (window.lvTeamInvites || [])[0];
+  if (!inv || document.getElementById("lvInviteModal") || !session) return;
+  const m = document.createElement("div");
+  m.id = "lvInviteModal";
+  m.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:1rem;";
+  m.innerHTML = `<div style="background:var(--bg-card,#fff);color:var(--text,#111);border-radius:20px;padding:1.3rem;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+    <div style="width:56px;height:56px;border-radius:50%;background:rgba(31,138,91,.14);color:#1f8a5b;display:flex;align-items:center;justify-content:center;margin:0 auto .6rem;font-size:1.5rem"><i class="fa-solid fa-people-group"></i></div>
+    <h3 style="margin:0 0 .3rem">${esc(inv.business_name)}</h3>
+    <p class="muted" style="margin:0 0 1rem">invited you to join their team as <b>${esc(inv.role === "manager" ? "Manager" : "Staff")}</b>.</p>
+    <div class="flex" style="gap:.5rem"><button type="button" class="btn btn-outline" id="lvInvNo" style="flex:1">Decline</button><button type="button" class="btn" id="lvInvYes" style="flex:1">Accept</button></div>
+    <button type="button" id="lvInvLater" style="margin-top:.7rem;background:none;border:0;color:inherit;opacity:.6;font-size:.85rem">Decide later</button></div>`;
+  document.body.appendChild(m);
+  const answer = async (accept) => {
+    m.querySelectorAll("button").forEach((b) => (b.disabled = true));
+    const r = await sb.rpc("respond_team_invite", { p_vendor_id: inv.vendor_id, p_accept: accept });
+    m.remove();
+    if (r.error) { showToast(r.error.message, "error"); }
+    else showToast(accept ? `You joined ${inv.business_name}. Find it in your profile menu.` : "Invitation declined.", "success");
+    await lvLoadMyTeams();
+    try { updateAuthUI(); } catch (_) {}
+  };
+  byId("lvInvYes").onclick = () => answer(true);
+  byId("lvInvNo").onclick = () => answer(false);
+  byId("lvInvLater").onclick = () => m.remove();
 }
 function lvTeamOverlay(id, title, bodyHtml) {
   document.getElementById(id)?.remove();
@@ -856,43 +886,61 @@ function lvTeamOverlay(id, title, bodyHtml) {
 const LV_ROLE_LABEL = { manager: "Manager", staff: "Staff" };
 async function lvOpenTeamPage() {
   if (!session || typeof vendor === "undefined" || !vendor) { showToast("Only shop owners can manage a team.", "info"); return; }
-  const el = lvTeamOverlay("lvTeamPage", "Your team", `<p class="muted">Loading…</p>`);
+  const el = lvTeamOverlay("lvTeamPage", "Team", `<p class="muted">Loading…</p>`);
   const draw = async () => {
     const { data, error } = await sb.rpc("list_shop_team");
     const rows = Array.isArray(data) ? data : [];
     const body = el.querySelector("[data-lv-body]");
+    const card = (m) => `<div style="display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-radius:14px;background:rgba(128,128,128,.1);margin-bottom:.5rem">
+        <div style="width:40px;height:40px;border-radius:50%;background:#1f8a5b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">${esc((m.name || "?").trim().charAt(0).toUpperCase())}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name || "Member")}</div>
+          <div style="font-size:.78rem;margin-top:.1rem"><span style="padding:.05rem .5rem;border-radius:999px;background:rgba(31,138,91,.15);color:#1f8a5b">${esc(LV_ROLE_LABEL[m.role] || m.role)}</span>${m.status === "pending" ? ` <span style="padding:.05rem .5rem;border-radius:999px;background:rgba(245,158,11,.18);color:#b45309">Waiting for reply</span>` : ""}</div></div>
+        <button type="button" class="btn btn-sm btn-outline" data-rm="${esc(m.user_id)}" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`;
     body.innerHTML = `
-      <p class="muted" style="margin:.2rem 0 1rem">Add people you trust to handle orders for your shop. They need a Levromart account.
-        <b>Manager:</b> orders, chats and listings. <b>Staff:</b> orders and chats. Your bank details, wallet, earnings and settings stay private to you.
-        Team members can see the orders of your shop, including the customer's delivery details.</p>
       ${error ? `<div class="error-text">${esc(error.message)}</div>` : ""}
-      <div>${rows.length ? rows.map((m) => `<div class="flex" style="align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid rgba(128,128,128,.2)">
-          <div style="flex:1;min-width:0"><b>${esc(m.name || "Member")}</b><div class="muted" style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis">${esc(m.email || "")} · ${esc(LV_ROLE_LABEL[m.role] || m.role)}</div></div>
-          <button type="button" class="btn btn-sm btn-outline" data-rm="${esc(m.user_id)}">Remove</button></div>`).join("") : `<p class="muted">No team members yet.</p>`}</div>
-      <div style="margin:1.2rem 0 0;padding:.8rem;border-radius:12px;background:rgba(31,138,91,.1)"><b>Running another business?</b>
-        <div class="muted" style="font-size:.88rem;margin-top:.2rem">Each business has its own Levromart account (its own earnings, bank details and storefront). To manage a second business from your main login: create an account for that business, open its Team page, and add your main account as <b>Manager</b>. It then appears as "Work for ..." in your profile menu, with its orders and chats, without logging out.</div></div>
-      <h3 style="margin:1.4rem 0 .5rem;font-size:1rem">Add a team member</h3>
-      <input id="lvTeamWho" type="text" inputmode="email" placeholder="Their e-mail or phone number" style="width:100%;box-sizing:border-box" />
-      <select id="lvTeamRole" style="width:100%;box-sizing:border-box;margin-top:.5rem"><option value="staff">Staff - orders and chats</option><option value="manager">Manager - orders, chats and listings</option></select>
-      <div id="lvTeamErr" class="error-text hidden" style="margin-top:.4rem"></div>
-      <button type="button" class="btn" id="lvTeamAdd" style="margin-top:.7rem">Add to my team</button>`;
+      <div style="margin-bottom:1rem">${rows.length ? rows.map(card).join("") : `<div style="text-align:center;padding:1.4rem .5rem" class="muted"><i class="fa-solid fa-people-group" style="font-size:2rem;opacity:.5"></i><div style="margin-top:.4rem">No one yet</div></div>`}</div>
+      <div style="padding:1rem;border-radius:16px;background:rgba(128,128,128,.1)">
+        <b>Invite someone</b>
+        <input id="lvTeamWho" type="text" inputmode="email" placeholder="E-mail or phone number" style="width:100%;box-sizing:border-box;margin-top:.6rem" />
+        <div class="flex" style="gap:.4rem;margin-top:.6rem" id="lvTeamRoles">
+          <button type="button" class="btn btn-sm" data-role="staff" style="flex:1">Staff</button>
+          <button type="button" class="btn btn-sm btn-outline" data-role="manager" style="flex:1">Manager</button></div>
+        <div class="muted" id="lvTeamRoleHint" style="font-size:.8rem;margin-top:.4rem">Orders and chats</div>
+        <div id="lvTeamErr" class="error-text hidden" style="margin-top:.4rem"></div>
+        <button type="button" class="btn" id="lvTeamAdd" style="margin-top:.7rem;width:100%">Send invitation</button></div>
+      <button type="button" class="btn btn-outline" id="lvTeamAddBiz" style="margin-top:1rem;width:100%"><i class="fa-solid fa-plus"></i> Add another business</button>`;
+    let role = "staff";
+    body.querySelectorAll("[data-role]").forEach((b) => (b.onclick = () => {
+      role = b.getAttribute("data-role");
+      body.querySelectorAll("[data-role]").forEach((x) => x.classList.toggle("btn-outline", x !== b));
+      byId("lvTeamRoleHint").textContent = role === "manager" ? "Orders, chats and listings" : "Orders and chats";
+    }));
     body.querySelectorAll("[data-rm]").forEach((b) => (b.onclick = async () => {
-      const ok = await showConfirmDialog("They will no longer be able to work on your shop's orders.", { title: "Remove this person?", okLabel: "Remove" });
+      const ok = await showConfirmDialog("They will lose access to your shop.", { title: "Remove this person?", okLabel: "Remove" });
       if (!ok) return;
       const r = await sb.rpc("remove_shop_team_member", { p_user_id: b.getAttribute("data-rm") });
       if (r.error) showToast(r.error.message, "error"); else { showToast("Removed.", "success"); draw(); }
     }));
+    byId("lvTeamAddBiz").onclick = () => lvOpenAddBusiness();
     byId("lvTeamAdd").onclick = async () => {
       const err = byId("lvTeamErr"); err.classList.add("hidden");
       const btn = byId("lvTeamAdd"); btn.disabled = true;
-      const r = await sb.rpc("add_shop_team_member", { p_identifier: byId("lvTeamWho").value.trim(), p_role: byId("lvTeamRole").value });
+      const r = await sb.rpc("add_shop_team_member", { p_identifier: byId("lvTeamWho").value.trim(), p_role: role });
       btn.disabled = false;
-      if (r.error) { err.textContent = r.error.message; err.classList.remove("hidden"); return; }
-      showToast("Added. They will see \"Work for " + (vendor.business_name || "your shop") + "\" in their profile menu.", "success");
+      if (r.error) { err.textContent = /not valid/i.test(r.error.message || "") ? "Team invitations aren't switched on yet. Please try again shortly." : r.error.message; err.classList.remove("hidden"); return; }
+      showToast("Invitation sent. They'll be asked to accept.", "success");
       draw();
     };
   };
   draw();
+}
+// "Add business": another business is its own Levromart account; add your main account to it as Manager
+function lvOpenAddBusiness() {
+  const el = lvTeamOverlay("lvAddBiz", "Add another business", `
+    <div style="display:flex;flex-direction:column;gap:.7rem">
+      ${["Create a Levromart account for the new business.", "In that account, open <b>Team</b> and invite your main account as <b>Manager</b>.", "Accept here. It then shows as <b>Work for …</b> in your profile menu."].map((t, n) => `<div style="display:flex;gap:.7rem;align-items:center;padding:.8rem;border-radius:14px;background:rgba(128,128,128,.1)"><div style="width:30px;height:30px;border-radius:50%;background:#1f8a5b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">${n + 1}</div><div>${t}</div></div>`).join("")}
+      <div class="muted" style="font-size:.82rem">Each business keeps its own earnings and bank details.</div></div>`);
+  return el;
 }
 function lvTeamOrderCard(o) {
   const st = o.status;

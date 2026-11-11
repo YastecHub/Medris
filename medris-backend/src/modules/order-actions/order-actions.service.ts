@@ -242,8 +242,47 @@ export class OrderActionsService {
       if (!person) throw badRequest("We couldn't find a Levromart account with that e-mail or phone. Ask them to sign up first.");
       if (person.id === me.userId) throw badRequest("You already own this shop.");
       if ((await orders.teamCount(shop)) >= 10) throw badRequest("A shop can have up to 10 team members.");
-      await orders.addMember(shop, person.id, role, me.userId);
-      return { user_id: person.id, name: person.name };
+      const status = await orders.addMember(shop, person.id, role, me.userId);
+      if (status === "pending") {
+        const shopName = (await orders.shopName(shop)) ?? "A shop";
+        await orders.notify({
+          userId: person.id,
+          type: "team_invite",
+          title: `${shopName} invited you to their team`,
+          body: `You were invited as ${role === "manager" ? "a manager" : "staff"}. Open Levromart to accept or decline.`,
+          targetParams: { vendorId: shop },
+          category: "team",
+          targetView: "home",
+        });
+      }
+      return { user_id: person.id, name: person.name, status } as { user_id: string; name: string | null };
+    });
+  }
+
+  /** Invitations waiting for the caller to accept or decline. */
+  async myInvites(me: Identity | null): Promise<unknown[]> {
+    if (!me) return [];
+    return this.db().asService((tx) => new OrderActionsRepository(tx).myInvites(me.userId));
+  }
+
+  /** The invited person accepts or declines; the shop owner is told. */
+  async respondInvite(me: Identity | null, vendorId: string, accept: boolean): Promise<{ accepted: boolean }> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const invite = await orders.answerInvite(vendorId, me.userId, accept);
+      if (!invite) throw badRequest("This invitation is no longer open.");
+      const who = (await orders.userName(me.userId)) ?? "Someone";
+      await orders.notify({
+        userId: invite.owner_id,
+        type: "team_invite_reply",
+        title: accept ? `${who} joined your team` : `${who} declined your team invitation`,
+        body: accept ? `${who} can now help with orders and chats as ${invite.role === "manager" ? "a manager" : "staff"}.` : "They chose not to join.",
+        targetParams: { vendorId },
+        category: "team",
+        targetView: "home",
+      });
+      return { accepted: accept };
     });
   }
 
