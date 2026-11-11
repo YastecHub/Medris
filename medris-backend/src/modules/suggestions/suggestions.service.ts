@@ -61,6 +61,47 @@ export class SuggestionsService {
     return { done: true };
   }
 
+  /** Edit your reply to a suggestion (the sender's notification is updated too). */
+  async editReply(me: Identity | null, suggestionId: string, message: string | null | undefined): Promise<{ success: true }> {
+    const text = (message ?? "").trim();
+    if (text === "") throw badRequest("Write your reply first.");
+    if (text.length > 2000) throw badRequest("That reply is too long.");
+    return this.ownReply(me, suggestionId, async (repo, row) => {
+      await repo.editReply(suggestionId, text);
+      const nid = row.sender_id ? await repo.replyNotificationId(row.sender_id, quote(row.message)) : null;
+      if (nid) await repo.updateNotificationBody(nid, `You wrote: "${quote(row.message)}"\nReply: ${text}`);
+    });
+  }
+
+  /** Delete your reply: the suggestion goes back to "not replied" and the sender's reply notification is removed. */
+  async deleteReply(me: Identity | null, suggestionId: string): Promise<{ success: true }> {
+    return this.ownReply(me, suggestionId, async (repo, row) => {
+      const nid = row.sender_id ? await repo.replyNotificationId(row.sender_id, quote(row.message)) : null;
+      await repo.clearReply(suggestionId);
+      if (nid) await repo.hideNotification(nid);
+    });
+  }
+
+  private async ownReply(me: Identity | null, suggestionId: string, run: (repo: SuggestionsRepository, row: { sender_id: string | null; message: string }) => Promise<void>): Promise<{ success: true }> {
+    if (!me) throw forbidden("Authentication required.");
+    await this.db().asService(async (tx) => {
+      const repo = new SuggestionsRepository(tx);
+      const access = new AccessRepository(tx);
+      const row = await repo.find(suggestionId);
+      if (!row) throw notFound("Not found.");
+      if (row.target_type === "platform") {
+        if (!(await access.isAdmin(me.userId))) throw forbidden("Not allowed.");
+      } else {
+        const vendorId = await access.liveVendorIdOf(me.userId);
+        if (!vendorId || vendorId !== row.target_vendor_id) throw forbidden("Not allowed.");
+      }
+      if (row.reply_message == null) throw badRequest("There is no reply to change.");
+      await run(repo, row);
+    });
+    return { success: true };
+  }
+
+
   /**
    * Replaces: public.reply_to_suggestion(uuid, text) - the shop the suggestion went to (or an admin, for Levromart) answers once; the
    * sender is told through a notification, so an anonymous sender stays anonymous.
@@ -99,3 +140,5 @@ export class SuggestionsService {
     return { success: true };
   }
 }
+
+const quote = (m: string) => (m.length > 140 ? `${m.slice(0, 140)}...` : m);

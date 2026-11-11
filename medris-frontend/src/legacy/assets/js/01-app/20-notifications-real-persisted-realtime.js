@@ -80,7 +80,7 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   buyerPendingOrderCount = buyerRes?.count || 0;
   if (followingRes) buyerFollowingCount = followingRes?.count || 0;
   if (totalOrdersRes) buyerTotalOrderCount = totalOrdersRes?.count || 0;
-  if (suggestionRes) unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
+  if (suggestionRes) unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => !x.reply_message).length;   // suggestions nobody has replied to yet
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   try { window.__lvSetChatIcon && window.__lvSetChatIcon((conversationsRes?.data || []).length > 0); } catch (_) {}
   const messagesDot = byId("messagesDot");
@@ -166,7 +166,7 @@ async function renderNotifPanel(opts = {}) {
   } else if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
     const cachedList = cachedNotifItems.map(n => {
       const avatar = n.actor_name === "Levromart" ? (window.lvAdminIconHtml ? window.lvAdminIconHtml(34) : "") : n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : notificationSystemIconHtml(n);
-      return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
+      return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-type="${esc(n.type || '')}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
     }).join('');
     panel.innerHTML = currentView === "notifications" ? cachedTabsHtml + cachedList : cachedList;
   } else {
@@ -280,7 +280,7 @@ async function renderNotifPanel(opts = {}) {
   const markAllBar = "";
   const list = (items && items.length)
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
-        <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
+        <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-type="${esc(n.type || '')}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
           ${n.actor_name === "Levromart" && window.lvAdminIconHtml ? window.lvAdminIconHtml(34) : n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : notificationSystemIconHtml(n)}
           <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
@@ -336,6 +336,13 @@ async function handleNotifItemClick(event, id) {
   let view = item.dataset.view || 'home';
   if (view === 'storefront' && (params.productId || params.product_id)) { params = { productId: params.productId || params.product_id }; view = 'productDetail'; }
   else if (view === 'storefront' && (params.packageId || params.package_id)) { params = { packageId: params.packageId || params.package_id }; view = 'packageDetail'; }
+  if (item.dataset.type === 'suggestion_reply') {
+    // a reply to my suggestion: straight to the replies page, with the newest reply flashed
+    await navigate('suggestionReplies');
+    let tries = 12; const flash = () => { const el = document.querySelector('.sr-item'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('lv-flash'); setTimeout(() => el.classList.remove('lv-flash'), 3200); } else if (tries-- > 0) setTimeout(flash, 300); };
+    flash();
+    return;
+  }
   navigate(view, params);
 }
 

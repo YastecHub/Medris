@@ -553,7 +553,7 @@ async function hydrateAdminProfileStats() {
         sb.from("auth_activity_logs").select("id", { count: "exact", head: true }).eq("event_type", "login").gte("occurred_at", startOfToday.toISOString()),
         sb.from("auth_activity_logs").select("id", { count: "exact", head: true }).eq("event_type", "login"),
         sb.from("support_requests").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
-        sb.from("suggestions").select("id", { count: "exact", head: true }).eq("status", "new").eq("target_type", "platform"),
+        sb.from("suggestions").select("id", { count: "exact", head: true }).is("reply_message", null).eq("target_type", "platform"),
         sb.from("disputes").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,closed)"),
       ]);
       window.__adminStatLoginsToday = Number(loginsToday || 0);

@@ -40,6 +40,32 @@ export class SuggestionsRepository {
     await this.db.execute(sql`update public.suggestions set reply_message = ${message}, replied_at = now(), replied_by = ${byUserId}::uuid, status = 'read' where id = ${id}`);
   }
 
+  async editReply(id: string, message: string): Promise<void> {
+    await this.db.execute(sql`update public.suggestions set reply_message = ${message} where id = ${id}`);
+  }
+
+  async clearReply(id: string): Promise<void> {
+    await this.db.execute(sql`update public.suggestions set reply_message = null, replied_at = null, replied_by = null where id = ${id}`);
+  }
+
+  /** The sender's reply notification for this suggestion (found by the quoted suggestion it starts with), newest first. */
+  async replyNotificationId(senderId: string, quoted: string): Promise<string | null> {
+    const prefix = `You wrote: "${quoted}"\nReply: `;
+    const row = await jsonRow<{ id: string }>(
+      this.db,
+      sql`select id from public.notifications where user_id = ${senderId}::uuid and type = 'suggestion_reply' and deleted_at is null and left(body, ${prefix.length}) = ${prefix} order by created_at desc limit 1`,
+    );
+    return row?.id ?? null;
+  }
+
+  async updateNotificationBody(id: string, body: string): Promise<void> {
+    await this.db.execute(sql`update public.notifications set body = ${body}, read = false where id = ${id}`);
+  }
+
+  async hideNotification(id: string): Promise<void> {
+    await this.db.execute(sql`update public.notifications set deleted_at = now() where id = ${id}`);
+  }
+
   /** The shop's name for a suggestion's notification. */
   async shopName(vendorId: string): Promise<string | null> {
     const row = await jsonRow<{ business_name: string | null }>(this.db, sql`select business_name from public.vendors where id = ${vendorId}`);

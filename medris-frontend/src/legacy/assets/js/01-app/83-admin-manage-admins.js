@@ -217,7 +217,7 @@ function suggestionRowHtml(s) {
       ${isNew ? '<span class="sg-chip sg-chip-new">New</span>' : replied ? '<span class="sg-chip sg-chip-done"><i class="fa-solid fa-check"></i> Replied</span>' : '<span class="sg-chip">Read</span>'}
     </header>
     <p class="sg-msg">${esc(s.message)}</p>
-    ${replied ? `<div class="sg-reply"><span class="sg-reply-label"><i class="fa-solid fa-reply"></i> Your reply${s.replied_at ? " · " + esc(suggestionWhen(s.replied_at)) : ""}</span><p>${esc(s.reply_message)}</p></div>` : `
+    ${replied ? `<div class="sg-reply"><span class="sg-reply-label"><i class="fa-solid fa-reply"></i> Your reply${s.replied_at ? " · " + esc(suggestionWhen(s.replied_at)) : ""}</span><p>${esc(s.reply_message)}</p><div class="sg-reply-acts"><button type="button" class="sg-btn sg-btn-ghost" onclick="editSuggestionReply('${esc(s.id)}')"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="sg-btn sg-btn-ghost" onclick="deleteSuggestionReply('${esc(s.id)}')"><i class="fa-solid fa-trash"></i> Delete</button></div></div>` : `
     <div class="sg-actions">
       <button type="button" class="sg-btn sg-btn-primary" onclick="openSuggestionReply('${esc(s.id)}')"><i class="fa-solid fa-reply"></i> Reply</button>
       ${isNew ? `<button type="button" class="sg-btn sg-btn-ghost" onclick="markSuggestionRead('${esc(s.id)}', this)"><i class="fa-solid fa-check"></i> Mark as read</button>` : ""}
@@ -230,6 +230,23 @@ function suggestionRowHtml(s) {
       </div>
     </div>`}
   </article>`;
+}
+async function editSuggestionReply(id) {
+  const cur = byId("sg-" + id)?.querySelector(".sg-reply > p")?.textContent || "";
+  const text = await showTextPromptDialog("Edit your reply", "The person who sent the suggestion will see the updated reply.", { placeholder: "Your reply…", okLabel: "Save", value: cur });
+  if (text === null) return;
+  if (!text.trim()) { showToast("Write your reply first.", "error"); return; }
+  const { error } = await sb.rpc("edit_suggestion_reply", { p_suggestion_id: id, p_message: text.trim() });
+  if (error) { showToast(error.message, "error"); return; }
+  showToast("Reply updated.", "success");
+  navigate(currentView === "adminFeedback" ? "adminFeedback" : "vendorSuggestionsInbox", {}, false);
+}
+async function deleteSuggestionReply(id) {
+  if (!(await showConfirmDialog("Delete your reply? The person will no longer see it, and the suggestion goes back to \"not replied\".", { title: "Delete reply", okLabel: "Delete", danger: true }))) return;
+  const { error } = await sb.rpc("delete_suggestion_reply", { p_suggestion_id: id });
+  if (error) { showToast(error.message, "error"); return; }
+  showToast("Reply deleted.", "success");
+  navigate(currentView === "adminFeedback" ? "adminFeedback" : "vendorSuggestionsInbox", {}, false);
 }
 function openSuggestionReply(id) {
   const box = byId("sgc-" + id); if (!box) return;

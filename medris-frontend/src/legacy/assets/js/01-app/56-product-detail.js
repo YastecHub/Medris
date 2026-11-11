@@ -156,7 +156,7 @@ async function __levroOriginalRenderProductDetail(productId, opts) {
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
       </div>`
-    : `<div class="product-img" style="height:220px;">${product.vendor?.logo_url ? `<img src="${esc(product.vendor.logo_url)}" alt="${esc(product.vendor.business_name||"Vendor")}" onerror="this.outerHTML=lvInitialsTileHtml(this.alt)">` : lvInitialsTileHtml(product.vendor?.business_name || product.name)}</div>`;
+    : `<div class="product-img lv-noimg-page">${lvNoImageHtml()}</div>`;
   window.__productGalleryPhotos = productPhotos;
   window.__productGalleryMainIndex = 0;
   window.__productGalleryVarietyOverride = false;
