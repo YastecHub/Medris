@@ -72,6 +72,8 @@ function vendorOrderTopHtml(order, ctx) {
   } else {
     h += `<p class="od-muted" style="margin:0">Customer details are not available for this order.</p>`;
   }
+  // the chat for a cancelled / completed order has closed: the shop can ask the customer for permission to message them
+  if (!ctx.chatWindowOpen && ["cancelled", "completed"].includes(String(order.status || ""))) h += `<div class="od-cust-actions"><button type="button" class="od-btn od-btn-light od-btn-small" onclick="requestCustomerChat('${esc(order.id)}',this)"><i class="fa-regular fa-comment-dots"></i> Ask to message</button></div><p class="od-muted" style="margin:.4rem 0 0">Chat is closed for this order. The customer decides whether to allow a new chat.</p>`;
   if (mapReady) h += `<div id="orderBuyerLocationWrap-${esc(order.id)}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${esc(order.id)}" class="muted"></span></div><div id="orderBuyerLocationMap-${esc(order.id)}" class="order-buyer-location-map"></div></div>`;
   h += `</section>`;
   // ---- progress tracker
@@ -816,6 +818,11 @@ async function remindOrderVendor(orderId,button){
     showToast('Reminder sent to vendor.','success');
   }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
   finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
+}
+async function requestCustomerChat(orderId,button){
+  if(button)button.disabled=true;
+  try{const {error}=await sb.rpc('request_customer_chat',{p_order_id:orderId});if(error)throw error;showToast('Request sent. The customer can allow or decline.','success');}
+  catch(err){showToast(err.message||'Could not send the request.','error');if(button)button.disabled=false;}
 }
 async function remindOrderCustomer(orderId,button){
   if(!session?.user?.id||orderReminderBusy.has(orderId))return;

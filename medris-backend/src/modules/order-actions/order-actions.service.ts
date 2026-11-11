@@ -263,6 +263,53 @@ export class OrderActionsService {
     });
   }
 
+  /** The shop asks a customer (of a cancelled or completed order whose chat has closed) for permission to message them. */
+  async requestCustomerChat(me: Identity | null, orderId: string): Promise<{ id: string }> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const o = await orders.order(orderId, false);
+      if (!o) throw notFound("Order not found.");
+      if (o.vendor_user_id !== me.userId) throw forbidden("Only the shop can ask to message this customer.");
+      if (!["cancelled", "completed"].includes(o.status)) throw badRequest("The chat for this order is still open.");
+      if (await orders.chatOpen(o.buyer_id, o.vendor_id)) throw badRequest("You can already message this customer.");
+      if (await orders.recentChatRequest(o.buyer_id, o.vendor_id)) throw badRequest("You already asked this customer in the last 24 hours.");
+      const id = await orders.notify({
+        userId: o.buyer_id,
+        type: "chat_request",
+        title: `${o.vendor_name ?? "A shop"} wants to message you`,
+        body: "Allow them to message you for the next 24 hours? You can say no.",
+        targetParams: { orderId: o.id, vendorId: o.vendor_id },
+        vendorId: o.vendor_id,
+        category: "order",
+      });
+      return { id };
+    });
+  }
+
+  /** The customer answers a shop's message request: allow (24 hours of chat) or decline. */
+  async answerChatRequest(me: Identity | null, vendorId: string, accept: boolean): Promise<{ allowed: boolean }> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      if (!(await orders.openChatRequest(me.userId, vendorId))) throw badRequest("There is no message request to answer.");
+      const owner = await orders.liveVendorOwner(vendorId);
+      if (accept) await orders.grantChat(me.userId, vendorId);
+      if (owner) {
+        await orders.notify({
+          userId: owner,
+          type: accept ? "chat_request_allowed" : "chat_request_declined",
+          title: accept ? "A customer allowed you to message them" : "A customer declined your message request",
+          body: accept ? "You can message them for the next 24 hours." : "They preferred not to chat.",
+          targetParams: {},
+          vendorId,
+          category: "order",
+        });
+      }
+      return { allowed: accept };
+    });
+  }
+
   /** One tap: remind every shop that still has an order of yours waiting. Orders reminded in the last 2 minutes are skipped. */
   async remindAll(me: Identity | null): Promise<{ reminded: number; skipped: number }> {
     if (!me) throw forbidden("Authentication required.");

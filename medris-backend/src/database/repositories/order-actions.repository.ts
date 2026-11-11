@@ -281,6 +281,29 @@ export class OrderActionsRepository {
     return rows.map((r) => r.id);
   }
 
+  /** Is chat between this customer and shop open right now (the same rule as buyer_can_message_vendor)? */
+  async chatOpen(buyerId: string, vendorId: string): Promise<boolean> {
+    const row = await jsonRow<{ ok: boolean }>(this.db, sql`select public.buyer_can_message_vendor(${buyerId}::uuid, ${vendorId}::uuid) as ok`);
+    return row?.ok ?? false;
+  }
+
+  /** Did this shop already send this customer a message request in the last 24 hours? */
+  async recentChatRequest(buyerId: string, vendorId: string): Promise<boolean> {
+    const row = await jsonRow<{ ok: boolean }>(this.db, sql`select exists (select 1 from public.notifications where user_id = ${buyerId}::uuid and type = 'chat_request' and vendor_id = ${vendorId}::uuid and created_at > now() - interval '24 hours') as ok`);
+    return row?.ok ?? false;
+  }
+
+  /** Is there a message request from this shop to this customer from the last 7 days that has not been answered yet? */
+  async openChatRequest(buyerId: string, vendorId: string): Promise<boolean> {
+    const row = await jsonRow<{ ok: boolean }>(this.db, sql`select exists (select 1 from public.notifications where user_id = ${buyerId}::uuid and type = 'chat_request' and vendor_id = ${vendorId}::uuid and created_at > now() - interval '7 days') as ok`);
+    return row?.ok ?? false;
+  }
+
+  async grantChat(buyerId: string, vendorId: string): Promise<void> {
+    await this.db.execute(sql`insert into public.chat_grants (buyer_id, vendor_id, expires_at) values (${buyerId}::uuid, ${vendorId}::uuid, now() + interval '24 hours')
+      on conflict (buyer_id, vendor_id) do update set expires_at = excluded.expires_at, created_at = now()`);
+  }
+
   async liveVendorOwner(vendorId: string): Promise<string | null> {
     return (await jsonRow<{ user_id: string }>(this.db, sql`select user_id from public.vendors where id = ${vendorId} and deleted_at is null limit 1`))?.user_id ?? null;
   }

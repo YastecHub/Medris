@@ -342,6 +342,8 @@ export const RPC: Record<string, RpcEntry> = {
   get_orders_buyer_names: { run: (s, me, a) => s.orderActions.buyerNames(me, ids(a.p_order_ids)) },
   remind_all_orders: { run: (s, me) => s.orderActions.remindAll(me), limit: L.orders },
   remind_order_customer: { run: (s, me, a) => s.orderActions.remindCustomer(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },
+  request_customer_chat: { run: (s, me, a) => s.orderActions.requestCustomerChat(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },
+  answer_chat_request: { run: (s, me, a) => s.orderActions.answerChatRequest(me, id(a.p_vendor_id), a.p_accept === true || a.p_accept === "true"), limit: L.orders },
   send_order_reminder: { run: (s, me, a) => s.orderActions.remind(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },
   set_order_buyer_location: { run: (s, me, a) => s.orderActions.setLocation(me, id(a.p_order_id), num(a.p_lat), num(a.p_lng)).then(nothing), limit: L.orders },
   vendor_suggest_order_quantity: { run: (s, me, a) => s.orderActions.suggestQuantity(me, id(a.p_order_id), a.p_items, str(a.p_note)), limit: L.orders },
