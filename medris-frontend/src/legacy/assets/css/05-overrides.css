@@ -7978,3 +7978,6 @@ html:root:root:root:root body #app .product-detail-card .product-detail-media .p
 html:root:root:root:root body #app .product-detail-card .product-detail-media .product-img.lv-noimg-page .lv-noimg svg{width:64px;height:64px}
 /* Follow button: lifted only a little so it does not touch the banner */
 html:root:root:root:root:root:root body #app#app#app .storefront-profile .storefront-public-actions{transform:translate(.6rem,-.2rem)!important}
+
+/* chat: the sent bubble and the send button share one flat green */
+html:root:root:root:root:root body .chat-input-row>.btn{background:#1f8a5b!important;background-image:none!important;box-shadow:none!important;color:#fff!important}

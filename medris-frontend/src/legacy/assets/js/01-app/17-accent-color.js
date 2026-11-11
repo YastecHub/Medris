@@ -67,7 +67,8 @@ function applyAccent(index) {
     root.style.setProperty("--chat-mine-bg", mineBg);
     root.style.setProperty("--chat-mine-text", mineText);
   } else {
-    root.style.setProperty("--chat-mine-bg", preset.base);
+    // one flat green for every accent (the same as the send buttons), so the white and blue ticks stay clear
+    root.style.setProperty("--chat-mine-bg", "#1f8a5b");
     root.style.setProperty("--chat-mine-text", "#ffffff");
   }
   // Accent colors are intentionally solid: no gradients or brightened end-stops.
