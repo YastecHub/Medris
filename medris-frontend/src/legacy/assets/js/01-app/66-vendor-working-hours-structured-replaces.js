@@ -98,7 +98,7 @@ function vendorHoursStatus(v) {
 async function lvShopClosedForOrders(vendorId) {
   try {
     const { data: v } = await sb.from("vendors").select("business_name, business_hours, allow_after_hours_orders").eq("id", vendorId).maybeSingle();
-    if (!v || v.allow_after_hours_orders === true) return null;
+    if (!v || v.allow_after_hours_orders !== false) return null;
     const st = vendorHoursStatus(v);
     if (!st.configured || st.isOpen) return null;
     return { name: v.business_name || "This shop", today: st.todayText };
