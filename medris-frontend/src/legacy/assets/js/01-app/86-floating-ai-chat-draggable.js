@@ -202,13 +202,15 @@ async function renderSharedAiChat(token) {
     return `<div class="ai-chat-msg ${m.role === "user" ? "user" : "assistant"}" style="align-self:${m.role === "user" ? "flex-end" : "flex-start"};">${esc(clean)}</div>`;
   })}</div>`;
   html += `<div style="text-align:center;margin-top:1rem;"><button class="btn btn-sm" onclick="navigate('home')"><i class="fa-solid fa-arrow-right"></i> Try Levromart</button></div>`;
+  // a link to one reply scrolls to it and flashes it
+  try { const mid = new URLSearchParams(location.search).get("m"); if (mid) setTimeout(() => { const el = document.querySelectorAll(".shared-ai-chat .ai-chat-msg")[Number(mid)]; if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); el.classList.add("lv-flash"); setTimeout(() => el.classList.remove("lv-flash"), 3200); } }, 400); } catch (_) {}
   return html;
 }
 async function shareCurrentAiChat() {
   if (!currentAiConversationId) { showToast("Send a message first, then you can share this chat.", "info"); return; }
   const { data: token, error } = await sb.rpc("set_ai_conversation_shared", { p_conversation_id: currentAiConversationId, p_shared: true });
   if (error) { showToast(error.message, "error"); return; }
-  const link = `${location.origin}${location.pathname}?share=${token}`;
+  const link = `${location.origin}/l/${encodeURIComponent(token)}`;
   try {
     await navigator.clipboard.writeText(link);
     showToast("Link copied. Anyone with it can view this chat (read-only).", "success");
@@ -590,8 +592,16 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       const mk = (icon, label, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "ai-chat-msg-act"; b.setAttribute("aria-label", label); b.innerHTML = `<i class="fa-regular ${icon}"></i> ${label}`; b.onclick = fn; return b; };
       row.appendChild(mk("fa-copy", "Copy", async () => { try { await navigator.clipboard.writeText(displayText); showToast("Copied.", "success"); } catch (_) { showToast("Could not copy.", "error"); } }));
       row.appendChild(mk("fa-share-from-square", "Share", async () => {
-        const text = displayText + "\n\n- Levi, on Levromart";
-        try { if (navigator.share) await navigator.share({ title: "Levi on Levromart", text, url: location.origin }); else { await navigator.clipboard.writeText(text); showToast("Copied, ready to paste.", "success"); } } catch (_) {}
+        // only a link goes out (not the whole text): it opens this chat at this reply and has Levi's own preview picture
+        if (!currentAiConversationId) { showToast("Send a message first, then you can share.", "info"); return; }
+        try {
+          const { data: token, error } = await sb.rpc("set_ai_conversation_shared", { p_conversation_id: currentAiConversationId, p_shared: true });
+          if (error || !token) throw error || new Error("no link");
+          const idx = [...document.querySelectorAll("#aiChatMessages .ai-chat-msg")].filter((x) => x.id !== "aiChatTyping" && !x.classList.contains("typing")).indexOf(el);
+          const link = `${location.origin}/l/${encodeURIComponent(token)}${idx >= 0 ? `?m=${idx}` : ""}`;
+          if (navigator.share) { try { await navigator.share({ title: "Levi on Levromart", url: link }); } catch (_) {} }
+          else { await navigator.clipboard.writeText(link); showToast("Link copied.", "success"); }
+        } catch (err) { showToast((err && err.message) || "Could not make a link.", "error"); }
       }));
       el.appendChild(row);
     }

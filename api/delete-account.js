@@ -193,7 +193,8 @@ async function shareMetaPreview(req, res) {
     const vendorId = String(req.query?.storefront || "").trim();
     const productId = String(req.query?.product || "").trim();
     const packageId = String(req.query?.package || "").trim();
-    if (!vendorId && !productId && !packageId) { serveAsIs(); return; }
+    const leviToken = String(req.query?.levi || "").trim();
+    if (!vendorId && !productId && !packageId && !leviToken) { serveAsIs(); return; }
 
     const SUPABASE_URL = env("SUPABASE_URL");
     const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -202,7 +203,19 @@ async function shareMetaPreview(req, res) {
 
     let title = null, description = null, image = null, pageUrl = `${origin}/`;
 
-    if (vendorId) {
+    if (leviToken) {
+      // a chat (or one reply) shared from Levi: its own preview card, not the generic Levromart one
+      let chatTitle = "A chat with Levi";
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_shared_ai_conversation`, { method: "POST", headers: { ...svcHeaders, "Content-Type": "application/json" }, body: JSON.stringify({ p_token: leviToken }) });
+        const rows = await r.json();
+        if (Array.isArray(rows) && rows[0] && rows[0].title) chatTitle = String(rows[0].title).slice(0, 80);
+      } catch (_) {}
+      title = `${chatTitle} | Levi on Levromart`;
+      description = "A conversation with Levi, Levromart's assistant. Tap to read it.";
+      image = `${origin}/og-levi.jpg`;
+      pageUrl = `${origin}/l/${encodeURIComponent(leviToken)}`;
+    } else if (vendorId) {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(vendorId)}&verification_status=eq.verified&is_active=eq.true&select=id,business_name,bio,logo_url`, { headers: svcHeaders });
       const [v] = await r.json();
       if (v) {
@@ -249,8 +262,9 @@ async function shareMetaPreview(req, res) {
         html = html.replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${img}">`);
       }
     }
-    if (/^\/[spk]\//.test(String(req.url || "")) || vendorId || productId || packageId) {
-      const q = vendorId ? `storefront=${encodeURIComponent(vendorId)}` : productId ? `product=${encodeURIComponent(productId)}` : `package=${encodeURIComponent(packageId)}`;
+    if (/^\/[spkl]\//.test(String(req.url || "")) || vendorId || productId || packageId || leviToken) {
+      const mq = String(req.query?.m || "").replace(/[^0-9a-fA-F-]/g, "");
+      const q = leviToken ? `share=${encodeURIComponent(leviToken)}${mq ? `&m=${mq}` : ""}` : vendorId ? `storefront=${encodeURIComponent(vendorId)}` : productId ? `product=${encodeURIComponent(productId)}` : `package=${encodeURIComponent(packageId)}`;
       html = html.replace("<head>", `<head><base href="/"><script>try{if(location.pathname!=="/"||!location.search)history.replaceState(null,"","/?${q}");}catch(e){}</script>`);
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");

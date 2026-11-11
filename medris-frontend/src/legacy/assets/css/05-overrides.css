@@ -8063,3 +8063,7 @@ html:root:root body #app#app:has(.od-page){margin-top:-1px!important}
 /* product form: only the icon choices pick the delivery type (the plain drop-down is hidden); the section has no tinted box */
 #prodDeliverySettings>label:first-child,#prodDeliverySettings>#prodDeliveryMode{display:none!important}
 .lm-sec.lm-amber{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+
+/* "Delivery" with its fee underneath (not squeezed beside it) */
+html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label{flex-direction:column;align-items:center;justify-content:center;gap:.1rem;text-align:center;line-height:1.2}
+html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label .delivery-fee-inline{display:block;font-size:.8em;font-weight:600;opacity:.85}
