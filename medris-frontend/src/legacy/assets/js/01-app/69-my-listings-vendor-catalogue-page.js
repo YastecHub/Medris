@@ -425,6 +425,7 @@ async function openDuplicateProductModal(productId) {
     byId("prodDeliveryPerKm").value = source.delivery_fee_per_km ?? 0;
     window.lvDrLoad?.(source);
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = source.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+    if (byId("prodOrderExpiry")) byId("prodOrderExpiry").value = source.order_expiry_minutes == null ? "" : String(source.order_expiry_minutes); if (byId("prodOrderExpiry")) byId("prodOrderExpiry").dataset.was = source.order_expiry_minutes == null ? "" : "1";
     if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(source.payment_deposit_percent ?? 20) || 20));
     byId("prodLikeVisibility").value = engagement?.like_visibility || "everyone";
     byId("prodAllowComments").checked = engagement?.allow_comments !== false;
@@ -579,6 +580,7 @@ async function showProductModal() {
     byId("prodRentalRate").value = p.rental_rate ?? "";
     byId("prodDeliveryMode").value = p.delivery_fee_mode || "free";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing || "pay_after";
+    if (byId("prodOrderExpiry")) { byId("prodOrderExpiry").value = ""; byId("prodOrderExpiry").dataset.was = ""; }
     if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = p.delivery_fee ?? 0;
@@ -592,6 +594,7 @@ async function showProductModal() {
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+    if (byId("prodOrderExpiry")) { byId("prodOrderExpiry").value = ""; byId("prodOrderExpiry").dataset.was = ""; }
     if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
     updateProductPaymentTimingHint();
     if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "commission" : "commission");
@@ -609,6 +612,7 @@ async function showProductModal() {
     ["prodName", "prodDesc", "prodSalePrice", "prodDiscountPrice", "prodRentalRate", "prodDeposit"].forEach((id) => (byId(id).value = ""));
     byId("prodDeliveryMode").value = "free";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = "pay_before";
+    if (byId("prodOrderExpiry")) { byId("prodOrderExpiry").value = ""; byId("prodOrderExpiry").dataset.was = ""; }
     if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = 20;
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
@@ -1520,6 +1524,7 @@ async function saveProduct() {
       ...(delivery_rules !== undefined ? { delivery_rules } : {}),
       payment_timing,
       payment_deposit_percent,
+      ...(byId("prodOrderExpiry") && (byId("prodOrderExpiry").value !== "" || byId("prodOrderExpiry").dataset.was) ? { order_expiry_minutes: byId("prodOrderExpiry").value === "" ? null : Number(byId("prodOrderExpiry").value) } : {}),
       rental_rate: listing_type === "sale" ? null : rental_rate,
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),

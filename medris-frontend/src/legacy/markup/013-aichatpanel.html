@@ -30,7 +30,7 @@
     <button type="button" onclick="cancelAiChatVoice()" title="Cancel recording" aria-label="Cancel recording"><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="ai-chat-input-row">
-    <button class="ai-chat-mic-btn hidden" id="aiChatMicBtn" onclick="toggleAiChatMic(event)" title="Tap to talk" aria-label="Tap to talk"><i class="fa-solid fa-microphone"></i></button>
+    <button type="button" class="ai-chat-mic-btn" id="aiChatEmojiBtn" onclick="lvAiEmojis(this)" title="Stickers" aria-label="Stickers"><i class="fa-regular fa-face-smile"></i></button>
     <textarea id="aiChatInput" rows="1" placeholder="Ask about products, renting, buying…" oninput="autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendAiChatMessage();}"></textarea>
     <button class="icon-btn" onclick="sendAiChatMessage()" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
   </div>

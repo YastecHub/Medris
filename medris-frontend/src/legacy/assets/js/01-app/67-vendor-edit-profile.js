@@ -549,6 +549,7 @@ async function submitVendorEditProfile() {
   vendor.business_hours = business_hours;
   vendor.allow_after_hours_messages = byId("veAllowAfterHours").checked;
   vendor.order_expiry_minutes = Number(byId("veOrderExpiry")?.value ?? 30);
+  try { localStorage.setItem("lv-expiry-set:" + vendor.id, "1"); } catch (e) {}
   updateAuthUI();
   const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
   showToast("Business profile saved.", "success");

@@ -264,6 +264,17 @@ export class OrderActionsRepository {
     );
   }
 
+  /** The shop owner's order that is waiting on the customer (to pay or to confirm), and whether a reminder went out in the last 2 minutes. */
+  vendorRemindableOrderOf(orderId: string, ownerId: string): Promise<{ id: string; buyer_id: string; status: string; recent: boolean } | null> {
+    return jsonRow(
+      this.db,
+      sql`select o.id, o.buyer_id, o.status::text as status,
+                 exists (select 1 from public.notifications n where n.type = 'order_reminder_customer' and n.target_params->>'orderId' = o.id::text and n.created_at > now() - interval '2 minutes') as recent
+            from public.orders o join public.vendors v on v.id = o.vendor_id
+           where o.id = ${orderId} and v.user_id = ${ownerId}::uuid and o.status in ('confirmed', 'handed_over')`,
+    );
+  }
+
   /** Every order of the buyer that still waits on a shop (for the "remind all vendors" bell). */
   async remindableOrderIds(buyerId: string): Promise<string[]> {
     const rows = await jsonRows<{ id: string }>(this.db, sql`select id from public.orders where buyer_id = ${buyerId} and status in ('pending', 'confirmed', 'handed_over') order by created_at desc limit 50`);

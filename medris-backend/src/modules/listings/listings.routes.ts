@@ -29,6 +29,7 @@ const Fields = z.object({
   payment_deposit_percent: z.number().min(0).max(100).optional(),
   rental_rate: money,
   rental_rate_unit: z.string().max(20).nullable().optional(),
+  order_expiry_minutes: z.number().int().refine((n) => [0, 30, 60, 120, 180, 1440, 2880, 10080].includes(n), "Choose one of the listed times.").nullable().optional(),
   deposit_amount: money,
   quantity_total: z.number().int().min(0).optional(),
   quantity_available: z.number().int().min(0).optional(),

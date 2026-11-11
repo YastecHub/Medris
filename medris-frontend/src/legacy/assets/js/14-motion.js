@@ -2969,6 +2969,7 @@ window.lvAskCancel = async function (orderId) {
   var STK = ["1f525", "2764-fe0f", "1f60d", "1f602", "1f44f", "1f64f", "1f4af", "1f389", "1f60e", "1f929", "1f973", "1f62d", "1f60a", "1f44d", "1f4aa", "2b50", "1f496", "1f970", "1f64c", "1f618", "1f440", "1f48e", "1f381", "1f680", "1f91d", "1f6cd-fe0f", "1f62e", "1f914", "1f631", "1f921", "1f308", "1f31f", "1f340", "1f354", "1f355", "1f37b", "1f37f", "1f383", "1f388", "1f38a", "1f3af", "1f3b6", "1f3c6", "1f431", "1f44a", "1f44b", "1f44c", "1f451", "1f47b", "1f480", "1f483", "1f48b", "1f493", "1f499", "1f49a", "1f49c", "1f4a1", "1f4a5", "1f4a9", "1f4b8", "1f4e6", "1f604", "1f605", "1f606", "1f607", "1f608", "1f609", "1f60b", "1f61c", "1f621", "1f622", "1f624", "1f62a", "1f634", "1f642", "1f643", "1f69a", "1f6d2", "1f90c", "1f90d", "1f911", "1f913", "1f916", "1f917", "1f919", "1f91e", "1f923", "1f92c", "1f92f", "1f942", "1f972", "1f975", "1f976", "1f979", "1f97a", "1f981", "1f984", "1f98b", "1f9e1", "26a1", "270a", "2728"];
   // "3d/<code>" is the glossy 3D set (/stickers3d); the others are the flat and moving ones
   function stkSrc(id) { return id.indexOf("3d/") === 0 ? "/stickers3d/" + id.slice(3) + ".webp" : "/stickers/" + id + ".webp"; }
+  window.lvStk = { list: STK, src: stkSrc };
   // a comment that is only a sticker is drawn as the picture straight away (no flash of the sticker's code first)
   (function () {
     var om = window.lvMentionHtml;
@@ -4040,6 +4041,8 @@ window.lvAskCancel = async function (orderId) {
     })().finally(function () { W.loading = null; });
     return W.loading;
   }
+  // the balance moves the moment money moves; the server's figure then replaces it
+  function bumpBal(deltaKobo) { try { if (W.data && W.data.balance_kobo != null) { W.data.balance_kobo = String(Math.max(0, Number(W.data.balance_kobo) + deltaKobo)); W.at = Date.now(); } } catch (_) {} }
   function repaint() { try { if (window.lvWalletRepaint) window.lvWalletRepaint(); } catch (_) {} try { if (window.lvRefundRepaint) window.lvRefundRepaint(); } catch (_) {} }
   window.lvW3Refresh = function () { return load(true).then(repaint); };
   // the wallet follows what happens to it (a rejected withdrawal, money received) without a page refresh
@@ -4301,7 +4304,7 @@ window.lvAskCancel = async function (orderId) {
       var r = await sb.rpc("wallet_send", { p_to: pick.handle, p_amount_kobo: amt, p_note: note || null, p_key: myKey, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not send."); }
       window.lvRepeatMark("send:" + pick.handle + ":" + amt);
-      await load(true); repaint(); closeSheet();
+      bumpBal(-(amt + fee)); repaint(); closeSheet(); load(true).then(repaint);
       try { window.lvTxPage({ kind: "sent", title: "Transfer successful", amountKobo: amt, feeKobo: fee, person: pick, note: note, ref: r.data && (r.data.id || r.data.reference) }); } catch (_) { showToast(short(amt) + " sent.", "success"); }
     }
   };
@@ -4344,7 +4347,7 @@ window.lvAskCancel = async function (orderId) {
       var r = await sb.rpc("wallet_withdraw", { p_amount_kobo: amt, p_pin: pin });
       if (r.error) { b.disabled = false; b.textContent = "Continue"; return err(m, r.error.message || "Could not withdraw."); }
       window.lvRepeatMark("wd:" + amt);
-      closeSheet(); await load(true); repaint();
+      bumpBal(-(amt + fee)); closeSheet(); repaint(); load(true).then(repaint);
       try { window.lvTxPage({ kind: "withdraw", title: "Withdrawal on its way", amountKobo: amt, feeKobo: fee, bank: a, ref: r.data && (r.data.id || r.data.reference) }); } catch (_) { showToast(short(amt) + " is on its way to your bank.", "success"); }
     }
   };
@@ -4551,7 +4554,8 @@ window.lvAskCancel = async function (orderId) {
 
   // paying for an order: choose the wallet (no fee) or Paystack
   window.lvW3ChoosePay = async function (orderId, total, paystackGo) {
-    var d = await load(true);
+    var d = W.data || await load(false);   // open at once from the last known wallet; the server re-checks the balance when paying
+    if (W.data) load(true).catch(function () {});
     if (!d || d.frozen) return paystackGo();
     var bal = Number(d.balance_kobo), need = Math.round(Number(total || 0) * 100), enough = need > 0 ? bal >= need : bal > 0;
     var m = sheet("How do you want to pay?", '<button type="button" class="lw-pay" id="lwPayWallet"' + (enough ? "" : " disabled") + '><span class="lw-pay-ic w"><i class="fa-solid fa-wallet"></i></span><div><b>Levromart wallet</b><small>Balance ' + money(bal, true) + (enough ? "" : " · not enough") + (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0 ? " · " + d.free_order_payments_left + " free payment" + (d.free_order_payments_left === 1 ? "" : "s") + " left" : "") + '</small></div><i class="fa-solid fa-chevron-right"></i></button>' +
@@ -4570,7 +4574,7 @@ window.lvAskCancel = async function (orderId) {
       wb.disabled = true;
       var r = await sb.rpc("wallet_pay_order", { p_order_id: orderId, p_pin: pin });
       if (r.error) { wb.disabled = false; return err(m, r.error.message || "Could not pay."); }
-      closeSheet(); await load(true); repaint();
+      bumpBal(-(need + fee)); closeSheet(); repaint(); load(true).then(repaint);
       try { navigate("orderDetail", { orderId: orderId }); } catch (_) {}
       try { window.lvTxPage({ kind: "order", title: "Payment successful", amountKobo: need, feeKobo: fee, orderId: orderId, via: "Levromart wallet" }); } catch (_) { showToast("Paid from your wallet. Thank you!", "success"); }
     };
@@ -7617,4 +7621,95 @@ window.lvGoToNewOrder = function (orderId) {
     was = isOpen();
   }
   watch();
+})();
+
+/* ===== Messages: a sticker button (replaces the microphone) sends the same stickers as comments; Levi's button inserts emoji ===== */
+(function () {
+  var RX = /^::s:((?:still\/|3d\/)?[0-9a-f-]+)::$/;
+  function emoji(code) { try { return String.fromCodePoint.apply(null, code.split("-").map(function (h) { return parseInt(h, 16); })); } catch (_) { return ""; } }
+  function panelFor(anchor, cls) {
+    var row = anchor.parentNode, wrap = row.parentNode;
+    var p = wrap.querySelector(":scope > ." + cls);
+    if (!p) { p = document.createElement("div"); p.className = "lv-msgstk " + cls; p.hidden = true; wrap.insertBefore(p, row); }
+    return p;
+  }
+  window.lvMsgStickers = function (btn) {
+    var p = panelFor(btn, "lv-msgstk-m");
+    if (!p.dataset.ready) {
+      p.dataset.ready = "1";
+      ["3d", "still", ""].forEach(function (set) {
+        (window.lvStk ? window.lvStk.list : []).forEach(function (code) {
+          var id = (set ? set + "/" : "") + code, b = document.createElement("button");
+          b.type = "button"; b.setAttribute("aria-label", "Send sticker");
+          b.innerHTML = '<img src="' + window.lvStk.src(id) + '" alt="" width="48" height="48" loading="lazy" decoding="async">';
+          b.onclick = function () {
+            var row = btn.parentNode, ta = row.querySelector("textarea"), send = row.querySelector(":scope > .btn");
+            if (!ta || !send) return;
+            p.hidden = true; ta.value = "::s:" + id + "::"; send.click();
+          };
+          if (set === "3d") b.className = "s3"; p.appendChild(b);
+        });
+      });
+    }
+    p.hidden = !p.hidden;
+  };
+  window.lvAiEmojis = function (btn) {
+    var p = panelFor(btn, "lv-msgstk-ai");
+    if (!p.dataset.ready) {
+      p.dataset.ready = "1";
+      (window.lvStk ? window.lvStk.list : []).forEach(function (code) {
+        var b = document.createElement("button"); b.type = "button"; b.textContent = emoji(code);
+        b.onclick = function () { var ta = btn.parentNode.querySelector("textarea"); if (!ta) return; ta.value += b.textContent; ta.dispatchEvent(new Event("input", { bubbles: true })); ta.focus(); };
+        p.appendChild(b);
+      });
+    }
+    p.hidden = !p.hidden;
+  };
+  function dress() {
+    document.querySelectorAll(".chat-bubble-text:not([data-stk])").forEach(function (b) {
+      b.dataset.stk = "1";
+      var m = RX.exec((b.textContent || "").trim());
+      if (m && window.lvStk) { b.innerHTML = '<img class="lv-stk" src="' + window.lvStk.src(m[1]) + '" alt="sticker" width="96" height="96" loading="lazy" decoding="async">'; b.closest(".chat-bubble")?.classList.add("lv-stk-only"); }
+    });
+  }
+  var raf = 0;
+  try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (_) {}
+})();
+
+/* ===== Vendors: once per app open, a bottom drawer asks how long customers may wait for them to confirm an order ===== */
+(function () {
+  var shown = false;
+  function uid() { try { return session && session.user && session.user.id; } catch (_) { return null; } }
+  function isSet(id) { try { return localStorage.getItem("lv-expiry-set:" + id) === "1"; } catch (_) { return false; } }
+  function ask() {
+    if (shown || document.hidden) return;
+    var v = window.vendor, id = uid();
+    if (!id || !v || !v.id || isSet(v.id) || v.status === "pending" || document.getElementById("lvExpirySheet")) return;
+    // never in the middle of something: only on the home screen, and not while a dialog or sheet is open
+    if (document.querySelector(".lvw-sheet-wrap, .modal-overlay:not(.hidden), .lv-pin")) return;
+    shown = true;
+    var m = document.createElement("div");
+    m.id = "lvExpirySheet"; m.className = "lvw-sheet-wrap lw-wrap";
+    m.innerHTML = '<div class="lvw-sheet lw-sheet" role="dialog" aria-modal="true" aria-label="Order confirmation time"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
+      '<div class="lvw-sheet-head"><h3>When should unconfirmed orders cancel?</h3></div>' +
+      '<p class="muted" style="margin:.2rem 0 .7rem">If you do not confirm a new order in time, it is cancelled for you and the customer is told. You can also set this per product, and change it any time in your shop profile.</p>' +
+      '<select id="lvExpirySel" class="ve-input"><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours (good for food and snacks)</option><option value="180">3 hours</option><option value="1440">1 day</option><option value="2880">2 days</option><option value="10080">1 week</option><option value="0">Never cancel by itself</option></select>' +
+      '<div style="display:flex;gap:.6rem;margin-top:.9rem"><button type="button" class="btn btn-secondary" id="lvExpiryLater" style="flex:1">I will do it later</button><button type="button" class="btn btn-primary" id="lvExpirySave" style="flex:1">Save</button></div></div>';
+    m.addEventListener("click", function (e) { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    var sel = m.querySelector("#lvExpirySel"); sel.value = String(v.order_expiry_minutes == null ? 30 : v.order_expiry_minutes);
+    m.querySelector("#lvExpiryLater").onclick = function () { m.remove(); };
+    m.querySelector("#lvExpirySave").onclick = async function () {
+      var b = this; b.disabled = true;
+      var n = Number(sel.value);
+      try {
+        var r = await sb.from("vendors").update({ order_expiry_minutes: n }).eq("id", v.id);
+        if (r && r.error) throw r.error;
+        v.order_expiry_minutes = n;
+        try { localStorage.setItem("lv-expiry-set:" + v.id, "1"); } catch (_) {}
+        m.remove(); showToast("Saved. Unconfirmed orders will cancel after your chosen time.", "success");
+      } catch (e) { b.disabled = false; showToast((e && e.message) || "Could not save. Please try again.", "error"); }
+    };
+  }
+  setInterval(function () { if (!shown) ask(); }, 6000);
 })();
