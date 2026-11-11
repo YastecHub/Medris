@@ -108,6 +108,7 @@ function renderPrivacy() {
       <li><strong>Google Gemini:</strong> powers the in-app AI assistant; only the text of your chat messages is sent, never your account or order data.</li>
       <li>The vendor or buyer on an order you're part of, so they can fulfill/receive it.</li>
       <li><strong>A shop's team members:</strong> if a vendor adds managers or staff, those people can see the shop's orders (including customer names and delivery details once an order is accepted) and the shop's chats, so they can do their work. They cannot see the shop's bank details, wallet or earnings.</li>
+      <li><strong>Online status (shops):</strong> by default customers can see when a shop is online or when it was last seen. A shop can switch this off in Edit profile.</li>
       <li>The person you send money to, or who sends money to you, sees your name and @tag on that transfer.</li>
       <li><strong>Cloudflare:</strong> stores and serves public listing, banner and profile images.</li>
       <li><strong>Esri:</strong> supplies the map pictures shown on the vendor map (your device asks Esri for the map tiles it needs, so Esri can see your device's internet address).</li>

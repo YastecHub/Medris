@@ -84,6 +84,10 @@ async function renderVendorEditProfile() {
       <span class="switch-label-text">Let buyers place orders outside these hours ${infoPopoverHtml("veAfterHoursInfo", "On (default): customers can order any time. Off: they can only order while you are open (if you have set working hours).")}</span>
       <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_orders !== false ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
     </div>
+    <div class="switch-row" style="margin-top:.6rem;">
+      <span class="switch-label-text">Show when I'm online ${infoPopoverHtml("veOnlineInfo", "On (default): customers see 'Online now' or 'Last seen ...' under your shop's name. Off: nobody sees when you are online or when you were last here.")}</span>
+      <label class="switch-toggle"><input type="checkbox" id="veShowOnline" ${v.show_online_status !== false ? "checked" : ""} onchange="toggleVendorShowOnline()" /><span class="switch-toggle-track"></span></label>
+    </div>
     <div class="ve-field" style="margin-top:1rem;">
       <label class="ve-label" for="veOrderExpiry">How long do you need to confirm a new order?</label>
       <select id="veOrderExpiry" class="ve-input">${[[30, "30 minutes (default)"], [60, "1 hour"], [120, "2 hours (good for food and snacks)"], [180, "3 hours"], [1440, "1 day"], [2880, "2 days"], [10080, "1 week"], [0, "Never cancel by itself"]].map(([m, l]) => `<option value="${m}" ${Number(v.order_expiry_minutes ?? 30) === m ? "selected" : ""}>${l}</option>`).join("")}</select>
@@ -490,6 +494,14 @@ function updateVeDeliveryPerKmExample() {
 // changes" button below with the text fields instead, so flipping it and
 // refreshing before pressing that separate button looked exactly like the
 // toggle "not sticking". Now it saves itself immediately, same as the rest.
+async function toggleVendorShowOnline() {
+  const checkbox = byId("veShowOnline");
+  const checked = checkbox.checked;
+  const { error } = await sb.from("vendors").update({ show_online_status: checked }).eq("id", vendor.id);
+  if (error) { showToast(error.message, "error"); checkbox.checked = !checked; return; }
+  vendor.show_online_status = checked;
+  showToast(checked ? "Customers can see when you're online." : "Your online status is now hidden.", "success");
+}
 async function toggleVendorAfterHours() {
   const checkbox = byId("veAllowAfterHours");
   const checked = checkbox.checked;

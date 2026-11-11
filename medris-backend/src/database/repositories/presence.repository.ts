@@ -26,6 +26,12 @@ export class PresenceRepository {
       on conflict (user_id) do update set last_seen_at = excluded.last_seen_at`);
   }
 
+  /** A shop that switched "show when I'm online" off (its owner's status is never shown to anyone). */
+  async hidesStatus(userId: string): Promise<boolean> {
+    const row = await jsonRow<{ hidden: boolean }>(this.db, sql`select exists (select 1 from public.vendors v where v.user_id = ${userId}::uuid and v.deleted_at is null and not v.show_online_status) as hidden`);
+    return row?.hidden === true;
+  }
+
   /** The other person in a conversation the caller takes part in; null otherwise. */
   async otherSide(userId: string, conversationId: string): Promise<string | null> {
     const row = await jsonRow<{ uid: string }>(
@@ -61,7 +67,7 @@ export class PresenceRepository {
       sql`select exists (select 1 from public.app_presence a where a.user_id = v.user_id and a.seen_at > now() - interval '90 seconds') as online,
                  greatest((select p.last_seen_at from public.user_presence p where p.user_id = v.user_id),
                           (select a.seen_at from public.app_presence a where a.user_id = v.user_id)) as last_seen_at
-            from public.vendors v where v.id = ${vendorId}::uuid and v.deleted_at is null and coalesce(v.is_active, true)`,
+            from public.vendors v where v.id = ${vendorId}::uuid and v.deleted_at is null and coalesce(v.is_active, true) and v.show_online_status`,
     );
   }
 
