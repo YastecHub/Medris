@@ -7752,3 +7752,17 @@ html.lv-no-convos #messagesWrap,html.lv-no-convos button.icon-btn[onclick="navig
 :root:root:root:root:root body #app .product-detail-card .product-detail-title{order:-2;margin:.2rem 0 .5rem}
 :root:root:root:root:root body #app .product-detail-card>*{order:0}
 :root:root:root:root:root body #app .product-detail-card .product-price-hero{order:-1!important;margin:.1rem 0 .6rem}
+
+.lv-hg{padding:.45rem .7rem!important;gap:.65rem!important;border-radius:14px!important}
+.lv-hg svg{flex:0 0 auto;filter:drop-shadow(0 2px 3px rgba(60,40,10,.28))}
+.lv-hg .hg-left{font-size:1rem!important}
+.lv-hg small{font-size:.74rem!important;line-height:1.25}
+/* Product page, edge to edge like Temu: the photo fills the top and both sides; a thin line under it; then the name, price, vendor and the rest, compact */
+@media(max-width:899px){
+:root:root:root:root:root:root body #app .product-detail-card{width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;margin-right:calc(50% - 50vw)!important;border-radius:0!important;border-left:0!important;border-right:0!important;border-top:0!important;box-shadow:none!important;padding-left:1rem!important;padding-right:1rem!important}
+:root:root:root:root:root:root body #app .product-detail-card .product-detail-media{margin:0 -1rem .7rem!important;width:calc(100% + 2rem)!important;border-radius:0!important;border-bottom:1px solid var(--border)}
+:root:root:root:root:root:root body #app .product-detail-card .product-gallery-main,:root:root:root:root:root:root body #app .product-detail-card .product-gallery-carousel,:root:root:root:root:root:root body #app .product-detail-card .product-gallery-track,:root:root:root:root:root:root body #app .product-detail-card .product-gallery-slide,:root:root:root:root:root:root body #app .product-detail-card .product-gallery-slide img{border-radius:0!important}
+:root:root:root:root:root:root body #app .product-detail-card .product-gallery-slide img{width:100%;aspect-ratio:1/1;object-fit:cover}
+:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions{top:.8rem;right:.9rem}
+:root:root:root:root:root:root body #app .product-detail-card .product-detail-title{font-size:1.15rem!important;line-height:1.3;padding-right:0!important;margin:.1rem 0 .3rem}
+}

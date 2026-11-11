@@ -265,8 +265,15 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
-    safeAllOrders = r.data || [];
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
+    if (r.error || !Array.isArray(r.data)) {
+      // Never show "no orders" just because the server was slow: keep what was loaded a moment ago, or say it could not load.
+      const good = window.__lastGoodVendorOrders?.[vendor.id];
+      if (good) safeAllOrders = status === "all" ? good : good.filter((o) => o.status === status);
+      else return `<div class="empty-state orders-empty"><span class="orders-empty-icon"><i class="fa-solid fa-wifi"></i></span><strong>We couldn't load your orders</strong><span class="muted">Your orders are safe. Check your connection and try again.</span><button type="button" class="btn" style="margin-top:.8rem" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all'})">Try again</button></div>`;
+    } else safeAllOrders = r.data;
+  } else if (safeAllOrders && !dateFrom && !dateTo && status === "all") {
+    (window.__lastGoodVendorOrders ||= {})[vendor.id] = safeAllOrders;
   }
   // Item summaries and customer names are looked up together (they used to run one after the other).
   const __hydrateItems = (async () => {
@@ -376,9 +383,17 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
-    safeAllOrders = r.data || [];
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
+    if (r.error || !Array.isArray(r.data)) {
+      // Never show "no orders" just because the server was slow: keep what was loaded a moment ago, or say it could not load.
+      const good = window.__lastGoodBuyerOrders?.[session.user.id];
+      if (good) safeAllOrders = status === "all" ? good : good.filter((o) => o.status === status);
+      else return `<div class="empty-state orders-empty"><span class="orders-empty-icon"><i class="fa-solid fa-wifi"></i></span><strong>We couldn't load your orders</strong><span class="muted">Your orders are safe. Check your connection and try again.</span><button type="button" class="btn" style="margin-top:.8rem" onclick="navigate('buyerOrders',{status:'all',type:'all',payment:'all'})">Try again</button></div>`;
+    } else safeAllOrders = r.data;
+  } else if (safeAllOrders && !dateFrom && !dateTo && status === "all") {
+    (window.__lastGoodBuyerOrders ||= {})[session.user.id] = safeAllOrders;
   }
+
   // Fill in anything the rich query didn't return (items / vendor) in ONE
   // parallel round instead of sequential waits.
   try {
