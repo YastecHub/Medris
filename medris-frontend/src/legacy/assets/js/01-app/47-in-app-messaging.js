@@ -105,3 +105,20 @@ window.LV_TEMP_WHATSAPP = true;
   window.lvContactInApp = () => original(window.__lvContactVendorId);
   window.startConversationWithVendor = wrapped;
 })();
+
+// The header Messages icon only shows when you have at least one conversation; the search bar then takes its space.
+(function () {
+  let last = null, busy = false;
+  async function sync() {
+    if (busy || typeof session === "undefined" || !session?.user?.id) { document.documentElement.classList.remove("lv-no-convos"); return; }
+    busy = true;
+    try {
+      const r = await sb.from("conversations").select("id", { count: "exact", head: true });
+      if (!r.error && typeof r.count === "number") { last = r.count > 0; document.documentElement.classList.toggle("lv-no-convos", !last); }
+    } catch (_) {} finally { busy = false; }
+  }
+  window.lvSyncMessagesIcon = sync;
+  window.addEventListener("load", () => setTimeout(sync, 2500));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
+  setInterval(sync, 120000);
+})();
