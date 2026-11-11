@@ -1111,22 +1111,7 @@
       if (pushHistory === false && view0() !== view && (view === "home" || view === "storefront")) {
         try { var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId); if (pageSnaps[sk]) document.getElementById("app").innerHTML = pageSnaps[sk]; } catch (_) {}
       }
-      // Back to a page we just redrew from its saved copy: while the real page is rebuilt (slow on a phone), a still picture of the
-      // saved copy stays on top, so there is never a blank screen in between
-      var ghost = null;
-      try {
-        if (pushHistory === false && (view === "home" || view === "storefront" || view === "vendors")) {
-          var ga = document.getElementById("app");
-          if (ga && ga.children.length > 1) {
-            ghost = ga.cloneNode(true); ghost.id = "lvBackGhost"; ghost.setAttribute("aria-hidden", "true");
-            ghost.style.cssText = "position:absolute;left:0;right:0;top:" + (ga.getBoundingClientRect().top + window.scrollY) + "px;z-index:50;pointer-events:none;margin:0;background:var(--bg,#fff)";
-            document.body.appendChild(ghost);
-            setTimeout(function () { if (ghost) { ghost.remove(); ghost = null; } }, 5000);
-          }
-        }
-      } catch (_) {}
       var r = await orig.apply(this, arguments);
-      if (ghost) { var gh = ghost; ghost = null; setTimeout(function () { gh.remove(); }, 250); }
       if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
       try {
         var st = history.state;
@@ -7750,6 +7735,10 @@ window.lvGoToNewOrder = function (orderId) {
     // never in the middle of something: only on the home screen, and not while a dialog or sheet is open
     if (document.querySelector(".lvw-sheet-wrap, .modal-overlay:not(.hidden), .lv-pin")) return;
     shown = true;
+    build();
+  }
+  function build() {
+    var v = window.vendor; if (!v || !v.id || document.getElementById("lvExpirySheet")) return;
     var m = document.createElement("div");
     m.id = "lvExpirySheet"; m.className = "lvw-sheet-wrap lw-wrap";
     m.innerHTML = '<div class="lvw-sheet lw-sheet" role="dialog" aria-modal="true" aria-label="Order confirmation time"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
@@ -7774,6 +7763,7 @@ window.lvGoToNewOrder = function (orderId) {
     };
   }
   setInterval(function () { if (!shown) ask(); }, 6000);
+  window.lvOpenExpirySheet = build;   // also reachable from the shop menu
 })();
 
 /* ===== Chat list: "typing..." in green on a row while that person types, before the chat is opened ===== */
@@ -8030,7 +8020,8 @@ window.lvNoImageHtml = function (seed) {
     if (evt && evt.stopPropagation) evt.stopPropagation();
     if (document.getElementById("lvChatSheet")) return close();
     var dd = document.getElementById("chatMenuDropdown"); if (!dd) return;
-    var rows = [].map.call(dd.querySelectorAll("button, a"), function (b) {
+    var srcs = [].filter.call(dd.querySelectorAll("button, a"), function (b) { return !/^\s*(pin|unpin|view (the )?(store|shop|profile))/i.test(b.textContent || ""); });
+    var rows = srcs.map(function (b) {
       var ic = b.querySelector("i"), cls = ic ? ic.className : "";
       var label = (b.textContent || "").replace(/\s+/g, " ").trim();
       var danger = /delete|block/i.test(label);
@@ -8041,7 +8032,7 @@ window.lvNoImageHtml = function (seed) {
     s.addEventListener("click", function (e) {
       if (e.target === s) return close();
       var row = e.target.closest(".lvcs-row"); if (!row) return;
-      var idx = [].indexOf.call(s.querySelectorAll(".lvcs-row"), row), src = dd.querySelectorAll("button, a")[idx];
+      var idx = [].indexOf.call(s.querySelectorAll(".lvcs-row"), row), src = srcs[idx];
       close(); if (src) setTimeout(function () { src.click(); }, 120);
     });
     document.body.appendChild(s);

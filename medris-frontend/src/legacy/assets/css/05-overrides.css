@@ -8067,3 +8067,16 @@ html:root:root body #app#app:has(.od-page){margin-top:-1px!important}
 /* "Delivery" with its fee underneath (not squeezed beside it) */
 html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label{flex-direction:column;align-items:center;justify-content:center;gap:.1rem;text-align:center;line-height:1.2}
 html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label .delivery-fee-inline{display:block;font-size:.8em;font-weight:600;opacity:.85}
+
+/* no-photo tile on the shop page: same size as before, the picture icon centred inside it */
+html body #app .storefront-product-mini>.mini-placeholder{aspect-ratio:auto!important;height:auto!important;position:relative!important;display:block!important}
+html body #app .storefront-product-mini>.mini-placeholder .lv-noimg{position:absolute!important;inset:0;height:auto!important;min-height:0!important;display:flex;align-items:center;justify-content:center}
+/* share QR in dark / black mode: softer slate, less black */
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-card{background:#2c353e!important}
+html[data-theme="black"]:root:root body #lvqrSheet .lvqr-card{background:#242c34!important}
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-sheet,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-sheet{background:#1d242b!important}
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code{background:#46535f!important}
+/* suggestions (i) is a quiet grey */
+.sg-head h2 .sg-info,.sg-head h2 .sg-info i{color:var(--text-muted,#8a8f98)!important;-webkit-text-fill-color:var(--text-muted,#8a8f98)!important}
+/* add listing: the extra drop-down bar above the delivery choices is gone */
+#prodDeliverySettings .ms-wrap,#prodDeliverySettings>select+.ms-wrap,#prodDeliveryMode+.ms-wrap{display:none!important}
