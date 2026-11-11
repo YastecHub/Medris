@@ -63,9 +63,9 @@ async function renderVendorEditProfile() {
     </div>
     <div class="switch-row" style="margin-top:.45rem;">
       <span class="switch-label-text">Send new-order alerts to my WhatsApp</span>
-      <label class="switch-toggle"><input type="checkbox" id="veWhatsappAlerts" ${v.whatsapp_alerts ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappAlerts()" /><span class="switch-toggle-track"></span></label>
+      <label class="switch-toggle"><input type="checkbox" id="veWhatsappAlerts" ${v.whatsapp_alerts !== false ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappAlerts()" /><span class="switch-toggle-track"></span></label>
     </div>
-    <p class="muted vendor-profile-setting-note">When on, Levromart sends one short WhatsApp message to the number above when you get a new order. It never shares the order details with anyone else. Turn it off any time.</p>
+    <p class="muted vendor-profile-setting-note">When on, Levromart sends one short WhatsApp message to the number above when you get a new order. It never shares the order details with anyone else. It is on by default; turn it off any time.</p>
     <p class="muted vendor-profile-setting-note">Delivery is configured separately for each product or service listing.</p>
     <label>About your business</label><textarea id="veBio" rows="3">${esc(v.bio || "")}</textarea>
     <div class="flex" style="margin-top:0.8rem;">
@@ -511,6 +511,23 @@ async function toggleVendorWhatsappVisibility() {
   if (error) { checkbox.checked = !checkbox.checked; showToast(error.message, "error"); return; }
   vendor.whatsapp_visible = checkbox.checked;
   showToast(checkbox.checked ? "WhatsApp contact is now visible to buyers." : "WhatsApp contact hidden from buyers.", "success");
+}
+
+// A shop without a WhatsApp number is asked for one when it opens its dashboard (new-order alerts go there).
+let lvAskingWhatsapp = false;
+async function lvAskWhatsapp() {
+  if (lvAskingWhatsapp || typeof vendor === "undefined" || !vendor || vendor.whatsapp_number) return;
+  lvAskingWhatsapp = true;
+  try {
+    const val = await showTextPromptDialog("Add your WhatsApp number", "New orders are sent to your WhatsApp so you never miss a sale. Enter the number you use on WhatsApp.", { placeholder: "e.g. 08012345678", okLabel: "Save" });
+    if (val == null) return;
+    const number = String(val).trim().replace(/[\s().-]/g, "");
+    if (!/^\+?\d{10,15}$/.test(number)) { showToast("That doesn't look like a phone number.", "error"); return; }
+    const { error } = await sb.from("vendors").update({ whatsapp_number: number, whatsapp_alerts: true }).eq("id", vendor.id);
+    if (error) { showToast(error.message, "error"); return; }
+    vendor.whatsapp_number = number; vendor.whatsapp_alerts = true;
+    showToast("Saved. New orders will be sent to your WhatsApp.", "success");
+  } finally { lvAskingWhatsapp = false; }
 }
 
 async function toggleVendorWhatsappAlerts() {

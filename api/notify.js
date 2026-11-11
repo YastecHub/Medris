@@ -172,7 +172,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-// WhatsApp order alert (opt-in, OFF until the engineer sets the three Vercel variables below).
+// WhatsApp order alert (on by default for shops with a WhatsApp number; sends nothing until the engineer sets the Vercel variables below).
 // Uses the WhatsApp Business Cloud API with a pre-approved message template, so only a fixed short text is sent:
 // no customer name, address or order contents ever leave Levromart through this channel.
 //   WHATSAPP_TOKEN        permanent access token (secret - Vercel variable only, never in code)
@@ -186,7 +186,7 @@ async function sendWhatsApp(SUPABASE_URL, svcHeaders, n) {
     `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${n.user_id}&select=whatsapp_number,whatsapp_alerts`,
     { headers: svcHeaders }
   )).json();
-  if (!v || !v.whatsapp_alerts || !v.whatsapp_number) return { sent: false, reason: "shop has not opted in" };
+  if (!v || !v.whatsapp_alerts || !v.whatsapp_number) return { sent: false, reason: "shop turned alerts off" };
   let digits = String(v.whatsapp_number).replace(/\D/g, "");
   if (digits.startsWith("0")) digits = "234" + digits.slice(1);
   if (!/^[1-9]\d{9,14}$/.test(digits)) return { sent: false, reason: "invalid number" };
