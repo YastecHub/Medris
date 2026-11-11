@@ -386,6 +386,7 @@ export const RPC: Record<string, RpcEntry> = {
   touch_presence: { run: (s, me) => s.presence.touch(me).then(nothing), limit: L.presence },
   clear_presence: { run: (s, me) => s.presence.clear(me).then(nothing), limit: L.presence },
   touch_last_seen: { run: (s, me) => s.presence.touchLastSeen(me).then(nothing), limit: L.presence },
+  get_shop_presence: { run: (s, _me, a) => s.presence.shopPresence(id(a.p_vendor_id)) },
   get_conversation_presence: { run: (s, me, a) => s.presence.conversationPresence(me, id(a.p_conversation_id)).then(pick("last_seen_at")) },
 
   // Products

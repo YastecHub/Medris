@@ -26,6 +26,12 @@ export class PresenceService {
     return { done: true };
   }
 
+  /** New: whether a shop's owner is online now, or when they were last seen (shown on the shop's page). */
+  async shopPresence(vendorId: string): Promise<{ online: boolean; last_seen_at: string | null }> {
+    const row = await this.db().asService((tx) => new PresenceRepository(tx).shopOwnerPresence(vendorId));
+    return { online: row?.online ?? false, last_seen_at: row?.last_seen_at ?? null };
+  }
+
   /**
    * Replaces: public.get_conversation_presence(uuid) - when the other person in the caller's
    * conversation was last active (null when the caller does not take part).

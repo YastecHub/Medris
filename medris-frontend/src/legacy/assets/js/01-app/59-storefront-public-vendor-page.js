@@ -2,10 +2,27 @@
 // Shown for a couple weeks after a vendor renames, so customers who knew them
 // by the old name don't wonder where they went.
 const VENDOR_RENAME_GRACE_DAYS = 14;
+// "(formerly ...)" is never shown to the shop's own owner, and each person sees it only on their first two visits to that shop
+function lvFormerlyRec(id) { try { return JSON.parse(localStorage.getItem("lv-formerly2:" + id) || "{}") || {}; } catch (e) { return {}; } }
+function lvFormerlyOk(v) {
+  if (!v || !v.id) return true;
+  try { if (typeof isOwnVendorId === "function" && isOwnVendorId(v.id)) return false; } catch (e) {}
+  return Number(lvFormerlyRec(v.id).n || 0) < 2;
+}
+// counts one visit to the shop's page (at most once every 30 minutes, so redraws of the same visit do not use it up)
+function lvFormerlyCount(v) {
+  if (!v || !v.id || !v.previous_business_name) return;
+  try {
+    if (typeof isOwnVendorId === "function" && isOwnVendorId(v.id)) return;
+    const r = lvFormerlyRec(v.id);
+    if (Date.now() - Number(r.at || 0) < 30 * 60000) return;
+    localStorage.setItem("lv-formerly2:" + v.id, JSON.stringify({ n: Number(r.n || 0) + 1, at: Date.now() }));
+  } catch (e) {}
+}
 function vendorNameWithFormerly(v) {
   if (!v.previous_business_name || !v.name_changed_at || /^deleted\b/i.test(String(v.previous_business_name).trim())) return esc(v.business_name);
   const daysSince = (Date.now() - new Date(v.name_changed_at).getTime()) / 86400000;
-  if (daysSince > VENDOR_RENAME_GRACE_DAYS) return esc(v.business_name);
+  if (daysSince > VENDOR_RENAME_GRACE_DAYS || !lvFormerlyOk(v)) return esc(v.business_name);
   return `${esc(v.business_name)} <span class="muted" style="font-weight:400;font-size:0.8em;">(formerly ${esc(v.previous_business_name)})</span>`;
 }
 
@@ -401,7 +418,7 @@ async function renderStorefrontInner(vendorId) {
         ${!isOwnStorefront ? `<div class="storefront-profile-actions storefront-public-actions"><div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div></div>` : ""}
       </div>
       <div class="storefront-name-row sf-name">
-        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)}${(setTimeout(function () { lvFormerlyCount(v); }, 1500), "")} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
       </div>
       ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>

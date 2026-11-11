@@ -41,7 +41,7 @@ export const RPC_WRITES: ReadonlySet<string> = new Set([
   "create_notification", "create_package_order", "create_rental_order", "create_sale_order", "create_service_offer",
   "create_vendor_category", "create_vendor_sector", "delete_chat_list", "delete_message",
   "dispute_service_offer_payment", "edit_message", "edit_pending_order", "enforce_commission_deadlines",
-  "get_order_buyer_avatar", "get_or_create_conversation", "get_or_create_custom_sector", "increment_product_view",
+  "get_order_buyer_avatar", "get_shop_presence", "get_or_create_conversation", "get_or_create_custom_sector", "increment_product_view",
   "increment_vendor_profile_view", "mark_conversation_opened", "mark_suggestion_read",
   "process_vendor_commission_hour_reminders", "raise_dispute", "record_auth_activity", "record_offline_payment",
   "remind_all_orders", "remind_order_customer", "report_service_offer_payment", "reply_to_suggestion", "request_withdrawal", "cancel_withdrawal_request", "save_refund_account", "withdraw_refunds", "resolve_dispute", "respond_service_offer", "ring_callee_again",

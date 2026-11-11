@@ -54,6 +54,17 @@ export class PresenceRepository {
     return row?.at ?? null;
   }
 
+  /** Is the owner of a live shop in the app right now, and when were they last seen? Only for shops that are active. */
+  async shopOwnerPresence(vendorId: string): Promise<{ online: boolean; last_seen_at: string | null } | null> {
+    return jsonRow(
+      this.db,
+      sql`select exists (select 1 from public.app_presence a where a.user_id = v.user_id and a.seen_at > now() - interval '90 seconds') as online,
+                 greatest((select p.last_seen_at from public.user_presence p where p.user_id = v.user_id),
+                          (select a.seen_at from public.app_presence a where a.user_id = v.user_id)) as last_seen_at
+            from public.vendors v where v.id = ${vendorId}::uuid and v.deleted_at is null and coalesce(v.is_active, true)`,
+    );
+  }
+
   /** auth.users.last_sign_in_at - only readable as the auth reader (DataContext.asAuthReader; migration 0003 grants the column). */
   async lastSignIn(userId: string): Promise<string | null> {
     const row = await jsonRow<{ at: string | null }>(this.db, sql`select last_sign_in_at as at from auth.users where id = ${userId}`);
