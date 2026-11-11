@@ -517,6 +517,12 @@ function orderHistorySearchText(o, isCustomerView) {
   return [itemNames, party, o.order_type, o.status, String(o.status || "").replace(/_/g, " "), o.id, String(o.id || "").slice(0, 8), o.total_amount, orderActivityLabel(o)]
     .join(" ").toLowerCase();
 }
+// The picture of what was ordered (first item's first photo), never the shop's logo.
+function orderHistoryThumbHtml(o) {
+  const it = (o.items || []).find((x) => x?.product?.photos?.length) || (o.items || [])[0];
+  const src = it?.product?.photos?.[0];
+  return src ? `<img class="order-history-thumb" src="${esc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'order-history-thumb order-history-thumb-empty'}))">` : `<span class="order-history-thumb order-history-thumb-empty"></span>`;
+}
 function orderHistoryInnerHtml(historyOrders, isCustomerView, sourcePerspective = null) {
   const byDate = new Map();
   historyOrders.forEach((o) => {
@@ -531,7 +537,7 @@ function orderHistoryInnerHtml(historyOrders, isCustomerView, sourcePerspective 
       const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
       const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
       const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
-      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${lvOrderStageLabel(o) ? "order-status-badge-paid" : orderStatusBadgeClass(o.status)} order-history-status">${esc(lvOrderStageLabel(o)) || (o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " ")))}</span></button>`;
+      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})">${orderHistoryThumbHtml(o)}<span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${lvOrderStageLabel(o) ? "order-status-badge-paid" : orderStatusBadgeClass(o.status)} order-history-status">${esc(lvOrderStageLabel(o)) || (o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " ")))}</span></button>`;
     }).join("")}</div>`;
   });
   return inner;
