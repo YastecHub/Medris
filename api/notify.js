@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
     const [email, push, whatsapp] = await Promise.all([
       callType ? Promise.resolve({ sent: false, reason: "not emailed" }) : sendEmail(SUPABASE_URL, svcHeaders, n),
       sendPush(SUPABASE_URL, svcHeaders, n),
-      n.type === "new_order" ? sendWhatsApp(SUPABASE_URL, svcHeaders, n).catch((e) => ({ sent: false, reason: String(e && e.message || e) })) : Promise.resolve({ sent: false, reason: "not an order alert" }),
+      sendWhatsApp(SUPABASE_URL, svcHeaders, n).catch((e) => ({ sent: false, reason: String(e && e.message || e) })),
     ]);
 
     res.status(200).json({ email, push, whatsapp });
@@ -172,22 +172,37 @@ module.exports = async function handler(req, res) {
   }
 };
 
-// WhatsApp order alert (on by default for shops with a WhatsApp number; sends nothing until the engineer sets the Vercel variables below).
-// Uses the WhatsApp Business Cloud API with a pre-approved message template, so only a fixed short text is sent:
-// no customer name, address or order contents ever leave Levromart through this channel.
-//   WHATSAPP_TOKEN        permanent access token (secret - Vercel variable only, never in code)
-//   WHATSAPP_PHONE_ID     the sending phone number id from the WhatsApp Business account
-//   WHATSAPP_ORDER_TEMPLATE  name of the approved template (default "new_order_alert", language en)
+// WhatsApp alerts: a new order, and the "remind vendor / remind customer" buttons. On by default for shops (and for
+// customers who gave a WhatsApp number); sends nothing until the engineer sets the Vercel variables below.
+// Uses the WhatsApp Business Cloud API with ONE approved utility template whose body is "Levromart: {{1}}", so the
+// wording per situation (pending / confirmed / on its way / new order) is decided here in code and needs no new approval.
+//   WHATSAPP_TOKEN     permanent access token (secret - Vercel variable only, never in code)
+//   WHATSAPP_PHONE_ID  the sending phone number id from the WhatsApp Business account
+//   WHATSAPP_TEMPLATE  name of the approved template (default "levromart_alert", language en)
+function whatsappTextFor(n) {
+  if (n.type === "new_order") return "You have a new order. Open Levromart to accept or decline it.";
+  if (n.type === "order_reminder_customer" || (n.type === "order_reminder" && n.title === "Order reminder")) return String(n.body || "").trim();
+  return "";
+}
 async function sendWhatsApp(SUPABASE_URL, svcHeaders, n) {
+  const text = whatsappTextFor(n).replace(/\s+/g, " ").slice(0, 600);
+  if (!text) return { sent: false, reason: "not a WhatsApp alert" };
   const token = process.env.WHATSAPP_TOKEN || "";
   const phoneId = process.env.WHATSAPP_PHONE_ID || "";
   if (!token || !phoneId) return { sent: false, reason: "WhatsApp not configured" };
-  const [v] = await (await fetch(
-    `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${n.user_id}&select=whatsapp_number,whatsapp_alerts`,
-    { headers: svcHeaders }
-  )).json();
-  if (!v || !v.whatsapp_alerts || !v.whatsapp_number) return { sent: false, reason: "shop turned alerts off" };
-  let digits = String(v.whatsapp_number).replace(/\D/g, "");
+  // A shop's number (unless it turned alerts off), otherwise the customer's own number.
+  let raw = "";
+  const [v] = await (await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${n.user_id}&deleted_at=is.null&select=whatsapp_number,whatsapp_alerts`, { headers: svcHeaders })).json();
+  if (v) {
+    if (v.whatsapp_alerts === false) return { sent: false, reason: "shop turned alerts off" };
+    raw = v.whatsapp_number || "";
+  }
+  if (!raw) {
+    const [u] = await (await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${n.user_id}&select=whatsapp_number`, { headers: svcHeaders })).json();
+    raw = (u && u.whatsapp_number) || "";
+  }
+  let digits = String(raw).replace(/\D/g, "");
+  if (!digits) return { sent: false, reason: "no WhatsApp number" };
   if (digits.startsWith("0")) digits = "234" + digits.slice(1);
   if (!/^[1-9]\d{9,14}$/.test(digits)) return { sent: false, reason: "invalid number" };
   const r = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(phoneId)}/messages`, {
@@ -195,7 +210,7 @@ async function sendWhatsApp(SUPABASE_URL, svcHeaders, n) {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp", to: digits, type: "template",
-      template: { name: process.env.WHATSAPP_ORDER_TEMPLATE || "new_order_alert", language: { code: "en" } },
+      template: { name: process.env.WHATSAPP_TEMPLATE || "levromart_alert", language: { code: "en" }, components: [{ type: "body", parameters: [{ type: "text", text }] }] },
     }),
   });
   return r.ok ? { sent: true } : { sent: false, reason: `WhatsApp responded ${r.status}` };

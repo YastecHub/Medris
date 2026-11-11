@@ -70,7 +70,7 @@ async function startConversationWithVendor(vendorId, draftText) {
    "Message vendor". Switch it off by setting window.LV_TEMP_WHATSAPP = false (or deleting this block).
    Only the vendor's number is shown, and only to the customer. A vendor never sees a customer's number from
    here, and the order pages still show none to the vendor before the order is accepted. */
-window.LV_TEMP_WHATSAPP = true;
+window.LV_TEMP_WHATSAPP = false; // shops' WhatsApp numbers are private now (used only to send them alerts)
 (function () {
   const original = window.startConversationWithVendor;
   if (typeof original !== "function" || original.__lvWa) return;

@@ -56,11 +56,7 @@ async function renderVendorEditProfile() {
     <label>Address (leave blank if you're an online-only business)</label><input id="veAddress" value="${esc(v.address || "")}" />
     <label>City</label><input id="veCity" value="${esc(v.city || "")}" />
     <label>Phone *</label><input id="vePhone" type="tel" value="${esc(v.phone || "")}" />
-    <label>WhatsApp number *</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const w=byId('veWhatsappVisible'); if(w) w.disabled=!this.value.trim(); const wa=byId('veWhatsappAlerts'); if(wa) wa.disabled=!this.value.trim();" />
-    <div class="switch-row" style="margin-top:.45rem;">
-      <span class="switch-label-text">Show WhatsApp number to buyers</span>
-      <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible !== false ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
-    </div>
+    <label>WhatsApp number *</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const wa=byId('veWhatsappAlerts'); if(wa) wa.disabled=!this.value.trim();" />
     <div class="switch-row" style="margin-top:.45rem;">
       <span class="switch-label-text">Send new-order alerts to my WhatsApp</span>
       <label class="switch-toggle"><input type="checkbox" id="veWhatsappAlerts" ${v.whatsapp_alerts !== false ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappAlerts()" /><span class="switch-toggle-track"></span></label>
@@ -85,8 +81,8 @@ async function renderVendorEditProfile() {
       </div>
     </div>
     <div class="switch-row">
-      <span class="switch-label-text">Let buyers message or call you outside these hours ${infoPopoverHtml("veAfterHoursInfo", "Off: the Message and Call buttons show your working hours instead of reaching you while you're closed. On: customers can contact you any time.")}</span>
-      <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_messages !== false ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
+      <span class="switch-label-text">Let buyers place orders outside these hours ${infoPopoverHtml("veAfterHoursInfo", "Off: customers can only place an order while you are open (if you have set working hours). On: they can order any time.")}</span>
+      <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_orders === true ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
     </div>
     <div class="ve-field" style="margin-top:1rem;">
       <label class="ve-label" for="veOrderExpiry">How long do you need to confirm a new order?</label>
@@ -497,20 +493,46 @@ function updateVeDeliveryPerKmExample() {
 async function toggleVendorAfterHours() {
   const checkbox = byId("veAllowAfterHours");
   const checked = checkbox.checked;
-  const { error } = await sb.from("vendors").update({ allow_after_hours_messages: checked }).eq("id", vendor.id);
+  const { error } = await sb.from("vendors").update({ allow_after_hours_orders: checked }).eq("id", vendor.id);
   if (error) { showToast(error.message, "error"); checkbox.checked = !checked; return; }
-  vendor.allow_after_hours_messages = checked;
-  showToast(checked ? "Customers can now message or call you outside working hours." : "After-hours contact turned off.", "success");
+  vendor.allow_after_hours_orders = checked;
+  showToast(checked ? "Customers can now order from you outside working hours." : "Orders outside working hours are off.", "success");
 }
-async function toggleVendorWhatsappVisibility() {
-  const checkbox = byId("veWhatsappVisible");
-  const number = byId("veWhatsapp")?.value.trim() || "";
-  if (!checkbox) return;
-  if (checkbox.checked && !number) { checkbox.checked = false; showToast("Add a WhatsApp number first.", "info"); return; }
-  const { error } = await sb.from("vendors").update({ whatsapp_visible: checkbox.checked }).eq("id", vendor.id);
-  if (error) { checkbox.checked = !checkbox.checked; showToast(error.message, "error"); return; }
-  vendor.whatsapp_visible = checkbox.checked;
-  showToast(checkbox.checked ? "WhatsApp contact is now visible to buyers." : "WhatsApp contact hidden from buyers.", "success");
+
+// Customers: ask for a WhatsApp number (reminders and order updates reach them there). "Later" is allowed, but the
+// question comes back every time the app is opened until a number is saved.
+let lvAskingCustomerWa = false;
+function lvAskCustomerWhatsapp() {
+  if (lvAskingCustomerWa || !session || !profile || profile.role === "admin" || profile.role === "vendor") return;
+  if (typeof vendor !== "undefined" && vendor) return;
+  if (profile.whatsapp_number) return;
+  if (byId("lvCwaModal")) return;
+  lvAskingCustomerWa = true;
+  const m = document.createElement("div");
+  m.id = "lvCwaModal";
+  m.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:1rem;";
+  m.innerHTML = `<div style="background:var(--bg-card,#fff);color:var(--text,#111);border-radius:18px;padding:1.2rem;max-width:360px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+    <h3 style="margin:0 0 .3rem">Add your WhatsApp number</h3>
+    <p class="muted" style="margin:0 0 .8rem;font-size:.9rem">So your orders and reminders reach you faster.</p>
+    <input id="lvCwaInput" type="tel" inputmode="tel" placeholder="e.g. 08012345678" style="width:100%;box-sizing:border-box" />
+    <div id="lvCwaErr" class="error-text hidden" style="margin-top:.4rem"></div>
+    <div class="flex" style="margin-top:.8rem;gap:.5rem;justify-content:flex-end">
+      <button type="button" class="btn btn-sm btn-outline" id="lvCwaLater">Later</button>
+      <button type="button" class="btn btn-sm" id="lvCwaSave">Save</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  const close = () => { m.remove(); lvAskingCustomerWa = false; };
+  byId("lvCwaLater").onclick = close;
+  byId("lvCwaSave").onclick = async () => {
+    const number = byId("lvCwaInput").value.trim().replace(/[\s().-]/g, "");
+    const err = byId("lvCwaErr");
+    if (!/^\+?\d{10,15}$/.test(number)) { err.textContent = "Please enter a valid phone number."; err.classList.remove("hidden"); return; }
+    const { error } = await sb.from("users").update({ whatsapp_number: number }).eq("id", session.user.id);
+    if (error) { err.textContent = error.message; err.classList.remove("hidden"); return; }
+    profile.whatsapp_number = number;
+    close();
+    showToast("Saved. Thank you!", "success");
+  };
 }
 
 // A shop without a WhatsApp number is asked for one when it opens its dashboard (new-order alerts go there).
@@ -566,10 +588,10 @@ async function submitVendorEditProfile() {
     city: byId("veCity").value.trim() || null,
     phone,
     whatsapp_number: byId("veWhatsapp").value.trim() || null,
-    whatsapp_visible: !!byId("veWhatsappVisible")?.checked && !!byId("veWhatsapp").value.trim(),
+    whatsapp_visible: false,
     opening_hours: summarizeBusinessHours(business_hours) || null,
     business_hours,
-    allow_after_hours_messages: byId("veAllowAfterHours").checked,
+    allow_after_hours_orders: byId("veAllowAfterHours").checked,
     ...(Number(byId("veOrderExpiry")?.value ?? 30) !== Number(vendor.order_expiry_minutes ?? 30) ? { order_expiry_minutes: Number(byId("veOrderExpiry").value) } : {}),
     bio: byId("veBio").value.trim() || null,
   }).eq("id", vendor.id);
@@ -578,9 +600,9 @@ async function submitVendorEditProfile() {
   vendor.sector_id = sector_id || null;
   vendor.phone = phone;
   vendor.whatsapp_number = byId("veWhatsapp").value.trim() || null;
-  vendor.whatsapp_visible = !!byId("veWhatsappVisible")?.checked && !!vendor.whatsapp_number;
+  vendor.whatsapp_visible = false;
   vendor.business_hours = business_hours;
-  vendor.allow_after_hours_messages = byId("veAllowAfterHours").checked;
+  vendor.allow_after_hours_orders = byId("veAllowAfterHours").checked;
   vendor.order_expiry_minutes = Number(byId("veOrderExpiry")?.value ?? 30);
   try { localStorage.setItem("lv-expiry-set:" + vendor.id, "1"); } catch (e) {}
   updateAuthUI();

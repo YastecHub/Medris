@@ -49,6 +49,7 @@ export const updateProfile = defineRoute({
         city: z.string().max(100).nullable().optional(),
         address: z.string().max(500).nullable().optional(),
         avatar_url: z.string().max(1000).nullable().optional(),
+        whatsapp_number: z.string().max(30).nullable().optional(),
         ai_data_consent: z.boolean().optional(),
         campus_id: z.string().max(200).nullable().optional(),
       }),

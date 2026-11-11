@@ -11,7 +11,7 @@ import { jsonReturning, jsonRow, jsonRows } from "../json.js";
  */
 const PUBLIC = sql`v.id, v.user_id, v.business_name, v.logo_url, v.cover_image_url, v.cover_url, v.bio, v.address, v.city, v.phone,
   case when v.whatsapp_visible then v.whatsapp_number end as whatsapp_number, v.whatsapp_visible, v.verification_status, v.opening_hours,
-  v.business_hours, v.allow_after_hours_messages, v.order_expiry_minutes, v.avg_rating, v.review_count, v.created_at, v.is_active, v.delivery_radius_km, v.delivery_fee,
+  v.business_hours, v.allow_after_hours_messages, v.allow_after_hours_orders, v.order_expiry_minutes, v.avg_rating, v.review_count, v.created_at, v.is_active, v.delivery_radius_km, v.delivery_fee,
   v.delivery_fee_mode, v.delivery_fee_per_km, v.sector_id, v.lat, v.lng, v.previous_business_name, v.name_changed_at, v.referral_code,
   v.campus_id, v.operating_scope, v.operating_campuses, v.request_pref, v.student_verified, v.non_student_verified, v.campus_setup_done, v.profile_view_count, v.deleted_at,
   v.cac_number`;
@@ -34,6 +34,7 @@ export interface ShopChanges {
   opening_hours?: string | null;
   business_hours?: Record<string, unknown> | null;
   allow_after_hours_messages?: boolean;
+  allow_after_hours_orders?: boolean;
   whatsapp_alerts?: boolean;
   logo_url?: string | null;
   cover_url?: string | null;
@@ -135,6 +136,7 @@ export class ShopRowsRepository {
     add("opening_hours", sql`opening_hours = ${c.opening_hours ?? null}`);
     add("business_hours", sql`business_hours = ${c.business_hours == null ? null : JSON.stringify(c.business_hours)}::jsonb`);
     add("allow_after_hours_messages", sql`allow_after_hours_messages = ${c.allow_after_hours_messages ?? null}`);
+    add("allow_after_hours_orders", sql`allow_after_hours_orders = ${c.allow_after_hours_orders ?? null}`);
     add("whatsapp_alerts", sql`whatsapp_alerts = ${c.whatsapp_alerts ?? null}`);
     add("logo_url", sql`logo_url = ${c.logo_url ?? null}`);
     add("cover_url", sql`cover_url = ${c.cover_url ?? null}`);

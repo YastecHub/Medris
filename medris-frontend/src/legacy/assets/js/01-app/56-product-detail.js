@@ -685,6 +685,7 @@ async function buyNow(vendorId, productId) {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
   if (!(await ensureCustomerProfile(byId("buyError")))) return;
+  { const closed = await lvShopClosedForOrders(vendorId); if (closed) { lvClosedOrderToast(closed); return; } }
   const qty = parseInt(byId("buyQty").value) || 1;
   const errorEl = byId("buyError");
   errorEl.classList.add("hidden");
