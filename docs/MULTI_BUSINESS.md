@@ -106,3 +106,9 @@ decides who can see orders and chat - the most sensitive part of the app.
   chats from "Work for ..." without logging out. This avoids rewriting ~40 places that assume one shop per account
   (earnings, billing, payouts). Missing for managers: editing listings from the workspace (the `listings` permission
   exists in the database). A true one-account-many-shops model remains possible later as its own, carefully tested project.
+- **Invitations (11 Nov 2026, migration 0063):** adding a person now sends an invitation (status `pending`); they get an alert and
+  a pop-up to accept or decline, and only an accepted (`active`) member has access or receives the shop's alerts. Customers
+  and vendors can both be invited; "Work for ..." appears in either profile menu. Team page redesigned (cards, role pills,
+  "Waiting for reply"); "Add business" shows the three steps for a second business.
+- **WhatsApp via Twilio (optional, instead of Meta direct):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
+  `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_CONTENT_SID` (approved template body "Levromart: {{1}}") on Vercel; Twilio is used when all four are set.

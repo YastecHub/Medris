@@ -6,7 +6,7 @@
  * certainly never reached the backend, so nothing runs twice.
  */
 export const RPC_READS: ReadonlySet<string> = new Set([
-  "list_shop_team", "get_my_shop_teams", "get_team_shop_orders", "get_team_shop_chats", "get_team_chat_messages",
+  "list_shop_team", "get_my_shop_teams", "get_my_team_invites", "get_team_shop_orders", "get_team_shop_chats", "get_team_chat_messages",
   "admin_campus_submissions", "admin_find_conversation", "admin_get_conversation_participants",
   "admin_get_inventory", "admin_get_manual_password_reset_requests", "admin_get_pending_appeals",
   "admin_list_conversations", "admin_list_locked_vendors", "admin_list_transactions", "admin_list_vendor_payouts",
@@ -29,7 +29,7 @@ export const RPC_READS: ReadonlySet<string> = new Set([
 ]);
 
 export const RPC_WRITES: ReadonlySet<string> = new Set([
-  "add_shop_team_member", "remove_shop_team_member", "team_send_message", "send_order_still_available",
+  "add_shop_team_member", "remove_shop_team_member", "respond_team_invite", "team_send_message", "send_order_still_available",
   "accept_legal_terms", "add_order_note", "add_to_cart", "admin_adjust_points",
   "admin_approve_manual_password_reset", "admin_approve_monthly_listing", "admin_award_social_points",
   "admin_cancel_confirmed_overdue_order", "admin_decide_withdrawal", "admin_set_product_suspended", "admin_decide_cancellation", "buyer_cancel_order", "request_order_cancellation", "admin_reopen_dispute", "admin_confirm_reported_payment", "admin_deactivate_monthly_listing",

@@ -347,6 +347,8 @@ export const RPC: Record<string, RpcEntry> = {
   get_team_shop_chats: { run: (s, me, a) => s.orderActions.teamChats(me, id(a.p_vendor_id)) },
   get_team_chat_messages: { run: (s, me, a) => s.orderActions.teamMessages(me, id(a.p_conversation_id)) },
   team_send_message: { run: (s, me, a) => s.orderActions.teamSend(me, id(a.p_conversation_id), str(a.p_body)), limit: L.conversations },
+  get_my_team_invites: { run: (s, me) => s.orderActions.myInvites(me) },
+  respond_team_invite: { run: (s, me, a) => s.orderActions.respondInvite(me, id(a.p_vendor_id), a.p_accept === true), limit: L.orders },
   list_shop_team: { run: (s, me) => s.orderActions.teamList(me) },
   add_shop_team_member: { run: (s, me, a) => s.orderActions.teamAdd(me, str(a.p_identifier), str(a.p_role)), limit: L.orders },
   remove_shop_team_member: { run: (s, me, a) => s.orderActions.teamRemove(me, id(a.p_user_id)), limit: L.orders },

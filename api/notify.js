@@ -176,6 +176,8 @@ module.exports = async function handler(req, res) {
 // customers who gave a WhatsApp number); sends nothing until the engineer sets the Vercel variables below.
 // Uses the WhatsApp Business Cloud API with ONE approved utility template whose body is "Levromart: {{1}}", so the
 // wording per situation (pending / confirmed / on its way / new order) is decided here in code and needs no new approval.
+//   Either Twilio (preferred when all four are set): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (secret), TWILIO_WHATSAPP_FROM (the WhatsApp sender number),
+//   TWILIO_WHATSAPP_CONTENT_SID (the approved template, body "Levromart: {{1}}"); or Meta directly:
 //   WHATSAPP_TOKEN     permanent access token (secret - Vercel variable only, never in code)
 //   WHATSAPP_PHONE_ID  the sending phone number id from the WhatsApp Business account
 //   WHATSAPP_TEMPLATE  name of the approved template (default "levromart_alert", language en)
@@ -192,7 +194,11 @@ async function sendWhatsApp(SUPABASE_URL, svcHeaders, n) {
   if (!text) return { sent: false, reason: "not a WhatsApp alert" };
   const token = process.env.WHATSAPP_TOKEN || "";
   const phoneId = process.env.WHATSAPP_PHONE_ID || "";
-  if (!token || !phoneId) return { sent: false, reason: "WhatsApp not configured" };
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID || "";
+  const twilioAuth = process.env.TWILIO_AUTH_TOKEN || "";
+  const twilioFrom = (process.env.TWILIO_WHATSAPP_FROM || "").replace(/\D/g, "");
+  const useTwilio = !!(twilioSid && twilioAuth && twilioFrom);
+  if (!useTwilio && (!token || !phoneId)) return { sent: false, reason: "WhatsApp not configured" };
   // A shop's number (unless it turned alerts off), otherwise the customer's own number.
   let raw = "";
   const [v] = await (await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${n.user_id}&deleted_at=is.null&select=whatsapp_number,whatsapp_alerts`, { headers: svcHeaders })).json();
@@ -208,6 +214,19 @@ async function sendWhatsApp(SUPABASE_URL, svcHeaders, n) {
   if (!digits) return { sent: false, reason: "no WhatsApp number" };
   if (digits.startsWith("0")) digits = "234" + digits.slice(1);
   if (!/^[1-9]\d{9,14}$/.test(digits)) return { sent: false, reason: "invalid number" };
+  if (useTwilio) {
+    // Twilio WhatsApp: a business-started message must use an approved template (Content SID, body "Levromart: {{1}}").
+    const form = new URLSearchParams({ To: `whatsapp:+${digits}`, From: `whatsapp:+${twilioFrom}` });
+    const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID || "";
+    if (contentSid) { form.set("ContentSid", contentSid); form.set("ContentVariables", JSON.stringify({ "1": text })); }
+    else form.set("Body", `Levromart: ${text}`);
+    const tr = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(twilioSid)}/Messages.json`, {
+      method: "POST",
+      headers: { Authorization: "Basic " + Buffer.from(`${twilioSid}:${twilioAuth}`).toString("base64"), "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    });
+    return tr.ok ? { sent: true, via: "twilio" } : { sent: false, reason: `Twilio responded ${tr.status}` };
+  }
   const r = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(phoneId)}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

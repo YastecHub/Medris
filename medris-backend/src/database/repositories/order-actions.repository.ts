@@ -66,8 +66,8 @@ export class OrderActionsRepository {
     return row?.id ?? null;
   }
 
-  async teamOf(vendorId: string): Promise<{ user_id: string; name: string | null; email: string | null; role: string; created_at: string }[]> {
-    return jsonRows(this.db, sql`select m.user_id, u.name, u.email, m.role, m.created_at
+  async teamOf(vendorId: string): Promise<{ user_id: string; name: string | null; email: string | null; role: string; status: string; created_at: string }[]> {
+    return jsonRows(this.db, sql`select m.user_id, u.name, u.email, m.role, m.status, m.created_at
       from public.vendor_members m join public.users u on u.id = m.user_id where m.vendor_id = ${vendorId}::uuid order by m.created_at`);
   }
 
@@ -83,14 +83,26 @@ export class OrderActionsRepository {
       order by created_at limit 1`);
   }
 
+  async shopName(vendorId: string): Promise<string | null> {
+    const [row] = rowsOf<{ n: string | null }>(await this.db.execute(sql`select business_name as n from public.vendors where id = ${vendorId}::uuid`));
+    return row?.n ?? null;
+  }
+
+  async userName(userId: string): Promise<string | null> {
+    const [row] = rowsOf<{ n: string | null }>(await this.db.execute(sql`select coalesce(name, email) as n from public.users where id = ${userId}::uuid`));
+    return row?.n ?? null;
+  }
+
   async teamCount(vendorId: string): Promise<number> {
     const [row] = rowsOf<{ n: number }>(await this.db.execute(sql`select count(*)::int as n from public.vendor_members where vendor_id = ${vendorId}::uuid`));
     return row?.n ?? 0;
   }
 
-  async addMember(vendorId: string, userId: string, role: string, invitedBy: string): Promise<void> {
-    await this.db.execute(sql`insert into public.vendor_members (vendor_id, user_id, role, invited_by) values (${vendorId}::uuid, ${userId}::uuid, ${role}, ${invitedBy}::uuid)
-      on conflict (vendor_id, user_id) do update set role = excluded.role`);
+  async addMember(vendorId: string, userId: string, role: string, invitedBy: string): Promise<string> {
+    // a new person starts as an invitation; someone who already accepted keeps their access and only gets the new role
+    const rows = rowsOf<{ status: string }>(await this.db.execute(sql`insert into public.vendor_members (vendor_id, user_id, role, invited_by, status) values (${vendorId}::uuid, ${userId}::uuid, ${role}, ${invitedBy}::uuid, 'pending')
+      on conflict (vendor_id, user_id) do update set role = excluded.role returning status`));
+    return rows[0]?.status ?? "pending";
   }
 
   async removeMember(vendorId: string, userId: string): Promise<number> {
@@ -100,7 +112,22 @@ export class OrderActionsRepository {
 
   async myTeams(userId: string): Promise<{ vendor_id: string; business_name: string; role: string }[]> {
     return jsonRows(this.db, sql`select m.vendor_id, v.business_name, m.role from public.vendor_members m
-      join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid order by m.created_at`);
+      join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid and m.status = 'active' order by m.created_at`);
+  }
+
+  async myInvites(userId: string): Promise<{ vendor_id: string; business_name: string; role: string; created_at: string }[]> {
+    return jsonRows(this.db, sql`select m.vendor_id, v.business_name, m.role, m.created_at from public.vendor_members m
+      join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid and m.status = 'pending' order by m.created_at desc`);
+  }
+
+  /** The person answers an invitation: accept makes them active, decline removes it. Returns the shop owner and name for the reply alert. */
+  async answerInvite(vendorId: string, userId: string, accept: boolean): Promise<{ owner_id: string; business_name: string; role: string } | null> {
+    const row = await jsonRow<{ owner_id: string; business_name: string; role: string }>(this.db, sql`select v.user_id as owner_id, v.business_name, m.role from public.vendor_members m join public.vendors v on v.id = m.vendor_id
+      where m.vendor_id = ${vendorId}::uuid and m.user_id = ${userId}::uuid and m.status = 'pending'`);
+    if (!row) return null;
+    if (accept) await this.db.execute(sql`update public.vendor_members set status = 'active' where vendor_id = ${vendorId}::uuid and user_id = ${userId}::uuid`);
+    else await this.db.execute(sql`delete from public.vendor_members where vendor_id = ${vendorId}::uuid and user_id = ${userId}::uuid and status = 'pending'`);
+    return row;
   }
 
   /** The shop's conversations for the team workspace, newest first, with the customer's name and the unread count. */

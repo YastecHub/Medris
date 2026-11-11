@@ -31,6 +31,13 @@ describe("shop team (rpc)", () => {
     expect((await rpc(strangerT, "add_shop_team_member", { p_identifier: member.email, p_role: "staff" })).status).toBeGreaterThanOrEqual(400);
     const added = await rpc(ownerT, "add_shop_team_member", { p_identifier: member.email, p_role: "staff" });
     expect(added.status).toBe(200);
+    // an invitation only: no access until the person accepts, and they are told
+    expect((await rpc(memberT, "get_team_shop_orders", { p_vendor_id: shop.id })).status).toBeGreaterThanOrEqual(400);
+    expect(((await rpc(memberT, "get_my_team_invites")).json.data as { vendor_id: string }[]).map((i) => i.vendor_id)).toEqual([shop.id]);
+    expect((await db.query(`select 1 from public.notifications where user_id = $1 and type = 'team_invite'`, [member.id]))).toHaveLength(1);
+    expect((await rpc(strangerT, "respond_team_invite", { p_vendor_id: shop.id, p_accept: true })).status).toBe(400);
+    expect((await rpc(memberT, "respond_team_invite", { p_vendor_id: shop.id, p_accept: true })).status).toBe(200);
+    expect((await db.query(`select 1 from public.notifications where user_id = $1 and type = 'team_invite_reply'`, [owner.id]))).toHaveLength(1);
     expect(((await rpc(ownerT, "list_shop_team")).json.data as { role: string }[]).map((m) => m.role)).toEqual(["staff"]);
     expect((await rpc(memberT, "get_my_shop_teams")).json.data).toMatchObject([{ vendor_id: shop.id, role: "staff" }]);
 
@@ -90,5 +97,23 @@ describe("shop team (rpc)", () => {
     expect(told.map((n) => n.title)).toEqual(["New message from Bola Bakes"]);
     const heard = await db.query<{ user_id: string }>(`select user_id from public.notifications where type = 'new_message' and title like 'New message from Ada%'`);
     expect(heard.map((n) => n.user_id).sort()).toEqual([owner.id, member.id].sort());
+  });
+
+  it("a declined invitation removes it, and a pending invitation gives no access or alerts", async () => {
+    const owner = await seedUser(db, { role: "vendor" });
+    const shop = await seedVendor(db, owner.id);
+    const invited = await seedUser(db);
+    const buyer = await seedUser(db);
+    const ownerT = await accessToken(owner.id);
+    const invitedT = await accessToken(invited.id);
+    expect((await rpc(ownerT, "add_shop_team_member", { p_identifier: invited.email, p_role: "manager" })).status).toBe(200);
+    const orderId = await seedOrder(db, buyer.id, shop.id, { status: "pending" });
+    expect((await rpc(invitedT, "transition_order_status", { p_order_id: orderId, p_new_status: "confirmed" })).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc(invitedT, "get_my_shop_teams")).json.data).toEqual([]);
+    await db.query(`insert into public.notifications (user_id, type, title, body, vendor_id, notification_category) values ($1, 'new_order', 'Pending test', 'b', $2, 'order')`, [owner.id, shop.id]);
+    expect(await db.query(`select 1 from public.notifications where user_id = $1 and title = 'Pending test'`, [invited.id])).toHaveLength(0);
+    expect((await rpc(invitedT, "respond_team_invite", { p_vendor_id: shop.id, p_accept: false })).status).toBe(200);
+    expect((await rpc(ownerT, "list_shop_team")).json.data).toEqual([]);
+    expect((await rpc(invitedT, "respond_team_invite", { p_vendor_id: shop.id, p_accept: true })).status).toBe(400);
   });
 });
