@@ -180,6 +180,8 @@ module.exports = async function handler(req, res) {
 //   WHATSAPP_PHONE_ID  the sending phone number id from the WhatsApp Business account
 //   WHATSAPP_TEMPLATE  name of the approved template (default "levromart_alert", language en)
 function whatsappTextFor(n) {
+  // A call: the same moment the call alert goes out, a short WhatsApp "beep" so the person notices (no real call is made).
+  if (n.type === "incoming_call") return `${String(n.body || "Someone is calling you.").replace(/\s+is calling you\.?$/i, "")} is trying to reach you on Levromart. Open the app to answer.`;
   if (n.type === "new_order") return "You have a new order. Open Levromart to accept or decline it.";
   if (n.type === "order_reminder_customer" || (n.type === "order_reminder" && n.title === "Order reminder")) return String(n.body || "").trim();
   return "";

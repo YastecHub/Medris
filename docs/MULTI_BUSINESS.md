@@ -42,3 +42,10 @@ Orders, chat, wallet, billing and notifications are tied to that single `vendors
 - **Commission is per sale of a product**, not per business or branch: whenever a product sold on the commission method
   is sold, Levromart takes 3%, whichever business/branch it belongs to. Shops on a monthly listing plan pay the
   monthly fee instead. So the billing and commission code needs no per-business logic - it keeps working per order.
+
+## Progress
+- **Step 1 (done, migration 0057):** `vendor_members` table and `can_act_for_vendor(vendor_id, permission)` helper. Nothing
+  uses them yet, so existing shops are unchanged.
+- Next: step 2 (order/chat functions use the helper so a manager/staff can really work on a shop), then the "Team" screen
+  and invites, then several businesses per owner. The team screen is held back until step 2 so it never offers people
+  access that does not work yet.
