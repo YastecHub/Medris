@@ -77,3 +77,13 @@ decides who can see orders and chat - the most sensitive part of the app.
   row-level policies; nobody is on a team yet, so nobody sees anything new). Tested in `tests/team-permissions.test.ts`.
   Still to do: letting members *act* (accept/decline, reply), routing new-order/message notifications to them, the Team
   screen with invites, the terms/privacy line, then several businesses per owner.
+- **Step 2b (done, migration 0060 + backend):** a team member can act on the shop's orders according to their role
+  (accept/decline/hand over, notes, suggest a quantity; message request needs "chat"). The shop's new-order and order
+  alerts are copied to members (so they get the push). Bank, wallet, billing, settings and shop deletion are untouched
+  and stay owner-only. Tested in `tests/team-permissions.test.ts` and the existing order-action tests.
+- **Still to do (front end, the larger part):** (1) a "Team" screen for the owner to add/remove members by their Levromart
+  account; (2) "work as this shop" mode for a member - the app finds a shop by `vendors.user_id = me` in many screens
+  (about 40 places in `src/legacy`), each must also accept a membership; (3) member chat replies (message insert policy +
+  the chat screens); (4) several businesses per owner with a business switcher; (5) terms/privacy line saying team
+  members can see a shop's orders and delivery details. Until (2) exists a team member cannot use the shop screens, so no
+  invites are offered yet.

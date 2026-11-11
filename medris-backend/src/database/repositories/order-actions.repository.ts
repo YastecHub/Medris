@@ -52,6 +52,12 @@ export class OrderActionsRepository {
     return row?.row ?? null;
   }
 
+  /** Whether this person is on the shop's team with the given permission ("orders", "chat" or "listings") - see migration 0060. */
+  async teamCan(userId: string, vendorId: string, permission: "orders" | "chat" | "listings"): Promise<boolean> {
+    const [row] = rowsOf<{ ok: boolean }>(await this.db.execute(sql`select public.team_can(${userId}::uuid, ${vendorId}::uuid, ${permission}) as ok`));
+    return row?.ok === true;
+  }
+
   /** Fails like PostgreSQL does for a value that is not an order_status. */
   async castStatus(status: string): Promise<void> {
     await this.db.execute(sql`select ${status}::public.order_status`);

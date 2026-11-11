@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase, type TestDatabase } from "./support/test-db.js";
-import { seedUser, seedVendor } from "./support/fixtures.js";
+import { seedOrder, seedUser, seedVendor } from "./support/fixtures.js";
 
 /** can_act_for_vendor(): the owner may do everything; a manager orders/chat/listings; staff orders/chat; strangers nothing. */
 describe("shop team permissions (migration 0057/0059)", () => {
@@ -46,5 +46,22 @@ describe("shop team permissions (migration 0057/0059)", () => {
   });
   it("someone who is not on the team may do nothing", async () => {
     for (const p of ["orders", "chat", "listings"]) expect(await canAct(stranger, p)).toBe(false);
+  });
+
+  it("a shop's order notification is copied to its team, and only once per member", async () => {
+    const buyer = (await seedUser(db)).id;
+    const orderId = await seedOrder(db, buyer, vendorId);
+    await db.query(
+      `insert into public.notifications (user_id, type, title, body, target_view, target_params, vendor_id, notification_category)
+       values ($1, 'new_order', 'New order received', 'x', 'orderDetail', $2::jsonb, $3, 'order')`,
+      [owner, JSON.stringify({ orderId }), vendorId],
+    );
+    const rows = await db.query<{ user_id: string }>(`select user_id from public.notifications where type = 'new_order' and target_params->>'orderId' = $1`, [orderId]);
+    expect(rows.map((r) => r.user_id).sort()).toEqual([owner, manager, staff].sort());
+  });
+  it("a notification for a stranger is not copied to the team", async () => {
+    await db.query(`insert into public.notifications (user_id, type, title, body, vendor_id, notification_category) values ($1, 'new_order', 't', 'b', $2, 'order')`, [stranger, vendorId]);
+    const rows = await db.query<{ user_id: string }>(`select user_id from public.notifications where user_id in ($1, $2) and title = 't'`, [manager, staff]);
+    expect(rows).toHaveLength(0);
   });
 });
