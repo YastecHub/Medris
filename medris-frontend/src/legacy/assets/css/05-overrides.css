@@ -8057,7 +8057,7 @@ html body #app .storefront-product-mini>.mini-placeholder{display:flex!important
 html body #app .storefront-product-mini>.mini-placeholder .lv-noimg{flex:1;height:100%;min-height:100%;justify-content:center}
 /* share QR in dark / black mode: one soft slate tile that the code fills edge to edge (no black layers or sharp corners) */
 html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code{background:#37424d!important;padding:0!important;border-radius:22px!important;overflow:hidden;box-shadow:none!important}
-html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code canvas,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code canvas{width:100%!important;height:100%!important;display:block;border-radius:22px;filter:invert(1) hue-rotate(180deg) brightness(1.05)}
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code canvas,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code canvas{width:100%!important;height:100%!important;display:block;border-radius:22px;filter:invert(1) hue-rotate(180deg) contrast(.6) brightness(1.35)}
 /* order details: no gap under the search bar */
 html:root:root body #app#app:has(.od-page){margin-top:-1px!important}
 /* product form: only the icon choices pick the delivery type (the plain drop-down is hidden); the section has no tinted box */
@@ -8069,7 +8069,7 @@ html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.produ
 html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label .delivery-fee-inline{display:block;font-size:.8em;font-weight:600;opacity:.85}
 
 /* no-photo tile on the shop page: same size as before, the picture icon centred inside it */
-html body #app .storefront-product-mini>.mini-placeholder{aspect-ratio:auto!important;height:auto!important;position:relative!important;display:block!important}
+html body #app .storefront-product-mini>.mini-placeholder{aspect-ratio:4/3!important;width:100%!important;height:auto!important;position:relative!important;display:block!important;min-height:7rem}
 html body #app .storefront-product-mini>.mini-placeholder .lv-noimg{position:absolute!important;inset:0;height:auto!important;min-height:0!important;display:flex;align-items:center;justify-content:center}
 /* share QR in dark / black mode: softer slate, less black */
 html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-card{background:#2c353e!important}
@@ -8083,3 +8083,5 @@ html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code,html[data-theme="bl
 
 .conv-preview .conv-tk{font-size:.72rem;margin-right:.25rem;color:var(--text-muted,#8a8f98)}
 .conv-preview .conv-tk.read{color:#34a0e8}
+
+html[data-theme="dark"]:root:root:root body #lvqrSheet .lvqr-code canvas,html[data-theme="black"]:root:root:root body #lvqrSheet .lvqr-code canvas{filter:invert(1) hue-rotate(180deg) contrast(.6) brightness(1.35)!important}
