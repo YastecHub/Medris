@@ -217,6 +217,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : lvOrderStageLabel(order) ? "order-status-badge-paid" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : (lvOrderStageLabel(order) || order.status.replace("_", " "))}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
+    ${order.status==='pending'?lvHourglassHtml(order,isVendor):''}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>Vendor hasn’t responded after 5–10 minutes? Tap “Remind vendor” and we’ll nudge them.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
     ${isVendor&&order.status==='pending'?`<div class="banner banner-warning vendor-order-waiting-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-hourglass-half"></i> Customer waiting for confirmation.</strong><span>The customer is waiting for you to confirm this order.</span></div>`:''}
     ${isCustomer&&['confirmed','handed_over'].includes(order.status)&&!feePaid?`<div class="banner banner-warning payment-not-paid-yet-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-exclamation"></i> Not paid yet.</strong><span>Pay securely in the app with Paystack so the vendor can send your order.</span></div>`:''}
@@ -807,3 +808,36 @@ async function updateOrderStatus(orderId, newStatus) {
   await navigate("orderDetail", { orderId });
 }
 
+
+
+// Hourglass for a pending order: the sand runs from the top to the bottom over the 30 minutes the shop has to confirm,
+// with the minutes left underneath. When it is empty the order is cancelled by the server.
+const LV_AUTO_CANCEL_MIN = 30;
+function lvHourglassHtml(order, isVendor) {
+  if (!order?.created_at) return "";
+  return `<div class="lv-hg" data-created="${esc(order.created_at)}" data-min="${LV_AUTO_CANCEL_MIN}" role="timer" aria-live="off">
+    <svg viewBox="0 0 60 92" width="54" height="83" aria-hidden="true">
+      <defs><clipPath id="hgTop${esc(String(order.id).slice(0,6))}"><path d="M8 6H52L32 46H28Z"/></clipPath><clipPath id="hgBot${esc(String(order.id).slice(0,6))}"><path d="M28 46H32L52 86H8Z"/></clipPath>
+      <linearGradient id="hgSand" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f6c453"/><stop offset="1" stop-color="#e09a1a"/></linearGradient></defs>
+      <path d="M6 3H54M6 89H54" stroke="#8a6a3b" stroke-width="5" stroke-linecap="round"/>
+      <path class="hg-glass" d="M8 6H52L32 46L52 86H8L28 46Z" fill="rgba(180,220,255,.18)" stroke="#9fb7c9" stroke-width="2" stroke-linejoin="round"/>
+      <rect class="hg-top" x="0" y="6" width="60" height="40" fill="url(#hgSand)" clip-path="url(#hgTop${esc(String(order.id).slice(0,6))})"/>
+      <rect class="hg-bot" x="0" y="86" width="60" height="0" fill="url(#hgSand)" clip-path="url(#hgBot${esc(String(order.id).slice(0,6))})"/>
+      <line class="hg-stream" x1="30" y1="46" x2="30" y2="84" stroke="#e8aa2c" stroke-width="1.6" stroke-dasharray="3 3"/>
+    </svg>
+    <div class="hg-text"><strong class="hg-left">--</strong><small>${isVendor ? "to confirm this order before it cancels itself" : "for the shop to confirm before the order cancels itself"}</small></div>
+  </div>`;
+}
+function lvHourglassTick() {
+  document.querySelectorAll(".lv-hg").forEach((el) => {
+    const created = new Date(el.dataset.created).getTime(), total = Number(el.dataset.min) * 60000;
+    if (!created) return;
+    const left = Math.max(0, created + total - Date.now()), f = Math.min(1, left / total);
+    const top = el.querySelector(".hg-top"), bot = el.querySelector(".hg-bot"), st = el.querySelector(".hg-stream"), lab = el.querySelector(".hg-left");
+    if (top) { top.setAttribute("y", String(6 + (1 - f) * 40)); top.setAttribute("height", String(f * 40)); }
+    if (bot) { const h = (1 - f) * 40; bot.setAttribute("y", String(86 - h)); bot.setAttribute("height", String(h)); }
+    if (st) st.style.display = left > 0 ? "" : "none";
+    if (lab) { const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000); lab.textContent = left > 0 ? `${m}:${String(sec).padStart(2, "0")} left` : "Time is up. Cancelling…"; }
+  });
+}
+if (!window.__lvHgTimer) window.__lvHgTimer = setInterval(lvHourglassTick, 1000);

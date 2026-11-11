@@ -120,6 +120,7 @@ function customerOrderTopHtml(order, ctx) {
   h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : tone === "paid" ? "fa-money-check-dollar" : "fa-box-open"}"></i></div>
     <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">Placed ${esc(orderDateTimeStr(order.created_at))}</span>` : ""}</div>
     <span class="od-pill od-pill-${tone}">${esc(odStatusLabel(order))}</span>
+    ${order.status === "pending" ? lvHourglassHtml(order, false) : ""}
     ${order.status === "pending" ? `<div class="od-strip"><i class="fa-regular fa-clock"></i><span>Vendor hasn’t responded after 5–10 minutes? Tap <strong>Remind vendor</strong> and we’ll nudge them.</span></div>` : ""}
   </section>`;
   // ---- main actions
