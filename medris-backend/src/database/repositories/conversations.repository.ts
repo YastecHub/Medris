@@ -74,7 +74,8 @@ export class ConversationsRepository {
             select 1 from public.orders o
             where o.buyer_id = ${buyerId} and o.vendor_id = ${vendorId}
               and (o.status in ('confirmed','handed_over','returned','payment_unresolved','disputed')
-                   or (o.status = 'completed' and coalesce(o.completed_at, o.status_changed_at, o.created_at) > now() - interval '24 hours'))
+                   or (o.status = 'completed' and coalesce(o.completed_at, o.status_changed_at, o.created_at) > now() - interval '24 hours')
+                   or (o.status = 'cancelled' and coalesce(o.cancelled_at, o.status_changed_at, o.created_at) > now() - interval '30 minutes'))
           ) as ok`,
     );
     return row?.ok ?? false;
@@ -119,7 +120,8 @@ export class ConversationsRepository {
               select 1 from public.orders o
               where o.buyer_id = c.buyer_id and o.vendor_id = c.vendor_id
                 and (o.status in ('confirmed','handed_over','returned','payment_unresolved','disputed')
-                     or (o.status = 'completed' and coalesce(o.completed_at, o.status_changed_at, o.created_at) > now() - interval '24 hours')))
+                     or (o.status = 'completed' and coalesce(o.completed_at, o.status_changed_at, o.created_at) > now() - interval '24 hours')
+                   or (o.status = 'cancelled' and coalesce(o.cancelled_at, o.status_changed_at, o.created_at) > now() - interval '30 minutes')))
           order by (case when c.buyer_id = ${me} then c.pinned_by_buyer else c.pinned_by_vendor end) desc,
                    coalesce(lm.created_at, c.created_at) desc`,
     );
@@ -146,7 +148,8 @@ export class ConversationsRepository {
                 select 1 from public.orders o
                 where o.buyer_id = c.buyer_id and o.vendor_id = c.vendor_id
                   and (o.status in ('confirmed','handed_over','returned','payment_unresolved','disputed')
-                       or (o.status = 'completed' and coalesce(o.completed_at, o.status_changed_at, o.created_at) > now() - interval '24 hours')))
+                       or (o.status = 'completed' and coalesce(o.completed_at, o.status_changed_at, o.created_at) > now() - interval '24 hours')
+                   or (o.status = 'cancelled' and coalesce(o.cancelled_at, o.status_changed_at, o.created_at) > now() - interval '30 minutes')))
           ) as ok`,
     );
     return row?.ok ?? false;
