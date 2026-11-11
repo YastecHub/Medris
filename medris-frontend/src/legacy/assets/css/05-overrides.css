@@ -7887,9 +7887,6 @@ html:root:root:root body #app#app .storefront-profile.sf-snap .sf-cover::after,h
 .sf-pdot{width:.55rem;height:.55rem;border-radius:50%;background:#9ca3af;flex:none}
 .sf-pdot.on{background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.2)}
 
-/* Levi's floating button: flat green, no glow, ring or shadow */
-html body #aiChatFab .lv-fab-badge{filter:none!important}
-html body #aiChatFab,html body #aiChatFab::before,html body #aiChatFab::after{box-shadow:none!important}
 
 /* swipe teaser: light card with Levi's flat mark, not a dark bar */
 html body #lvSwipeHint{background:var(--card,#fff)!important;color:var(--text,#111)!important;box-shadow:0 8px 26px rgba(0,0,0,.18)!important;border:1px solid var(--border,rgba(128,128,128,.25))!important;padding:.4rem 1rem .4rem .5rem!important}
@@ -7939,3 +7936,9 @@ html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.produ
 .sf-presence{gap:.35rem!important;font-size:.78rem!important;color:var(--text-muted,#8a8f98)!important}
 .sf-pdot{width:.95rem!important;height:.95rem!important;border-radius:0!important;background:#9ca3af!important;box-shadow:none!important;-webkit-mask:url(/lv-mark.svg) center/contain no-repeat;mask:url(/lv-mark.svg) center/contain no-repeat;flex:none}
 .sf-pdot.on{background:#16a34a!important;box-shadow:none!important}
+
+/* price row: the rating sits at the end of the row without covering the discount chips */
+:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero{display:flex!important;flex-wrap:wrap;align-items:center;gap:.1rem .6rem;padding-right:.9rem!important}
+:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-label{flex:0 0 100%}
+:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-row{flex:1 1 auto;min-width:0}
+:root:root:root:root:root:root:root:root body #app .product-detail-card .product-price-hero .pph-rating{position:static!important;transform:none!important;margin-left:auto;flex:none;order:3}
