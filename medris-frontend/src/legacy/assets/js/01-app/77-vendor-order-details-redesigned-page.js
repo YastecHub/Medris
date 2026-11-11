@@ -271,6 +271,18 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (isVendor && vAccepted) {
     try { const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: orderId }); vContact = (contact && contact[0]) || {}; } catch (_) { vContact = {}; }
     try { const { data: av } = await sb.rpc("get_order_buyer_avatar", { p_order_id: orderId }); if (av && av[0] && av[0].avatar_url) vContact = { ...vContact, avatar_url: av[0].avatar_url }; } catch (_) {}
+    // fallbacks while the server function is not live yet: the chat list already knows the customer's picture, else read it from the profile
+    if (!vContact.avatar_url && order.buyer_id) {
+      try {
+        let cv = window.__conversations;
+        if (!Array.isArray(cv) || !cv.length) { const r = await sb.rpc("list_my_conversations"); cv = (r && r.data) || []; }
+        const hit = cv.find((c) => String(c.other_id) === String(order.buyer_id));
+        if (hit && hit.other_avatar) vContact = { ...vContact, avatar_url: hit.other_avatar };
+      } catch (_) {}
+    }
+    if (!vContact.avatar_url && order.buyer_id) {
+      try { const { data: u } = await sb.from("users").select("avatar_url").eq("id", order.buyer_id).maybeSingle(); if (u && u.avatar_url) vContact = { ...vContact, avatar_url: u.avatar_url }; } catch (_) {}
+    }
   }
   if (newVendorView) html = vendorOrderTopHtml(order, { accepted: vAccepted, chatWindowOpen: vChatWindowOpen, contact: vContact, feePaid, canSeeLocation: ["pending", "confirmed"].includes(String(order.status || "")) });
 
