@@ -413,7 +413,9 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   rememberOrderHistory(embeddedVendorOrders ? "purchases" : "", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
   const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}${orderSearchWrapHtml()}</div>`;
-  const moreMenu = `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
+  const remindAllBtn = !embeddedVendorOrders && (activeCustomerOrders || []).some((o) => ["pending", "confirmed", "handed_over"].includes(o.status))
+    ? `<button type="button" class="orders-icon-btn orders-remind-all-btn" onclick="remindAllVendors(this)" aria-label="Remind all vendors" title="Remind all vendors waiting on your orders"><i class="fa-solid fa-bell"></i></button>` : "";
+  const moreMenu = remindAllBtn + `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
   let html = `${embeddedVendorOrders || typeof lvPageHero !== "function" ? "" : lvPageHero("orders")}<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
   html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await __buyerCountsP);
@@ -515,6 +517,12 @@ function orderHistorySearchText(o, isCustomerView) {
   return [itemNames, party, o.order_type, o.status, String(o.status || "").replace(/_/g, " "), o.id, String(o.id || "").slice(0, 8), o.total_amount, orderActivityLabel(o)]
     .join(" ").toLowerCase();
 }
+// The picture of what was ordered (first item's first photo), never the shop's logo.
+function orderHistoryThumbHtml(o) {
+  const it = (o.items || []).find((x) => x?.product?.photos?.length) || (o.items || [])[0];
+  const src = it?.product?.photos?.[0];
+  return src ? `<img class="order-history-thumb" src="${esc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'order-history-thumb order-history-thumb-empty'}))">` : `<span class="order-history-thumb order-history-thumb-empty"></span>`;
+}
 function orderHistoryInnerHtml(historyOrders, isCustomerView, sourcePerspective = null) {
   const byDate = new Map();
   historyOrders.forEach((o) => {
@@ -529,7 +537,7 @@ function orderHistoryInnerHtml(historyOrders, isCustomerView, sourcePerspective 
       const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
       const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
       const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
-      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${lvOrderStageLabel(o) ? "order-status-badge-paid" : orderStatusBadgeClass(o.status)} order-history-status">${esc(lvOrderStageLabel(o)) || (o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " ")))}</span></button>`;
+      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})">${orderHistoryThumbHtml(o)}<span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${lvOrderStageLabel(o) ? "order-status-badge-paid" : orderStatusBadgeClass(o.status)} order-history-status">${esc(lvOrderStageLabel(o)) || (o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " ")))}</span></button>`;
     }).join("")}</div>`;
   });
   return inner;
@@ -545,3 +553,18 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
   </div>`;
 }
 
+
+
+// One bell: remind every shop that still has an order of yours waiting (each shop at most once every 2 minutes).
+window.remindAllVendors = async function (btn) {
+  if (!session?.user?.id || window.__remindAllBusy) return;
+  window.__remindAllBusy = true; if (btn) btn.disabled = true;
+  try {
+    const r = await sb.rpc("remind_all_orders");
+    if (r.error) throw r.error;
+    const n = Number(r.data?.reminded || 0), k = Number(r.data?.skipped || 0);
+    try { unlockNotificationAudio(); if (audioCtx?.state === "running") playReminderChime(); } catch (_) {}
+    showToast(n ? `Reminder sent to ${n} vendor${n === 1 ? "" : "s"}.` + (k ? ` ${k} reminded a moment ago.` : "") : "Everyone was reminded a moment ago. You can remind again in 2 minutes.", n ? "success" : "info");
+  } catch (err) { showToast(err.message || "Could not send reminders. Please try again.", "error"); }
+  finally { window.__remindAllBusy = false; if (btn) btn.disabled = false; }
+};

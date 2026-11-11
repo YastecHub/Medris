@@ -88,6 +88,16 @@ describe("paystack refunds (issue #99)", () => {
     expect(told.length).toBeGreaterThan(0);
   });
 
+  it("never refunds more than Paystack actually charged for that payment (₦50 charged, order recorded as ₦100)", async () => {
+    const { orderId, ref } = await paidOrder(100);
+    await db.query(`update public.paystack_transactions set amount_kobo = 5000 where reference = $1`, [ref]);
+    const info = await refunds.info(as(admin), orderId);
+    expect(Number(info.refundable_kobo)).toBeLessThanOrEqual(5000);
+    await expect(refunds.refundOrder(as(admin), orderId, { amountNaira: 97, reason: "too much" })).rejects.toThrow(/at most/);
+    const r = await refunds.refundOrder(as(admin), orderId, { reason: "Dispute settled for the buyer" });
+    expect(r.amount).toBeLessThanOrEqual(50);
+  });
+
   it("with a usable wallet, a refund goes into the buyer's Levromart wallet, once, and Paystack is not asked", async () => {
     await db.query(`update public.wallet_accounts set frozen = false where user_id = $1`, [buyer]);
     const before = Number((await db.query<{ b: string }>(`select balance_kobo::text as b from public.wallet_accounts where user_id = $1`, [buyer]))[0]!.b);
