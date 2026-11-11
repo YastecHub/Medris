@@ -1058,7 +1058,7 @@
   try { heights = JSON.parse(sessionStorage.getItem("lv-heights") || "{}") || {}; } catch (_) {}
   function view0() { try { return currentView; } catch (_) { return ""; } }
   var pageSnaps = {}, snapAt = {};
-  window.lvDropPageSnaps = function () { pageSnaps = {}; vendorsSnap = null; };
+  window.lvDropPageSnaps = function () { pageSnaps = {}; vendorsSnap = null; try { window.__lvHubDrop && window.__lvHubDrop(); } catch (_) {} };
   var vendorsSnap = null;   // the Vendors page as it looked when we left it (grid/list only), so Back can show it at once
   function remember() {
     try {
@@ -1108,6 +1108,7 @@
       if (pushHistory === false && view === "vendors" && vendorsSnap && view0() !== "vendors") {
         try { document.getElementById("app").innerHTML = vendorsSnap; } catch (_) {}
       }
+      if (pushHistory === false && view === "vendorDashboard" && view0() !== view && window.__lvHubFresh && window.__lvHubFresh()) window.__lvUseSnap = { view: "vendorDashboard" };
       if (pushHistory === false && view0() !== view && (view === "home" || view === "storefront")) {
         try {
           var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId);
@@ -1141,6 +1142,16 @@
       var u = window.__lvUseSnap; if (u && u.view === "home") { window.__lvUseSnap = null; return u.html; }
       return rh.apply(this, arguments);
     };
+    // the shop hub (profile page): remember what it last drew; Back from one of its sub-pages draws that again at once
+    var rv = window.renderVendorDashboard, hub = { html: "", at: 0 };
+    if (typeof rv === "function") window.renderVendorDashboard = async function () {
+      var u = window.__lvUseSnap; if (u && u.view === "vendorDashboard" && hub.html) { window.__lvUseSnap = null; return hub.html; }
+      var out = await rv.apply(this, arguments);
+      if (typeof out === "string" && out.length > 500) { hub.html = out; hub.at = Date.now(); }
+      return out;
+    };
+    window.__lvHubFresh = function () { return hub.html && Date.now() - hub.at < 600000; };
+    window.__lvHubDrop = function () { hub.at = 0; };
     if (typeof rs === "function") window.renderStorefront = async function (vid) {
       var u = window.__lvUseSnap; if (u && u.view === "storefront" && String(u.vendorId) === String(vid)) { window.__lvUseSnap = null; return u.html; }
       return rs.apply(this, arguments);

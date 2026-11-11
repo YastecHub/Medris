@@ -433,7 +433,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const ordersSideChanged = !!ordersSide && previousView === view && window.__lvOrdersSide && window.__lvOrdersSide !== ordersSide;
   if (ordersSide) window.__lvOrdersSide = ordersSide;
   const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders") && !(ordersSideChanged && instantRouteHtml);
-  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab && !window.__lvSwipeNav) {
+  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab && !window.__lvSwipeNav && !window.__lvUseSnap) {
     // Storefront used to be excluded here, on the assumption its own
     // renderer was now fast enough not to need a shell. But the very first
     // visit to any given vendor in a session has no cached HTML yet, so
