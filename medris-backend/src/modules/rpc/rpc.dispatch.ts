@@ -343,6 +343,7 @@ export const RPC: Record<string, RpcEntry> = {
   get_orders_buyer_names: { run: (s, me, a) => s.orderActions.buyerNames(me, ids(a.p_order_ids)) },
   remind_all_orders: { run: (s, me) => s.orderActions.remindAll(me), limit: L.orders },
   remind_order_customer: { run: (s, me, a) => s.orderActions.remindCustomer(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },
+  send_order_still_available: { run: (s, me, a) => s.orderActions.sendStillAvailable(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },
   get_team_shop_chats: { run: (s, me, a) => s.orderActions.teamChats(me, id(a.p_vendor_id)) },
   get_team_chat_messages: { run: (s, me, a) => s.orderActions.teamMessages(me, id(a.p_conversation_id)) },
   team_send_message: { run: (s, me, a) => s.orderActions.teamSend(me, id(a.p_conversation_id), str(a.p_body)), limit: L.conversations },

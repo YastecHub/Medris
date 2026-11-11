@@ -35,6 +35,7 @@ function renderTerms() {
       <li>When an order is completed, the conversation stays open for 24 hours (30 minutes after a cancelled order) and then closes, unless you allow a shop's request to message you again (for 24 hours): it leaves your chat list and can no longer be opened or continued, so the two sides do not keep communicating outside an order. The messages are not deleted. They are kept securely as a record for disputes, fraud prevention and legal requirements, and Levromart administrators can review them when needed. If you later place a new order with the same vendor, the conversation reopens with its earlier messages.</li>
       <li>Keep conversations and calls about the order. Do not use them to harass anyone, to share personal phone numbers, or to move a sale off Levromart to avoid commission or payment protections. Levromart administrators may review a conversation when a report or dispute is raised, and may restrict messaging or calling for accounts that break these rules.</li>
       <li>Calls need microphone permission. You can allow incoming-call notifications in your device and Levromart settings; if they are off you may miss a call.</li>
+      <li>If an order cancels by itself because the shop did not confirm in time, the shop may send the customer one short message (in the app and, if you gave a WhatsApp number, on WhatsApp) to say it missed the order and the item is still available. You are free to ignore it.</li>
     </ul>
 
     <h3>4A. Reviews, comments, follows &amp; the leaderboard</h3>
