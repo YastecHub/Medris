@@ -4154,7 +4154,7 @@ window.lvAskCancel = async function (orderId) {
   // change the @tag (allowed once every 30 days; the server checks the rules and that the name is free)
   window.lvW3ChangeTag = async function () {
     var d = await load(false); if (!d) return;
-    var m = sheet("Change your @tag", '<p class="lw-hint">People send you money using your @tag. 3 to 24 small letters, numbers or _ (no spaces). You can change it once every 30 days.</p>' +
+    var m = sheet("Change your @tag", '<p class="lw-hint">People send you money using your @tag. 3 to 24 small letters, numbers or _ (no spaces). <b>You can change it up to 3 times every 30 days</b>, so a mistake can be fixed. Names with levromart, admin or support are kept for Levromart.</p>' +
       '<div class="lw-card-box"><label class="lw-l" for="lwNewTag">New @tag</label><div class="lw-to"><span>@</span><input id="lwNewTag" type="text" maxlength="24" autocomplete="off" autocapitalize="none" value="' + esc(d.handle || "") + '"></div></div>' +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwTagSave">Save @tag</button>');
     var inp = m.querySelector("#lwNewTag"), b = m.querySelector("#lwTagSave");

@@ -213,7 +213,7 @@ async function __levroOriginalRenderProductDetail(productId, opts) {
       ${product.is_service || !product.condition ? "" : `<p class="pd-condition"><strong>Condition:</strong> <span class="pd-chip">${esc((product.condition || "").replace("-", " "))}</span></p>`}
       <details class="pd-about"><summary><span><i class="fa-solid fa-circle-info"></i> About this ${product.is_service ? "service" : "product"}</span><i class="fa-solid fa-chevron-down pd-about-chev"></i></summary><div class="pd-about-body">${readMoreHtml(`productDescText-${product.id}`, cleanDescription || "No description provided.")}</div></details>
     </div>
-    ${(product.sale_price != null && !product.is_service) ? `<div class="product-price-hero" id="productPriceHero"><div class="pph-label">${productVariants.length ? "Price · selected variety" : "Buy price"}</div><div class="pph-row" id="productPriceHeroBody">${priceHeroInner(productVariants.length ? productVariants[0] : product)}</div><span class="badge pph-rating ${ratingBadgeClass(Number(st.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span></div>` : ""}
+    ${(product.sale_price != null && !product.is_service) ? `<div class="product-price-hero" id="productPriceHero"><div class="pph-label"><span>${productVariants.length ? "Price · selected variety" : "Buy price"}</span><span class="badge pph-rating ${ratingBadgeClass(Number(st.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span></div><div class="pph-row" id="productPriceHeroBody">${priceHeroInner(productVariants.length ? productVariants[0] : product)}</div></div>` : ""}
     ${product.created_at ? `<p class="pd-posted muted"><i class="fa-regular fa-clock"></i> Posted ${esc(timeAgo(product.created_at))}</p>` : ""}
     ${statItems.length ? `<div class="product-detail-stats">${statItems.map((s) => `<div><span class="muted">${esc(s.label)}</span><strong>${s.value}</strong></div>`).join("")}</div>` : ""}
   </div>`;
@@ -254,7 +254,7 @@ async function __levroOriginalRenderProductDetail(productId, opts) {
       ${!product.is_service ? `<div class="pd-note-box"><label class="df-label" for="buyNote"><svg class="lv-pen-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6l-4 1 1-4z"/></svg> Note for the vendor <span class="df-hint">(optional)</span></label><textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42"></textarea></div>` : ""}
       <div class="flex pd-buy-actions">
         ${!product.is_service ? `<button id="productAddToCartBtn" class="btn btn-outline" onclick="addToCart('${product.id}', parseInt(byId('buyQty').value)||1)"><i class="fa-solid fa-cart-plus"></i> Add to cart</button>` : ""}
-        <button class="btn" onclick="buyNow('${product.vendor.id}','${product.id}')">${buyLabel}</button>
+        <button class="btn pd-place-order" onclick="buyNow('${product.vendor.id}','${product.id}')"><i class="lv-mark-ico" aria-hidden="true"></i> ${buyLabel}</button>
       </div>
       <p id="buyError" class="error-text hidden"></p>
     </div>`;

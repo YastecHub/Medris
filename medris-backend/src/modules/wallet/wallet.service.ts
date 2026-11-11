@@ -131,16 +131,20 @@ export class WalletService {
     const user = need(me);
     const handle = String(wanted ?? "").trim().toLowerCase().replace(/^@/, "");
     if (!HANDLE.test(handle)) throw badRequest("Your @tag can use 3 to 24 small letters, numbers or _ (no spaces).");
-    if (RESERVED.has(handle) || /levromart|admin|support/.test(handle)) throw badRequest("That @tag is not available. Please choose another.");
+    if (RESERVED.has(handle) || /levromart|admin|support/.test(handle)) throw badRequest("Names with levromart, admin or support are kept for Levromart. Please choose another @tag.");
     return this.ready(() =>
       this.db().asService(async (tx) => {
         const repo = new WalletRepository(tx);
         const [w] = await repo.lock([user.userId]);
         if (!w) throw notFound("Wallet not found.");
         if (w.handle === handle) return { handle };
-        if (w.handle_changed_at && Date.now() - new Date(w.handle_changed_at).getTime() < 30 * 864e5) throw badRequest("You can change your @tag once every 30 days.");
+        // up to 3 changes in any 30 days (so a mistake can be fixed); the 30 days start at the first change
+        const win = await repo.handleWindow(user.userId);
+        const fresh = !win?.start || Date.now() - new Date(win.start).getTime() >= 30 * 864e5;
+        const used = fresh ? 0 : Number(win?.n ?? 0);
+        if (used >= 3) throw badRequest("You have changed your @tag 3 times in the last 30 days. You can change it again after that.");
         if (await repo.handleTaken(handle)) throw conflict("That @tag is already taken. Please choose another.");
-        await repo.setHandle(user.userId, handle);
+        await repo.setHandle(user.userId, handle, fresh);
         return { handle };
       }),
     );
