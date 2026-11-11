@@ -131,7 +131,7 @@ export class WalletService {
     const user = need(me);
     const handle = String(wanted ?? "").trim().toLowerCase().replace(/^@/, "");
     if (!HANDLE.test(handle)) throw badRequest("Your @tag can use 3 to 24 small letters, numbers or _ (no spaces).");
-    if (RESERVED.has(handle) || /levromart|admin|support/.test(handle)) throw badRequest("Names with levromart, admin or support are kept for Levromart. Please choose another @tag.");
+    if (RESERVED.has(handle) || /levromart|admin|support/.test(handle)) throw badRequest("That @tag is not available. Please choose another.");
     return this.ready(() =>
       this.db().asService(async (tx) => {
         const repo = new WalletRepository(tx);

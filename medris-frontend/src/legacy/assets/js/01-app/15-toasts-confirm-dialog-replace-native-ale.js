@@ -37,7 +37,7 @@ function notificationSystemIconHtml(n) {
     account_suspended: ["fa-user-lock", R], account_unsuspended: ["fa-user-check", "#16a34a"],
     appeal_submitted: ["fa-envelope-open-text", A], password_reset_request: ["fa-key", A], promoted_admin: ["fa-user-shield", V],
     stock_alert: ["fa-box-open", A], product_wishlisted: ["fa-heart", R], product_comment: ["fa-comment", B],
-    comment_liked: ["fa-thumbs-up", B], comment_reply: ["fa-reply", B], vendor_follow: ["fa-user-plus", B],
+    comment_liked: ["fa-thumbs-up", B], comment_reply: ["fa-reply", B], vendor_follow: ["fa-user-plus", B], suggestion_reply: ["fa-comments", G],
     vendor_follow_update: ["fa-bullhorn", G], points: ["fa-trophy", A], points_winner: ["fa-crown", A],
     payout_sent: ["fa-money-bill-transfer", "#059669"], payout_on_hold: ["fa-pause-circle", A], payout_failed: ["fa-triangle-exclamation", R],
     payout_account_changed: ["fa-building-columns", B], withdrawal_approved: ["fa-circle-check", "#059669"], withdrawal_rejected: ["fa-circle-xmark", R],
@@ -127,7 +127,7 @@ function showTextPromptDialog(title, message, opts = {}) {
     byId("textPromptModalTitle").textContent = title || "Please confirm";
     byId("textPromptModalMsg").textContent = message || "";
     const input = byId("textPromptModalInput");
-    input.value = "";
+    input.value = opts.value || "";
     modal.querySelector(".lv-required-hint")?.remove(); input.classList.remove("lv-required-miss");
     input.placeholder = opts.placeholder || "";
     const okBtn = byId("textPromptModalOk");

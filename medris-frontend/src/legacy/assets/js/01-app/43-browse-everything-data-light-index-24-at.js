@@ -320,11 +320,7 @@ function productCardHtml(p) {
   // A product with no photo of its own falls back to the vendor's logo
   // filling the whole image slot, rather than a bare "No image" icon --
   // every card ends up with an actual picture in it.
-  const noImageFallback = p.is_service
-    ? lvInitialsTileHtml(p.vendor?.business_name || p.name, true)
-    : p.vendor?.logo_url
-    ? `<img src="${esc(p.vendor.logo_url)}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false" onerror="this.outerHTML=lvInitialsTileHtml(this.alt)">`
-    : lvInitialsTileHtml(p.vendor?.business_name || p.name);
+  const noImageFallback = lvNoImageHtml();
   // "Buy price" + the flat delivery fee, added up for you, so the number on
   // the card is what you'd actually pay with delivery -- not just the item
   // price with the delivery cost left to discover later. Distance-priced
