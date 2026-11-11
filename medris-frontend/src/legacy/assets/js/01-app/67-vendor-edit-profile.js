@@ -56,11 +56,16 @@ async function renderVendorEditProfile() {
     <label>Address (leave blank if you're an online-only business)</label><input id="veAddress" value="${esc(v.address || "")}" />
     <label>City</label><input id="veCity" value="${esc(v.city || "")}" />
     <label>Phone *</label><input id="vePhone" type="tel" value="${esc(v.phone || "")}" />
-    <label>WhatsApp number *</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const w=byId('veWhatsappVisible'); if(w) w.disabled=!this.value.trim();" />
+    <label>WhatsApp number *</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const w=byId('veWhatsappVisible'); if(w) w.disabled=!this.value.trim(); const wa=byId('veWhatsappAlerts'); if(wa) wa.disabled=!this.value.trim();" />
     <div class="switch-row" style="margin-top:.45rem;">
       <span class="switch-label-text">Show WhatsApp number to buyers</span>
       <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible !== false ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
     </div>
+    <div class="switch-row" style="margin-top:.45rem;">
+      <span class="switch-label-text">Send new-order alerts to my WhatsApp</span>
+      <label class="switch-toggle"><input type="checkbox" id="veWhatsappAlerts" ${v.whatsapp_alerts ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappAlerts()" /><span class="switch-toggle-track"></span></label>
+    </div>
+    <p class="muted vendor-profile-setting-note">When on, Levromart sends one short WhatsApp message to the number above when you get a new order. It never shares the order details with anyone else. Turn it off any time.</p>
     <p class="muted vendor-profile-setting-note">Delivery is configured separately for each product or service listing.</p>
     <label>About your business</label><textarea id="veBio" rows="3">${esc(v.bio || "")}</textarea>
     <div class="flex" style="margin-top:0.8rem;">
@@ -506,6 +511,17 @@ async function toggleVendorWhatsappVisibility() {
   if (error) { checkbox.checked = !checkbox.checked; showToast(error.message, "error"); return; }
   vendor.whatsapp_visible = checkbox.checked;
   showToast(checkbox.checked ? "WhatsApp contact is now visible to buyers." : "WhatsApp contact hidden from buyers.", "success");
+}
+
+async function toggleVendorWhatsappAlerts() {
+  const checkbox = byId("veWhatsappAlerts");
+  const number = byId("veWhatsapp")?.value.trim() || "";
+  if (!checkbox) return;
+  if (checkbox.checked && !number) { checkbox.checked = false; showToast("Add a WhatsApp number first.", "info"); return; }
+  const { error } = await sb.from("vendors").update({ whatsapp_alerts: checkbox.checked }).eq("id", vendor.id);
+  if (error) { checkbox.checked = !checkbox.checked; showToast(error.message, "error"); return; }
+  vendor.whatsapp_alerts = checkbox.checked;
+  showToast(checkbox.checked ? "WhatsApp order alerts are on." : "WhatsApp order alerts are off.", "success");
 }
 
 async function submitVendorEditProfile() {

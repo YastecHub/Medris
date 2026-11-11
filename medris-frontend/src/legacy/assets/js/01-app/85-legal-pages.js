@@ -91,6 +91,7 @@ function renderPrivacy() {
       <li><strong>Messages and call records:</strong> the messages you send in order conversations, and basic call records (who called whom, when, and whether it was answered, declined or missed). Call audio travels directly between the two devices and is not recorded or stored by Levromart.</li>
       <li><strong>Online status:</strong> while you are using the app we note when you were last active so the person you are chatting with can see that you are online or when you were last seen.</li>
       <li><strong>Notifications:</strong> if you allow them, a push-notification address for your device so we can alert you about orders, messages, incoming calls and commission reminders.</li>
+      <li><strong>WhatsApp order alerts (optional, shops only):</strong> if a shop turns this on, we use the WhatsApp number it gave us to send it a short fixed message when a new order arrives, through WhatsApp's business messaging service (operated by Meta). The message does not contain customer details. The shop can turn it off at any time in Edit profile.</li>
       <li><strong>Location:</strong> if you turn on Location sharing in Settings, your device location is used to show nearby vendors and distances. You can turn it off at any time. Vendors publish their shop location so customers can find them.</li>
     </ul>
 

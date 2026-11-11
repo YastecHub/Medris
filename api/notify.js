@@ -158,18 +158,48 @@ module.exports = async function handler(req, res) {
     // Calls are time-critical and pointless in an inbox: push only, no email.
     // Points alerts are frequent, so they are push + in-app only as well.
     const callType = n.type === "incoming_call" || n.type === "missed_call" || n.type === "points" || n.type === "rank_change";
-    const [email, push] = await Promise.all([
+    const [email, push, whatsapp] = await Promise.all([
       callType ? Promise.resolve({ sent: false, reason: "not emailed" }) : sendEmail(SUPABASE_URL, svcHeaders, n),
       sendPush(SUPABASE_URL, svcHeaders, n),
+      n.type === "new_order" ? sendWhatsApp(SUPABASE_URL, svcHeaders, n).catch((e) => ({ sent: false, reason: String(e && e.message || e) })) : Promise.resolve({ sent: false, reason: "not an order alert" }),
     ]);
 
-    res.status(200).json({ email, push });
+    res.status(200).json({ email, push, whatsapp });
   } catch (err) {
     res.status(500).json({
       error: err.message || "Server error"
     });
   }
 };
+
+// WhatsApp order alert (opt-in, OFF until the engineer sets the three Vercel variables below).
+// Uses the WhatsApp Business Cloud API with a pre-approved message template, so only a fixed short text is sent:
+// no customer name, address or order contents ever leave Levromart through this channel.
+//   WHATSAPP_TOKEN        permanent access token (secret - Vercel variable only, never in code)
+//   WHATSAPP_PHONE_ID     the sending phone number id from the WhatsApp Business account
+//   WHATSAPP_ORDER_TEMPLATE  name of the approved template (default "new_order_alert", language en)
+async function sendWhatsApp(SUPABASE_URL, svcHeaders, n) {
+  const token = process.env.WHATSAPP_TOKEN || "";
+  const phoneId = process.env.WHATSAPP_PHONE_ID || "";
+  if (!token || !phoneId) return { sent: false, reason: "WhatsApp not configured" };
+  const [v] = await (await fetch(
+    `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${n.user_id}&select=whatsapp_number,whatsapp_alerts`,
+    { headers: svcHeaders }
+  )).json();
+  if (!v || !v.whatsapp_alerts || !v.whatsapp_number) return { sent: false, reason: "shop has not opted in" };
+  let digits = String(v.whatsapp_number).replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = "234" + digits.slice(1);
+  if (!/^[1-9]\d{9,14}$/.test(digits)) return { sent: false, reason: "invalid number" };
+  const r = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(phoneId)}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp", to: digits, type: "template",
+      template: { name: process.env.WHATSAPP_ORDER_TEMPLATE || "new_order_alert", language: { code: "en" } },
+    }),
+  });
+  return r.ok ? { sent: true } : { sent: false, reason: `WhatsApp responded ${r.status}` };
+}
 
 async function sendEmail(SUPABASE_URL, svcHeaders, n) {
   const uRes = await fetch(
