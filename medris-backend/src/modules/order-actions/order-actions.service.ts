@@ -229,12 +229,13 @@ export class OrderActionsService {
         userId: owner,
         type: "order_reminder",
         title: "Order reminder",
-        body:
+        // The customer stays anonymous while the order is pending; once it is accepted the shop sees the name.
+        body: ((who) =>
           o.status === "pending"
             ? "A customer is waiting for you to accept or decline their order."
             : o.status === "confirmed"
-              ? "A customer is waiting for you to get their order ready and hand it over."
-              : "A customer is waiting for their order to arrive. Please update the delivery.",
+              ? `${who} is waiting for you to get their order ready and hand it over.`
+              : `${who} is waiting for their order to arrive. Please update the delivery.`)(o.buyer_name?.trim() ? o.buyer_name.trim() : "A customer"),
         targetParams: { orderId: o.id, vendorId: o.vendor_id },
         vendorId: o.vendor_id,
         category: "order",
@@ -255,7 +256,10 @@ export class OrderActionsService {
         userId: o.buyer_id,
         type: "order_reminder_customer",
         title: "Order reminder",
-        body: o.status === "confirmed" ? "The shop is waiting for you on your order. Please pay or follow up with them." : "Your order is on its way. Please confirm when you have received it.",
+        body:
+          o.status === "confirmed"
+            ? `${o.vendor_name?.trim() || "The shop"} is waiting for you on your order. Please pay or follow up with them.`
+            : `Your order from ${o.vendor_name?.trim() || "the shop"} is on its way. Please confirm when you have received it.`,
         targetParams: { orderId: o.id },
         category: "order",
       });

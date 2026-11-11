@@ -25,6 +25,7 @@ async function renderVendorDashboard() {
   const { data: v } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
+  if (!v.whatsapp_number && typeof lvAskWhatsapp === "function") setTimeout(lvAskWhatsapp, 500);
 
   // Backfill a previously uploaded account photo to the public vendor avatar.
   // This repairs rows whose earlier update was skipped because the global

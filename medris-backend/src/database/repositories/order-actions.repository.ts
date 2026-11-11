@@ -255,20 +255,20 @@ export class OrderActionsRepository {
   }
 
   /** The buyer's order while it still waits on the shop (accepting it, handing it over or delivering it), and whether a reminder went out in the last 2 minutes. */
-  remindableOrderOf(orderId: string, buyerId: string): Promise<{ id: string; vendor_id: string; status: string; recent: boolean } | null> {
+  remindableOrderOf(orderId: string, buyerId: string): Promise<{ id: string; vendor_id: string; status: string; recent: boolean; buyer_name: string | null } | null> {
     return jsonRow(
       this.db,
-      sql`select o.id, o.vendor_id, o.status::text as status,
+      sql`select o.id, o.vendor_id, o.status::text as status, (select u.name from public.users u where u.id = o.buyer_id) as buyer_name,
                  exists (select 1 from public.notifications n where n.type = 'order_reminder' and n.target_params->>'orderId' = o.id::text and n.created_at > now() - interval '2 minutes') as recent
             from public.orders o where o.id = ${orderId} and o.buyer_id = ${buyerId} and o.status in ('pending', 'confirmed', 'handed_over')`,
     );
   }
 
   /** The shop owner's order that is waiting on the customer (to pay or to confirm), and whether a reminder went out in the last 2 minutes. */
-  vendorRemindableOrderOf(orderId: string, ownerId: string): Promise<{ id: string; buyer_id: string; status: string; recent: boolean } | null> {
+  vendorRemindableOrderOf(orderId: string, ownerId: string): Promise<{ id: string; buyer_id: string; status: string; recent: boolean; vendor_name: string | null } | null> {
     return jsonRow(
       this.db,
-      sql`select o.id, o.buyer_id, o.status::text as status,
+      sql`select o.id, o.buyer_id, o.status::text as status, v.business_name as vendor_name,
                  exists (select 1 from public.notifications n where n.type = 'order_reminder_customer' and n.target_params->>'orderId' = o.id::text and n.created_at > now() - interval '2 minutes') as recent
             from public.orders o join public.vendors v on v.id = o.vendor_id
            where o.id = ${orderId} and v.user_id = ${ownerId}::uuid and o.status in ('confirmed', 'handed_over')`,

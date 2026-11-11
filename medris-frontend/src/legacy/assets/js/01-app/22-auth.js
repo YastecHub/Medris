@@ -157,6 +157,7 @@ async function refreshAuthState() {
   }
   updateAuthUI();
   renderBottomNav();
+  if (typeof lvAskCustomerWhatsapp === "function") setTimeout(lvAskCustomerWhatsapp, 1800);
   // Badge/count refresh is independent of rendering the current page; do not
   // hold the initial app screen hostage to those background reads.
   refreshNotifications(false).catch(() => {});

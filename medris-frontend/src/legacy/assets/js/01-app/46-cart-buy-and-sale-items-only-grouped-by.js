@@ -217,6 +217,7 @@ function openCheckoutAllSheet() {
 async function checkoutCartAll() {
   const groups = [...(window.__cartByVendor || new Map()).entries()].filter(([id]) => !isOwnVendorId(id));
   if (!groups.length) { showToast("Your cart is empty.", "error"); return; }
+  for (const [vid] of groups) { const closed = await lvShopClosedForOrders(vid); if (closed) { lvClosedOrderToast(closed); return; } }
   const plan = [];
   for (const [vendorId, group] of groups) {
     const errorEl = byId(`cartError-${vendorId}`);
@@ -270,6 +271,7 @@ async function checkoutCartVendor(vendorId) {
   const group = window.__cartByVendor?.get(vendorId);
   const errorEl = byId(`cartError-${vendorId}`);
   if (!group) { showToast("Your cart has changed. Reopen the cart and try again.", "error"); return; }
+  { const closed = await lvShopClosedForOrders(vendorId); if (closed) { lvClosedOrderToast(closed); return; } }
   try {
   errorEl?.classList.add("hidden");
   const delivery = readDeliveryFields(`cart-${vendorId}`, errorEl);

@@ -94,6 +94,19 @@ function vendorHoursStatus(v) {
   const isOpen = hhmm >= today.open && hhmm <= today.close;
   return { configured: true, isOpen, todayLabel, todayText: `${formatTime12(today.open)} - ${formatTime12(today.close)}` };
 }
+// Orders outside working hours: a shop that has set hours and not allowed after-hours orders is closed to orders.
+async function lvShopClosedForOrders(vendorId) {
+  try {
+    const { data: v } = await sb.from("vendors").select("business_name, business_hours, allow_after_hours_orders").eq("id", vendorId).maybeSingle();
+    if (!v || v.allow_after_hours_orders === true) return null;
+    const st = vendorHoursStatus(v);
+    if (!st.configured || st.isOpen) return null;
+    return { name: v.business_name || "This shop", today: st.todayText };
+  } catch (_) { return null; }
+}
+function lvClosedOrderToast(c) {
+  showToast(`${c.name} isn't taking orders right now${c.today && c.today !== "Closed today" ? ` (open ${c.today} today)` : ""}. Please order during their working hours.`, "error");
+}
 function canMessageVendorNow(v) {
   if (v?.allow_after_hours_messages !== false) return true;
   const status = vendorHoursStatus(v);

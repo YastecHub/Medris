@@ -10,6 +10,7 @@ export interface ProfileChanges {
   city?: string | null;
   address?: string | null;
   avatar_url?: string | null;
+  whatsapp_number?: string | null;
   ai_data_consent?: boolean;
   campus_id?: string | null;
 }
@@ -34,6 +35,7 @@ export class ProfilesRepository {
       c.city !== undefined ? sql`city = ${c.city}` : null,
       c.address !== undefined ? sql`address = ${c.address}` : null,
       c.avatar_url !== undefined ? sql`avatar_url = ${c.avatar_url}` : null,
+      c.whatsapp_number !== undefined ? sql`whatsapp_number = ${c.whatsapp_number}` : null,
       c.ai_data_consent !== undefined ? sql`ai_data_consent = ${c.ai_data_consent}` : null,
       c.campus_id !== undefined ? sql`campus_id = ${c.campus_id}` : null,
     ].filter((x) => x !== null);

@@ -45,7 +45,7 @@ async function renderVendorApply() {
     <label>Address (leave blank if you're an online-only business)</label><input id="vaAddress" />
     <label>City</label><input id="vaCity" value="Lagos" />
     <label>Phone *</label><input id="vaPhone" type="tel" />
-    <label>WhatsApp number</label><input id="vaWhatsapp" type="tel" />
+    <label>WhatsApp number * <span class="muted" style="font-weight:400">(new orders are sent here)</span></label><input id="vaWhatsapp" type="tel" />
     <label>CAC number</label><input id="vaCac" />
     <label>CAC document (optional upload)</label><input id="vaDoc" type="file" accept="application/pdf,image/*" />
     <label>About your business</label><textarea id="vaBio" rows="3" placeholder="If you're online-only, mention that here: how buyers reach you, delivery area, etc."></textarea>
@@ -159,8 +159,8 @@ async function submitVendorApply() {
   const phone = byId("vaPhone").value.trim();
   const sectorSelection = byId("vaSector")?.value || "";
   const customSector = byId("vaOtherSector")?.value.trim() || "";
-  if (!business_name || !phone) {
-    errorEl.textContent = "Business name and phone are required.";
+  if (!business_name || !phone || !byId("vaWhatsapp").value.trim()) {
+    errorEl.textContent = "Business name, phone and WhatsApp number are required.";
     errorEl.classList.remove("hidden");
     return;
   }
@@ -214,6 +214,7 @@ async function submitVendorApply() {
       city: byId("vaCity").value.trim() || null,
       phone,
       whatsapp_number: byId("vaWhatsapp").value.trim() || null,
+      whatsapp_alerts: true,
       cac_number: byId("vaCac").value.trim() || null,
       bio: byId("vaBio").value.trim() || null,
       verification_docs,

@@ -37,3 +37,8 @@ Orders, chat, wallet, billing and notifications are tied to that single `vendors
 - Is commission/billing per business or per owner?
 - Can a team member belong to several businesses?
 - Does verification (student / non-student) apply per business or per owner?
+
+## Decisions from the founder (11 Nov 2026)
+- **Commission is per sale of a product**, not per business or branch: whenever a product sold on the commission method
+  is sold, Levromart takes 3%, whichever business/branch it belongs to. Shops on a monthly listing plan pay the
+  monthly fee instead. So the billing and commission code needs no per-business logic - it keeps working per order.
