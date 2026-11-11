@@ -215,6 +215,63 @@ export class OrderActionsService {
     });
   }
 
+  // ---- the shop's team ----
+
+  /** The owner's team list. */
+  async teamList(me: Identity | null): Promise<unknown[]> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const shop = await orders.ownShopId(me.userId);
+      return shop ? orders.teamOf(shop) : [];
+    });
+  }
+
+  /** The owner adds a person who already has a Levromart account, by e-mail or phone, as a manager or staff member. */
+  async teamAdd(me: Identity | null, identifier: string | null, role: string | null): Promise<{ user_id: string; name: string | null }> {
+    if (!me) throw forbidden("Authentication required.");
+    if (role !== "manager" && role !== "staff") throw badRequest("Choose manager or staff.");
+    const who = (identifier ?? "").trim();
+    if (who.length < 5 || who.length > 120) throw badRequest("Enter their e-mail or phone number.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const shop = await orders.ownShopId(me.userId);
+      if (!shop) throw forbidden("Only a shop owner can manage a team.");
+      const person = await orders.findAccount(who);
+      if (!person) throw badRequest("We couldn't find a Levromart account with that e-mail or phone. Ask them to sign up first.");
+      if (person.id === me.userId) throw badRequest("You already own this shop.");
+      if ((await orders.teamCount(shop)) >= 10) throw badRequest("A shop can have up to 10 team members.");
+      await orders.addMember(shop, person.id, role, me.userId);
+      return { user_id: person.id, name: person.name };
+    });
+  }
+
+  async teamRemove(me: Identity | null, userId: string): Promise<{ removed: number }> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const shop = await orders.ownShopId(me.userId);
+      if (!shop) throw forbidden("Only a shop owner can manage a team.");
+      return { removed: await orders.removeMember(shop, userId) };
+    });
+  }
+
+  /** The shops the caller works for as a team member. */
+  async myTeams(me: Identity | null): Promise<unknown[]> {
+    if (!me) return [];
+    return this.db().asService((tx) => new OrderActionsRepository(tx).myTeams(me.userId));
+  }
+
+  /** The shop's orders for a team member's workspace (needs the "orders" permission). */
+  async teamOrders(me: Identity | null, vendorId: string, activeOnly: boolean): Promise<unknown[]> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      if (!(await orders.teamCan(me.userId, vendorId, "orders"))) throw forbidden("You are not on this shop's team.");
+      return orders.teamOrders(vendorId, activeOnly);
+    });
+  }
+
   /** Replaces: public.send_order_reminder(uuid) - the buyer nudges the vendor about a pending order (the buyer stays anonymous). */
   async remind(me: Identity | null, orderId: string): Promise<{ id: string }> {
     if (!me) throw forbidden("Authentication required.");

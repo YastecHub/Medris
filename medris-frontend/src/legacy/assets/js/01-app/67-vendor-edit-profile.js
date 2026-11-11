@@ -812,3 +812,112 @@ function lvChangeBank() {
     setTimeout(() => { try { byId("veAccountNumber")?.focus({ preventScroll: true }); } catch (_) {} }, 450);
   }, 40);
 }
+
+// ---------- SHOP TEAM (owner adds managers / staff; members work from a small "team workspace") ----------
+// Rules live in the database (migrations 0057-0060): a manager handles orders, chat and listings, staff handle orders and
+// chat; bank details, wallet, billing and settings stay with the owner. The customer always sees the shop's name.
+window.lvMyTeams = window.lvMyTeams || [];
+async function lvLoadMyTeams() {
+  try {
+    if (!session || (typeof vendor !== "undefined" && vendor)) { window.lvMyTeams = []; return; }
+    const { data } = await sb.rpc("get_my_shop_teams");
+    window.lvMyTeams = Array.isArray(data) ? data : [];
+  } catch (_) { window.lvMyTeams = []; }
+}
+function lvTeamOverlay(id, title, bodyHtml) {
+  document.getElementById(id)?.remove();
+  const el = document.createElement("div");
+  el.id = id;
+  el.style.cssText = "position:fixed;inset:0;z-index:99990;background:var(--bg,#fff);color:var(--text,#111);overflow:auto;-webkit-overflow-scrolling:touch;";
+  el.innerHTML = `<div style="max-width:640px;margin:0 auto;padding:1rem 1rem 6rem">
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
+      <button type="button" class="btn btn-sm btn-outline" data-lv-close aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+      <h2 style="margin:0;font-size:1.2rem">${esc(title)}</h2></div>
+    <div data-lv-body>${bodyHtml}</div></div>`;
+  document.body.appendChild(el);
+  const close = () => { el.remove(); try { window.removeEventListener("popstate", onPop, true); } catch (_) {} };
+  const onPop = () => { el.remove(); window.removeEventListener("popstate", onPop, true); };
+  try { history.pushState(Object.assign({}, history.state, { lvOverlay: id }), ""); window.addEventListener("popstate", onPop, true); } catch (_) {}
+  el.querySelector("[data-lv-close]").onclick = () => { if (history.state && history.state.lvOverlay === id) history.back(); else close(); };
+  return el;
+}
+const LV_ROLE_LABEL = { manager: "Manager", staff: "Staff" };
+async function lvOpenTeamPage() {
+  if (!session || typeof vendor === "undefined" || !vendor) { showToast("Only shop owners can manage a team.", "info"); return; }
+  const el = lvTeamOverlay("lvTeamPage", "Your team", `<p class="muted">Loading…</p>`);
+  const draw = async () => {
+    const { data, error } = await sb.rpc("list_shop_team");
+    const rows = Array.isArray(data) ? data : [];
+    const body = el.querySelector("[data-lv-body]");
+    body.innerHTML = `
+      <p class="muted" style="margin:.2rem 0 1rem">Add people you trust to handle orders for your shop. They need a Levromart account.
+        <b>Manager:</b> orders, chats and listings. <b>Staff:</b> orders and chats. Your bank details, wallet, earnings and settings stay private to you.
+        Team members can see the orders of your shop, including the customer's delivery details.</p>
+      ${error ? `<div class="error-text">${esc(error.message)}</div>` : ""}
+      <div>${rows.length ? rows.map((m) => `<div class="flex" style="align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid rgba(128,128,128,.2)">
+          <div style="flex:1;min-width:0"><b>${esc(m.name || "Member")}</b><div class="muted" style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis">${esc(m.email || "")} · ${esc(LV_ROLE_LABEL[m.role] || m.role)}</div></div>
+          <button type="button" class="btn btn-sm btn-outline" data-rm="${esc(m.user_id)}">Remove</button></div>`).join("") : `<p class="muted">No team members yet.</p>`}</div>
+      <h3 style="margin:1.4rem 0 .5rem;font-size:1rem">Add a team member</h3>
+      <input id="lvTeamWho" type="text" inputmode="email" placeholder="Their e-mail or phone number" style="width:100%;box-sizing:border-box" />
+      <select id="lvTeamRole" style="width:100%;box-sizing:border-box;margin-top:.5rem"><option value="staff">Staff - orders and chats</option><option value="manager">Manager - orders, chats and listings</option></select>
+      <div id="lvTeamErr" class="error-text hidden" style="margin-top:.4rem"></div>
+      <button type="button" class="btn" id="lvTeamAdd" style="margin-top:.7rem">Add to my team</button>`;
+    body.querySelectorAll("[data-rm]").forEach((b) => (b.onclick = async () => {
+      const ok = await showConfirmDialog("They will no longer be able to work on your shop's orders.", { title: "Remove this person?", okLabel: "Remove" });
+      if (!ok) return;
+      const r = await sb.rpc("remove_shop_team_member", { p_user_id: b.getAttribute("data-rm") });
+      if (r.error) showToast(r.error.message, "error"); else { showToast("Removed.", "success"); draw(); }
+    }));
+    byId("lvTeamAdd").onclick = async () => {
+      const err = byId("lvTeamErr"); err.classList.add("hidden");
+      const btn = byId("lvTeamAdd"); btn.disabled = true;
+      const r = await sb.rpc("add_shop_team_member", { p_identifier: byId("lvTeamWho").value.trim(), p_role: byId("lvTeamRole").value });
+      btn.disabled = false;
+      if (r.error) { err.textContent = r.error.message; err.classList.remove("hidden"); return; }
+      showToast("Added. They will see \"Work for " + (vendor.business_name || "your shop") + "\" in their profile menu.", "success");
+      draw();
+    };
+  };
+  draw();
+}
+function lvTeamOrderCard(o) {
+  const st = o.status;
+  const label = { pending: "New order", confirmed: "Accepted", handed_over: "Handed over" }[st] || st;
+  const who = o.buyer_name ? esc(o.buyer_name) : "A customer";
+  const actions = st === "pending"
+    ? `<button type="button" class="btn btn-sm" data-act="confirmed">Accept</button> <button type="button" class="btn btn-sm btn-outline" data-act="decline">Decline</button>`
+    : st === "confirmed"
+      ? `<button type="button" class="btn btn-sm" data-act="handed_over">Mark handed over</button> <button type="button" class="btn btn-sm btn-outline" data-act="decline">Cancel</button>`
+      : `<span class="muted" style="font-size:.85rem">Waiting for the customer to confirm.</span>`;
+  return `<div data-oid="${esc(o.id)}" data-st="${esc(st)}" style="padding:.8rem 0;border-bottom:1px solid rgba(128,128,128,.2)">
+    <div class="flex" style="justify-content:space-between;gap:.5rem"><b>${esc(label)}</b><span>₦${Number(o.total_amount || 0).toLocaleString()}</span></div>
+    <div class="muted" style="font-size:.85rem;margin:.15rem 0">${who} · ${esc(o.delivery_method === "delivery" ? "Delivery" : "Pickup")} · ${esc(timeAgo(o.created_at))}</div>
+    <div style="font-size:.9rem;margin-bottom:.5rem">${esc(o.items || "")}</div>
+    <div class="flex" style="gap:.4rem;flex-wrap:wrap;align-items:center">${actions}</div></div>`;
+}
+async function lvOpenTeamWorkspace(vendorId, shopName) {
+  const el = lvTeamOverlay("lvTeamWorkspace", "Work for " + (shopName || "this shop"), `<p class="muted">Loading…</p>`);
+  const draw = async () => {
+    const { data, error } = await sb.rpc("get_team_shop_orders", { p_vendor_id: vendorId, p_active_only: true });
+    const body = el.querySelector("[data-lv-body]");
+    const rows = Array.isArray(data) ? data : [];
+    body.innerHTML = (error ? `<div class="error-text">${esc(error.message)}</div>` : "") +
+      `<p class="muted" style="margin:.2rem 0 .8rem">Active orders for this shop. The customer sees the shop's name, not yours.</p>` +
+      (rows.length ? rows.map(lvTeamOrderCard).join("") : `<p class="muted">No active orders right now.</p>`) +
+      `<button type="button" class="btn btn-sm btn-outline" id="lvTeamRefresh" style="margin-top:1rem">Refresh</button>`;
+    byId("lvTeamRefresh").onclick = draw;
+    body.querySelectorAll("[data-oid] [data-act]").forEach((b) => (b.onclick = async () => {
+      const card = b.closest("[data-oid]"); const oid = card.getAttribute("data-oid"); const act = b.getAttribute("data-act");
+      b.disabled = true;
+      try {
+        if (act === "decline") { await vendorDeclineOrder(oid, card.getAttribute("data-st")); }
+        else {
+          const r = await sb.rpc("transition_order_status", { p_order_id: oid, p_new_status: act });
+          if (r.error) showToast(r.error.message, "error"); else showToast(act === "confirmed" ? "Order accepted." : "Marked as handed over.", "success");
+        }
+      } catch (e) { showToast(e.message || "Something went wrong.", "error"); }
+      draw();
+    }));
+  };
+  draw();
+}

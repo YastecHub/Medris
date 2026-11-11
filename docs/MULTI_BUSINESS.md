@@ -87,3 +87,11 @@ decides who can see orders and chat - the most sensitive part of the app.
   the chat screens); (4) several businesses per owner with a business switcher; (5) terms/privacy line saying team
   members can see a shop's orders and delivery details. Until (2) exists a team member cannot use the shop screens, so no
   invites are offered yet.
+- **Step 3 (done):** owner "Team" screen (profile menu and shop hub: add by e-mail/phone, choose manager or staff, remove);
+  members get "Work for <shop>" in their profile menu, which opens a team workspace with the shop's active orders
+  (accept, decline, mark handed over); backend functions `list_shop_team`, `add_shop_team_member`,
+  `remove_shop_team_member`, `get_my_shop_teams`, `get_team_shop_orders`; terms and privacy lines added.
+- **Deliberately not done:** (a) team members replying in the shop's chats - chat sender/identity rules need their own
+  design so customers never get confused about who they are talking to; (b) several businesses per owner - needs the
+  one-shop-per-user rule (`vendors.user_id` unique, used in ~40 places) to be lifted and a business switcher; that is a
+  separate, larger change best done after the team workspace has been used for a while.
