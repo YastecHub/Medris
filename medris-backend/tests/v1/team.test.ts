@@ -59,4 +59,36 @@ describe("shop team (rpc)", () => {
     expect((await rpc(t, "add_shop_team_member", { p_identifier: owner.email, p_role: "staff" })).status).toBe(400);
     expect((await rpc(t, "add_shop_team_member", { p_identifier: owner.email, p_role: "boss" })).status).toBe(400);
   });
+
+  it("a team member answers the shop's chat as the shop; the customer is told the shop wrote, and the team hears about customer messages", async () => {
+    const owner = await seedUser(db, { role: "vendor" });
+    const shop = await seedVendor(db, owner.id, { name: "Bola Bakes" });
+    const member = await seedUser(db, { name: "Tolu Staff" });
+    const buyer = await seedUser(db, { name: "Ada" });
+    const stranger = await seedUser(db);
+    await db.query(`insert into public.vendor_members (vendor_id, user_id, role) values ($1, $2, 'staff')`, [shop.id, member.id]);
+    await seedOrder(db, buyer.id, shop.id, { status: "confirmed" });
+    const conv = (await db.query<{ id: string }>(`insert into public.conversations (buyer_id, vendor_id) values ($1, $2) returning id`, [buyer.id, shop.id]))[0]!.id;
+    await db.query(`insert into public.messages (conversation_id, sender_id, body) values ($1, $2, 'Is it ready?')`, [conv, buyer.id]);
+    const memberT = await accessToken(member.id);
+    const strangerT = await accessToken(stranger.id);
+
+    const chats = (await rpc(memberT, "get_team_shop_chats", { p_vendor_id: shop.id })).json.data as { id: string; buyer_name: string; unread: number }[];
+    expect(chats).toHaveLength(1);
+    expect(chats[0]).toMatchObject({ id: conv, buyer_name: "Ada", unread: 1 });
+    expect((await rpc(strangerT, "get_team_shop_chats", { p_vendor_id: shop.id })).status).toBeGreaterThanOrEqual(400);
+
+    const thread = (await rpc(memberT, "get_team_chat_messages", { p_conversation_id: conv })).json.data as { body: string; from_customer: boolean }[];
+    expect(thread.map((m) => m.body)).toEqual(["Is it ready?"]);
+    expect((await rpc(strangerT, "get_team_chat_messages", { p_conversation_id: conv })).status).toBeGreaterThanOrEqual(400);
+
+    expect((await rpc(memberT, "team_send_message", { p_conversation_id: conv, p_body: "Yes, in 10 minutes." })).status).toBe(200);
+    expect((await rpc(strangerT, "team_send_message", { p_conversation_id: conv, p_body: "hi" })).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc(memberT, "team_send_message", { p_conversation_id: conv, p_body: "   " })).status).toBe(400);
+
+    const told = await db.query<{ title: string }>(`select title from public.notifications where user_id = $1 and type = 'new_message'`, [buyer.id]);
+    expect(told.map((n) => n.title)).toEqual(["New message from Bola Bakes"]);
+    const heard = await db.query<{ user_id: string }>(`select user_id from public.notifications where type = 'new_message' and title like 'New message from Ada%'`);
+    expect(heard.map((n) => n.user_id).sort()).toEqual([owner.id, member.id].sort());
+  });
 });

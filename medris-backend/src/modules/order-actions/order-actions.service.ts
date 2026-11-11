@@ -1,6 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
+import { ConversationsRepository } from "../../database/repositories/conversations.repository.js";
 import { OrderActionsRepository, type OrderRow } from "../../database/repositories/order-actions.repository.js";
 import { sqlTrim } from "../../lib/sql-text.js";
 import { badRequest, forbidden, notFound, unauthenticated } from "../../shared/errors/app-error.js";
@@ -269,6 +270,40 @@ export class OrderActionsService {
       const orders = new OrderActionsRepository(tx);
       if (!(await orders.teamCan(me.userId, vendorId, "orders"))) throw forbidden("You are not on this shop's team.");
       return orders.teamOrders(vendorId, activeOnly);
+    });
+  }
+
+  /** The shop's chats for a team member (needs the "chat" permission). */
+  async teamChats(me: Identity | null, vendorId: string): Promise<unknown[]> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      if (!(await orders.teamCan(me.userId, vendorId, "chat"))) throw forbidden("You are not on this shop's team.");
+      return orders.teamChats(vendorId);
+    });
+  }
+
+  async teamMessages(me: Identity | null, conversationId: string): Promise<unknown[]> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const c = await orders.conversationVendor(conversationId);
+      if (!c || !(await orders.teamCan(me.userId, c.vendor_id, "chat"))) throw forbidden("You are not on this shop's team.");
+      return orders.teamMessages(conversationId, c.buyer_id);
+    });
+  }
+
+  /** A team member answers a customer; the customer sees the shop (the database trigger names the shop, not the member). */
+  async teamSend(me: Identity | null, conversationId: string, body: string | null): Promise<{ id: string }> {
+    if (!me) throw forbidden("Authentication required.");
+    const text = (body ?? "").trim();
+    if (text.length < 1 || text.length > 2000) throw badRequest("A message must be between 1 and 2000 characters.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const c = await orders.conversationVendor(conversationId);
+      if (!c || !(await orders.teamCan(me.userId, c.vendor_id, "chat"))) throw forbidden("You are not on this shop's team.");
+      if (!(await new ConversationsRepository(tx).isOpen(me.userId, conversationId))) throw badRequest("This chat is closed right now.");
+      return { id: await orders.insertTeamMessage(conversationId, me.userId, text) };
     });
   }
 

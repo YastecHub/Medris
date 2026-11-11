@@ -897,14 +897,23 @@ function lvTeamOrderCard(o) {
 }
 async function lvOpenTeamWorkspace(vendorId, shopName) {
   const el = lvTeamOverlay("lvTeamWorkspace", "Work for " + (shopName || "this shop"), `<p class="muted">Loading…</p>`);
-  const draw = async () => {
+  const body = el.querySelector("[data-lv-body]");
+  let tab = "orders", timer = null;
+  const tabsHtml = () => `<div class="flex" style="gap:.4rem;margin-bottom:.8rem">
+    <button type="button" class="btn btn-sm ${tab === "orders" ? "" : "btn-outline"}" data-tab="orders">Orders</button>
+    <button type="button" class="btn btn-sm ${tab === "chats" ? "" : "btn-outline"}" data-tab="chats">Chats</button></div>`;
+  const bindTabs = () => body.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { tab = b.getAttribute("data-tab"); stop(); draw(); }));
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+  new MutationObserver((_, ob) => { if (!document.body.contains(el)) { stop(); ob.disconnect(); } }).observe(document.body, { childList: true });
+
+  const drawOrders = async () => {
     const { data, error } = await sb.rpc("get_team_shop_orders", { p_vendor_id: vendorId, p_active_only: true });
-    const body = el.querySelector("[data-lv-body]");
     const rows = Array.isArray(data) ? data : [];
-    body.innerHTML = (error ? `<div class="error-text">${esc(error.message)}</div>` : "") +
+    body.innerHTML = tabsHtml() + (error ? `<div class="error-text">${esc(error.message)}</div>` : "") +
       `<p class="muted" style="margin:.2rem 0 .8rem">Active orders for this shop. The customer sees the shop's name, not yours.</p>` +
       (rows.length ? rows.map(lvTeamOrderCard).join("") : `<p class="muted">No active orders right now.</p>`) +
       `<button type="button" class="btn btn-sm btn-outline" id="lvTeamRefresh" style="margin-top:1rem">Refresh</button>`;
+    bindTabs();
     byId("lvTeamRefresh").onclick = draw;
     body.querySelectorAll("[data-oid] [data-act]").forEach((b) => (b.onclick = async () => {
       const card = b.closest("[data-oid]"); const oid = card.getAttribute("data-oid"); const act = b.getAttribute("data-act");
@@ -919,5 +928,45 @@ async function lvOpenTeamWorkspace(vendorId, shopName) {
       draw();
     }));
   };
+
+  const drawChats = async () => {
+    const { data, error } = await sb.rpc("get_team_shop_chats", { p_vendor_id: vendorId });
+    const rows = Array.isArray(data) ? data : [];
+    body.innerHTML = tabsHtml() + (error ? `<div class="error-text">${esc(error.message)}</div>` : "") +
+      `<p class="muted" style="margin:.2rem 0 .8rem">Customers' messages to this shop. When you reply, the customer sees the shop's name.</p>` +
+      (rows.length ? rows.map((c) => `<button type="button" data-conv="${esc(c.id)}" data-name="${esc(c.buyer_name || "Customer")}" style="display:flex;width:100%;text-align:left;gap:.6rem;align-items:center;padding:.7rem 0;border:0;border-bottom:1px solid rgba(128,128,128,.2);background:none;color:inherit">
+          <div style="flex:1;min-width:0"><b>${esc(c.buyer_name || "Customer")}</b><div class="muted" style="font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.last_body || "")}</div></div>
+          ${c.unread > 0 ? `<span style="background:#1f8a5b;color:#fff;border-radius:999px;padding:.05rem .5rem;font-size:.8rem">${c.unread}</span>` : ""}</button>`).join("") : `<p class="muted">No chats yet.</p>`);
+    bindTabs();
+    body.querySelectorAll("[data-conv]").forEach((b) => (b.onclick = () => openThread(b.getAttribute("data-conv"), b.getAttribute("data-name"))));
+  };
+
+  const openThread = async (convId, name) => {
+    stop();
+    const paint = async (keepDraft) => {
+      const draft = keepDraft ? (byId("lvTeamMsg")?.value || "") : "";
+      const { data, error } = await sb.rpc("get_team_chat_messages", { p_conversation_id: convId });
+      const msgs = Array.isArray(data) ? data : [];
+      body.innerHTML = `<div class="flex" style="align-items:center;gap:.5rem;margin-bottom:.6rem"><button type="button" class="btn btn-sm btn-outline" id="lvTeamBackChats"><i class="fa-solid fa-arrow-left"></i></button><b>${esc(name)}</b></div>
+        ${error ? `<div class="error-text">${esc(error.message)}</div>` : ""}
+        <div id="lvTeamThread" style="display:flex;flex-direction:column;gap:.35rem;max-height:55vh;overflow:auto;padding:.3rem 0">${msgs.map((m) => `<div style="align-self:${m.from_customer ? "flex-start" : "flex-end"};max-width:82%;padding:.45rem .7rem;border-radius:14px;${m.from_customer ? "background:rgba(128,128,128,.18)" : "background:#1f8a5b;color:#fff"};white-space:pre-wrap;word-break:break-word">${esc(m.body)}</div>`).join("") || `<p class="muted">No messages yet.</p>`}</div>
+        <div class="flex" style="gap:.4rem;margin-top:.6rem"><input id="lvTeamMsg" type="text" maxlength="2000" placeholder="Reply as the shop…" style="flex:1" value="${esc(draft)}" /><button type="button" class="btn btn-sm" id="lvTeamSend">Send</button></div>`;
+      const th = byId("lvTeamThread"); if (th) th.scrollTop = th.scrollHeight;
+      byId("lvTeamBackChats").onclick = () => { stop(); tab = "chats"; draw(); };
+      const send = async () => {
+        const inp = byId("lvTeamMsg"); const text = inp.value.trim(); if (!text) return;
+        byId("lvTeamSend").disabled = true;
+        const r = await sb.rpc("team_send_message", { p_conversation_id: convId, p_body: text });
+        if (r.error) { showToast(r.error.message, "error"); byId("lvTeamSend").disabled = false; return; }
+        paint(false);
+      };
+      byId("lvTeamSend").onclick = send;
+      byId("lvTeamMsg").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); send(); } };
+    };
+    await paint(false);
+    timer = setInterval(() => { if (document.body.contains(el) && !byId("lvTeamMsg")?.value) paint(true); }, 8000);
+  };
+
+  const draw = () => (tab === "chats" ? drawChats() : drawOrders());
   draw();
 }

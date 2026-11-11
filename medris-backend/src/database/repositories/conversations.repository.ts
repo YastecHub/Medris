@@ -158,7 +158,7 @@ export class ConversationsRepository {
       this.db,
       sql`select exists (
             select 1 from public.conversations c join public.vendors v on v.id = c.vendor_id
-            where c.id = ${conversationId} and (c.buyer_id = ${userId}::uuid or v.user_id = ${userId}::uuid)
+            where c.id = ${conversationId} and (c.buyer_id = ${userId}::uuid or v.user_id = ${userId}::uuid or public.team_can(${userId}::uuid, c.vendor_id, 'chat'))
               and (exists (
                 select 1 from public.orders o
                 where o.buyer_id = c.buyer_id and o.vendor_id = c.vendor_id
