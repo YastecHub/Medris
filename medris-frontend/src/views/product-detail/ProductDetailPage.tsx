@@ -403,7 +403,7 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
               <div className="product-gallery-stage">
                 <div className="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
                   {photos.map((u, i) => (
-                    <div key={i} className="product-gallery-slide" data-gallery-index={i} onClick={(e) => call("openProductGallerySlide", e, i)}>
+                    <div key={i} className="product-gallery-slide" data-gallery-index={i}>
                       <img src={u} alt={`${product.name} photo ${i + 1}`} loading={i === 0 ? "eager" : "lazy"} decoding="async" draggable={false} {...(i === 0 ? { fetchPriority: "high" as const } : {})} />
                     </div>
                   ))}
