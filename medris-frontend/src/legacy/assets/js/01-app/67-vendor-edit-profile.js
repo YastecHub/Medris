@@ -81,8 +81,8 @@ async function renderVendorEditProfile() {
       </div>
     </div>
     <div class="switch-row">
-      <span class="switch-label-text">Let buyers place orders outside these hours ${infoPopoverHtml("veAfterHoursInfo", "Off: customers can only place an order while you are open (if you have set working hours). On: they can order any time.")}</span>
-      <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_orders === true ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
+      <span class="switch-label-text">Let buyers place orders outside these hours ${infoPopoverHtml("veAfterHoursInfo", "On (default): customers can order any time. Off: they can only order while you are open (if you have set working hours).")}</span>
+      <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_orders !== false ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
     </div>
     <div class="ve-field" style="margin-top:1rem;">
       <label class="ve-label" for="veOrderExpiry">How long do you need to confirm a new order?</label>

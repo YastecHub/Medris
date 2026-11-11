@@ -73,3 +73,7 @@ decides who can see orders and chat - the most sensitive part of the app.
 - **Needs a decision before coding:** should a member's actions show their own name to the customer, or the shop's?
   (Recommended: the shop's name, with the member recorded in the order history for disputes.)
 - **Legal:** terms/privacy must say that a shop's team members can see its orders and customer delivery details.
+- **Step 2a (done, migration 0059):** a manager/staff member can *see* the shop's orders and chats (read only, four extra
+  row-level policies; nobody is on a team yet, so nobody sees anything new). Tested in `tests/team-permissions.test.ts`.
+  Still to do: letting members *act* (accept/decline, reply), routing new-order/message notifications to them, the Team
+  screen with invites, the terms/privacy line, then several businesses per owner.
