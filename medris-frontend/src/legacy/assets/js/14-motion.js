@@ -5290,7 +5290,7 @@ window.lvAskCancel = async function (orderId) {
     if (T === "order_status_changed") return /complet/i.test(t) ? "order-completed" : /confirm/i.test(t) ? "order-confirmed" : /hand|deliver/i.test(t) ? "handed-over" : /dispute/i.test(t) ? "dispute" : null;
     var M = { order_reminder: "order-reminder", new_order: "new-order", order_placed: "new-order", payment_confirmed: "order-confirmed", payment_received: "tx-paid",
       new_dispute: "dispute", dispute_reopened: "dispute", dispute_resolved: "order-completed", points: "points", points_winner: "vendor-of-week", vendor_of_the_week: "vendor-of-week",
-      vendor_follow: "stat-followers", suggestion_reply: "suggestions", vendor_follow_update: "new-listing", stock_alert: "new-listing", new_listing: "new-listing", new_review: "reviews", new_message: "requests",
+      vendor_follow: "stat-followers", suggestion_reply: "suggestions", chat_request: "requests", vendor_follow_update: "new-listing", stock_alert: "new-listing", new_listing: "new-listing", new_review: "reviews", new_message: "requests",
       withdrawal_approved: "withdrawal-approved", withdrawal_rejected: "withdrawal-rejected", payout_failed: "withdrawal-rejected", payout_sent: "payout-sent", refund_sent: "payout-sent",
       wallet_topup: "cash", wallet_hold: "tx-pending", wallet_withdrawal_sent: "payout-sent", wallet_withdrawal_rejected: "withdrawal-rejected", wallet_withdrawal_failed: "withdrawal-rejected", wallet_received: "tx-paid",
       payout_on_hold: "tx-pending", payment_unresolved_24h: "tx-pending", product_wishlisted: "stat-wishlist", leaderboard_up: "moved-up", rank_up: "moved-up" };

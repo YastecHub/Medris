@@ -336,6 +336,14 @@ async function handleNotifItemClick(event, id) {
   let view = item.dataset.view || 'home';
   if (view === 'storefront' && (params.productId || params.product_id)) { params = { productId: params.productId || params.product_id }; view = 'productDetail'; }
   else if (view === 'storefront' && (params.packageId || params.package_id)) { params = { packageId: params.packageId || params.package_id }; view = 'packageDetail'; }
+  if (item.dataset.type === 'chat_request') {
+    // a shop asks to message me: allow (24 hours) or decline
+    const shopId = params.vendorId;
+    const ok = await showConfirmDialog((item.querySelector('strong, .notif-title')?.textContent || 'A shop') + '. If you allow it, they can message you for the next 24 hours.', { title: 'Allow this shop to message you?', okLabel: 'Allow', cancelLabel: 'No thanks' });
+    try { const { error } = await sb.rpc('answer_chat_request', { p_vendor_id: shopId, p_accept: !!ok }); if (error) throw error; showToast(ok ? 'Allowed. They can message you for 24 hours.' : 'Declined.', 'success'); }
+    catch (err) { showToast(err.message || 'Could not answer this request.', 'error'); }
+    return;
+  }
   if (item.dataset.type === 'suggestion_reply') {
     // a reply to my suggestion: straight to the replies page, with the newest reply flashed
     await navigate('suggestionReplies');
