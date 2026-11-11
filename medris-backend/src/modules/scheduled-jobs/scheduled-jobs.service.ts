@@ -60,6 +60,8 @@ const orderDetail = (orderId: string) => ({ targetView: "orderDetail", targetPar
  * Until the switch pg_cron keeps running the originals; run() is what the backend's scheduler
  * (or POST /api/v1/jobs/{job}) calls afterwards.
  */
+const fmtWait = (m: number) => (m >= 1440 ? `${m / 1440} day${m === 1440 ? "" : "s"}` : m >= 60 ? `${m / 60} hour${m === 60 ? "" : "s"}` : `${m} minutes`);
+
 export class ScheduledJobsService {
   constructor(private readonly db: () => DataContext) {}
 
@@ -104,13 +106,13 @@ export class ScheduledJobsService {
     return this.tx(async (_tx, jobs, notify) => {
       let n = 0;
       for (const r of await jobs.unconfirmedOrders()) {
-        if (!(await jobs.cancelUnconfirmed(r.id))) continue;
+        if (!(await jobs.cancelUnconfirmed(r.id, fmtWait(r.minutes)))) continue;
         if (r.buyer_id) {
           await notify.create({
             userId: r.buyer_id,
             type: "order_auto_cancelled",
             title: "Order cancelled automatically",
-            body: "The vendor did not confirm your order within 30 minutes, so it was cancelled. You have not been charged. You can order again or try another vendor.",
+            body: `The vendor did not confirm your order within ${fmtWait(r.minutes)}, so it was cancelled. You have not been charged. You can order again or try another vendor.`,
             ...orderDetail(r.id),
           });
         }
@@ -119,7 +121,7 @@ export class ScheduledJobsService {
             userId: r.vendor_user_id,
             type: "order_auto_cancelled",
             title: "Order cancelled automatically",
-            body: "You did not confirm this order within 30 minutes, so it was cancelled automatically. Reply faster next time to keep your customers.",
+            body: `You did not confirm this order within ${fmtWait(r.minutes)}, so it was cancelled automatically. Reply faster next time to keep your customers.`,
             ...orderDetail(r.id),
           });
         }

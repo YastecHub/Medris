@@ -12,23 +12,24 @@ export class ScheduledJobsRepository {
 
   // ----- auto_cancel_unconfirmed_orders -----
 
-  /** Pending orders older than 30 minutes, locked (skipping orders another worker holds). */
-  unconfirmedOrders(): Promise<{ id: string; buyer_id: string | null; vendor_user_id: string | null }[]> {
+  /** Pending orders older than the time their shop gave itself to confirm (30 minutes unless the shop chose otherwise; 0 = never), locked (skipping orders another worker holds). */
+  unconfirmedOrders(): Promise<{ id: string; buyer_id: string | null; vendor_user_id: string | null; minutes: number }[]> {
     return jsonRows(
       this.db,
-      sql`select o.id, o.buyer_id, v.user_id as vendor_user_id
+      sql`select o.id, o.buyer_id, v.user_id as vendor_user_id, coalesce(v.order_expiry_minutes, 30) as minutes
           from public.orders o join public.vendors v on v.id = o.vendor_id
-          where o.status = 'pending' and o.created_at <= now() - interval '30 minutes'
+          where o.status = 'pending' and coalesce(v.order_expiry_minutes, 30) > 0
+            and o.created_at <= now() - make_interval(mins => coalesce(v.order_expiry_minutes, 30))
           for update of o skip locked`,
     );
   }
 
   /** Cancels a still-pending order; false if it is no longer pending. */
-  async cancelUnconfirmed(orderId: string): Promise<boolean> {
+  async cancelUnconfirmed(orderId: string, waited = "30 minutes"): Promise<boolean> {
     const done = await jsonReturning(
       this.db,
       sql`update public.orders set status = 'cancelled', cancelled_at = now(),
-                 cancellation_reason = 'Cancelled automatically: the vendor did not confirm within 30 minutes'
+                 cancellation_reason = ${`Cancelled automatically: the vendor did not confirm within ${waited}`}
           where id = ${orderId} and status = 'pending'
           returning id`,
     );

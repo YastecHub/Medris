@@ -11,7 +11,7 @@ import { jsonReturning, jsonRow, jsonRows } from "../json.js";
  */
 const PUBLIC = sql`v.id, v.user_id, v.business_name, v.logo_url, v.cover_image_url, v.cover_url, v.bio, v.address, v.city, v.phone,
   case when v.whatsapp_visible then v.whatsapp_number end as whatsapp_number, v.whatsapp_visible, v.verification_status, v.opening_hours,
-  v.business_hours, v.allow_after_hours_messages, v.avg_rating, v.review_count, v.created_at, v.is_active, v.delivery_radius_km, v.delivery_fee,
+  v.business_hours, v.allow_after_hours_messages, v.order_expiry_minutes, v.avg_rating, v.review_count, v.created_at, v.is_active, v.delivery_radius_km, v.delivery_fee,
   v.delivery_fee_mode, v.delivery_fee_per_km, v.sector_id, v.lat, v.lng, v.previous_business_name, v.name_changed_at, v.referral_code,
   v.campus_id, v.operating_scope, v.operating_campuses, v.request_pref, v.student_verified, v.non_student_verified, v.campus_setup_done, v.profile_view_count, v.deleted_at,
   v.cac_number`;
@@ -42,6 +42,7 @@ export interface ShopChanges {
   operating_scope?: string;
   operating_campuses?: string[];
   request_campus_scope?: string;
+  order_expiry_minutes?: number;
   campus_id?: string | null;
   campus_setup_done?: boolean;
   verification_docs?: string[];
@@ -140,6 +141,7 @@ export class ShopRowsRepository {
     add("request_pref", sql`request_pref = ${c.request_pref ?? null}`);
     add("operating_scope", sql`operating_scope = ${c.operating_scope ?? null}`);
     add("operating_campuses", sql`operating_campuses = ${textArray(c.operating_campuses ?? [])}`);
+    add("order_expiry_minutes", sql`order_expiry_minutes = ${c.order_expiry_minutes ?? 30}`);
     add("request_campus_scope", sql`request_campus_scope = ${c.request_campus_scope ?? null}`);
     add("campus_id", sql`campus_id = ${c.campus_id ?? null}`);
     add("campus_setup_done", sql`campus_setup_done = ${c.campus_setup_done ?? null}`);
