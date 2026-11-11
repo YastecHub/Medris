@@ -4138,7 +4138,7 @@ window.lvAskCancel = async function (orderId) {
   window.lvW3Add = async function () {
     var d = await load(false); if (!d) return showToast("Your wallet is not available right now.", "error");
     var m = sheet("Add money", '<p class="lw-hint">Add money with your card, bank transfer or USSD through Paystack.</p>' + amountField("lwAddAmt") +
-      '<div class="lw-chips">' + [500, 1000, 2000, 5000, 10000].map(function (n) { return '<button type="button" data-n="' + n + '">₦' + n.toLocaleString("en-NG") + "</button>"; }).join("") + "</div>" +
+      '<div class="lw-chips">' + [100, 200, 500, 1000, 2000, 5000].map(function (n) { return '<button type="button" data-n="' + n + '">₦' + n.toLocaleString("en-NG") + "</button>"; }).join("") + "</div>" +
       '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwAddGo">Continue</button>');
     m.addEventListener("click", function (e) { var c = e.target.closest("[data-n]"); if (c) { document.getElementById("lwAddAmt").value = c.dataset.n; } });
     m.querySelector("#lwAddGo").onclick = async function () {

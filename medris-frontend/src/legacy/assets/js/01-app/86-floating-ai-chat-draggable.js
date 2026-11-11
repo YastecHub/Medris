@@ -583,15 +583,17 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
     // own long-press-to-copy), not a persistent visible button under every
     // message.
     bindAiChatMessageLongPressCopy(el, displayText);
-    if (role === "assistant" && "speechSynthesis" in window) {
-      const speakBtn = document.createElement("button");
-      speakBtn.className = "ai-chat-msg-speak";
-      speakBtn.title = "Read aloud";
-      speakBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
-      speakBtn.onclick = () => speakAiChatMessage(displayText, speakBtn);
-      el.appendChild(speakBtn);
-      // Levi never reads replies automatically. Voice input only transcribes;
-      // the user explicitly taps the speaker button when they want audio.
+    if (role === "assistant") {
+      // Under every reply: Copy and Share (no read-aloud button).
+      const row = document.createElement("div");
+      row.className = "ai-chat-msg-actions";
+      const mk = (icon, label, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "ai-chat-msg-act"; b.setAttribute("aria-label", label); b.innerHTML = `<i class="fa-regular ${icon}"></i> ${label}`; b.onclick = fn; return b; };
+      row.appendChild(mk("fa-copy", "Copy", async () => { try { await navigator.clipboard.writeText(displayText); showToast("Copied.", "success"); } catch (_) { showToast("Could not copy.", "error"); } }));
+      row.appendChild(mk("fa-share-from-square", "Share", async () => {
+        const text = displayText + "\n\n- Levi, on Levromart";
+        try { if (navigator.share) await navigator.share({ title: "Levi on Levromart", text, url: location.origin }); else { await navigator.clipboard.writeText(text); showToast("Copied, ready to paste.", "success"); } } catch (_) {}
+      }));
+      el.appendChild(row);
     }
     if (role === "assistant" && msgId) attachAiReactionUI(el, msgId, existingReaction);
     if (nav) {
