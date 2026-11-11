@@ -8038,3 +8038,39 @@ window.lvNoImageHtml = function (seed) {
     document.body.appendChild(s);
   };
 })();
+
+/* ===== Chat list: "You:" and ticks (sent / delivered / read) on the last message of each chat ===== */
+(function () {
+  var cache = {}, timer = 0, busy = false;
+  function tickHtml(st) {
+    if (!st) return "";
+    if (st.read_at) return '<i class="fa-solid fa-check-double conv-tk read"></i>';
+    if (st.delivered_at) return '<i class="fa-solid fa-check-double conv-tk"></i>';
+    return '<i class="fa-solid fa-check conv-tk"></i>';
+  }
+  function paint() {
+    var me = null; try { me = session && session.user && session.user.id; } catch (_) {}
+    if (!me) return;
+    document.querySelectorAll(".conv-list-item[data-conversation-id]").forEach(function (row) {
+      var id = row.getAttribute("data-conversation-id"), st = cache[id], pv = row.querySelector(".conv-preview");
+      if (!st || !pv || pv.querySelector(".lv-conv-typing")) return;
+      var mine = st.last_sender_id === me, key = (mine ? "m" : "t") + (st.read_at ? "r" : st.delivered_at ? "d" : "s");
+      if (pv.dataset.tk === key) return;
+      pv.querySelectorAll(".conv-tk, .conv-you").forEach(function (n) { n.remove(); });
+      if (mine) pv.insertAdjacentHTML("afterbegin", tickHtml(st) + ' ');
+      pv.dataset.tk = key;
+    });
+  }
+  function load() {
+    if (busy) return; busy = true;
+    var ids = [].map.call(document.querySelectorAll(".conv-list-item[data-conversation-id]"), function (r) { return r.getAttribute("data-conversation-id"); }).slice(0, 80);
+    if (!ids.length) { busy = false; return; }
+    Promise.resolve(sb.rpc("get_conversation_last_status", { p_conversation_ids: ids })).then(function (r) {
+      (r && r.data || []).forEach(function (x) { cache[x.conversation_id] = x; });
+      paint();
+    }).catch(function () {}).then(function () { busy = false; });
+  }
+  var raf = 0;
+  try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; paint(); var need = document.querySelector(".conv-list-item[data-conversation-id]:not([data-tkreq])"); if (need) { document.querySelectorAll(".conv-list-item[data-conversation-id]").forEach(function (r) { r.setAttribute("data-tkreq", "1"); }); clearTimeout(timer); timer = setTimeout(load, 150); } }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+  setInterval(function () { if (!document.hidden && document.querySelector(".conv-list-item")) load(); }, 20000);
+})();

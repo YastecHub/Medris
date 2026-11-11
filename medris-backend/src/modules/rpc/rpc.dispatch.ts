@@ -258,6 +258,7 @@ export const RPC: Record<string, RpcEntry> = {
 
   // Conversations
   get_or_create_conversation: { run: (s, me, a) => s.conversations.open(me, id(a.p_vendor_id)).then(pick("id")), limit: L.conversations },
+  get_conversation_last_status: { run: (s, me, a) => s.conversations.lastStatus(me, ids(a.p_conversation_ids)) },
   list_my_conversations: { run: (s, me) => s.conversations.list(me) },
   conversation_is_open: { run: (s, me, a) => s.conversations.isOpen(me, id(a.p_conversation_id)).then(pick("open")) },
   mark_conversation_opened: { run: (s, me, a) => s.conversations.markOpened(me, id(a.p_conversation_id)).then(nothing), limit: L.conversations },

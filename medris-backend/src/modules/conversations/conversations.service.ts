@@ -38,6 +38,12 @@ export class ConversationsService {
     });
   }
 
+  /** New: the sender and delivery state of each conversation's latest message (ticks on the chat list). */
+  async lastStatus(me: Identity | null, ids: string[]) {
+    if (!me) return [];
+    return this.db().asService((tx) => new ConversationsRepository(tx).lastStatus(me.userId, ids));
+  }
+
   /** Replaces: public.list_my_conversations() - the inbox: open conversations, pinned first, then by latest message. */
   async list(me: Identity | null): Promise<ConversationListItem[]> {
     if (!me) return [];

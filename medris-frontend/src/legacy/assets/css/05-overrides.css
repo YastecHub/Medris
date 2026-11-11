@@ -8080,3 +8080,6 @@ html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code,html[data-theme="bl
 .sg-head h2 .sg-info,.sg-head h2 .sg-info i{color:var(--text-muted,#8a8f98)!important;-webkit-text-fill-color:var(--text-muted,#8a8f98)!important}
 /* add listing: the extra drop-down bar above the delivery choices is gone */
 #prodDeliverySettings .ms-wrap,#prodDeliverySettings>select+.ms-wrap,#prodDeliveryMode+.ms-wrap{display:none!important}
+
+.conv-preview .conv-tk{font-size:.72rem;margin-right:.25rem;color:var(--text-muted,#8a8f98)}
+.conv-preview .conv-tk.read{color:#34a0e8}
