@@ -106,7 +106,7 @@ function searchRowOpen(onclick) {
   return `onclick="${onclick}" role="link" tabindex="0" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${onclick}}"`;
 }
 function searchThumbHtml(src, icon, round) {
-  return `<span class="sr-thumb${round ? " sr-thumb-round" : ""}">${src ? `<img src="${esc(lvThumb(src, 100))}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid ${icon}'}))">` : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span>`;
+  return `<span class="sr-thumb${round ? " sr-thumb-round" : ""}">${src ? `<img src="${esc(lvThumb(src, 100))}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid ${icon}'}))">` : (icon === "fa-camera" || icon === "fa-hand-holding-heart" ? lvNoImageHtml(icon + (round ? "r" : "p")) : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`)}</span>`;
 }
 function searchProductRowHtml(p) {
   const hasDiscount = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity);
@@ -124,7 +124,7 @@ function searchProductRowHtml(p) {
   const canCart = !p.is_service && v.id && ["sale", "both"].includes(String(p.listing_type || "")) && !isOwnVendorId(v.id) && profile?.role !== "admin";
   const typeLabel = p.is_service ? "Service" : String(p.listing_type || "") === "rent" ? "Rental" : "Product";
   return `<div class="search-result-row sr-row" data-product-id="${esc(p.id)}" data-vendor-id="${esc(v.id || p.vendor_id || "")}" ${searchRowOpen(`navigate('productDetail',{productId:'${esc(p.id)}'})`)} aria-label="${esc(p.name)}">
-    ${searchThumbHtml(p.photos?.[0] || v.logo_url, p.is_service ? "fa-hand-holding-heart" : "fa-camera", !p.photos?.[0] && !!v.logo_url)}
+    ${searchThumbHtml(p.photos?.[0], p.is_service ? "fa-hand-holding-heart" : "fa-camera", false)}
     <div class="sr-main"><strong class="sr-name">${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong>
       <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
       <span class="sr-meta"><em class="sr-type${p.is_service ? " sr-type-service" : ""}">${typeLabel}</em>${searchRatingHtml(v.avg_rating, v.review_count)}</span></div>

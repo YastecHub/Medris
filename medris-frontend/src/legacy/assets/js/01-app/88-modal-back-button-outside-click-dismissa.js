@@ -173,9 +173,12 @@ window.addEventListener("popstate", (e) => {
     return;
   }
   if (urlParams.get("share")) {
-    const token = urlParams.get("share");
-    history.replaceState({ view: "sharedAiChat", params: { token } }, "", location.pathname);
-    await navigate("sharedAiChat", { token }, false);
+    const token = urlParams.get("share"), mIdx = urlParams.get("m");
+    history.replaceState({ view: "home", params: {} }, "", location.pathname);
+    // signed in: straight into their own Levi chat with this conversation in it; otherwise the read-only copy
+    let done = false;
+    try { if (session) { await navigate("home", {}, false); done = await lvContinueSharedChat(token, mIdx); } } catch (_) {}
+    if (!done) { history.replaceState({ view: "sharedAiChat", params: { token } }, "", location.pathname); await navigate("sharedAiChat", { token }, false); }
     return;
   }
 

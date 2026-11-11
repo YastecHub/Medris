@@ -8085,3 +8085,12 @@ html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code,html[data-theme="bl
 .conv-preview .conv-tk.read{color:#34a0e8}
 
 html[data-theme="dark"]:root:root:root body #lvqrSheet .lvqr-code canvas,html[data-theme="black"]:root:root:root body #lvqrSheet .lvqr-code canvas{filter:invert(1) hue-rotate(180deg) contrast(.6) brightness(1.35)!important}
+
+/* no-photo picture on the product page: a fixed 4:3 area (works on iPhone too), the icon centred inside */
+html:root:root:root:root body #app .product-detail-card .product-detail-media .product-img.lv-noimg-page{position:relative!important;height:0!important;padding-bottom:75%!important;aspect-ratio:auto!important;min-height:0!important;overflow:hidden}
+html:root:root:root:root body #app .product-detail-card .product-detail-media .product-img.lv-noimg-page>.lv-noimg{position:absolute!important;inset:0;width:100%!important;height:100%!important;display:flex;align-items:center;justify-content:center}
+/* no-photo picture in search results */
+html body #app .sr-thumb .lv-noimg{width:100%;height:100%;border-radius:inherit}
+html body #app .sr-thumb .lv-noimg svg{width:55%;height:55%}
+/* initials in the map search suggestions: normal size */
+.vmp-sugg .vmp-sg-logo .vd-initials,.vmp-sugg .vmp-sg-logo .vd-initials *{font-size:.9rem!important;line-height:1!important}

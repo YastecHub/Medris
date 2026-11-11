@@ -190,6 +190,28 @@ async function deleteAiConversation(id,evt){evt?.stopPropagation?.();if(!(await 
   // in place rather than re-fetching, so the history list doesn't flash
   // "Loading..." and appear to collapse after every single delete.
   if(wasHistory){const deletedId=String(id);window.__aiHistoryRows=(window.__aiHistoryRows||[]).filter(c=>String(c.id)!==deletedId);panel?.classList.add("history-mode");byId("aiChatHistoryToggleBtn")?.classList.add("active");renderAiChatHistoryList(window.__aiHistoryRows);}showToast("Chat deleted.","success");}
+// Opening a shared Levi link: the chat is copied into the person's OWN Levi chat and Levi opens on it, so they can carry on
+// asking questions about it (like other assistants do). Without an account they see the read-only copy with a button.
+async function lvContinueSharedChat(token, idx) {
+  if (!token) return false;
+  if (!session) { try { sessionStorage.setItem("lv-pending-share", JSON.stringify({ token, idx })); } catch (_) {} showLogin(); return false; }
+  const { data: rows, error } = await sb.rpc("get_shared_ai_conversation", { p_token: token });
+  if (error || !rows || !rows.length) return false;
+  const { data: conv, error: cerr } = await sb.from("ai_conversations").insert({ user_id: session.user.id, title: String(rows[0].title || "Shared chat").slice(0, 80) }).select("id").single();
+  if (cerr || !conv) return false;
+  for (const r of rows.slice(0, 80)) { await sb.from("ai_messages").insert({ conversation_id: conv.id, role: r.role, content: r.content }); }
+  startNewAiChat();
+  localStorage.setItem("medris-ai-last-conversation", conv.id);
+  currentAiConversationId = conv.id;
+  aiConversationCreatePromise = Promise.resolve(conv.id);
+  aiChatResumeAttempted = true;
+  const panel = byId("aiChatPanel");
+  if (panel && panel.classList.contains("hidden")) toggleAiChat();
+  byId("aiChatMessages").innerHTML = ""; aiChatMessages = []; aiChatLastDateKey = null;
+  await resumeLastAiConversation();
+  if (idx != null) setTimeout(() => { const el = byId("aiChatMessages")?.querySelectorAll(".ai-chat-msg")[Number(idx)]; if (el) { el.scrollIntoView({ block: "center" }); el.classList.add("lv-flash"); setTimeout(() => el.classList.remove("lv-flash"), 3200); } }, 400);
+  return true;
+}
 async function renderSharedAiChat(token) {
   const { data: rows, error } = await sb.rpc("get_shared_ai_conversation", { p_token: token });
   if (error || !rows || rows.length === 0) {
@@ -201,7 +223,7 @@ async function renderSharedAiChat(token) {
     const clean = m.role === "assistant" ? parseAiRemoveCartTags(parseAiAddCartTags(parseAiDraftMsgTag(parseAiNavTag(m.content).text).text).text).text : m.content;
     return `<div class="ai-chat-msg ${m.role === "user" ? "user" : "assistant"}" style="align-self:${m.role === "user" ? "flex-end" : "flex-start"};">${esc(clean)}</div>`;
   })}</div>`;
-  html += `<div style="text-align:center;margin-top:1rem;"><button class="btn btn-sm" onclick="navigate('home')"><i class="fa-solid fa-arrow-right"></i> Try Levromart</button></div>`;
+  html += `<div style="text-align:center;margin-top:1rem;"><button class="btn btn-sm" onclick="lvContinueSharedChat('${esc(token)}')"><i class="fa-solid fa-comments"></i> Continue this chat with Levi</button></div>`;
   // a link to one reply scrolls to it and flashes it
   try { const mid = new URLSearchParams(location.search).get("m"); if (mid) setTimeout(() => { const el = document.querySelectorAll(".shared-ai-chat .ai-chat-msg")[Number(mid)]; if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); el.classList.add("lv-flash"); setTimeout(() => el.classList.remove("lv-flash"), 3200); } }, 400); } catch (_) {}
   return html;
