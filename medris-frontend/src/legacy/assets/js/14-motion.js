@@ -1112,10 +1112,10 @@
         try {
           var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId);
           if (pageSnaps[sk]) {
-            document.getElementById("app").innerHTML = pageSnaps[sk];
             // the page itself is then "drawn" from this same saved copy (no waiting for the network, no blank), so every normal
             // step after drawing a page still runs
             if (Date.now() - (snapAt[sk] || 0) < 600000) window.__lvUseSnap = { view: view, html: pageSnaps[sk], vendorId: params && params.vendorId };
+            else document.getElementById("app").innerHTML = pageSnaps[sk];   // older copy: shown while the fresh page is built
           }
         } catch (_) {}
       }
@@ -7750,7 +7750,7 @@ window.lvGoToNewOrder = function (orderId) {
   function isSet(id) { try { return localStorage.getItem("lv-expiry-set:" + id) === "1"; } catch (_) { return false; } }
   function ask() {
     if (shown || document.hidden) return;
-    var v = window.vendor, id = uid();
+    var v = (typeof vendor !== "undefined" ? vendor : null), id = uid();
     if (!id || !v || !v.id || isSet(v.id) || v.status === "pending" || document.getElementById("lvExpirySheet")) return;
     // never in the middle of something: only on the home screen, and not while a dialog or sheet is open
     if (document.querySelector(".lvw-sheet-wrap, .modal-overlay:not(.hidden), .lv-pin")) return;
@@ -7758,7 +7758,7 @@ window.lvGoToNewOrder = function (orderId) {
     build();
   }
   function build() {
-    var v = window.vendor; if (!v || !v.id || document.getElementById("lvExpirySheet")) return;
+    var v = (typeof vendor !== "undefined" ? vendor : null); if (!v || !v.id || document.getElementById("lvExpirySheet")) return;
     var m = document.createElement("div");
     m.id = "lvExpirySheet"; m.className = "lvw-sheet-wrap lw-wrap";
     m.innerHTML = '<div class="lvw-sheet lw-sheet" role="dialog" aria-modal="true" aria-label="Order confirmation time"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
