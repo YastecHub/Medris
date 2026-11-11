@@ -29,7 +29,7 @@ export const RPC_READS: ReadonlySet<string> = new Set([
 ]);
 
 export const RPC_WRITES: ReadonlySet<string> = new Set([
-  "add_shop_team_member", "remove_shop_team_member", "team_send_message",
+  "add_shop_team_member", "remove_shop_team_member", "team_send_message", "send_order_still_available",
   "accept_legal_terms", "add_order_note", "add_to_cart", "admin_adjust_points",
   "admin_approve_manual_password_reset", "admin_approve_monthly_listing", "admin_award_social_points",
   "admin_cancel_confirmed_overdue_order", "admin_decide_withdrawal", "admin_set_product_suspended", "admin_decide_cancellation", "buyer_cancel_order", "request_order_cancellation", "admin_reopen_dispute", "admin_confirm_reported_payment", "admin_deactivate_monthly_listing",

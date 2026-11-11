@@ -273,6 +273,38 @@ export class OrderActionsService {
     });
   }
 
+  /**
+   * After an order cancelled by itself (the shop did not confirm in time) the shop can tell the customer, once:
+   * "sorry, we missed your order - it is still available, are you still interested?". The customer gets a notification
+   * (and a WhatsApp message) that opens the item again.
+   */
+  async sendStillAvailable(me: Identity | null, orderId: string): Promise<{ id: string }> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const o = await orders.order(orderId, false);
+      if (!o) throw notFound("Order not found.");
+      if (o.vendor_user_id !== me.userId && !(await orders.teamCan(me.userId, o.vendor_id, "orders"))) throw forbidden("Only the shop can send this.");
+      if (o.status !== "cancelled") throw badRequest("This order is not cancelled.");
+      const info = await orders.followUpInfo(orderId);
+      if (!info.cancelled_automatically) throw badRequest("This message is only for orders that cancelled by themselves.");
+      if (!info.recent) throw badRequest("It is too late to send this message for this order.");
+      if (info.already_sent) throw badRequest("You already sent this message for this order.");
+      const shop = o.vendor_name?.trim() || "The shop";
+      const id = await orders.notify({
+        userId: o.buyer_id,
+        type: "order_followup",
+        title: `${shop} missed your order`,
+        body: `Sorry, ${shop} missed your order. It's still available - are you still interested? Tap to order again.`,
+        targetParams: info.product_id ? { orderId: o.id, productId: info.product_id, vendorId: o.vendor_id } : { orderId: o.id, vendorId: o.vendor_id },
+        vendorId: o.vendor_id,
+        category: "order",
+        targetView: info.product_id ? "productDetail" : "storefront",
+      });
+      return { id };
+    });
+  }
+
   /** The shop's chats for a team member (needs the "chat" permission). */
   async teamChats(me: Identity | null, vendorId: string): Promise<unknown[]> {
     if (!me) throw forbidden("Authentication required.");

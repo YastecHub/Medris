@@ -140,6 +140,17 @@ export class OrderActionsRepository {
       order by o.created_at desc limit 60`);
   }
 
+  /** What the "still available" message needs: why and when the order was cancelled, whether it was already sent, and its first product. */
+  async followUpInfo(orderId: string): Promise<{ cancelled_automatically: boolean; recent: boolean; already_sent: boolean; product_id: string | null }> {
+    const row = await jsonRow<{ cancelled_automatically: boolean; recent: boolean; already_sent: boolean; product_id: string | null }>(this.db, sql`
+      select coalesce(o.cancellation_reason, '') like 'Cancelled automatically%' as cancelled_automatically,
+             coalesce(o.cancelled_at, o.status_changed_at, o.created_at) > now() - interval '7 days' as recent,
+             exists (select 1 from public.notifications n where n.type = 'order_followup' and n.target_params->>'orderId' = o.id::text) as already_sent,
+             (select oi.product_id::text from public.order_items oi where oi.order_id = o.id order by oi.created_at limit 1) as product_id
+        from public.orders o where o.id = ${orderId}::uuid`);
+    return row ?? { cancelled_automatically: false, recent: false, already_sent: false, product_id: null };
+  }
+
   /** Fails like PostgreSQL does for a value that is not an order_status. */
   async castStatus(status: string): Promise<void> {
     await this.db.execute(sql`select ${status}::public.order_status`);
@@ -324,11 +335,12 @@ export class OrderActionsRepository {
     vendorId?: string | null;
     category?: string | null;
     metadata?: Record<string, unknown> | null;
+    targetView?: string;
   }): Promise<string> {
     const [row] = rowsOf<{ id: string }>(
       await this.db.execute(sql`
         insert into public.notifications (user_id, type, title, body, target_view, target_params, actor_id, actor_name, vendor_id, notification_category ${n.metadata ? sql`, metadata` : sql``})
-        values (${n.userId}::uuid, ${n.type}, ${n.title}, ${n.body}, 'orderDetail', ${JSON.stringify(n.targetParams)}::jsonb, ${n.actorId ?? null}::uuid, ${n.actorName ?? null},
+        values (${n.userId}::uuid, ${n.type}, ${n.title}, ${n.body}, ${n.targetView ?? "orderDetail"}, ${JSON.stringify(n.targetParams)}::jsonb, ${n.actorId ?? null}::uuid, ${n.actorName ?? null},
                 ${n.vendorId ?? null}::uuid, ${n.category ?? null} ${n.metadata ? sql`, ${JSON.stringify(n.metadata)}::jsonb` : sql``})
         returning id`),
     );
