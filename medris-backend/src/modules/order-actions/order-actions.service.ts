@@ -28,7 +28,7 @@ export class OrderActionsService {
       await orders.castStatus(status);
       const o = await orders.order(orderId);
       if (!o) throw notFound("order not found");
-      const isVendor = o.vendor_user_id === me.userId;
+      const isVendor = o.vendor_user_id === me.userId || (await orders.teamCan(me.userId, o.vendor_id, "orders"));
       if (!isVendor && o.buyer_id !== me.userId) throw forbidden("not authorized");
       if (
         !isVendor &&
@@ -97,7 +97,7 @@ export class OrderActionsService {
     const work = async (orders: OrderActionsRepository, notify: NotificationWriter) => {
       const o = await orders.order(orderId);
       if (!o) throw notFound("order not found");
-      if (!me || o.vendor_user_id !== me.userId) throw forbidden("not authorized");
+      if (!me || (o.vendor_user_id !== me.userId && !(await orders.teamCan(me.userId, o.vendor_id, "orders")))) throw forbidden("not authorized");
       if (!["pending", "confirmed"].includes(o.status)) throw badRequest("This order can no longer be declined or cancelled here.");
       const why = sqlTrim(reason ?? "");
       await orders.decline(orderId, why === "" ? null : why);
@@ -125,7 +125,7 @@ export class OrderActionsService {
       const o = await orders.order(orderId, false);
       if (!o) throw badRequest("Order not found.");
       const isBuyer = o.buyer_id === me.userId;
-      if (!isBuyer && o.vendor_user_id !== me.userId) throw forbidden("Not your order.");
+      if (!isBuyer && o.vendor_user_id !== me.userId && !(await orders.teamCan(me.userId, o.vendor_id, "orders"))) throw forbidden("Not your order.");
       if (["completed", "cancelled"].includes(o.status)) throw badRequest("This order is closed, so notes can no longer be sent.");
       if ((await orders.notesBy(orderId, me.userId)) >= 10) throw badRequest("You have reached the note limit for this order.");
       const id = await orders.addNote(orderId, me.userId, body);
@@ -274,7 +274,7 @@ export class OrderActionsService {
       const orders = new OrderActionsRepository(tx);
       const o = await orders.order(orderId, false);
       if (!o) throw notFound("Order not found.");
-      if (o.vendor_user_id !== me.userId) throw forbidden("Only the shop can ask to message this customer.");
+      if (o.vendor_user_id !== me.userId && !(await orders.teamCan(me.userId, o.vendor_id, "chat"))) throw forbidden("Only the shop can ask to message this customer.");
       if (!["cancelled", "completed"].includes(o.status)) throw badRequest("The chat for this order is still open.");
       if (await orders.chatOpen(o.buyer_id, o.vendor_id)) throw badRequest("You can already message this customer.");
       if (await orders.recentChatRequest(o.buyer_id, o.vendor_id)) throw badRequest("You already asked this customer in the last 24 hours.");
@@ -353,7 +353,7 @@ export class OrderActionsService {
       const orders = new OrderActionsRepository(tx);
       const o = await orders.order(orderId);
       if (!o) throw notFound("Order not found.");
-      if (o.vendor_user_id !== me.userId) throw forbidden("Only the vendor can suggest a quantity.");
+      if (o.vendor_user_id !== me.userId && !(await orders.teamCan(me.userId, o.vendor_id, "orders"))) throw forbidden("Only the vendor can suggest a quantity.");
       if (o.status !== "pending") throw badRequest("You can only suggest a quantity while the order is pending.");
       if (o.order_type !== "sale" || o.package_id != null) throw badRequest("A quantity can only be suggested on product orders.");
       if (await orders.anyPaid(orderId)) throw badRequest("This order has already been paid for.");
