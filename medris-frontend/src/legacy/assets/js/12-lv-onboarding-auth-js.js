@@ -1480,6 +1480,15 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     try{window.lbRerender&&window.lbRerender();}catch(_){}
     window.__homeFullIndex=null;
   };
+  // one delegated handler on the document: the bar can be rebuilt or restored from a saved page at any time, and a listener on the
+  // element itself would be lost (taps then did nothing until a refresh)
+  if(!window.__lvBarDelegated){ window.__lvBarDelegated=true; document.addEventListener("click",function(e){
+    var bar=e.target.closest&&e.target.closest("#lvCampusBar"); if(!bar) return;
+      if(e.target.closest("[data-lb]")){ try{navigate("leaderboard");}catch(_){} return; }
+      var seg=e.target.closest("[data-m]");
+      if(seg){ var m=seg.dataset.m; if(m==="all") setView("all"); else { var mine=window.lvMyCampusId(); if(mine&&mine!=="none") setView(mine); else window.lvOpenCampusPicker({title:"Choose your campus",current:"",allowNone:true,onPick:function(r){window.lvSaveCampus(r.id).catch(function(){}).then(function(){ if(r.id!=="none") setView(r.id); else bar.innerHTML=barHtml(); });}}); } return; }
+      if(e.target.closest(".lvcb-main")) load().then(function(){ window.lvOpenCampusPicker({title:"Browse a campus",current:window.lvViewCampus(),allowAll:true,onPick:function(r){setView(r.all?"all":r.id);}}); });
+  }); }
   function mountHomeBar(){
     var grid=document.getElementById("productGrid"); if(!grid) return;
     var bar=document.getElementById("lvCampusBar");
@@ -1494,12 +1503,6 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     }
     bar=document.createElement("div"); bar.id="lvCampusBar"; anchor.parentNode.insertBefore(bar,anchor);
     load().then(function(){var h=barHtml();bar.innerHTML=h;bar.__lvH=h;bar.dataset.painted="1"; spotIcon(bar);});
-    bar.addEventListener("click",function(e){
-      if(e.target.closest("[data-lb]")){ try{navigate("leaderboard");}catch(_){} return; }
-      var seg=e.target.closest("[data-m]");
-      if(seg){ var m=seg.dataset.m; if(m==="all") setView("all"); else { var mine=window.lvMyCampusId(); if(mine&&mine!=="none") setView(mine); else window.lvOpenCampusPicker({title:"Choose your campus",current:"",allowNone:true,onPick:function(r){window.lvSaveCampus(r.id).catch(function(){}).then(function(){ if(r.id!=="none") setView(r.id); else bar.innerHTML=barHtml(); });}}); } return; }
-      if(e.target.closest(".lvcb-main")) load().then(function(){ window.lvOpenCampusPicker({title:"Browse a campus",current:window.lvViewCampus(),allowAll:true,onPick:function(r){setView(r.all?"all":r.id);}}); });
-    });
   }
 
   // ---- ask people who haven't chosen yet
