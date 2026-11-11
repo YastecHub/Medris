@@ -7918,3 +7918,24 @@ html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app 
 html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button{color:#8ab4f8!important}
 html:root:root:root:root:is([data-theme="dark"],[data-theme="black"]) body #app .vmpage .vmp-view-switch button.active{background:#1a73e8!important;color:#fff!important}
 html:root:root:root:root:root:root body #app#app#app .storefront-profile .storefront-public-actions{transform:translate(.6rem,-1.6rem)!important}
+
+/* comment send button (also inside the comments sheet, outside #app): green circle, white arrow, light / dark / black */
+html:root:root:root:root:root body [aria-label="Send comment"],html:root:root:root:root:root body .lv-cmt-sheet .product-comment-compose-row>button:last-child,html:root:root:root:root:root body .product-comment-compose-row>button.icon-btn:last-child{background:#1a6b4a!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;box-shadow:none!important;border-radius:50%!important;opacity:1!important}
+html[data-theme="dark"]:root:root:root:root body [aria-label="Send comment"],html[data-theme="black"]:root:root:root:root body [aria-label="Send comment"],html[data-theme="dark"]:root:root:root:root body .product-comment-compose-row>button.icon-btn:last-child,html[data-theme="black"]:root:root:root:root body .product-comment-compose-row>button.icon-btn:last-child{background:#16a34a!important}
+html:root:root:root:root:root body [aria-label="Send comment"] i,html:root:root:root:root:root body .product-comment-compose-row>button.icon-btn:last-child i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+
+/* product page: no gap between the header and the photo (the page area had a top margin) */
+html:root:root:root body #app#app:has(.product-detail-card){margin-top:-1px!important}
+
+/* delivery / pickup and other option choices: soft rounded, no purple box */
+html:root:root:root:root:root body #app#app .delivery-method-row label,html:root:root:root:root:root body #app#app .card:has(#buyQty) .delivery-method-row label{background:transparent!important;border:1.5px solid var(--border,rgba(128,128,128,.3))!important;border-radius:14px!important;padding:.6rem 1rem!important;box-shadow:none!important}
+html:root:root:root:root:root body #app#app .delivery-method-row label:has(input:checked){border-color:#1a73e8!important;background:color-mix(in srgb,#1a73e8 8%,transparent)!important}
+.lw-tag-change{display:inline-flex;align-items:center;gap:.4rem;margin:.6rem 0 .2rem}
+html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label{border:1.5px solid var(--border,rgba(128,128,128,.3))!important;border-radius:14px!important;padding:.6rem 1rem!important;flex:1;justify-content:center}
+html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row label:has(input:checked){border-color:#1a73e8!important;background:color-mix(in srgb,#1a73e8 12%,transparent)!important;font-weight:700!important}
+html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.product-detail-card) .delivery-method-row input[type=radio]{display:none}
+
+/* shop page presence: Levromart's mark, green when online and grey when not, with a small grey line (like WhatsApp) */
+.sf-presence{gap:.35rem!important;font-size:.78rem!important;color:var(--text-muted,#8a8f98)!important}
+.sf-pdot{width:.95rem!important;height:.95rem!important;border-radius:0!important;background:#9ca3af!important;box-shadow:none!important;-webkit-mask:url(/lv-mark.svg) center/contain no-repeat;mask:url(/lv-mark.svg) center/contain no-repeat;flex:none}
+.sf-pdot.on{background:#16a34a!important;box-shadow:none!important}
