@@ -536,6 +536,11 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
             </span>
           </div>
         ) : null}
+        {(product as { created_at?: string | null }).created_at ? (
+          <p className="pd-posted muted">
+            <i className="fa-regular fa-clock"></i> Posted {legacy("timeAgo")((product as { created_at?: string }).created_at)}
+          </p>
+        ) : null}
         {statItems.length ? (
           <div className="product-detail-stats">
             {statItems.map((s) => (

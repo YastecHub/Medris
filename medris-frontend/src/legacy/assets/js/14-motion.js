@@ -2882,6 +2882,11 @@ window.lvAskCancel = async function (orderId) {
     busy(true);
     canvas.toBlob(async function (blob) {
       if (!blob) { busy(false); showToast("Could not prepare that photo.", "error"); return; }
+      // show the new picture straight away; the upload and save carry on behind it, and the old picture comes back only if they fail
+      var oldAv = profile.avatar_url, oldLogo = vendor && vendor.logo_url, local = URL.createObjectURL(blob);
+      profile.avatar_url = local; if (vendor && vendor.id) vendor.logo_url = local;
+      updateAuthUI(); closeAvatarCropModal(); showToast("Profile photo updated.", "success");
+      try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
       try {
         var publicUrl = await uploadToR2(blob, "avatars/" + session.user.id + "/avatar.jpg", "image/jpeg");
         var url = publicUrl + "?t=" + Date.now();
@@ -2892,9 +2897,13 @@ window.lvAskCancel = async function (orderId) {
           var v = await sb.from("vendors").update({ logo_url: url }).eq("id", vendor.id);
           if (!v.error) vendor.logo_url = url;
         }
-        updateAuthUI(); closeAvatarCropModal(); showToast("Profile photo updated.", "success");
+        updateAuthUI();
         try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
-      } catch (err) { busy(false); showToast((err && err.message) || "Couldn't save the photo. Try again.", "error"); }
+      } catch (err) {
+        profile.avatar_url = oldAv; if (vendor && vendor.id) vendor.logo_url = oldLogo;
+        updateAuthUI(); try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
+        showToast((err && err.message) || "Couldn't save the photo. Try again.", "error");
+      }
     }, "image/jpeg", 0.9);
   };
 })();

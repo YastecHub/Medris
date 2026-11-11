@@ -7866,3 +7866,5 @@ html[data-theme="dark"]:root:root body #app [aria-label="Send comment"],html[dat
 :root:root:root body #app:has(.product-detail-card) .delivery-method-row label{padding:0!important}
 :root:root:root body #app:has(.product-detail-card) .pd-total-box,:root:root:root body #app:has(.product-detail-card) .product-payment-plan-notice{padding:.6rem 0!important;border-top:1px solid var(--border,rgba(128,128,128,.2))!important}
 :root:root:root body #app:has(.product-detail-card) .selected-variant-summary{padding:.6rem 0!important;border-bottom:1px solid var(--border,rgba(128,128,128,.2))!important}
+
+.pd-posted{order:9;margin:0;padding:.5rem .9rem;font-size:.82rem}
