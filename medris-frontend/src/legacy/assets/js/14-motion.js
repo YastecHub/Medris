@@ -2882,6 +2882,11 @@ window.lvAskCancel = async function (orderId) {
     busy(true);
     canvas.toBlob(async function (blob) {
       if (!blob) { busy(false); showToast("Could not prepare that photo.", "error"); return; }
+      // show the new picture straight away; the upload and save carry on behind it, and the old picture comes back only if they fail
+      var oldAv = profile.avatar_url, oldLogo = vendor && vendor.logo_url, local = URL.createObjectURL(blob);
+      profile.avatar_url = local; if (vendor && vendor.id) vendor.logo_url = local;
+      updateAuthUI(); closeAvatarCropModal(); showToast("Profile photo updated.", "success");
+      try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
       try {
         var publicUrl = await uploadToR2(blob, "avatars/" + session.user.id + "/avatar.jpg", "image/jpeg");
         var url = publicUrl + "?t=" + Date.now();
@@ -2892,9 +2897,13 @@ window.lvAskCancel = async function (orderId) {
           var v = await sb.from("vendors").update({ logo_url: url }).eq("id", vendor.id);
           if (!v.error) vendor.logo_url = url;
         }
-        updateAuthUI(); closeAvatarCropModal(); showToast("Profile photo updated.", "success");
+        updateAuthUI();
         try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
-      } catch (err) { busy(false); showToast((err && err.message) || "Couldn't save the photo. Try again.", "error"); }
+      } catch (err) {
+        profile.avatar_url = oldAv; if (vendor && vendor.id) vendor.logo_url = oldLogo;
+        updateAuthUI(); try { window.lvAvatarChanged && window.lvAvatarChanged(); } catch (_) {}
+        showToast((err && err.message) || "Couldn't save the photo. Try again.", "error");
+      }
     }, "image/jpeg", 0.9);
   };
 })();
@@ -7843,3 +7852,35 @@ window.lvGoToNewOrder = function (orderId) {
 /* The product photo never opens a full-screen viewer */
 window.openProductImageLightbox = function () {};
 window.openProductGallerySlide = function (event) { try { event && event.stopPropagation && event.stopPropagation(); } catch (_) {} };
+
+/* ===== Tapping a notification lands on the exact thing and flashes it (the new comment, reply, suggestion or order) ===== */
+(function () {
+  function flash(el) {
+    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {}
+    el.classList.add("lv-flash"); setTimeout(function () { el.classList.remove("lv-flash"); }, 3200);
+  }
+  function seek(ids, tries) {
+    var hit = null;
+    for (var i = 0; i < ids.length && !hit; i++) {
+      var v = CSS.escape(ids[i]);
+      hit = document.querySelector('[data-comment-id="' + v + '"], [data-reply-id="' + v + '"], [data-suggestion-id="' + v + '"], [data-order-id="' + v + '"], [data-message-id="' + v + '"], [data-msg-id="' + v + '"]');
+    }
+    if (hit) return flash(hit);
+    if (tries > 0) setTimeout(function () { seek(ids, tries - 1); }, 400);
+  }
+  var orig = window.handleNotifItemClick;
+  if (typeof orig !== "function") return;
+  window.handleNotifItemClick = async function (event, id) {
+    var item = event && event.currentTarget, params = {}, view = "", type = "";
+    try { params = JSON.parse((item && item.dataset.params) || "{}"); view = (item && item.dataset.view) || ""; type = (item && item.dataset.type) || ""; } catch (_) {}
+    var r = await orig.apply(this, arguments);
+    try {
+      var ids = Object.keys(params).map(function (k) { return params[k]; }).filter(function (x) { return typeof x === "string" && x.length > 8; });
+      var pid = params.productId || params.product_id;
+      // a comment or reply on a product: open its comments first so the new one is on screen
+      if (view === "productDetail" && pid && (params.commentId || params.comment_id || /comment|reply/i.test(type))) setTimeout(function () { try { window.lvOpenProductComments && window.lvOpenProductComments(pid); } catch (_) {} }, 600);
+      if (ids.length) seek(ids.filter(function (x) { return x !== pid; }), 14);
+    } catch (_) {}
+    return r;
+  };
+})();
