@@ -8096,4 +8096,6 @@ html body #app .sr-thumb .lv-noimg svg{width:55%;height:55%}
 .vmp-sugg .vmp-sg-logo .vd-initials,.vmp-sugg .vmp-sg-logo .vd-initials *{font-size:.9rem!important;line-height:1!important}
 
 /* online / last seen under the shop's name on the product page */
-.pd-presence{padding:0!important;margin:.1rem 0 .55rem!important}
+.pd-presence{display:flex;order:0;padding:0!important;margin:.05rem 0 .35rem 2.6rem!important;font-size:.72rem!important;opacity:.7;font-weight:400}
+.pd-presence[hidden]{display:none!important}
+.service-vendor-info-head .pd-presence{margin-left:0!important}
