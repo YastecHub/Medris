@@ -7934,3 +7934,32 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
   var raf = 0;
   try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
 })();
+
+/* ===== Everyone sets a delivery address once: a bottom drawer asks signed-in people who have none (each time the app opens, until they save one) ===== */
+(function () {
+  var shown = false;
+  function ask() {
+    if (shown || document.hidden) return;
+    var id = null; try { id = session && session.user && session.user.id; } catch (_) {}
+    if (!id || typeof profile === "undefined" || !profile || profile.address || profile.role === "admin" || !profile.name) return;
+    if (document.getElementById("lvAddrSheet") || document.querySelector("#lvCampus, #lvSetup, #lvOnb, .lvw-sheet-wrap, .modal-overlay:not(.hidden)")) return;
+    shown = true;
+    var m = document.createElement("div"); m.id = "lvAddrSheet"; m.className = "lvw-sheet-wrap lw-wrap";
+    m.innerHTML = '<div class="lvw-sheet lw-sheet" role="dialog" aria-modal="true" aria-label="Delivery address"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
+      '<div class="lvw-sheet-head"><h3>Where should orders be delivered?</h3></div>' +
+      '<p class="muted" style="margin:.2rem 0 .7rem">Add your delivery address once and every order uses it. You can change it any time in your profile.</p>' +
+      '<textarea id="lvAddrIn" rows="2" class="ve-input" placeholder="e.g. Elkanemi Hostel, Block A, Room A12"></textarea><p class="lw-err" id="lvAddrErr" hidden></p>' +
+      '<div style="display:flex;gap:.6rem;margin-top:.9rem"><button type="button" class="btn btn-secondary" id="lvAddrLater" style="flex:1">Later</button><button type="button" class="btn btn-primary" id="lvAddrSave" style="flex:1">Save</button></div></div>';
+    document.body.appendChild(m);
+    m.querySelector("#lvAddrLater").onclick = function () { m.remove(); };
+    m.querySelector("#lvAddrSave").onclick = async function () {
+      var b = this, v = m.querySelector("#lvAddrIn").value.trim(), er = m.querySelector("#lvAddrErr");
+      if (v.length < 5) { er.textContent = "Please enter your full delivery address."; er.hidden = false; return; }
+      b.disabled = true;
+      var r = await sb.from("users").update({ address: v }).eq("id", id);
+      if (r && r.error) { b.disabled = false; er.textContent = r.error.message || "Could not save."; er.hidden = false; return; }
+      profile.address = v; m.remove(); showToast("Delivery address saved.", "success");
+    };
+  }
+  setInterval(function () { if (!shown) ask(); }, 7000);
+})();
