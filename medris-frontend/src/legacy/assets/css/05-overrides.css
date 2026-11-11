@@ -7966,3 +7966,6 @@ html:root:root:root:root body #app .product-detail-card .product-detail-media .p
 :root:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-rating{position:static!important;margin-left:auto!important}
 :root:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-row{flex:0 0 100%}
 html:root:root:root:root:root:root body #app#app#app#app .pd-buy-actions .btn.pd-place-order,html:root:root:root:root:root:root body #app#app#app#app .card .pd-buy-actions button.pd-place-order{background:#1f9d6b!important;background-image:none!important;box-shadow:none!important;filter:none!important}
+
+/* comments icon on the photo: white like the heart and share icons */
+:root:root:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-top-comment-btn,:root:root:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-top-comment-btn i,:root:root:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-cbubble i{color:#fff!important;-webkit-text-fill-color:#fff!important}
