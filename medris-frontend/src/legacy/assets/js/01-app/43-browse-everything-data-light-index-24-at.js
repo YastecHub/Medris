@@ -373,7 +373,7 @@ function productCardHtml(p) {
     ${showFavBtn ? `<button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>` : ""}
     <div class="card" style="cursor:pointer;" onclick="${showFavBtn ? `navigate('productDetail',{productId:'${p.id}'})` : `handleProductImageTap(event,'${p.id}')`}">
       <div class="product-img">${img ? `<img src="${esc(lvThumb(img, 280))}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
-      <h4><span class="pc-title-row"><span class="pc-vlogo-wrap">${p.vendor?.logo_url ? `<img class="pc-vlogo" src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pc-vlogo pc-vlogo-txt">${esc(String(p.vendor?.business_name || "?").trim().charAt(0).toUpperCase())}</span>`}</span><span class="pc-name">${esc(p.name)}</span></span></h4>
+      <h4><span class="pc-title-row"><span class="pc-vlogo-wrap">${p.vendor?.logo_url ? `<img class="pc-vlogo" src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pc-vlogo pc-vlogo-txt" style="--av-h:${stableAvatarHue(p.vendor?.id || p.vendor_id || p.vendor?.business_name)}">${esc(String(p.vendor?.business_name || "?").trim().charAt(0).toUpperCase())}</span>`}</span><span class="pc-name">${esc(p.name)}</span></span></h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
       </div>

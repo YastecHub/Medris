@@ -213,7 +213,8 @@ async function __levroOriginalRenderProductDetail(productId, opts) {
       ${product.is_service || !product.condition ? "" : `<p class="pd-condition"><strong>Condition:</strong> <span class="pd-chip">${esc((product.condition || "").replace("-", " "))}</span></p>`}
       <details class="pd-about"><summary><span><i class="fa-solid fa-circle-info"></i> About this ${product.is_service ? "service" : "product"}</span><i class="fa-solid fa-chevron-down pd-about-chev"></i></summary><div class="pd-about-body">${readMoreHtml(`productDescText-${product.id}`, cleanDescription || "No description provided.")}</div></details>
     </div>
-    ${(product.sale_price != null && !product.is_service) ? `<div class="product-price-hero" id="productPriceHero"><div class="pph-label">${productVariants.length ? "Price · selected variety" : "Buy price"}</div><div class="pph-row" id="productPriceHeroBody">${priceHeroInner(productVariants.length ? productVariants[0] : product)}</div></div>` : ""}
+    ${(product.sale_price != null && !product.is_service) ? `<div class="product-price-hero" id="productPriceHero"><div class="pph-label">${productVariants.length ? "Price · selected variety" : "Buy price"}</div><div class="pph-row" id="productPriceHeroBody">${priceHeroInner(productVariants.length ? productVariants[0] : product)}</div><span class="badge pph-rating ${ratingBadgeClass(Number(st.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span></div>` : ""}
+    ${product.created_at ? `<p class="pd-posted muted"><i class="fa-regular fa-clock"></i> Posted ${esc(timeAgo(product.created_at))}</p>` : ""}
     ${statItems.length ? `<div class="product-detail-stats">${statItems.map((s) => `<div><span class="muted">${esc(s.label)}</span><strong>${s.value}</strong></div>`).join("")}</div>` : ""}
   </div>`;
 
@@ -764,22 +765,23 @@ window.__lvHoldHeight = function (el) {
   const blocked = "input,textarea,select,button,a,label,.product-gallery-carousel,.product-gallery-track,.product-gallery-main,.product-gallery-thumbs,.product-gallery-varieties,.product-comments-panel,.lv-cmt-sheet,.modal,.drawer,[role=dialog],.horizontal-scroll,.carousel,.hscroll,#lvCs,#mediaActionSheet";
   const cache = new Map();
   const app = () => document.getElementById("app");
-  async function siblings(vendorId) {
-    if (cache.has(vendorId)) return cache.get(vendorId);
-    const p = sb.from("products").select("id").eq("vendor_id", vendorId).eq("status", "active").order("created_at", { ascending: false }).limit(60)
+  async function siblings(vendorId, isService) {
+    const ck = vendorId + ":" + (isService ? "s" : "p");
+    if (cache.has(ck)) return cache.get(ck);
+    const p = sb.from("products").select("id").eq("vendor_id", vendorId).eq("status", "active").eq("is_service", !!isService).order("created_at", { ascending: false }).limit(60)
       .then(({ data }) => (data || []).map((r) => String(r.id))).catch(() => []);
-    cache.set(vendorId, p);
+    cache.set(ck, p);
     return p;
   }
   // One endless feed: the vendor's own products first, then products from other verified vendors (same category first), then back to the start.
   let feed = null;
   const visited = new Set();   // products already seen this visit: the swipe feed shows new ones first and only then comes round again
   async function buildFeed(cur, vid) {
-    const own = await siblings(String(vid));
+    const own = await siblings(String(vid), cur.is_service);
     let more = [];
     try {
       const { data } = await sb.from("products").select("id, category_id, vendor:vendors!inner(id, verification_status, is_active)")
-        .eq("status", "active").neq("vendor_id", vid).eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+        .eq("status", "active").eq("is_service", !!cur.is_service).neq("vendor_id", vid).eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
         .order("created_at", { ascending: false }).limit(80);
       const cat = cur.category_id;
       more = (data || []).map((r, i) => ({ id: String(r.id), k: (r.category_id && r.category_id === cat ? 0 : 1) * 1000 + i })).sort((a, b) => a.k - b.k).map((r) => r.id);

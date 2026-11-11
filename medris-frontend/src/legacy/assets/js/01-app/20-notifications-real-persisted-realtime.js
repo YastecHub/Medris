@@ -332,7 +332,11 @@ async function handleNotifItemClick(event, id) {
     navigate('messages',{conversationId});
     return;
   }
-  navigate(item.dataset.view || 'home', params);
+  // a vendor's new listing / price change lands on that product (or package), not on the shop's page
+  let view = item.dataset.view || 'home';
+  if (view === 'storefront' && (params.productId || params.product_id)) { params = { productId: params.productId || params.product_id }; view = 'productDetail'; }
+  else if (view === 'storefront' && (params.packageId || params.package_id)) { params = { packageId: params.packageId || params.package_id }; view = 'packageDetail'; }
+  navigate(view, params);
 }
 
 function switchNotifView(mode) {

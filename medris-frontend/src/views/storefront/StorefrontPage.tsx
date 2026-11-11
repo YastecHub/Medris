@@ -4,6 +4,7 @@ import { legacy, legacyState, storefrontState } from "@/views/legacy-globals";
 import { inlineClick } from "@/views/inline-onclick";
 import type { ViewProps } from "@/views";
 import "@/views/legacy-navigate"; // declares window.navigate
+import { countFormerlyView, mayShowFormerly } from "@/views/formerly";
 
 /**
  * A vendor's public storefront, drawn by React: the page frame and the vendor's header.
@@ -91,9 +92,9 @@ export default function StorefrontPage({ params }: ViewProps) {
   return <Storefront vendor={state.vendor} products={state.products} extras={state.extras} />;
 }
 
-function nameWithFormerly(v: StorefrontVendor) {
+function nameWithFormerly(v: StorefrontVendor, show: boolean) {
   const name = v.business_name ?? "";
-  if (!v.previous_business_name || !v.name_changed_at) return <>{name}</>;
+  if (!show || !v.previous_business_name || !v.name_changed_at) return <>{name}</>;
   const daysSince = (Date.now() - new Date(v.name_changed_at).getTime()) / 86400000;
   if (daysSince > FORMERLY_GRACE_DAYS) return <>{name}</>;
   return (
@@ -157,6 +158,9 @@ function priceText(p: StorefrontProduct): string {
 }
 
 function Storefront({ vendor: v, products, extras }: { vendor: StorefrontVendor; products: StorefrontProduct[]; extras: () => Promise<StorefrontExtras> }) {
+  // decided once when the page opens, so the old name does not vanish while it is being read
+  const [showFormerly] = useState(() => mayShowFormerly(v.id));
+  useEffect(() => { if (v.previous_business_name) countFormerlyView(v.id); }, [v.id, v.previous_business_name]);
   const started = useRef(false);
   const userId = legacyState.userId();
   const isOwn = !!userId && String(userId) === String(v.user_id);
@@ -275,7 +279,7 @@ function Storefront({ vendor: v, products, extras }: { vendor: StorefrontVendor;
           </div>
           <div className="storefront-name-row">
             <h1 className="storefront-profile-name">
-              {nameWithFormerly(v)} <i data-vt={v.id} className="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i>
+              {nameWithFormerly(v, showFormerly)} <i data-vt={v.id} className="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i>
             </h1>
           </div>
           {v.bio ? (

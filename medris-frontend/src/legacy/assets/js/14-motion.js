@@ -4116,7 +4116,7 @@ window.lvAskCancel = async function (orderId) {
       '<div class="lw-top"><div class="lw-col">' +
         '<div class="lw-label">Available balance <button type="button" class="lw-ic" onclick="lvW3Eye()" aria-label="' + (W.hide ? "Show balance" : "Hide balance") + '"><i class="fa-regular ' + (W.hide ? "fa-eye-slash" : "fa-eye") + '"></i></button><button type="button" class="lw-ic" onclick="lvW3Help()" aria-label="How your wallet works"><i class="fa-solid fa-circle-question"></i></button></div>' +
         '<div class="lw-balrow"><div class="lw-bal">' + money(d.balance_kobo) + '</div>' +
-        '<button type="button" class="lw-tag" onclick="lvW3CopyTag()" aria-label="Copy your @tag">@' + esc(d.handle) + ' <i class="fa-regular fa-copy"></i></button></div>' +
+        '<button type="button" class="lw-tag" onclick="lvW3CopyTag()" aria-label="Copy your @tag">@' + esc(d.handle) + ' <i class="fa-regular fa-copy"></i></button><button type="button" class="lw-tag lw-tag-edit" onclick="lvW3ChangeTag()" aria-label="Change your @tag"><i class="fa-solid fa-pen"></i> Change @tag</button></div>' +
       '</div><button type="button" class="lw-add" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money</button></div>' +
       (kind === "shop" && shop ? '<div class="lw-earn"><div><b><small>Shop earnings</small> ' + money(earn) + ' ready</b>' + (earnPending ? '<small>' + money(earnPending) + ' waiting for buyers to confirm</small>' : "") + '</div><button type="button" onclick="lvW3MoveEarnings()"' + (earn > 0 ? "" : " disabled") + '>Move to wallet</button></div>' : "") +
       notes +
@@ -4142,6 +4142,21 @@ window.lvAskCancel = async function (orderId) {
   function readAmount(id) { var v = Number(String((document.getElementById(id) || {}).value || "").replace(/[,\s₦]/g, "")); return v > 0 ? Math.round(v * 100) : 0; }
   function err(m, text) { var e = m.querySelector(".lw-err"); if (e) { e.textContent = text || ""; e.hidden = !text; } }
 
+  // change the @tag (allowed once every 30 days; the server checks the rules and that the name is free)
+  window.lvW3ChangeTag = async function () {
+    var d = await load(false); if (!d) return;
+    var m = sheet("Change your @tag", '<p class="lw-hint">People send you money using your @tag. 3 to 24 small letters, numbers or _ (no spaces). You can change it once every 30 days.</p>' +
+      '<div class="lw-card-box"><label class="lw-l" for="lwNewTag">New @tag</label><div class="lw-to"><span>@</span><input id="lwNewTag" type="text" maxlength="24" autocomplete="off" autocapitalize="none" value="' + esc(d.handle || "") + '"></div></div>' +
+      '<p class="lw-err" hidden></p><button type="button" class="btn lw-go" id="lwTagSave">Save @tag</button>');
+    var inp = m.querySelector("#lwNewTag"), b = m.querySelector("#lwTagSave");
+    inp.oninput = function () { inp.value = inp.value.toLowerCase().replace(/[^a-z0-9_]/g, ""); };
+    b.onclick = async function () {
+      var v = inp.value.trim(); if (v.length < 3) return err(m, "Your @tag needs at least 3 characters.");
+      b.disabled = true; var r = await sb.rpc("set_wallet_handle", { p_handle: v });
+      if (r.error) { b.disabled = false; return err(m, r.error.message || "Could not change your @tag."); }
+      closeSheet(); await load(true); repaint(); showToast("Your @tag is now @" + v + ".", "success");
+    };
+  };
   window.lvW3CopyTag = function () {
     var t = W.data ? "@" + W.data.handle : ""; if (!t) return;
     try { navigator.clipboard.writeText(t).then(function () { showToast("Copied " + t + ". People send you money with it.", "success"); }); } catch (_) { showToast(t, "info"); }
@@ -7883,4 +7898,30 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
     } catch (_) {}
     return r;
   };
+})();
+
+/* ===== Shop page: "Online now" or "Last seen ..." under the shop's name ===== */
+(function () {
+  var cache = {};
+  function line(on, at) {
+    if (on) return '<span class="sf-pdot on"></span>Online now';
+    if (!at) return "";
+    var ago = typeof timeAgo === "function" ? timeAgo(at) : "";
+    return ago ? '<span class="sf-pdot"></span>Last seen ' + ago.replace(/^just now$/i, "just now") : "";
+  }
+  function dress() {
+    var row = document.querySelector(".storefront-name-row");
+    if (!row || row.nextElementSibling && row.nextElementSibling.classList.contains("sf-presence")) return;
+    var vt = row.querySelector("[data-vt]"), id = vt && vt.getAttribute("data-vt");
+    if (!id) return;
+    try { if (typeof isOwnVendorId === "function" && isOwnVendorId(id)) return; } catch (_) {}
+    var el = document.createElement("div"); el.className = "sf-presence"; row.insertAdjacentElement("afterend", el);
+    var c = cache[id];
+    var paint = function (d) { var h = d ? line(d.online, d.last_seen_at) : ""; el.innerHTML = h; el.hidden = !h; };
+    if (c && Date.now() - c.at < 60000) return paint(c.d);
+    el.hidden = true;
+    Promise.resolve(sb.rpc("get_shop_presence", { p_vendor_id: id })).then(function (r) { var d = r && r.data; if (d && Array.isArray(d)) d = d[0]; cache[id] = { at: Date.now(), d: d }; paint(d); }).catch(function () {});
+  }
+  var raf = 0;
+  try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
 })();

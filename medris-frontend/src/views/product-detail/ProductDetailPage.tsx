@@ -1,3 +1,4 @@
+import { mayShowFormerly } from "@/views/formerly";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { InitialsTile, ProductCard, type CardProduct } from "@/components/ProductCard";
 import { loadProductDetail, loadVendorStatsRow, type PdProduct, type PdVariant, type ProductDetailResult } from "@/services/product-detail";
@@ -169,7 +170,7 @@ function Loaded({ productId, params, result }: { productId: string; params: Reco
 
 function NameWithFormerly({ v }: { v: PdProduct["vendor"] }) {
   const name = v.business_name ?? "";
-  if (!v.previous_business_name || !v.name_changed_at) return <>{name}</>;
+  if (!v.previous_business_name || !v.name_changed_at || !mayShowFormerly(v.id)) return <>{name}</>;
   const daysSince = (Date.now() - new Date(v.name_changed_at).getTime()) / 86400000;
   if (daysSince > 14) return <>{name}</>;
   return (
