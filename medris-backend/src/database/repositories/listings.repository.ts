@@ -57,6 +57,7 @@ export interface ListingFields {
   payment_deposit_percent?: number;
   rental_rate?: number | null;
   rental_rate_unit?: string | null;
+  order_expiry_minutes?: number | null;
   deposit_amount?: number | null;
   quantity_total?: number;
   quantity_available?: number;
@@ -171,6 +172,7 @@ export class ListingsRepository {
     add("payment_deposit_percent", sql`${f.payment_deposit_percent ?? null}::numeric`);
     add("rental_rate", sql`${f.rental_rate ?? null}::numeric`);
     add("rental_rate_unit", sql`${f.rental_rate_unit ?? null}`);
+    add("order_expiry_minutes", sql`${f.order_expiry_minutes ?? null}::int`);
     add("deposit_amount", sql`${f.deposit_amount ?? null}::numeric`);
     add("quantity_total", sql`${f.quantity_total ?? null}::int`);
     add("quantity_available", sql`${f.quantity_available ?? null}::int`);

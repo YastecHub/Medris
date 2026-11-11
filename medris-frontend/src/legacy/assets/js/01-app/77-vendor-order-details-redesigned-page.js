@@ -21,6 +21,7 @@ function vendorOrderTopHtml(order, ctx) {
   // ---- header
   let h = `<div class="od-header"><button type="button" class="od-back" onclick="navigate('vendorOrders',{status:'all'})" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
     <div class="od-header-title"><strong>Order Details</strong><span>${esc(shortId)}</span></div>
+    ${["confirmed", "handed_over"].includes(order.status) ? `<span class="od-bell-wrap"><button type="button" class="od-bell" onclick="remindOrderCustomer('${esc(order.id)}',this)" aria-label="Remind customer" title="Remind customer"><i class="fa-solid fa-bell"></i></button><span class="od-bell-tip" aria-hidden="true">Remind customer</span></span>` : ""}
     <div class="od-menu-wrap"><button type="button" class="od-more" onclick="toggleOrderDetailMenu(event)" aria-label="More"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button>${st === "confirmed" && (ctx.feePaid || (typeof orderIsFullyPaid === "function" && orderIsFullyPaid(order))) ? `<button type="button" onclick="lvAskCancel('${esc(order.id)}')"><i class="fa-regular fa-circle-xmark"></i> Ask Levromart to cancel</button>` : ""}<button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
   // ---- status card
@@ -795,6 +796,17 @@ async function remindOrderVendor(orderId,button){
     else if(audioCtx)audioCtx.resume().then(()=>playReminderChime()).catch(()=>{});
     showToast('Reminder sent to vendor.','success');
   }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
+  finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
+}
+async function remindOrderCustomer(orderId,button){
+  if(!session?.user?.id||orderReminderBusy.has(orderId))return;
+  orderReminderBusy.add(orderId);if(button)button.disabled=true;
+  try{
+    const {error}=await sb.rpc('remind_order_customer',{p_order_id:orderId});if(error)throw error;
+    unlockNotificationAudio();
+    if(audioCtx?.state==='running')playReminderChime();
+    showToast('Reminder sent to the customer.','success');
+  }catch(err){showToast(err.message||'Could not send the reminder.','error');}
   finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
 }
 async function updateOrderStatus(orderId, newStatus) {

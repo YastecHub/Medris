@@ -7772,3 +7772,20 @@ html.lv-no-convos #messagesWrap,html.lv-no-convos button.icon-btn[onclick="navig
 :root:root:root:root:root:root body #app .product-detail-card .product-price-hero .pph-rating{position:absolute;right:.1rem;top:50%;transform:translateY(-50%);margin:0;white-space:nowrap}
 :root:root:root:root:root:root body #app .product-detail-card:has(.pph-rating) .product-detail-actions{display:none!important}
 :root:root:root:root:root:root body #app .product-detail-card .product-detail-title{margin-bottom:.15rem!important;min-height:0!important}
+
+/* Chat: the sent bubble is ONE flat green (no gradient, no glow) so the ticks read clearly, like WhatsApp */
+:root:root:root:root{--chat-mine-bg:#1a6b4a;--chat-mine-text:#fff}
+:root[data-theme="dark"]:root:root:root,:root[data-theme="black"]:root:root:root{--chat-mine-bg:#0f4f3a}
+:root:root:root:root body .chat-bubble.mine,:root:root:root:root body .chat-page-wrap .chat-bubble.mine{background:var(--chat-mine-bg)!important;background-image:none!important;box-shadow:none!important;filter:none!important;backdrop-filter:none!important;border:0!important}
+:root:root:root:root body .chat-bubble.mine::before,:root:root:root:root body .chat-bubble.mine::after{background:none!important;box-shadow:none!important}
+:root:root:root:root body .chat-bubble.mine.lv-stk-only,:root:root:root:root body .chat-bubble.theirs.lv-stk-only{background:transparent!important;box-shadow:none!important}
+.chat-bubble-text img.lv-stk{width:6.5rem;height:6.5rem;object-fit:contain;display:block}
+/* sticker / emoji panels in messages and Levi */
+.lv-msgstk{display:grid;grid-template-columns:repeat(6,1fr);gap:.25rem;padding:.5rem;margin:.3rem .5rem;border:1px solid var(--border,rgba(128,128,128,.3));border-radius:16px;background:var(--card,#111);max-height:12rem;overflow:auto}
+.lv-msgstk[hidden]{display:none}
+.lv-msgstk button{border:0;background:transparent;padding:.2rem;border-radius:10px;cursor:pointer;display:grid;place-items:center;font-size:1.6rem}
+.lv-msgstk button:active{background:color-mix(in srgb,var(--text,#111) 10%,transparent)}
+.lv-msgstk img{width:2.8rem;height:2.8rem;object-fit:contain}
+.chat-input-row>.lv-stk-tog{align-self:center}
+/* wallet icons in the "How do you want to pay?" sheet: white on the green and blue tiles in every mode */
+:root:root:root body .lw-pay-ic i,:root[data-theme] body .lw-pay-ic i{color:#fff!important;-webkit-text-fill-color:#fff!important}

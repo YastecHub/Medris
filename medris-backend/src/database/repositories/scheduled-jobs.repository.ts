@@ -16,10 +16,13 @@ export class ScheduledJobsRepository {
   unconfirmedOrders(): Promise<{ id: string; buyer_id: string | null; vendor_user_id: string | null; minutes: number }[]> {
     return jsonRows(
       this.db,
-      sql`select o.id, o.buyer_id, v.user_id as vendor_user_id, coalesce(v.order_expiry_minutes, 30) as minutes
+      sql`select o.id, o.buyer_id, v.user_id as vendor_user_id, x.minutes
           from public.orders o join public.vendors v on v.id = o.vendor_id
-          where o.status = 'pending' and coalesce(v.order_expiry_minutes, 30) > 0
-            and o.created_at <= now() - make_interval(mins => coalesce(v.order_expiry_minutes, 30))
+          cross join lateral (
+            select coalesce((select min(p.order_expiry_minutes) from public.order_items oi join public.products p on p.id = oi.product_id where oi.order_id = o.id and p.order_expiry_minutes is not null), v.order_expiry_minutes, 30) as minutes
+          ) x
+          where o.status = 'pending' and x.minutes > 0
+            and o.created_at <= now() - make_interval(mins => x.minutes)
           for update of o skip locked`,
     );
   }

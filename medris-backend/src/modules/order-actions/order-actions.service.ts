@@ -243,6 +243,26 @@ export class OrderActionsService {
     });
   }
 
+  /** The shop reminds the customer about an accepted order that waits on them (to pay, or to confirm they got it). */
+  async remindCustomer(me: Identity | null, orderId: string): Promise<{ id: string }> {
+    if (!me) throw forbidden("Authentication required.");
+    return this.db().onBehalfOf(me, async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const o = await orders.vendorRemindableOrderOf(orderId, me.userId);
+      if (!o) throw badRequest("This order does not need a reminder right now.");
+      if (o.recent) throw badRequest("You already sent a reminder a moment ago. Please wait 2 minutes before sending another.");
+      const id = await orders.notify({
+        userId: o.buyer_id,
+        type: "order_reminder_customer",
+        title: "Order reminder",
+        body: o.status === "confirmed" ? "The shop is waiting for you on your order. Please pay or follow up with them." : "Your order is on its way. Please confirm when you have received it.",
+        targetParams: { orderId: o.id },
+        category: "order",
+      });
+      return { id };
+    });
+  }
+
   /** One tap: remind every shop that still has an order of yours waiting. Orders reminded in the last 2 minutes are skipped. */
   async remindAll(me: Identity | null): Promise<{ reminded: number; skipped: number }> {
     if (!me) throw forbidden("Authentication required.");

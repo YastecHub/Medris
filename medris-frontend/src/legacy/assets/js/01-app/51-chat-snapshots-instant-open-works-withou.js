@@ -257,7 +257,7 @@ async function renderMessages(conversationId) {
       </div>
       ${isBlockedByMe ? `<div class="chat-blocked-banner"><i class="fa-solid fa-user-slash"></i><span>You blocked ${esc(otherName)}.</span><button type="button" onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')">Unblock</button></div>` : `
       <div class="chat-input-row">
-        ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
+        <button type="button" class="lv-stk-tog" id="msgStickerBtn" onclick="lvMsgStickers(this)" title="Stickers" aria-label="Stickers"><i class="fa-regular fa-face-smile"></i></button>
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')"><i class="fa-solid fa-paper-plane"></i></button>
       </div>`}

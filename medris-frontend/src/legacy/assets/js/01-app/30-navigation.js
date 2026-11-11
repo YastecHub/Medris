@@ -139,7 +139,7 @@ function navigationShellHtml(view) {
   // Never expose a background-refresh message as the page itself. If no real
   // snapshot exists yet, use a tiny neutral skeleton; the live renderer replaces
   // it as soon as its data arrives.
-  return `<div class="instant-page-shell instant-route-opening" aria-hidden="true"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-route-skeleton"><span></span><span></span><span></span></div></div>`;
+  return `<div class="instant-page-shell instant-route-opening" aria-hidden="true"><div class="instant-route-skeleton"><span></span><span></span><span></span></div></div>`;
 }
 
 function isOwnVendorId(vendorId) {
