@@ -83,6 +83,11 @@ async function renderVendorEditProfile() {
       <span class="switch-label-text">Let buyers message or call you outside these hours ${infoPopoverHtml("veAfterHoursInfo", "Off: the Message and Call buttons show your working hours instead of reaching you while you're closed. On: customers can contact you any time.")}</span>
       <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_messages !== false ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
     </div>
+    <div class="ve-field" style="margin-top:1rem;">
+      <label class="ve-label" for="veOrderExpiry">How long do you need to confirm a new order?</label>
+      <select id="veOrderExpiry" class="ve-input">${[[30, "30 minutes (default)"], [60, "1 hour"], [120, "2 hours (good for food and snacks)"], [180, "3 hours"], [1440, "1 day"], [2880, "2 days"], [10080, "1 week"], [0, "Never cancel by itself"]].map(([m, l]) => `<option value="${m}" ${Number(v.order_expiry_minutes ?? 30) === m ? "selected" : ""}>${l}</option>`).join("")}</select>
+      <p class="muted" style="font-size:0.8rem;margin:0.3rem 0 0;">If you don't confirm in time, the order cancels itself and the customer is told. Customers see a countdown.</p>
+    </div>
     <div class="flex" style="margin-top:1rem;">
       <button class="ve-btn ve-btn-primary" onclick="submitVendorEditProfile()">Save changes</button>
     </div>
@@ -532,6 +537,7 @@ async function submitVendorEditProfile() {
     opening_hours: summarizeBusinessHours(business_hours) || null,
     business_hours,
     allow_after_hours_messages: byId("veAllowAfterHours").checked,
+    ...(Number(byId("veOrderExpiry")?.value ?? 30) !== Number(vendor.order_expiry_minutes ?? 30) ? { order_expiry_minutes: Number(byId("veOrderExpiry").value) } : {}),
     bio: byId("veBio").value.trim() || null,
   }).eq("id", vendor.id);
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
@@ -542,6 +548,7 @@ async function submitVendorEditProfile() {
   vendor.whatsapp_visible = !!byId("veWhatsappVisible")?.checked && !!vendor.whatsapp_number;
   vendor.business_hours = business_hours;
   vendor.allow_after_hours_messages = byId("veAllowAfterHours").checked;
+  vendor.order_expiry_minutes = Number(byId("veOrderExpiry")?.value ?? 30);
   updateAuthUI();
   const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
   showToast("Business profile saved.", "success");

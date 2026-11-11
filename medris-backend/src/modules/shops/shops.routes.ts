@@ -116,6 +116,7 @@ export const updateMyShop = defineRoute({
         opening_hours: text(500).optional(),
         business_hours: z.record(z.string(), z.unknown()).nullable().optional(),
         allow_after_hours_messages: z.boolean().optional(),
+        order_expiry_minutes: z.number().int().refine((n) => [0, 30, 60, 120, 180, 1440, 2880, 10080].includes(n), "Choose one of the listed times.").optional(),
         logo_url: text(1000).optional(),
         cover_url: text(1000).optional(),
         lat: z.number().min(-90).max(90).nullable().optional(),

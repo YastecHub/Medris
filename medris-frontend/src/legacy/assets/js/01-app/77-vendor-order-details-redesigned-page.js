@@ -812,10 +812,12 @@ async function updateOrderStatus(orderId, newStatus) {
 
 // Hourglass for a pending order: the sand runs from the top to the bottom over the 30 minutes the shop has to confirm,
 // with the minutes left underneath. When it is empty the order is cancelled by the server.
-const LV_AUTO_CANCEL_MIN = 30;
+const LV_AUTO_CANCEL_MIN = 30; // default; each shop can choose its own (vendors.order_expiry_minutes, 0 = never)
 function lvHourglassHtml(order, isVendor) {
   if (!order?.created_at) return "";
-  return `<div class="lv-hg" data-created="${esc(order.created_at)}" data-min="${LV_AUTO_CANCEL_MIN}" role="timer" aria-live="off">
+  const mins = Number(order.vendor?.order_expiry_minutes ?? LV_AUTO_CANCEL_MIN);
+  if (!(mins > 0)) return `<div class="lv-hg"><div class="hg-text"><strong class="hg-left">No time limit</strong><small>${isVendor ? "this order waits for you" : "this order waits for the shop to confirm"}</small></div></div>`;
+  return `<div class="lv-hg" data-vendor="${esc(order.vendor_id || order.vendor?.id || "")}" data-created="${esc(order.created_at)}" data-min="${mins}" role="timer" aria-live="off">
     <svg viewBox="0 0 60 92" width="54" height="83" aria-hidden="true">
       <defs><clipPath id="hgTop${esc(String(order.id).slice(0,6))}"><path d="M8 6H52L32 46H28Z"/></clipPath><clipPath id="hgBot${esc(String(order.id).slice(0,6))}"><path d="M28 46H32L52 86H8Z"/></clipPath>
       <linearGradient id="hgSand" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f6c453"/><stop offset="1" stop-color="#e09a1a"/></linearGradient></defs>
@@ -828,7 +830,23 @@ function lvHourglassHtml(order, isVendor) {
     <div class="hg-text"><strong class="hg-left">--</strong><small>${isVendor ? "to confirm this order before it cancels itself" : "for the shop to confirm before the order cancels itself"}</small></div>
   </div>`;
 }
+// Each shop chooses its own time. Looked up separately and quietly, so an older server never breaks the order page.
+async function lvHourglassLoadShopTime() {
+  const els = [...document.querySelectorAll(".lv-hg[data-vendor]:not([data-loaded])")];
+  for (const el of els) {
+    el.dataset.loaded = "1";
+    try {
+      const r = await sb.from("vendors").select("order_expiry_minutes").eq("id", el.dataset.vendor).maybeSingle();
+      const m = r?.data?.order_expiry_minutes;
+      if (typeof m === "number" && m !== Number(el.dataset.min)) {
+        if (m === 0) { el.innerHTML = `<div class="hg-text"><strong class="hg-left">No time limit</strong><small>this order waits for the shop to confirm</small></div>`; el.removeAttribute("data-created"); }
+        else el.dataset.min = String(m);
+      }
+    } catch (_) {}
+  }
+}
 function lvHourglassTick() {
+  lvHourglassLoadShopTime();
   document.querySelectorAll(".lv-hg").forEach((el) => {
     const created = new Date(el.dataset.created).getTime(), total = Number(el.dataset.min) * 60000;
     if (!created) return;
@@ -837,7 +855,7 @@ function lvHourglassTick() {
     if (top) { top.setAttribute("y", String(6 + (1 - f) * 40)); top.setAttribute("height", String(f * 40)); }
     if (bot) { const h = (1 - f) * 40; bot.setAttribute("y", String(86 - h)); bot.setAttribute("height", String(h)); }
     if (st) st.style.display = left > 0 ? "" : "none";
-    if (lab) { const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000); lab.textContent = left > 0 ? `${m}:${String(sec).padStart(2, "0")} left` : "Time is up. Cancelling…"; }
+    if (lab) { const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000); lab.textContent = left > 0 ? (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m left` : `${m}:${String(sec).padStart(2, "0")} left`) : "Time is up. Cancelling…"; }
   });
 }
 if (!window.__lvHgTimer) window.__lvHgTimer = setInterval(lvHourglassTick, 1000);
