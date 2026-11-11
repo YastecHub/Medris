@@ -7839,3 +7839,7 @@ window.lvGoToNewOrder = function (orderId) {
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); saveEdit();
   }, true);
 })();
+
+/* The product photo never opens a full-screen viewer */
+window.openProductImageLightbox = function () {};
+window.openProductGallerySlide = function (event) { try { event && event.stopPropagation && event.stopPropagation(); } catch (_) {} };

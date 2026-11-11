@@ -7838,3 +7838,31 @@ html.lv-no-convos #messagesWrap,html.lv-no-convos button.icon-btn[onclick="navig
 .lv-mm-menu button:active{background:color-mix(in srgb,var(--text,#111) 8%,transparent)}
 .lv-mm-menu button i{opacity:.75;font-size:.95rem}
 .lv-mm-menu button.danger{color:#e11d48}
+
+/* product page: the lightbox never shows; the comment/package send button is a flat green circle with a white arrow in every mode */
+#productImageLightbox{display:none!important}
+:root:root:root:root body #app [aria-label="Send comment"]{background:#1a6b4a!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;box-shadow:none!important;border-radius:50%!important}
+:root:root:root:root body #app [aria-label="Send comment"] i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="dark"]:root:root body #app [aria-label="Send comment"],html[data-theme="black"]:root:root body #app [aria-label="Send comment"]{background:#16a34a!important}
+:root:root:root:root body #app [aria-label="Send comment"][disabled]{opacity:.5}
+/* comments icon on the photo: dark like the heart and share icons */
+:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-top-comment-btn,:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-top-comment-btn i,:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-cbubble i{color:#111!important;-webkit-text-fill-color:#111!important}
+
+/* ===== The order section and everything under the product: flat, no cards, thin lines, tidy rows ===== */
+:root:root:root body #app:has(.product-detail-card) .card:not(.product-detail-card),
+:root:root:root body #app:has(.product-detail-card) .selected-variant-summary,
+:root:root:root body #app:has(.product-detail-card) .sv-card,
+:root:root:root body #app:has(.product-detail-card) .pd-note-box,
+:root:root:root body #app:has(.product-detail-card) .pd-total-box,
+:root:root:root body #app:has(.product-detail-card) .pd-qty-box,
+:root:root:root body #app:has(.product-detail-card) .product-payment-plan-notice,
+:root:root:root body #app:has(.product-detail-card) .pd-pay-notice,
+:root:root:root body #app:has(.product-detail-card) .product-detail-order,
+:root:root:root body #app:has(.product-detail-card) .delivery-method-row label,
+:root:root:root body #app:has(.product-detail-card) .dyn-delivery-fields{background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+:root:root:root body #app:has(.product-detail-card) .card:not(.product-detail-card){margin:0!important;padding:.9rem .9rem!important;border-top:1px solid var(--border,rgba(128,128,128,.25))!important}
+:root:root:root body #app:has(.product-detail-card) .card:not(.product-detail-card)>h3{font-size:1.02rem;margin:0 0 .7rem}
+:root:root:root body #app:has(.product-detail-card) .delivery-method-row{gap:1.2rem!important;padding:.5rem 0!important;margin:.2rem 0 .6rem!important;border-top:1px solid var(--border,rgba(128,128,128,.2));border-bottom:1px solid var(--border,rgba(128,128,128,.2))}
+:root:root:root body #app:has(.product-detail-card) .delivery-method-row label{padding:0!important}
+:root:root:root body #app:has(.product-detail-card) .pd-total-box,:root:root:root body #app:has(.product-detail-card) .product-payment-plan-notice{padding:.6rem 0!important;border-top:1px solid var(--border,rgba(128,128,128,.2))!important}
+:root:root:root body #app:has(.product-detail-card) .selected-variant-summary{padding:.6rem 0!important;border-bottom:1px solid var(--border,rgba(128,128,128,.2))!important}
