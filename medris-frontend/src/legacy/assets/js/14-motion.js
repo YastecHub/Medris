@@ -1111,7 +1111,22 @@
       if (pushHistory === false && view0() !== view && (view === "home" || view === "storefront")) {
         try { var sk = view === "home" ? "home" : "storefront|" + (params && params.vendorId); if (pageSnaps[sk]) document.getElementById("app").innerHTML = pageSnaps[sk]; } catch (_) {}
       }
+      // Back to a page we just redrew from its saved copy: while the real page is rebuilt (slow on a phone), a still picture of the
+      // saved copy stays on top, so there is never a blank screen in between
+      var ghost = null;
+      try {
+        if (pushHistory === false && (view === "home" || view === "storefront" || view === "vendors")) {
+          var ga = document.getElementById("app");
+          if (ga && ga.children.length > 1) {
+            ghost = ga.cloneNode(true); ghost.id = "lvBackGhost"; ghost.setAttribute("aria-hidden", "true");
+            ghost.style.cssText = "position:absolute;left:0;right:0;top:" + (ga.getBoundingClientRect().top + window.scrollY) + "px;z-index:50;pointer-events:none;margin:0;background:var(--bg,#fff)";
+            document.body.appendChild(ghost);
+            setTimeout(function () { if (ghost) { ghost.remove(); ghost = null; } }, 5000);
+          }
+        }
+      } catch (_) {}
       var r = await orig.apply(this, arguments);
+      if (ghost) { var gh = ghost; ghost = null; setTimeout(function () { gh.remove(); }, 250); }
       if (heldBody) setTimeout(function () { document.body.style.minHeight = ""; }, 2200);
       try {
         var st = history.state;
@@ -7997,7 +8012,38 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
 /* a flat "no image" picture for listings without a photo (cards, shop strips and the product page) */
 window.lvNoImageHtml = function (seed) {
   // soft lilac / peach / rose / sky colours only (never green or yellow)
-  var HUES = [268, 18, 338, 204, 288, 12, 252, 350], h = HUES[0];
+  var HUES = [268, 18, 338, 204, 288, 12, 252, 350, 190, 305, 25, 225], h = HUES[0];
   try { h = HUES[stableAvatarHue(String(seed || "x")) % HUES.length]; } catch (_) {}
   return '<span class="lv-noimg" role="img" aria-label="No photo yet" style="--ni-h:' + h + '"><svg viewBox="0 0 64 64" width="48" height="48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 22h36l-3 30a4 4 0 0 1-4 3.6H21a4 4 0 0 1-4-3.6z"/><path d="M24 22v-3a8 8 0 0 1 16 0v3"/><path d="M50 8l1.6 4.4L56 14l-4.4 1.6L50 20l-1.6-4.4L44 14l4.4-1.6z" fill="currentColor" stroke="none"/></svg></span>';
 };
+
+/* ===== The chat's three-dots menu is a bottom drawer with coloured icons (tap outside to close) ===== */
+(function () {
+  var COL = [[/thumbtack|pin/, "#f59e0b"], [/list|folder|plus|bookmark/, "#3b82f6"], [/box-archive|archive|inbox/, "#8b5cf6"], [/user-slash|ban|block/, "#ef4444"], [/trash/, "#e11d48"], [/user|profile|store|eye/, "#14b8a6"], [/flag|exclamation|triangle/, "#f97316"], [/envelope|unread|circle-dot/, "#0ea5e9"]];
+  function colorFor(cls) { for (var i = 0; i < COL.length; i++) if (COL[i][0].test(cls)) return COL[i][1]; return "#64748b"; }
+  function close() {
+    var s = document.getElementById("lvChatSheet"); if (!s) return;
+    s.classList.add("out"); setTimeout(function () { s.remove(); }, 200);
+  }
+  window.closeChatMenu = close;
+  window.toggleChatMenu = function (evt) {
+    if (evt && evt.stopPropagation) evt.stopPropagation();
+    if (document.getElementById("lvChatSheet")) return close();
+    var dd = document.getElementById("chatMenuDropdown"); if (!dd) return;
+    var rows = [].map.call(dd.querySelectorAll("button, a"), function (b) {
+      var ic = b.querySelector("i"), cls = ic ? ic.className : "";
+      var label = (b.textContent || "").replace(/\s+/g, " ").trim();
+      var danger = /delete|block/i.test(label);
+      return '<button type="button" class="lvcs-row' + (danger ? " danger" : "") + '"><span class="lvcs-ic" style="--c:' + colorFor(cls) + '"><i class="' + cls + '"></i></span><span>' + label.replace(/[<>&]/g, "") + "</span></button>";
+    }).join("");
+    var s = document.createElement("div"); s.id = "lvChatSheet"; s.className = "lvcs-wrap";
+    s.innerHTML = '<div class="lvcs-sheet" role="dialog" aria-modal="true"><div class="lvcs-grab"></div>' + rows + "</div>";
+    s.addEventListener("click", function (e) {
+      if (e.target === s) return close();
+      var row = e.target.closest(".lvcs-row"); if (!row) return;
+      var idx = [].indexOf.call(s.querySelectorAll(".lvcs-row"), row), src = dd.querySelectorAll("button, a")[idx];
+      close(); if (src) setTimeout(function () { src.click(); }, 120);
+    });
+    document.body.appendChild(s);
+  };
+})();

@@ -9,6 +9,21 @@ function productReviewListHtml(reviews) {
   if (!reviews.length) return `<p class="muted">No reviews yet for this product.</p>`;
   return `<div class="product-review-list">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div>`;
 }
+// ratings come in groups of 10: one group is open at a time; "View more" opens the next group and folds the one above
+function reviewGroupsHtml(rows) {
+  if (rows.length <= 10) return productReviewListHtml(rows);
+  const groups = []; for (let i = 0; i < rows.length; i += 10) groups.push(rows.slice(i, i + 10));
+  return groups.map((g, i) => `<div class="rv-grp${i === 0 ? " open" : ""}" data-g="${i}">
+    <button type="button" class="rv-grp-h" onclick="rvToggleGroup(this)" aria-expanded="${i === 0}"><span>Ratings ${i * 10 + 1}–${i * 10 + g.length}</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="rv-grp-body">${productReviewListHtml(g)}${i < groups.length - 1 ? `<button type="button" class="btn btn-sm btn-outline rv-more" onclick="rvMore(this)">View more</button>` : ""}</div></div>`).join("");
+}
+function rvOpen(grp) {
+  const wrap = grp.parentElement;
+  wrap.querySelectorAll(".rv-grp").forEach((x) => { const on = x === grp; x.classList.toggle("open", on); x.querySelector(".rv-grp-h")?.setAttribute("aria-expanded", String(on)); });
+  grp.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+function rvToggleGroup(btn) { const g = btn.closest(".rv-grp"); if (!g) return; if (g.classList.contains("open")) { g.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); } else rvOpen(g); }
+function rvMore(btn) { const g = btn.closest(".rv-grp"), next = g && g.nextElementSibling; if (next) rvOpen(next); }
 function toggleProductReviewList(btn) {
   const panel = btn?.nextElementSibling;
   if (!panel) return;
@@ -44,7 +59,7 @@ async function hydrateProductReviewSection(productId) {
       </div>`
     : "";
   const listHtml = rows.length
-    ? `<button type="button" class="product-reviews-toggle" aria-expanded="false" onclick="toggleProductReviewList(this)"><span>View all ratings (${rows.length})</span><i class="fa-solid fa-chevron-down"></i></button><div class="product-review-collapsible hidden">${productReviewListHtml(rows)}</div>`
+    ? `<button type="button" class="product-reviews-toggle" aria-expanded="false" onclick="toggleProductReviewList(this)"><span>View all ratings (${rows.length})</span><i class="fa-solid fa-chevron-down"></i></button><div class="product-review-collapsible hidden">${reviewGroupsHtml(rows)}</div>`
     : productReviewListHtml(rows);
   body.innerHTML = `${summaryHtml}${formHtml}${listHtml}`;
 }

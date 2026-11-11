@@ -291,9 +291,14 @@ async function markSuggestionRead(id, btn) {
   btn.remove();
   lvSuggestionBadgeDown(true);
 }
+function sgInfo(btn) {
+  const pop = btn.closest(".sg-head")?.querySelector(".sg-info-pop"); if (!pop) return;
+  pop.hidden = !pop.hidden;
+  if (!pop.hidden) { const off = (e) => { if (e.target === btn || btn.contains(e.target)) return; pop.hidden = true; document.removeEventListener("click", off, true); }; setTimeout(() => document.addEventListener("click", off, true), 0); }
+}
 function suggestionPageHeader(title, sub, list) {
   const unread = (list || []).filter((x) => x.status === "new").length;
-  return `<div class="sg-head"><div><h2><i class="fa-solid fa-lightbulb"></i> ${esc(title)}</h2><p class="muted">${esc(sub)}</p></div>${unread ? `<span class="sg-head-badge">${unread} new</span>` : ""}</div>`;
+  return `<div class="sg-head"><div><h2><i class="fa-solid fa-lightbulb"></i> ${esc(title)} <button type="button" class="sg-info" aria-label="About this page" onclick="sgInfo(this)"><i class="fa-solid fa-circle-info"></i></button></h2><div class="sg-info-pop" hidden>${esc(sub)}</div></div>${unread ? `<span class="sg-head-badge">${unread} new</span>` : ""}</div>`;
 }
 
 async function renderAdminFeedback() {
