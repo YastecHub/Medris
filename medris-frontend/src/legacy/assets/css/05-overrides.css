@@ -7942,3 +7942,27 @@ html:root:root:root:root:root:root:root body #app#app#app#app#app#app:has(.produ
 :root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-label{flex:0 0 100%}
 :root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-row{flex:1 1 auto;min-width:0}
 :root:root:root:root:root:root:root:root body #app .product-detail-card .product-price-hero .pph-rating{position:static!important;transform:none!important;margin-left:auto;flex:none;order:3}
+
+/* the comments sheet (#lvCs) send button: green circle, white arrow, every mode (its own rule used the text colour = white in dark mode) */
+html:root:root:root:root body #lvCs .product-comment-compose-row .btn,html:root:root:root:root body #lvCs .product-comment-compose-row button[aria-label="Send comment"]{background:#1a6b4a!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;box-shadow:none!important}
+html[data-theme="dark"]:root:root:root body #lvCs .product-comment-compose-row .btn,html[data-theme="black"]:root:root:root body #lvCs .product-comment-compose-row .btn{background:#16a34a!important}
+html:root:root:root:root body #lvCs .product-comment-compose-row .btn i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:root:root:root:root body #lvCs .product-comment-compose-row .btn[disabled]{opacity:.5}
+
+/* Place order: flat green with Levi's mark (no gloss, shadow or gradient) */
+:root:root:root:root:root body #app .pd-buy-actions .btn.pd-place-order{background:#1f9d6b!important;background-image:none!important;box-shadow:none!important;border:0!important;color:#fff!important;-webkit-text-fill-color:#fff!important;display:inline-flex;align-items:center;justify-content:center;gap:.45rem}
+.lv-mark-ico{display:inline-block;width:1.15em;height:1.15em;background:currentColor;-webkit-mask:url(/lv-mark.svg) center/contain no-repeat;mask:url(/lv-mark.svg) center/contain no-repeat}
+/* photo buttons (heart / comments / share): see-through like the shop page's, not solid white */
+:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions button{background:rgba(0,0,0,.38)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:none!important}
+:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions button,:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions button i{color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.45)}
+:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .fav-btn.active,:root:root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .fav-btn.active i{color:#ff4d6d!important;-webkit-text-fill-color:#ff4d6d!important}
+
+/* a product without a photo shows the shop's picture filling the whole photo area, like a normal photo */
+html:root:root:root:root body #app .product-detail-card .product-detail-media .product-img{height:auto!important;width:100%!important;aspect-ratio:1/1;max-height:none!important;overflow:hidden;border-radius:0!important;display:block}
+html:root:root:root:root body #app .product-detail-card .product-detail-media .product-img>img,html:root:root:root:root body #app .product-detail-card .product-detail-media .product-img>*{width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;border-radius:0!important}
+
+/* rating on the "Buy price" label line: never touches the price or the discount chips */
+:root:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-label{display:flex!important;align-items:center;justify-content:space-between;gap:.6rem;flex:0 0 100%}
+:root:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-rating{position:static!important;margin-left:auto!important}
+:root:root:root:root:root:root:root:root body #app .product-detail-card>.product-price-hero .pph-row{flex:0 0 100%}
+html:root:root:root:root:root:root body #app#app#app#app .pd-buy-actions .btn.pd-place-order,html:root:root:root:root:root:root body #app#app#app#app .card .pd-buy-actions button.pd-place-order{background:#1f9d6b!important;background-image:none!important;box-shadow:none!important;filter:none!important}

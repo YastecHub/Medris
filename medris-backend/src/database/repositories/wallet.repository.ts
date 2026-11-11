@@ -104,8 +104,15 @@ export class WalletRepository {
     return (await jsonRow(this.db, sql`select 1 as x from public.wallet_accounts where handle = ${handle}`)) !== null;
   }
 
-  async setHandle(userId: string, handle: string): Promise<void> {
-    await this.db.execute(sql`update public.wallet_accounts set handle = ${handle}, handle_changed_at = now() where user_id = ${userId}`);
+  /** When the current run of @tag changes started and how many changes it holds (migration 0049). */
+  async handleWindow(userId: string): Promise<{ start: string | null; n: number } | null> {
+    return jsonRow(this.db, sql`select handle_window_start as start, handle_change_count as n from public.wallet_accounts where user_id = ${userId}`);
+  }
+
+  async setHandle(userId: string, handle: string, newWindow = true): Promise<void> {
+    await this.db.execute(sql`update public.wallet_accounts set handle = ${handle}, handle_changed_at = now(),
+      handle_window_start = case when ${newWindow} then now() else handle_window_start end,
+      handle_change_count = case when ${newWindow} then 1 else handle_change_count + 1 end where user_id = ${userId}`);
   }
 
   async markRefundProcessed(id: string): Promise<void> {
