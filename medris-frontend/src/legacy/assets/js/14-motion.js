@@ -7713,3 +7713,129 @@ window.lvGoToNewOrder = function (orderId) {
   }
   setInterval(function () { if (!shown) ask(); }, 6000);
 })();
+
+/* ===== Chat list: "typing..." in green on a row while that person types, before the chat is opened ===== */
+(function () {
+  var subs = {}, timers = {};
+  function row(id) { return document.querySelector('.conv-list-item[data-conversation-id="' + id + '"] .conv-preview'); }
+  function setTyping(id, on) {
+    var p = row(id); if (!p) return;
+    if (on && p.dataset.lvOrig === undefined) { p.dataset.lvOrig = p.innerHTML; p.innerHTML = '<span class="lv-conv-typing">typing<i></i><i></i><i></i></span>'; }
+    if (!on && p.dataset.lvOrig !== undefined) { p.innerHTML = p.dataset.lvOrig; delete p.dataset.lvOrig; }
+  }
+  function drop(id) { try { sb.removeChannel(subs[id]); } catch (_) {} delete subs[id]; clearTimeout(timers[id]); }
+  function sync() {
+    try {
+      if (!session || !session.user || typeof sb.channel !== "function" || document.hidden) return;
+      var ids = [].map.call(document.querySelectorAll(".conv-list-item[data-conversation-id]"), function (e) { return e.getAttribute("data-conversation-id"); }).slice(0, 30);
+      var open = typeof activeConversationId !== "undefined" ? activeConversationId : null;
+      Object.keys(subs).forEach(function (id) { if (ids.indexOf(id) < 0 || id === open) drop(id); });
+      ids.forEach(function (id) {
+        if (subs[id] || id === open) return;   // the open chat has its own channel
+        var ch = sb.channel("conv-" + id + "-list");
+        subs[id] = ch;
+        // the sender's typing is also sent on the list channel (see lvListTyping below)
+        ch.on("broadcast", { event: "typing" }, function (m) {
+          var pl = m && m.payload; if (!pl || pl.user_id === session.user.id) return;
+          setTyping(id, !!pl.typing); clearTimeout(timers[id]);
+          if (pl.typing) timers[id] = setTimeout(function () { setTyping(id, false); }, 2600);
+        }).subscribe();
+      });
+    } catch (_) {}
+  }
+  setInterval(sync, 2500);
+  // the chat that is being typed in also announces on the "-list" channel so rows elsewhere can show it
+  var lastSent = 0, sender = {};
+  window.lvListTyping = function (conversationId, on) {
+    try {
+      var now = Date.now(); if (on && now - lastSent < 900) return; lastSent = now;
+      var ch = sender[conversationId];
+      if (!ch) { ch = sender[conversationId] = sb.channel("conv-" + conversationId + "-list"); ch.subscribe(); }
+      ch.send({ type: "broadcast", event: "typing", payload: { user_id: session.user.id, typing: !!on, at: now } });
+    } catch (_) {}
+  };
+  var h = window.handleChatTyping;
+  if (typeof h === "function") window.handleChatTyping = function (cid) { var r = h.apply(this, arguments); try { window.lvListTyping(cid, true); } catch (_) {} return r; };
+})();
+
+/* ===== Messages: long-press shows the message lifted over a soft backdrop, reactions above it, a clean action list below ===== */
+(function () {
+  var EMO = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+  function close() { var o = document.getElementById("lvMm"); if (o) o.remove(); document.querySelectorAll(".msg-action-menu, .reaction-picker").forEach(function (p) { p.remove(); }); }
+  window.lvCloseMsgMenu = close;
+  window.showMessageActionMenu = function (bubble) {
+    close();
+    var id = bubble.dataset.msgId; if (!id) return;
+    var mine = bubble.classList.contains("mine");
+    var within = !!bubble.dataset.createdAt && Date.now() - new Date(bubble.dataset.createdAt).getTime() <= (typeof MESSAGE_EDIT_WINDOW_MS !== "undefined" ? MESSAGE_EDIT_WINDOW_MS : 15 * 60 * 1000);
+    var hasText = !!bubble.querySelector(".chat-bubble-text") && !bubble.querySelector(".chat-bubble-text img.lv-stk");
+    var pinned = typeof isChatMessagePinned === "function" && isChatMessagePinned(id);
+    var rows = [["fa-reply", "Reply", "setChatReplyTarget"]];
+    if (hasText) rows.push(["fa-regular fa-copy", "Copy", "copySingleChatMessage"]);
+    rows.push([pinned ? "fa-thumbtack-slash" : "fa-thumbtack", pinned ? "Unpin" : "Pin", pinned ? "unpinChatMessage" : "pinChatMessage"]);
+    if (mine && within && hasText) rows.push(["fa-pen", "Edit", "startEditMessage"]);
+    rows.push(["fa-regular fa-square-check", "Select", "enterChatSelectionMode"]);
+    if (mine && within) rows.push(["fa-trash", "Delete", "confirmDeleteMessage", 1]);
+    var rect = bubble.getBoundingClientRect(), vh = window.innerHeight, vw = window.innerWidth;
+    var o = document.createElement("div"); o.id = "lvMm"; o.className = "lv-mm";
+    var clone = bubble.cloneNode(true); clone.removeAttribute("data-msg-id"); clone.classList.add("lv-mm-clone");
+    clone.querySelectorAll("[id]").forEach(function (n) { n.removeAttribute("id"); });
+    var react = document.createElement("div"); react.className = "lv-mm-react";
+    react.innerHTML = EMO.map(function (e) { return '<button type="button" aria-label="React ' + e + '">' + e + "</button>"; }).join("");
+    var menu = document.createElement("div"); menu.className = "lv-mm-menu";
+    menu.innerHTML = rows.map(function (r) { return '<button type="button"' + (r[3] ? ' class="danger"' : "") + ' data-act="' + r[2].replace(/"/g, "&quot;") + '"><span>' + r[1] + '</span><i class="' + (r[0].indexOf(" ") > -1 ? r[0] : "fa-solid " + r[0]) + '"></i></button>'; }).join("");
+    o.appendChild(react); o.appendChild(clone); o.appendChild(menu);
+    document.body.appendChild(o);
+    // lay out: reactions above the message, actions below it; shift the whole stack so everything stays on screen
+    var rh = 46, gap = 8, mh = menu.offsetHeight, top0 = 10 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top")) || 0), bot0 = 10 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-bottom")) || 0);
+    var maxB = Math.max(80, vh - top0 - bot0 - rh - mh - gap * 2);
+    var bh = Math.min(rect.height, maxB), bw = Math.min(rect.width, vw - 24);
+    var top = Math.min(Math.max(rect.top, top0 + rh + gap), vh - bot0 - mh - gap - bh);
+    clone.style.cssText = "position:fixed;left:" + Math.min(Math.max(8, rect.left), vw - bw - 8) + "px;top:" + top + "px;width:" + bw + "px;max-height:" + bh + "px;overflow:hidden;margin:0";
+    var left = mine ? Math.max(8, rect.right - 232) : Math.min(rect.left, vw - 240);
+    react.style.cssText = "left:" + Math.min(Math.max(8, mine ? rect.right - 300 : rect.left), vw - 308) + "px;top:" + (top - rh - gap) + "px";
+    menu.style.cssText = "left:" + Math.max(8, left) + "px;top:" + (top + bh + gap) + "px";
+    o.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (b && react.contains(b)) { var em = b.textContent; close(); try { reactToMessage({ stopPropagation: function () {} }, id, em); } catch (_) {} return; }
+      if (b && menu.contains(b)) { var a = b.getAttribute("data-act"); close(); try { var fn = window[a] || (typeof globalThis[a] === "function" ? globalThis[a] : null); if (fn) fn(id); } catch (_) {} return; }
+      if (e.target === o) close();
+    });
+  };
+  // ---- edit in the message box (not inside the bubble)
+  window.startEditMessage = function (msgId) {
+    close();
+    var bubble = document.querySelector('.chat-bubble[data-msg-id="' + msgId + '"]'), ta = document.getElementById("chatInput");
+    if (!bubble || !ta) return;
+    window.__lvEditId = msgId;
+    var box = document.getElementById("chatReplyPreview");
+    if (box) { box.innerHTML = '<span class="reply-accent"></span><div class="reply-copy"><div class="reply-label">Editing message</div><div class="reply-text"></div></div><button type="button" class="reply-close" aria-label="Cancel edit" onclick="lvCancelEdit()"><i class="fa-solid fa-xmark"></i></button>'; box.querySelector(".reply-text").textContent = bubble.querySelector(".chat-bubble-text").textContent; box.classList.remove("hidden"); }
+    ta.value = bubble.querySelector(".chat-bubble-text").textContent || ""; ta.dispatchEvent(new Event("input", { bubbles: true })); ta.focus();
+  };
+  window.lvCancelEdit = function () {
+    window.__lvEditId = null; var ta = document.getElementById("chatInput"); if (ta) { ta.value = ""; ta.dispatchEvent(new Event("input", { bubbles: true })); }
+    var box = document.getElementById("chatReplyPreview"); if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+  };
+  async function saveEdit() {
+    var id = window.__lvEditId, ta = document.getElementById("chatInput"); if (!id || !ta) return;
+    var text = ta.value.trim(); if (!text) { showToast("Message can't be empty.", "error"); return; }
+    var r = await sb.rpc("edit_message", { p_message_id: id, p_new_body: text });
+    if (r.error) { showToast(r.error.message, "error"); return; }
+    var bubble = document.querySelector('.chat-bubble[data-msg-id="' + id + '"]');
+    if (bubble) {
+      var t = bubble.querySelector(".chat-bubble-text"); if (t) t.textContent = text;
+      var tm = bubble.querySelector(".chat-time"); if (tm && tm.innerHTML.indexOf("(edited)") < 0) tm.insertAdjacentHTML("afterbegin", '<span class="muted" style="font-size:0.7rem;">(edited)</span>');
+    }
+    window.lvCancelEdit();
+  }
+  // the send button and Enter save the edit instead of sending a new message
+  document.addEventListener("click", function (e) {
+    if (!window.__lvEditId) return;
+    var b = e.target.closest && e.target.closest(".chat-input-row > .btn"); if (!b) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); saveEdit();
+  }, true);
+  document.addEventListener("keydown", function (e) {
+    if (!window.__lvEditId || e.key !== "Enter" || e.shiftKey || !e.target || e.target.id !== "chatInput") return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); saveEdit();
+  }, true);
+})();

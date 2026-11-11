@@ -181,6 +181,13 @@ async function toggleBlockChatUser(otherUserId, otherName, conversationId) {
   }
   navigate("messages", { conversationId }, false);
 }
+// What a chat row shows as its last message: text as is, "Sticker" / "Photo" with a small icon instead of raw codes
+function convPreviewHtml(c) {
+  const m = String(c.last_message == null ? "" : c.last_message).trim();
+  if (/^::s:[^:]*::$/.test(m)) return '<i class="fa-regular fa-face-smile"></i> Sticker';
+  if (!m && c.last_message_at) return '<i class="fa-solid fa-camera"></i> Photo';
+  return m ? esc(maskSensitiveNumbers(m)) : "No messages yet";
+}
 function convRowHtml(c) {
   const name = c.other_name || "User";
   const isUnread = c.unread_count > 0;
@@ -199,7 +206,7 @@ function convRowHtml(c) {
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
         <div class="conv-name-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
-        <div class="conv-preview">${c.last_message ? esc(maskSensitiveNumbers(c.last_message)) : "No messages yet"}</div>
+        <div class="conv-preview">${convPreviewHtml(c)}</div>
       </div>
       ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
       <i class="fa-solid fa-chevron-right conv-chev" aria-hidden="true"></i>

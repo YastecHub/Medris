@@ -7817,3 +7817,24 @@ html.lv-no-convos #messagesWrap,html.lv-no-convos button.icon-btn[onclick="navig
 :root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-ccount{color:#fff!important;-webkit-text-fill-color:#fff!important}
 :root:root:root:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions button{background:rgba(255,255,255,.95)!important;opacity:1!important}
 .product-gallery-slide{cursor:default}
+
+/* chat list: green "typing..." on a row */
+.conv-preview .lv-conv-typing{color:#16a34a;font-weight:700;font-size:.9em}
+.conv-preview .lv-conv-typing i{display:inline-block;width:.28em;height:.28em;border-radius:50%;background:#16a34a;margin-left:.16em;animation:lvTypDot 1s infinite ease-in-out}
+.conv-preview .lv-conv-typing i:nth-child(2){animation-delay:.15s}.conv-preview .lv-conv-typing i:nth-child(3){animation-delay:.3s}
+@keyframes lvTypDot{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-.2em)}}
+.conv-preview i.fa-camera,.conv-preview i.fa-face-smile{margin-right:.25rem;opacity:.8}
+
+/* long-press on a message: lifted message, reactions above, clean action list below */
+.lv-mm{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:lvMmIn .14s ease-out}
+@keyframes lvMmIn{from{opacity:0}to{opacity:1}}
+.lv-mm-clone{pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.35)!important}
+.lv-mm-react{position:fixed;display:flex;gap:.1rem;padding:.3rem .45rem;border-radius:999px;background:var(--card,#fff);box-shadow:0 6px 24px rgba(0,0,0,.28);height:46px;align-items:center}
+.lv-mm-react button{border:0;background:transparent;font-size:1.55rem;line-height:1;padding:.2rem .32rem;border-radius:50%;cursor:pointer;transition:transform .1s}
+.lv-mm-react button:active{transform:scale(1.35)}
+.lv-mm-menu{position:fixed;width:224px;border-radius:14px;overflow:hidden;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 6px 24px rgba(0,0,0,.28)}
+.lv-mm-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:.6rem;border:0;background:transparent;color:inherit;padding:.72rem 1rem;font-size:.98rem;cursor:pointer;border-bottom:1px solid var(--border,rgba(128,128,128,.2));text-align:left}
+.lv-mm-menu button:last-child{border-bottom:0}
+.lv-mm-menu button:active{background:color-mix(in srgb,var(--text,#111) 8%,transparent)}
+.lv-mm-menu button i{opacity:.75;font-size:.95rem}
+.lv-mm-menu button.danger{color:#e11d48}
