@@ -321,7 +321,7 @@ function msgSelectionHeaderHtml() {
     return `<div class="messages-toolbar">
       <div class="messages-toolbar-title">
         <button type="button" class="messages-inbox-back" onclick="backFromMessagesInbox()" aria-label="Back" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
-        <h2><i class="fa-solid fa-comments"></i> Messages</h2>
+        <h2>Chats</h2>
       </div>
       <button type="button" class="icon-btn messages-more-btn" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Message actions"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="ms-list hidden messages-more-menu" id="messagesMoreMenu">
