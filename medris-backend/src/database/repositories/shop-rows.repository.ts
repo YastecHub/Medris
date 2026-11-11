@@ -34,6 +34,7 @@ export interface ShopChanges {
   opening_hours?: string | null;
   business_hours?: Record<string, unknown> | null;
   allow_after_hours_messages?: boolean;
+  whatsapp_alerts?: boolean;
   logo_url?: string | null;
   cover_url?: string | null;
   lat?: number | null;
@@ -134,6 +135,7 @@ export class ShopRowsRepository {
     add("opening_hours", sql`opening_hours = ${c.opening_hours ?? null}`);
     add("business_hours", sql`business_hours = ${c.business_hours == null ? null : JSON.stringify(c.business_hours)}::jsonb`);
     add("allow_after_hours_messages", sql`allow_after_hours_messages = ${c.allow_after_hours_messages ?? null}`);
+    add("whatsapp_alerts", sql`whatsapp_alerts = ${c.whatsapp_alerts ?? null}`);
     add("logo_url", sql`logo_url = ${c.logo_url ?? null}`);
     add("cover_url", sql`cover_url = ${c.cover_url ?? null}`);
     add("lat", sql`lat = ${c.lat ?? null}::double precision`);
