@@ -6979,6 +6979,8 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     w.innerHTML = '<div class="lde-top"><button type="button" class="lde-back" data-a="close" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2>Delivery settings</h2><p>How each listing gets to your buyers</p></div></div>'
       + '<div class="lde-scroll"><div class="lde-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading your listings…</div></div>';
     document.body.appendChild(w); document.documentElement.classList.add("lde-open");
+    // the phone's back button / gesture closes this page (and nothing behind it)
+    try { history.pushState(Object.assign({}, history.state, { lvOverlay: "lde" }), ""); } catch (_) {}
     w.addEventListener("click", function (ev) { pageClick(ev, w); });
     Promise.all([probe(), probePkg(), ready()]).then(function (ok) {
       var single = !ok[0];   // before migration 0041: one delivery per listing, for every campus
@@ -7036,10 +7038,16 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var msg = "This replaces the delivery on all " + n + " listing" + (n === 1 ? "" : "s") + ". You can still change any one of them afterwards.";
     return typeof showConfirmDialog === "function" ? showConfirmDialog(msg, { title: "Use for all listings?", okLabel: "Use for all" }) : Promise.resolve(window.confirm(msg));
   }
+  window.addEventListener("popstate", function (e) {
+    var pg = document.getElementById("ldePage");
+    if (!pg) return;
+    pg.remove(); document.documentElement.classList.remove("lde-open");
+    e.stopImmediatePropagation();
+  }, true);
   function pageClick(ev, w) {
     var b = ev.target.closest("[data-a]"); if (!b || !PG && b.getAttribute("data-a") !== "close") return;
     var a = b.getAttribute("data-a"), i = Number(b.getAttribute("data-i"));
-    if (a === "close") { w.remove(); document.documentElement.classList.remove("lde-open"); return; }
+    if (a === "close") { if (history.state && history.state.lvOverlay === "lde") { history.back(); return; } w.remove(); document.documentElement.classList.remove("lde-open"); return; }
     if (a === "allsw") { PG.all = b.checked; PG.open = null; paint(); return; }
     if (a === "row") { if (PG.all) return; PG.open = PG.open === i ? null : i; paint(); var it = w.querySelectorAll(".lde-item")[i]; if (it && PG.open != null) it.scrollIntoView({ block: "start", behavior: "smooth" }); return; }
     var ed = a === "applyall" ? PG.allEd : PG.ed; if (!ed) return;
