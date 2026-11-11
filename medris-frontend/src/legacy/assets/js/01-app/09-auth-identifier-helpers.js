@@ -76,7 +76,7 @@ function enhanceSelect(sel) {
   // groups, say) are unusable as a plain scroll - a search box to filter
   // as you type, plus keeping each <optgroup>'s label visible as a
   // section header, makes a big list navigable instead of just long.
-  const searchThreshold = 8;
+  const searchThreshold = 12;
   let searchTerm = "";
 
   function optionRows() {
