@@ -58,6 +58,61 @@ export class OrderActionsRepository {
     return row?.ok === true;
   }
 
+  // ---- the shop's team (migrations 0057-0060) ----
+
+  /** The shop the person owns (live), if any. */
+  async ownShopId(userId: string): Promise<string | null> {
+    const [row] = rowsOf<{ id: string }>(await this.db.execute(sql`select id from public.vendors where user_id = ${userId}::uuid and deleted_at is null limit 1`));
+    return row?.id ?? null;
+  }
+
+  async teamOf(vendorId: string): Promise<{ user_id: string; name: string | null; email: string | null; role: string; created_at: string }[]> {
+    return jsonRows(this.db, sql`select m.user_id, u.name, u.email, m.role, m.created_at
+      from public.vendor_members m join public.users u on u.id = m.user_id where m.vendor_id = ${vendorId}::uuid order by m.created_at`);
+  }
+
+  /** A Levromart account by e-mail or by phone / WhatsApp number (digits only, last 10). */
+  async findAccount(identifier: string): Promise<{ id: string; name: string | null } | null> {
+    const email = identifier.trim().toLowerCase();
+    const digits = identifier.replace(/\D/g, "");
+    const tail = digits.length >= 10 ? digits.slice(-10) : null;
+    return jsonRow(this.db, sql`select id, name from public.users
+      where (${email.includes("@") ? email : null}::text is not null and lower(email) = ${email.includes("@") ? email : null}::text)
+         or (${tail}::text is not null and (right(regexp_replace(coalesce(whatsapp_number, ''), '\\D', '', 'g'), 10) = ${tail}::text
+                                          or right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) = ${tail}::text))
+      order by created_at limit 1`);
+  }
+
+  async teamCount(vendorId: string): Promise<number> {
+    const [row] = rowsOf<{ n: number }>(await this.db.execute(sql`select count(*)::int as n from public.vendor_members where vendor_id = ${vendorId}::uuid`));
+    return row?.n ?? 0;
+  }
+
+  async addMember(vendorId: string, userId: string, role: string, invitedBy: string): Promise<void> {
+    await this.db.execute(sql`insert into public.vendor_members (vendor_id, user_id, role, invited_by) values (${vendorId}::uuid, ${userId}::uuid, ${role}, ${invitedBy}::uuid)
+      on conflict (vendor_id, user_id) do update set role = excluded.role`);
+  }
+
+  async removeMember(vendorId: string, userId: string): Promise<number> {
+    const rows = rowsOf<{ user_id: string }>(await this.db.execute(sql`delete from public.vendor_members where vendor_id = ${vendorId}::uuid and user_id = ${userId}::uuid returning user_id`));
+    return rows.length;
+  }
+
+  async myTeams(userId: string): Promise<{ vendor_id: string; business_name: string; role: string }[]> {
+    return jsonRows(this.db, sql`select m.vendor_id, v.business_name, m.role from public.vendor_members m
+      join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid order by m.created_at`);
+  }
+
+  /** The shop's orders for the team workspace. The customer's name stays hidden while an order is still pending. */
+  async teamOrders(vendorId: string, activeOnly: boolean): Promise<unknown[]> {
+    return jsonRows(this.db, sql`select o.id, o.status::text as status, o.order_type::text as order_type, o.delivery_method::text as delivery_method,
+        o.total_amount, o.created_at,
+        case when o.status::text = 'pending' then null else (select u.name from public.users u where u.id = o.buyer_id) end as buyer_name,
+        (select string_agg(p.name || ' x' || oi.quantity, ', ') from public.order_items oi join public.products p on p.id = oi.product_id where oi.order_id = o.id) as items
+      from public.orders o where o.vendor_id = ${vendorId}::uuid ${activeOnly ? sql`and o.status::text in ('pending', 'confirmed', 'handed_over')` : sql``}
+      order by o.created_at desc limit 60`);
+  }
+
   /** Fails like PostgreSQL does for a value that is not an order_status. */
   async castStatus(status: string): Promise<void> {
     await this.db.execute(sql`select ${status}::public.order_status`);
@@ -334,7 +389,7 @@ export class OrderActionsRepository {
       sql`select case when o.status::text in ('pending','cancelled') and not ${admin} then null else u.name end as name,
                  case when ${admin} then u.phone else null end as phone
           from public.orders o join public.vendors v on v.id = o.vendor_id join public.users u on u.id = o.buyer_id
-          where o.id = ${orderId} and (v.user_id = ${userId}::uuid or ${admin})`,
+          where o.id = ${orderId} and (v.user_id = ${userId}::uuid or public.team_can(${userId}::uuid, o.vendor_id, 'orders') or ${admin})`,
     );
   }
 
@@ -344,7 +399,7 @@ export class OrderActionsRepository {
       this.db,
       sql`select case when o.status::text in ('pending','cancelled') and not ${admin} then null else u.avatar_url end as avatar_url
           from public.orders o join public.vendors v on v.id = o.vendor_id join public.users u on u.id = o.buyer_id
-          where o.id = ${orderId} and (v.user_id = ${userId}::uuid or ${admin})`,
+          where o.id = ${orderId} and (v.user_id = ${userId}::uuid or public.team_can(${userId}::uuid, o.vendor_id, 'orders') or ${admin})`,
     );
   }
 
@@ -354,7 +409,7 @@ export class OrderActionsRepository {
       this.db,
       sql`select o.id as order_id, case when o.status::text in ('pending','cancelled') and not ${admin} then null else u.name end as name
           from public.orders o join public.vendors v on v.id = o.vendor_id join public.users u on u.id = o.buyer_id
-          where o.id = any(${uuidArray(orderIds)}) and (v.user_id = ${userId}::uuid or ${admin})`,
+          where o.id = any(${uuidArray(orderIds)}) and (v.user_id = ${userId}::uuid or public.team_can(${userId}::uuid, o.vendor_id, 'orders') or ${admin})`,
     );
   }
 

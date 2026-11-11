@@ -171,6 +171,7 @@ async function renderVendorDashboard() {
     <div class="vh-list">
       ${hubRow('<img class="vh-3d" src="/icons3d/lv/order-reminder.webp" alt="" loading="lazy" decoding="async">', "Order auto-cancel", "How long you have to confirm a new order before it cancels by itself.", "", "lvOpenExpirySheet()")}
       ${window.lvDrOpenPage ? hubRow('<img class="vh-3d" src="/icons3d/lv/map-pin.webp" alt="" loading="lazy" decoding="async">', "Delivery settings", "Free, flat fee or per km, for each campus and each listing.", "", "lvDrOpenPage()") : ""}
+      ${hubRow('<i class="fa-solid fa-people-group vh-3d" style="font-size:1.6rem;display:flex;align-items:center;justify-content:center;color:#7c3aed"></i>', "Team", "Let managers or staff handle orders for your shop.", "", "lvOpenTeamPage()")}
       ${hubRow('<img class="vh-3d" src="/icons3d/lv/requests.webp" alt="" loading="lazy" decoding="async">', "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
       ${hubRow('<img class="vh-3d" src="/icons3d/lv/suggestions.webp" alt="" loading="lazy" decoding="async">', "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
       ${hubRow('<img class="vh-3d" src="/icons3d/lv/support.webp" alt="" loading="lazy" decoding="async">', "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
