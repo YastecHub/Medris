@@ -7989,8 +7989,29 @@ window.openProductGallerySlide = function (event) { try { event && event.stopPro
     el.hidden = true;
     Promise.resolve(sb.rpc("get_shop_presence", { p_vendor_id: id })).then(function (r) { var d = r && r.data; if (d && Array.isArray(d)) d = d[0]; cache[id] = { at: Date.now(), d: d }; paint(d); }).catch(function () {});
   }
+  // the same line on a product / service page, under the shop's name
+  function dressPd() {
+    var anchors = document.querySelectorAll(".product-detail-vendor-link, .service-vendor-info-head");
+    for (var i = 0; i < anchors.length; i++) {
+      var a = anchors[i];
+      if (a.getAttribute("data-lv-pres")) continue;
+      var m = /vendorId:\s*'([0-9a-f-]{36})'/i.exec(a.getAttribute("onclick") || ""); if (!m) continue;
+      var id = m[1];
+      a.setAttribute("data-lv-pres", "1");
+      try { if (typeof isOwnVendorId === "function" && isOwnVendorId(id)) continue; } catch (_) {}
+      var host = a.closest("p") || a;
+      var el = document.createElement("div"); el.className = "sf-presence pd-presence"; el.hidden = true;
+      host.insertAdjacentElement("afterend", el);
+      (function (el, id) {
+        var paint = function (d) { var h = d ? line(d.online, d.last_seen_at) : ""; el.innerHTML = h; el.hidden = !h; };
+        var c = cache[id];
+        if (c && Date.now() - c.at < 60000) return paint(c.d);
+        Promise.resolve(sb.rpc("get_shop_presence", { p_vendor_id: id })).then(function (r) { var d = r && r.data; if (d && Array.isArray(d)) d = d[0]; cache[id] = { at: Date.now(), d: d }; paint(d); }).catch(function () {});
+      })(el, id);
+    }
+  }
   var raf = 0;
-  try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
+  try { new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; dress(); dressPd(); }); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
 })();
 
 /* ===== Everyone sets a delivery address once: a bottom drawer asks signed-in people who have none (each time the app opens, until they save one),

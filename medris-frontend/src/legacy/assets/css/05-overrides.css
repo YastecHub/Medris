@@ -8094,3 +8094,6 @@ html body #app .sr-thumb .lv-noimg{width:100%;height:100%;border-radius:inherit}
 html body #app .sr-thumb .lv-noimg svg{width:55%;height:55%}
 /* initials in the map search suggestions: normal size */
 .vmp-sugg .vmp-sg-logo .vd-initials,.vmp-sugg .vmp-sg-logo .vd-initials *{font-size:.9rem!important;line-height:1!important}
+
+/* online / last seen under the shop's name on the product page */
+.pd-presence{padding:0!important;margin:.1rem 0 .55rem!important}
