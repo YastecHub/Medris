@@ -311,14 +311,28 @@ async function renderAdminFeedback() {
 async function renderVendorSuggestionsInbox() {
   if (!session || !vendor) return '<div class="empty-state">Access denied.</div>';
   const { data: suggestions, error } = await sb.rpc("get_vendor_suggestions");
-  let html = suggestionPageHeader("Suggestions", "Ideas and feedback people sent to your shop. Some are anonymous: you can still reply, and they will see your answer.", suggestions);
+  let html = suggestionPageHeader("Suggestions", "Ideas and feedback people sent to your shop, and the suggestions you sent to others. Some are anonymous: you can still reply, and they will see your answer.", suggestions);
   if (error) { html += errorStateHtml(error); return html; }
-  html += (suggestions && suggestions.length)
+  const fromCustomers = (suggestions && suggestions.length)
     ? `<div class="sg-list">${suggestions.map(suggestionRowHtml).join("")}</div>`
     : `<div class="sg-empty"><i class="fa-regular fa-lightbulb"></i><strong>No suggestions yet</strong><span>When someone sends your shop an idea, it shows up here.</span></div>`;
-  // answers to suggestions this shop's owner sent to other shops or to Levromart live here too
-  try { const mine = await suggestionRepliesBodyHtml(true); if (mine) html += `<h3 class="sr-mine-h">Replies to suggestions you sent</h3><div class="sr-page">${mine}</div>`; } catch (_) {}
-  return html;
+  // what this shop's owner sent to other shops or to Levromart, with the answers
+  let mineHtml = "";
+  try {
+    const { data: sent } = await sb.from("suggestions").select("id,message,target_type,reply_message,replied_at,created_at").eq("sender_id", session.user.id).order("created_at", { ascending: false }).limit(50);
+    if (sent && sent.length) {
+      mineHtml = `<div class="sg-list">${sent.map((x) => `<article class="sg-card"><header class="sg-top"><div class="sg-who"><strong>${x.target_type === "platform" ? "To Levromart" : "To a shop"}</strong><span>${esc(suggestionWhen(x.created_at))}</span></div>${x.reply_message ? '<span class="sg-chip sg-chip-done"><i class="fa-solid fa-check"></i> Replied</span>' : '<span class="sg-chip">Waiting</span>'}</header><p class="sg-msg">${esc(x.message)}</p>${x.reply_message ? `<div class="sg-reply"><span class="sg-reply-label"><i class="fa-solid fa-reply"></i> Reply${x.replied_at ? " · " + esc(suggestionWhen(x.replied_at)) : ""}</span><p>${esc(x.reply_message)}</p></div>` : ""}</article>`).join("")}</div>`;
+    }
+  } catch (_) {}
+  if (!mineHtml) { try { const mine = await suggestionRepliesBodyHtml(true); if (mine) mineHtml = `<div class="sr-page">${mine}</div>`; } catch (_) {} }
+  if (!mineHtml) mineHtml = `<div class="sg-empty"><i class="fa-regular fa-paper-plane"></i><strong>Nothing sent yet</strong><span>Suggestions you send to other shops or to Levromart show up here with their answers.</span></div>`;
+  return html + `<div class="sg-tabs" role="tablist"><button type="button" role="tab" class="on" data-sgtab="in" onclick="sgShowTab('in')">From customers</button><button type="button" role="tab" data-sgtab="out" onclick="sgShowTab('out')">My suggestions</button></div>
+    <div id="sgTabIn">${fromCustomers}</div><div id="sgTabOut" hidden>${mineHtml}</div>`;
+}
+function sgShowTab(which) {
+  document.querySelectorAll(".sg-tabs [data-sgtab]").forEach((b) => b.classList.toggle("on", b.dataset.sgtab === which));
+  const a = document.getElementById("sgTabIn"), b = document.getElementById("sgTabOut");
+  if (a) a.hidden = which !== "in"; if (b) b.hidden = which !== "out";
 }
 
 async function renderAdminUsers() {

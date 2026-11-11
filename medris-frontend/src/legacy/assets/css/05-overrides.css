@@ -8004,3 +8004,23 @@ html[data-theme="dark"] .lv-noimg,html[data-theme="black"] .lv-noimg{background:
 
 /* product grids: no staggered (offset) right column, so there are no big gaps between cards */
 html:root:root body #app #productGrid > .product-card-wrap:nth-child(even),html:root:root body #app .lm-related-grid > .product-card-wrap:nth-child(even){margin-top:0!important;margin-bottom:0!important}
+
+/* "No photo yet": soft lilac / peach / rose / sky, icon only (no text) */
+.lv-noimg{background:linear-gradient(135deg,hsl(var(--ni-h) 85% 93%),hsl(calc(var(--ni-h) + 14) 80% 87%))!important;color:hsl(var(--ni-h) 48% 52%)!important}
+html[data-theme="dark"] .lv-noimg,html[data-theme="black"] .lv-noimg{background:linear-gradient(135deg,hsl(var(--ni-h) 30% 24%),hsl(calc(var(--ni-h) + 14) 30% 18%))!important;color:hsl(var(--ni-h) 70% 78%)!important}
+/* shop page "Latest from" tiles: rounded, not pointy */
+html body #app .storefront-product-mini>img,html body #app .storefront-product-mini>.mini-placeholder{border-radius:16px!important;overflow:hidden}
+html body #app .storefront-product-mini>.mini-placeholder .lv-noimg{border-radius:16px}
+/* product grid: the zig-zag is back, but gentler so the gaps stay small */
+html:root:root body #app #productGrid > .product-card-wrap:nth-child(even),html:root:root body #app .lm-related-grid > .product-card-wrap:nth-child(even){margin-top:1.3rem!important;margin-bottom:-1.3rem!important}
+/* share QR: in dark / black mode the code sits on a dark tile with light dots (the saved / shared picture stays normal) */
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code{background:#161b20!important}
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code canvas,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code canvas{filter:invert(1) hue-rotate(180deg)}
+html[data-theme="dark"]:root:root body #lvqrSheet .lvqr-code .lvqr-pic,html[data-theme="black"]:root:root body #lvqrSheet .lvqr-code .lvqr-pic{filter:none}
+.lw-tag-change{align-self:flex-end}
+
+/* suggestions page tabs */
+.sg-tabs{display:flex;gap:.4rem;margin:.6rem 0 .8rem;padding:.25rem;border-radius:999px;background:color-mix(in srgb,var(--text,#111) 7%,transparent)}
+.sg-tabs button{flex:1;border:0;background:transparent;color:var(--text-muted,#6b7280);font-weight:700;padding:.5rem .6rem;border-radius:999px;cursor:pointer}
+.sg-tabs button.on{background:var(--card,#fff);color:var(--text,#111);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+[hidden].sg-list,#sgTabIn[hidden],#sgTabOut[hidden]{display:none!important}
