@@ -4125,7 +4125,7 @@ window.lvAskCancel = async function (orderId) {
       '<div class="lw-top"><div class="lw-col">' +
         '<div class="lw-label">Available balance <button type="button" class="lw-ic" onclick="lvW3Eye()" aria-label="' + (W.hide ? "Show balance" : "Hide balance") + '"><i class="fa-regular ' + (W.hide ? "fa-eye-slash" : "fa-eye") + '"></i></button><button type="button" class="lw-ic" onclick="lvW3Help()" aria-label="How your wallet works"><i class="fa-solid fa-circle-question"></i></button></div>' +
         '<div class="lw-balrow"><div class="lw-bal">' + money(d.balance_kobo) + '</div>' +
-        '<button type="button" class="lw-tag" onclick="lvW3CopyTag()" aria-label="Copy your @tag">@' + esc(d.handle) + ' <i class="fa-regular fa-copy"></i></button><button type="button" class="lw-tag lw-tag-edit" onclick="lvW3ChangeTag()" aria-label="Change your @tag"><i class="fa-solid fa-pen"></i> Change @tag</button></div>' +
+        '<button type="button" class="lw-tag" onclick="lvW3CopyTag()" aria-label="Copy your @tag">@' + esc(d.handle) + ' <i class="fa-regular fa-copy"></i></button></div>' +
       '</div><button type="button" class="lw-add" onclick="lvW3Add()"><i class="fa-solid fa-plus"></i> Add money</button></div>' +
       (kind === "shop" && shop ? '<div class="lw-earn"><div><b><small>Shop earnings</small> ' + money(earn) + ' ready</b>' + (earnPending ? '<small>' + money(earnPending) + ' waiting for buyers to confirm</small>' : "") + '</div><button type="button" onclick="lvW3MoveEarnings()"' + (earn > 0 ? "" : " disabled") + '>Move to wallet</button></div>' : "") +
       notes +
@@ -4499,7 +4499,7 @@ window.lvAskCancel = async function (orderId) {
       (shop ? '<li><b>Shop earnings.</b> When a buyer confirms an order, your share (the sale minus Levromart\'s 3% commission) is ready. Earnings are released 24 hours after the payment. This protects you and your buyers: if a buyer reports a scam in that time, the money can still be refunded. A refund comes out of your share.</li>' : '<li><b>Refunds.</b> If an order is cancelled or a problem is settled in your favour, the refund comes into your wallet. It is paid out of the shop\'s share.</li>') +
       '<li><b>Your PIN.</b> A 6-digit PIN protects every payment, transfer and withdrawal, like a bank app. Keep it to yourself: Levromart will never ask for it.</li>' +
       '<li><b>Withdraw.</b> To your own bank account, at any time, with your PIN. You can change your bank account whenever you like. Only a shop\'s earnings paid in the last 24 hours wait for a check by Levromart.</li>' +
-      '</ul>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
+      '</ul><button type="button" class="lw-link lw-tag-change" onclick="lvW3ChangeTag()"><i class="fa-solid fa-pen"></i> Change my @tag</button>' + (typeof window.lvWalletColoursHtml === "function" ? window.lvWalletColoursHtml() : ""));
   };
 
   // the full history: grouped by day, a new-bank header when withdrawals start going to a different account
