@@ -41,6 +41,7 @@ async function submitEditProfile() {
   if (!name) { errorEl.textContent = "Full name is required."; errorEl.classList.remove("hidden"); return; }
   if (!phone) { errorEl.textContent = "Phone number is required."; errorEl.classList.remove("hidden"); return; }
   if (!/^\+?[0-9]{7,15}$/.test(normalizedPhone)) { errorEl.textContent = "Enter a valid phone number (7–15 digits)."; errorEl.classList.remove("hidden"); return; }
+  if (!byId("epAddress").value.trim()) { errorEl.textContent = "Delivery address is required. You only set it once."; errorEl.classList.remove("hidden"); return; }
   const btn = byId("epSaveBtn");
   btn.disabled = true;
   const { error } = await sb.from("users").update({
