@@ -345,7 +345,6 @@ function msgSelectionHeaderHtml() {
     <button type="button" class="icon-btn" onclick="exitMsgSelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button>
     <strong class="msg-sel-count">${msgSelectedIds.size} selected</strong>
     <button type="button" class="icon-btn" onclick="toggleSelectAllChats()" aria-label="Select all"><i class="fa-solid ${allVisible ? "fa-square-minus" : "fa-square-check"}"></i></button>
-    <button type="button" class="icon-btn" ${single ? `onclick="togglePinConversation('${onlyId}')"` : "disabled"} aria-label="Pin chat" title="${single ? "Pin chat" : "Select one chat to pin"}"><i class="fa-solid fa-thumbtack"></i></button>
     <button type="button" class="icon-btn" ${single ? `onclick="openChatListPicker('${onlyId}')"` : "disabled"} aria-label="Add to a list" title="${single ? "Add to a list" : "Select one chat to add to a list"}"><i class="fa-solid fa-layer-group"></i></button>
     <button type="button" class="icon-btn" onclick="batchMarkChatsRead(${anyUnread ? "true" : "false"})" ${hasSel ? "" : "disabled"} aria-label="${anyUnread ? "Mark as read" : "Mark as unread"}" title="${anyUnread ? "Mark as read" : "Mark as unread"}"><i class="fa-solid ${anyUnread ? "fa-envelope-open" : "fa-envelope"}"></i></button>
     <button type="button" class="icon-btn" onclick="batchArchiveChats()" ${hasSel ? "" : "disabled"} aria-label="${msgListFilter === "archived" ? "Restore" : "Archive"}"><i class="fa-solid ${msgListFilter === "archived" ? "fa-box-open" : "fa-box-archive"}"></i></button>
