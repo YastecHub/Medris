@@ -7743,3 +7743,12 @@ html body .chat-typing-dots i:nth-child(3){animation-delay:.3s}
 @keyframes lvTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.55}30%{transform:translateY(-5px);opacity:1}}
 /* No conversations yet: no Messages icon in the header, the search bar fills the space */
 html.lv-no-convos #messagesWrap,html.lv-no-convos button.icon-btn[onclick="navigate('messages')"]{display:none!important}
+/* Product page, Temu-style: the photo is the first thing you see, edge to edge at the top; the name, price and the rest follow */
+:root:root:root:root:root body #app .product-detail-card{display:flex!important;flex-direction:column;padding-top:0!important;overflow:hidden}
+:root:root:root:root:root body #app .product-detail-card .product-detail-media{order:-3;margin:0 -1rem .6rem!important;width:calc(100% + 2rem)!important;max-width:none!important;border-radius:0!important;background:var(--card)}
+:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions{order:-4;position:absolute!important;top:.7rem;right:.7rem;z-index:5;display:flex;gap:.45rem}
+:root:root:root:root:root body #app .product-detail-card .product-detail-top-actions button{background:rgba(255,255,255,.92)!important;color:#111!important;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,.18)}
+:root:root:root:root:root body #app .product-detail-card .product-gallery-main,:root:root:root:root:root body #app .product-detail-card .product-gallery-slide img{border-radius:0!important}
+:root:root:root:root:root body #app .product-detail-card .product-detail-title{order:-2;margin:.2rem 0 .5rem}
+:root:root:root:root:root body #app .product-detail-card>*{order:0}
+:root:root:root:root:root body #app .product-detail-card .product-price-hero{order:-1!important;margin:.1rem 0 .6rem}
