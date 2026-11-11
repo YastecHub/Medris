@@ -113,7 +113,7 @@ class Resolver {
   }
 
   read(rel: string): string {
-    return this.resolve(fs.readFileSync(path.join(legacyPaths(this.root).legacyDir, rel), "utf8"));
+    return this.resolve(fs.readFileSync(path.join(legacyPaths(this.root).legacyDir, rel), "utf8").replace(/\r\n/g, "\n"));
   }
 }
 
@@ -138,7 +138,7 @@ export function buildLegacy(root: string, env: Record<string, string>): LegacyBu
 
   const files = new Map<string, string>();
   for (const ext of manifest.external) files.set(ext.output, ext.files.map((f) => r.read(f)).join(""));
-  files.set(SERVICE_WORKER_OUTPUT, r.resolve(fs.readFileSync(legacyPaths(root).serviceWorker, "utf8")));
+  files.set(SERVICE_WORKER_OUTPUT, r.resolve(fs.readFileSync(legacyPaths(root).serviceWorker, "utf8").replace(/\r\n/g, "\n")));
   return { document, files };
 }
 
