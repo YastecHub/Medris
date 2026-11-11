@@ -49,3 +49,27 @@ Orders, chat, wallet, billing and notifications are tied to that single `vendors
 - Next: step 2 (order/chat functions use the helper so a manager/staff can really work on a shop), then the "Team" screen
   and invites, then several businesses per owner. The team screen is held back until step 2 so it never offers people
   access that does not work yet.
+
+## Step 2 inventory (what must change so a manager/staff member can really work on a shop)
+Found by reading the baseline SQL and the backend code. This is the list to review before any code is written, because it
+decides who can see orders and chat - the most sensitive part of the app.
+
+- **One central helper decides "is this my shop" in policies:** `public.owns_vendor(vendor_id)` is used about 50 times
+  in row-level-security policies (orders, order items, products, conversations ...). `is_vendor_owner` is similar.
+  Do **not** widen these two: they also guard bank details, wallet and billing, which must stay owner-only.
+- **Plan:** add `public.acts_for_vendor(vendor_id, permission)` (already built in 0057 as `can_act_for_vendor`) and switch
+  *only* the order, chat and listing policies/functions to it; leave money-and-settings policies on `owns_vendor`.
+- **Database functions that look up the shop by the logged-in user (29):** add_to_cart, can_call_in_conversation,
+  conversation_is_open, get_call_party, get_conversation_other_party, get_conversation_presence,
+  get_order_buyer_contact, get_orders_buyer_names, list_my_conversations, mark_conversation_opened,
+  toggle_conversation_in_list / _pin / _unread, set_order_item_variant, plus shop-settings ones that stay owner-only
+  (create_vendor_category/sector, set_vendor_billing_model, submit_monthly_listing_payment, submit_face_check,
+  get_vendor_commission_deadline, get_points_leaderboard, vendor_set_storefront_active, ...).
+- **Backend code (26 places in 14 repositories):** orders, order-actions and conversations repositories (reminders,
+  buyer names/avatar, conversation lists) move to the permission check; wallet, payouts, commission, packages-billing
+  stay owner-only. Each moved query needs a parity test that a member sees the shop's orders and a stranger does not.
+- **Notifications:** `create_notification` for a new order / message goes to the owner only today; it must also go to
+  members whose role allows orders/chat (and WhatsApp alerts keep going to the owner's number).
+- **Needs a decision before coding:** should a member's actions show their own name to the customer, or the shop's?
+  (Recommended: the shop's name, with the member recorded in the order history for disputes.)
+- **Legal:** terms/privacy must say that a shop's team members can see its orders and customer delivery details.
