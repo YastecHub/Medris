@@ -44,11 +44,11 @@ export class PaystackRefundsRepository {
     return jsonRow(this.db, sql`select id, status from public.vendor_payouts where order_id = ${orderId} for update`);
   }
 
-  /** Each Paystack card payment on the order (newest first): what it paid for the order, and how much of that is already refunded or being refunded. */
+  /** Each Paystack card payment on the order (newest first): what it paid for the order (never more than Paystack actually charged for that reference), and how much of that is already refunded or being refunded. */
   paidPayments(orderId: string): Promise<PaidPayment[]> {
     return jsonRows<PaidPayment>(
       this.db,
-      sql`select p.provider_reference as reference, (round(sum(p.amount) * 100) - round(coalesce((select sum(c.amount) from public.commission_charges c where c.payment_id = any(array_agg(p.id)) and c.status = 'paid'), 0) * 100))::text as net_kobo,
+      sql`select p.provider_reference as reference, least(round(sum(p.amount) * 100) - round(coalesce((select sum(c.amount) from public.commission_charges c where c.payment_id = any(array_agg(p.id)) and c.status = 'paid'), 0) * 100), max(t.amount_kobo))::text as net_kobo,
                  coalesce((select sum(r.amount_kobo) from public.paystack_refunds r where r.transaction_reference = p.provider_reference and r.status <> 'failed'), 0)::text as refunded_kobo
           from public.payments p join public.paystack_transactions t on t.reference = p.provider_reference and t.status in ('success', 'partially_refunded')
           where p.order_id = ${orderId} and p.status = 'paid' and p.method = 'card' and p.provider_reference like 'lvm\_ord\_%'

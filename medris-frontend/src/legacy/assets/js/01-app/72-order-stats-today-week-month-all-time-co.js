@@ -413,7 +413,9 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   rememberOrderHistory(embeddedVendorOrders ? "purchases" : "", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
   const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}${orderSearchWrapHtml()}</div>`;
-  const moreMenu = `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
+  const remindAllBtn = !embeddedVendorOrders && (activeCustomerOrders || []).some((o) => ["pending", "confirmed", "handed_over"].includes(o.status))
+    ? `<button type="button" class="orders-icon-btn orders-remind-all-btn" onclick="remindAllVendors(this)" aria-label="Remind all vendors" title="Remind all vendors waiting on your orders"><i class="fa-solid fa-bell"></i></button>` : "";
+  const moreMenu = remindAllBtn + `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
   let html = `${embeddedVendorOrders || typeof lvPageHero !== "function" ? "" : lvPageHero("orders")}<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
   html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await __buyerCountsP);
@@ -545,3 +547,18 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
   </div>`;
 }
 
+
+
+// One bell: remind every shop that still has an order of yours waiting (each shop at most once every 2 minutes).
+window.remindAllVendors = async function (btn) {
+  if (!session?.user?.id || window.__remindAllBusy) return;
+  window.__remindAllBusy = true; if (btn) btn.disabled = true;
+  try {
+    const r = await sb.rpc("remind_all_orders");
+    if (r.error) throw r.error;
+    const n = Number(r.data?.reminded || 0), k = Number(r.data?.skipped || 0);
+    try { unlockNotificationAudio(); if (audioCtx?.state === "running") playReminderChime(); } catch (_) {}
+    showToast(n ? `Reminder sent to ${n} vendor${n === 1 ? "" : "s"}.` + (k ? ` ${k} reminded a moment ago.` : "") : "Everyone was reminded a moment ago. You can remind again in 2 minutes.", n ? "success" : "info");
+  } catch (err) { showToast(err.message || "Could not send reminders. Please try again.", "error"); }
+  finally { window.__remindAllBusy = false; if (btn) btn.disabled = false; }
+};

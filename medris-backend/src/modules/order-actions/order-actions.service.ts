@@ -214,7 +214,7 @@ export class OrderActionsService {
       const orders = new OrderActionsRepository(tx);
       const o = await orders.remindableOrderOf(orderId, me.userId);
       if (!o) throw badRequest("This order no longer needs a reminder.");
-      if (o.recent) throw badRequest("You already sent a reminder a moment ago. Please wait a few minutes before sending another.");
+      if (o.recent) throw badRequest("You already sent a reminder a moment ago. Please wait 2 minutes before sending another.");
       const owner = await orders.liveVendorOwner(o.vendor_id);
       if (!owner) throw badRequest("Vendor not found.");
       const id = await orders.notify({
@@ -233,6 +233,22 @@ export class OrderActionsService {
       });
       return { id };
     });
+  }
+
+  /** One tap: remind every shop that still has an order of yours waiting. Orders reminded in the last 2 minutes are skipped. */
+  async remindAll(me: Identity | null): Promise<{ reminded: number; skipped: number }> {
+    if (!me) throw forbidden("Authentication required.");
+    const ids = await this.db().onBehalfOf(me, (tx) => new OrderActionsRepository(tx).remindableOrderIds(me.userId));
+    let reminded = 0;
+    for (const id of ids) {
+      try {
+        await this.remind(me, id);
+        reminded++;
+      } catch {
+        /* reminded a moment ago, or no longer needs one */
+      }
+    }
+    return { reminded, skipped: ids.length - reminded };
   }
 
   /** Replaces: public.set_order_buyer_location(uuid, double precision, double precision) - where to deliver a pending delivery order. */

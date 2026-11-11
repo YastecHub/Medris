@@ -7695,3 +7695,6 @@ html body .lwh-sbtn:active{background:rgba(120,120,128,.14)}
 html:root:root:root body.lv-analysis-open #aiChatPanel{z-index:2147483002!important}
 /* the listing pop-up's "Ask Levi about my listing": a full-width row above View / Close */
 #vendorProductDetailsModal.vld-modal .modal-content>.flex .vld-levi{grid-column:1 / -1;background:#10a36d;color:#fff;border-color:#10a36d;gap:8px}
+
+html body #app .orders-remind-all-btn{width:40px;height:40px;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--border);color:#d97706;cursor:pointer}
+html body #app .orders-remind-all-btn:active{transform:scale(.94)}
