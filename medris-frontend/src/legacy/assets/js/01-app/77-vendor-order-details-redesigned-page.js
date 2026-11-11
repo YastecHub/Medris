@@ -27,6 +27,7 @@ function vendorOrderTopHtml(order, ctx) {
   h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : tone === "pending" ? "fa-hourglass-half" : tone === "paid" ? "fa-money-check-dollar" : "fa-box-open"}"></i></div>
     <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">${esc(typeLabel)} · ${esc(orderDateTimeStr(order.created_at))}</span>` : `<span class="od-placed">${esc(typeLabel)}</span>`}</div>
     <span class="od-pill od-pill-${tone}">${esc(odStatusLabel(order))}</span></section>`;
+  if (st === "pending") h += lvHourglassHtml(order, true);   // the countdown for the shop, right under the status
   // ---- state alert
   const alerts = {
     pending: { icon: "fa-hourglass-half", head: "Customer is waiting for your confirmation", body: "Confirm the order to see who they are and message them in the app, or decline it if you can't fulfil it." },
@@ -818,14 +819,20 @@ function lvHourglassHtml(order, isVendor) {
   const mins = Number(order.vendor?.order_expiry_minutes ?? LV_AUTO_CANCEL_MIN);
   if (!(mins > 0)) return `<div class="lv-hg"><div class="hg-text"><strong class="hg-left">No time limit</strong><small>${isVendor ? "this order waits for you" : "this order waits for the shop to confirm"}</small></div></div>`;
   return `<div class="lv-hg" data-vendor="${esc(order.vendor_id || order.vendor?.id || "")}" data-created="${esc(order.created_at)}" data-min="${mins}" role="timer" aria-live="off">
-    <svg viewBox="0 0 60 92" width="54" height="83" aria-hidden="true">
-      <defs><clipPath id="hgTop${esc(String(order.id).slice(0,6))}"><path d="M8 6H52L32 46H28Z"/></clipPath><clipPath id="hgBot${esc(String(order.id).slice(0,6))}"><path d="M28 46H32L52 86H8Z"/></clipPath>
-      <linearGradient id="hgSand" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f6c453"/><stop offset="1" stop-color="#e09a1a"/></linearGradient></defs>
-      <path d="M6 3H54M6 89H54" stroke="#8a6a3b" stroke-width="5" stroke-linecap="round"/>
-      <path class="hg-glass" d="M8 6H52L32 46L52 86H8L28 46Z" fill="rgba(180,220,255,.18)" stroke="#9fb7c9" stroke-width="2" stroke-linejoin="round"/>
-      <rect class="hg-top" x="0" y="6" width="60" height="40" fill="url(#hgSand)" clip-path="url(#hgTop${esc(String(order.id).slice(0,6))})"/>
-      <rect class="hg-bot" x="0" y="86" width="60" height="0" fill="url(#hgSand)" clip-path="url(#hgBot${esc(String(order.id).slice(0,6))})"/>
-      <line class="hg-stream" x1="30" y1="46" x2="30" y2="84" stroke="#e8aa2c" stroke-width="1.6" stroke-dasharray="3 3"/>
+    <svg viewBox="0 0 60 92" width="34" height="52" aria-hidden="true">
+      <defs>
+        <clipPath id="hgTop${esc(String(order.id).slice(0,6))}"><path d="M10 8H50L32 46H28Z"/></clipPath><clipPath id="hgBot${esc(String(order.id).slice(0,6))}"><path d="M28 46H32L50 84H10Z"/></clipPath>
+        <linearGradient id="hgSand" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ffd777"/><stop offset=".6" stop-color="#f0a92a"/><stop offset="1" stop-color="#c97d10"/></linearGradient>
+        <linearGradient id="hgWood" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#b98550"/><stop offset=".5" stop-color="#8a5a2b"/><stop offset="1" stop-color="#5e3a17"/></linearGradient>
+        <linearGradient id="hgGlass" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#e8f4ff" stop-opacity=".55"/><stop offset=".45" stop-color="#bfe0ff" stop-opacity=".12"/><stop offset="1" stop-color="#8fb8d9" stop-opacity=".4"/></linearGradient>
+      </defs>
+      <rect x="4" y="2" width="52" height="6.5" rx="3" fill="url(#hgWood)"/><rect x="4" y="83.5" width="52" height="6.5" rx="3" fill="url(#hgWood)"/>
+      <rect class="hg-top" x="0" y="8" width="60" height="38" fill="url(#hgSand)" clip-path="url(#hgTop${esc(String(order.id).slice(0,6))})"/>
+      <rect class="hg-bot" x="0" y="84" width="60" height="0" fill="url(#hgSand)" clip-path="url(#hgBot${esc(String(order.id).slice(0,6))})"/>
+      <line class="hg-stream" x1="30" y1="46" x2="30" y2="82" stroke="#f0a92a" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <path d="M10 8H50L32 46L50 84H10L28 46Z" fill="url(#hgGlass)" stroke="#9ab6cc" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M15 12L26 12L19 30Z" fill="#fff" opacity=".5"/>
+      <rect x="4" y="2" width="52" height="2.4" rx="1.2" fill="#fff" opacity=".28"/><rect x="4" y="83.5" width="52" height="2.4" rx="1.2" fill="#fff" opacity=".22"/>
     </svg>
     <div class="hg-text"><strong class="hg-left">--</strong><small>${isVendor ? "to confirm this order before it cancels itself" : "for the shop to confirm before the order cancels itself"}</small></div>
   </div>`;
@@ -852,8 +859,8 @@ function lvHourglassTick() {
     if (!created) return;
     const left = Math.max(0, created + total - Date.now()), f = Math.min(1, left / total);
     const top = el.querySelector(".hg-top"), bot = el.querySelector(".hg-bot"), st = el.querySelector(".hg-stream"), lab = el.querySelector(".hg-left");
-    if (top) { top.setAttribute("y", String(6 + (1 - f) * 40)); top.setAttribute("height", String(f * 40)); }
-    if (bot) { const h = (1 - f) * 40; bot.setAttribute("y", String(86 - h)); bot.setAttribute("height", String(h)); }
+    if (top) { top.setAttribute("y", String(8 + (1 - f) * 38)); top.setAttribute("height", String(f * 38)); }
+    if (bot) { const h = (1 - f) * 38; bot.setAttribute("y", String(84 - h)); bot.setAttribute("height", String(h)); }
     if (st) st.style.display = left > 0 ? "" : "none";
     if (lab) { const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000); lab.textContent = left > 0 ? (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m left` : `${m}:${String(sec).padStart(2, "0")} left`) : "Time is up. Cancelling…"; }
   });
