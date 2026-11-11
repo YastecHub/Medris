@@ -135,7 +135,7 @@ async function confirmHandOverOrder(orderId) {
 // marks it handed over, cancelling requires a dispute instead.
 async function buyerCancelOrder(orderId, feePaid) {
   const msg = feePaid
-    ? "You can ask for a refund until the vendor marks the order out for delivery. Your request goes to the shop and to Levromart. When the shop agrees (or Levromart decides in your favour) the order is cancelled and what you paid for the order goes back to your wallet. Paystack's payment fee is not refunded."
+    ? "You can ask for a refund until the order is completed. Your request goes to the shop and to Levromart. When the shop agrees (or Levromart decides in your favour) the order is cancelled and what you paid for the order goes back to your wallet. Paystack's payment fee is not refunded."
     : "Cancel this order? You have not paid yet, so there is nothing to refund.";
   if (!(await showConfirmDialog(msg, { title: feePaid ? "Ask for a refund?" : "Cancel this order?", okLabel: feePaid ? "Yes, ask for a refund" : "Yes, cancel it", cancelLabel: "Keep order", danger: true }))) return;
   // a paid order: the reason is asked for and goes to the shop and to Levromart, so they can see why

@@ -719,6 +719,13 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
       else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paidIt ? "true" : "false"})">Cancel order</button>`);
     }
   }
+  // out for delivery (not completed yet): the buyer can still cancel / ask for a refund; the shop or Levromart decides
+  if (isCustomer && order.status === "handed_over" && order.order_type !== "rental" && !order.service_offer_id) {
+    const paidRowH = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+    const paidItH = !!paidRowH || paymentComplete;
+    if (opts.parts) bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="buyerCancelOrder('${order.id}',${paidItH ? "true" : "false"})"><i class="fa-regular fa-circle-xmark"></i> Cancel / ask for refund</button>`);
+    else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paidItH ? "true" : "false"})">Cancel / ask for refund</button>`);
+  }
   {
     const lmPaidAll = (isDeliveryOrder && order.payment_timing === "pay_after") ? paymentComplete : feePaid;
     const lmDup = order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder;
