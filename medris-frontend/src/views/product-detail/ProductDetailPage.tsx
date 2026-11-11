@@ -531,6 +531,9 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
             <div className="pph-row" id="productPriceHeroBody">
               <PriceHero o={variants.length ? variants[0]! : product} />
             </div>
+            <span className={`badge pph-rating ${legacy("ratingBadgeClass")(Number(st.avg_rating ?? 0))}`}>
+              <i className="fa-solid fa-star"></i> {Number(st.avg_rating ?? 0).toFixed(1)} ({Number(st.review_count ?? 0)})
+            </span>
           </div>
         ) : null}
         {statItems.length ? (

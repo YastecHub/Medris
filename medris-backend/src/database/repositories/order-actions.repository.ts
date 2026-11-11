@@ -298,6 +298,16 @@ export class OrderActionsRepository {
     );
   }
 
+  /** get_order_buyer_avatar(): the buyer's profile picture for the shop, on the same rule as the name (not while pending/cancelled). */
+  buyerAvatar(orderId: string, userId: string | null, admin: boolean): Promise<{ avatar_url: string | null }[]> {
+    return jsonRows(
+      this.db,
+      sql`select case when o.status::text in ('pending','cancelled') and not ${admin} then null else u.avatar_url end as avatar_url
+          from public.orders o join public.vendors v on v.id = o.vendor_id join public.users u on u.id = o.buyer_id
+          where o.id = ${orderId} and (v.user_id = ${userId}::uuid or ${admin})`,
+    );
+  }
+
   /** get_orders_buyer_names(): the same rule for several orders. */
   buyerNames(orderIds: string[], userId: string | null, admin: boolean): Promise<{ order_id: string; name: string | null }[]> {
     return jsonRows(

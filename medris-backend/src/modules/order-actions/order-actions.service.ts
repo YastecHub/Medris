@@ -199,6 +199,14 @@ export class OrderActionsService {
     });
   }
 
+  /** New: the buyer's picture for the shop, shown with the name once the order is accepted. */
+  async buyerAvatar(me: Identity | null, orderId: string): Promise<{ avatar_url: string | null }[]> {
+    return this.db().asService(async (tx) => {
+      const admin = await new AccessRepository(tx).isAdmin(me?.userId);
+      return new OrderActionsRepository(tx).buyerAvatar(orderId, me?.userId ?? null, admin);
+    });
+  }
+
   /** Replaces: public.get_orders_buyer_names(uuid[]) */
   async buyerNames(me: Identity | null, orderIds: string[]): Promise<{ order_id: string; name: string | null }[]> {
     return this.db().asService(async (tx) => {
