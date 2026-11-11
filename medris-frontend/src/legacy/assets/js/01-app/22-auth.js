@@ -263,6 +263,12 @@ async function setAccountPassword() {
   await runPostAuthChecks();
 }
 
+function vendorHasPayoutAccount(v) {
+  if (!v) return false;
+  return !!(v.paystack_subaccount_code || v.transfer_recipient_code || v.payout_verified_at || (v.account_number && v.bank_code));
+}
+window.vendorHasPayoutAccount = vendorHasPayoutAccount;
+
 // Sequenced so at most one of these modals is ever open at a time: a
 // Google account with no password set yet gets asked first (this is what
 // lets password-based actions like deleting the account work uniformly
@@ -283,21 +289,38 @@ async function runPostAuthChecks() {
     return;
   }
   if (profile.has_password === false) { byId("setPasswordModal")?.classList.remove("hidden"); return; }
-  // A vendor (pending or approved) with no payout account can't actually be
-  // paid for any sale. This isn't a hard block like the checks above --
-  // "Remind me later" just closes it for this session -- but it comes back
-  // on every fresh login until paystack_subaccount_code is actually set,
-  // at which point this condition is simply false and it never shows again.
-  if (vendor && !vendor.paystack_subaccount_code) { byId("vendorPayoutNudgeModal")?.classList.remove("hidden"); return; }
+  // A vendor with no payout account can't actually be paid for sales.
+  // "Remind me later" closes it for the current session.
+  // Once an account is set up, it never shows again. Pure buyers are never prompted.
+  const isVendorAccount = profile?.role === "vendor" || (vendor && vendor.verification_status === "approved");
+  const nudgeDismissed = (() => {
+    try {
+      return sessionStorage.getItem("lv_payout_nudge_dismissed_" + session.user.id) === "1";
+    } catch (_) {
+      return !!window.__lvPayoutNudgeDismissed;
+    }
+  })();
+  if (isVendorAccount && vendor && !vendorHasPayoutAccount(vendor) && !nudgeDismissed) {
+    byId("vendorPayoutNudgeModal")?.classList.remove("hidden");
+    return;
+  }
   // Admin sign-in no longer requires the extra 6-digit email code -- removed
   // per request. checkOtpRequirement()/the otpModal are left in place but
   // unused rather than deleted, in case this needs to come back.
 }
 function openVendorPayoutSetup() {
+  try {
+    if (session?.user?.id) sessionStorage.setItem("lv_payout_nudge_dismissed_" + session.user.id, "1");
+  } catch (_) {}
+  window.__lvPayoutNudgeDismissed = true;
   byId("vendorPayoutNudgeModal")?.classList.add("hidden");
-  navigate("vendorEditProfile");
+  navigate("vendorEditProfile", { focusPayout: true }, false);
 }
 function dismissVendorPayoutNudge() {
+  try {
+    if (session?.user?.id) sessionStorage.setItem("lv_payout_nudge_dismissed_" + session.user.id, "1");
+  } catch (_) {}
+  window.__lvPayoutNudgeDismissed = true;
   byId("vendorPayoutNudgeModal")?.classList.add("hidden");
 }
 // One shared identity re-check for every path that can land someone in the

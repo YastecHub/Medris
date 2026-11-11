@@ -1016,12 +1016,19 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
   };
 
   /* ------------------------------------------------------------------
-     VISIBLE PAYOUT ACTIVATION CARD on My Shop. It disappears only when
-     paystack_subaccount_code is present. The approval restriction remains
+     VISIBLE PAYOUT ACTIVATION CARD on My Shop. It disappears once
+     payout details are set up. The approval restriction remains
      unchanged; this is simply the persistent vendor-side prompt.
      ------------------------------------------------------------------ */
   window.openVendorPayoutSetup = async function(){
     try{
+      try {
+        if (typeof session !== "undefined" && session?.user?.id) {
+          sessionStorage.setItem("lv_payout_nudge_dismissed_" + session.user.id, "1");
+        }
+      } catch (_) {}
+      window.__lvPayoutNudgeDismissed = true;
+      document.getElementById("vendorPayoutNudgeModal")?.classList.add("hidden");
       await navigate("vendorEditProfile",{focusPayout:true},false);
       const reveal=()=>{
         const wrap=document.getElementById("bankFormWrap");
@@ -1046,7 +1053,10 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
       const html=await baseDashboard.apply(this,arguments);
       try{
         const v=vendor;
-        if(!v||v.paystack_subaccount_code)return html;
+        const hasPayout = typeof window.vendorHasPayoutAccount === "function"
+          ? window.vendorHasPayoutAccount(v)
+          : !!(v && (v.paystack_subaccount_code || v.transfer_recipient_code || v.payout_verified_at || (v.account_number && v.bank_code)));
+        if(!v || hasPayout) return html;
         const activation=`<div class="vendor-payout-activation-banner" role="status">
           <strong><i class="fa-solid fa-money-bill-transfer"></i> Activate Payout</strong>
           <p>Your vendor account does not have an active payout account yet. Set it up now so Levromart can pay you through your connected bank account. This reminder disappears automatically once payout activation is complete.</p>

@@ -74,8 +74,8 @@ describe("account actions (/api/delete-account)", () => {
     expect(calls.some((c) => c.method === "DELETE" || c.url.includes("/storage/"))).toBe(false);
     // migration 0044: the deleted profile is kept and can be put back
     expect(await db.query(`select 1 from public.deleted_records where table_name = 'users' and row_id = $1`, [user.id])).toHaveLength(1);
-    const [{ n }] = await db.query<{ n: number }>(`select public.restore_deleted_account($1) as n`, [user.id]);
-    expect(n).toBeGreaterThan(0);
+    const [row] = await db.query<{ n: number }>(`select public.restore_deleted_account($1) as n`, [user.id]);
+    expect(row?.n).toBeGreaterThan(0);
     expect(await db.query(`select 1 from public.users where id = $1`, [user.id])).toHaveLength(1);
   });
 

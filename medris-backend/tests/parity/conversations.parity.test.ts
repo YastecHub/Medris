@@ -415,6 +415,7 @@ describe("parity: conversations, calls and presence", () => {
       );
     }
     it("FIX S4: signed out, the original rang the call again; the port does not", async () => {
+      await db.query("update public.voice_calls set created_at = now() where id = $1", [ringing]);
       const original = await runOriginal(db, null, "ring_callee_again", { p_call_id: ringing });
       expect(original.result).toBe(true);
       const port = await runIsolated(db, (ctx) => calls(ctx).ringAgain(null, ringing));

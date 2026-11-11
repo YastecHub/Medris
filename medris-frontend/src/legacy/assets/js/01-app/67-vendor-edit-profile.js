@@ -19,6 +19,9 @@ async function renderVendorEditProfile() {
     initVendorLocationMap();
   }, 0);
   setTimeout(() => { toggleVendorDeliveryFeeMode(); updateVeDeliveryPerKmExample(); }, 0);
+  const hasPayout = typeof window.vendorHasPayoutAccount === "function"
+    ? window.vendorHasPayoutAccount(v)
+    : !!(v && (v.paystack_subaccount_code || v.transfer_recipient_code || v.payout_verified_at || (v.account_number && v.bank_code)));
 
   return `  ${v.verification_status === "verified" ? `
   <div class="dash-actions" style="max-width:480px;margin:0 auto 1rem;">
@@ -103,11 +106,11 @@ async function renderVendorEditProfile() {
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. The money is sent after the buyer confirms receipt, or after 48 hours with no problem raised. Banks usually credit it the same day or the next business day.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
     <div id="payoutVerifiedBox"></div>
-    <div id="payoutLegacy">${v.paystack_subaccount_code
+    <div id="payoutLegacy">${hasPayout
       ? `<div class="ve-bank"><span class="ve-bank-ico" data-bank-code="${esc(v.bank_code || "")}"><i class="fa-solid fa-building-columns"></i></span><div class="ve-bank-copy"><strong>${esc(v.account_name || "Your account")}</strong><small><span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</small></div><span class="ve-chip ok"><i class="fa-solid fa-circle-check"></i> Payouts on</span></div>`
       : `<div class="ve-bank ve-bank-empty"><span class="ve-bank-ico"><i class="fa-solid fa-triangle-exclamation"></i></span><div class="ve-bank-copy"><strong>Not set up yet</strong><small>Until you add your bank, order payments go to Levromart and you will be paid out manually.</small></div></div>`}</div>
-    ${v.paystack_subaccount_code ? `<button type="button" class="ve-btn ve-btn-ghost ve-btn-wide" id="veChangeBankBtn" onclick="lvChangeBank()"><i class="fa-solid fa-pen"></i> Change bank account</button>` : ""}
-    <div id="bankFormWrap" class="ve-bankform ${v.paystack_subaccount_code ? "hidden" : ""}">
+    ${hasPayout ? `<button type="button" class="ve-btn ve-btn-ghost ve-btn-wide" id="veChangeBankBtn" onclick="lvChangeBank()"><i class="fa-solid fa-pen"></i> Change bank account</button>` : ""}
+    <div id="bankFormWrap" class="ve-bankform ${hasPayout ? "hidden" : ""}">
       <label>Bank</label>
       <button type="button" id="veBankPickerBtn" class="bank-picker-trigger" onclick="openVendorBankPicker()" aria-haspopup="dialog" aria-expanded="false">
         <span id="veBankPickerLabel">${esc(getBankDisplayName(v.bank_code, v.bank_name) || "Select a bank")}</span>
@@ -116,7 +119,7 @@ async function renderVendorEditProfile() {
       <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === String(v.bank_code || "") ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
       <label>Account number</label>
       <input id="veAccountNumber" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${esc(v.account_number || "")}" />
-      <button class="ve-btn ve-btn-primary ve-btn-wide ${v.paystack_subaccount_code ? "" : "levro-pulse-attention"}" style="margin-top:0.8rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
+      <button class="ve-btn ve-btn-primary ve-btn-wide ${hasPayout ? "" : "levro-pulse-attention"}" style="margin-top:0.8rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
     </div>
   </div>
 `;

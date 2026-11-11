@@ -15,6 +15,7 @@ const DISMISSIBLE_MODAL_CLOSERS = {
   suggestionModal: closeSuggestionModal,
   locationPromptModal: () => resolveLocationPrompt(false),
   storefrontShareModal: closeStorefrontShareModal,
+  vendorPayoutNudgeModal: () => typeof dismissVendorPayoutNudge === "function" && dismissVendorPayoutNudge(),
 };
 function trackModalOpened(id) {
   dismissibleModalId = id;

@@ -487,6 +487,22 @@
       if (!(await confirmName(r.data.accountName, r.data.bankName, r.data.accountLast4))) return;
       var s = await window.levroData.payments.savePayoutAccount(bankCode, number, r.data.accountName);
       if (s.error || !s.data) return fail((s.error && s.error.message) || "Could not save your account. Please try again.");
+      if (typeof vendor !== "undefined" && vendor) {
+        vendor.bank_code = bankCode;
+        vendor.bank_name = r.data.bankName;
+        vendor.account_number = number;
+        vendor.account_name = r.data.accountName;
+        vendor.payout_account_last4 = r.data.accountLast4;
+        vendor.payout_verified_at = new Date().toISOString();
+        vendor.transfer_recipient_code = vendor.transfer_recipient_code || "verified";
+      }
+      try {
+        if (typeof session !== "undefined" && session?.user?.id) {
+          sessionStorage.setItem("lv_payout_nudge_dismissed_" + session.user.id, "1");
+        }
+      } catch (_) {}
+      window.__lvPayoutNudgeDismissed = true;
+      document.getElementById("vendorPayoutNudgeModal")?.classList.add("hidden");
       showToast("Payout account verified: " + s.data.accountName, "success");
       await navigate("vendorEditProfile", {}, false);
     } catch (e) {
@@ -1975,7 +1991,8 @@
       });
       tx.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
       var commissionTotal = charges.reduce(function (s, c) { return s + (c.status === "waived" ? 0 : Number(c.amount || 0)); }, 0);
-      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, heldReason: heldReason, onWay: onWay, delayed: delayed, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: !!(v.paystack_subaccount_code || v.transfer_recipient_code) };
+      var hasPayout = typeof window.vendorHasPayoutAccount === "function" ? window.vendorHasPayoutAccount(v) : !!(v && (v.paystack_subaccount_code || v.transfer_recipient_code || v.payout_verified_at || (v.account_number && v.bank_code)));
+      var data = { pending: pending, ready: ready, held: held, requests: requests, asked: asked, heldReason: heldReason, onWay: onWay, delayed: delayed, paidOut: paidOut, tx: tx, charges: charges, owed: owed, dueAt: dueAt, commissionTotal: commissionTotal, rate: Number(v.commission_pct ?? 3), hasPayout: hasPayout };
       cache = { at: Date.now(), data: data };
       writeStored(data);
       return data;
