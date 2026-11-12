@@ -2,7 +2,7 @@
 function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
-    <p class="muted">Last updated: 11 November 2026</p>
+    <p class="muted">Last updated: 12 November 2026</p>
     <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
@@ -35,7 +35,7 @@ function renderTerms() {
       <li>When an order is completed, the conversation stays open for 24 hours (30 minutes after a cancelled order) and then closes, unless you allow a shop's request to message you again (for 24 hours): it leaves your chat list and can no longer be opened or continued, so the two sides do not keep communicating outside an order. The messages are not deleted. They are kept securely as a record for disputes, fraud prevention and legal requirements, and Levromart administrators can review them when needed. If you later place a new order with the same vendor, the conversation reopens with its earlier messages.</li>
       <li>Keep conversations and calls about the order. Do not use them to harass anyone, to share personal phone numbers, or to move a sale off Levromart to avoid commission or payment protections. Levromart administrators may review a conversation when a report or dispute is raised, and may restrict messaging or calling for accounts that break these rules.</li>
       <li>Calls need microphone permission. You can allow incoming-call notifications in your device and Levromart settings; if they are off you may miss a call.</li>
-      <li>If an order cancels by itself because the shop did not confirm in time, the shop may send the customer one short message (in the app and, if you gave a WhatsApp number, on WhatsApp) to say it missed the order and the item is still available. You are free to ignore it.</li>
+      <li>If an order cancels by itself because the shop did not confirm in time, the shop may send the customer a short message, at most three times for that order, (in the app and, if you gave a WhatsApp number, on WhatsApp) to say it missed the order and the item is still available. You are free to ignore it.</li>
     </ul>
 
     <h3>4A. Reviews, comments, follows &amp; the leaderboard</h3>
@@ -74,7 +74,7 @@ function renderTerms() {
 function renderPrivacy() {
   return `<div class="legal-page">
     <h2>Privacy Policy</h2>
-    <p class="muted">Last updated: 11 November 2026</p>
+    <p class="muted">Last updated: 12 November 2026</p>
     <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
     <h3>1. What we collect</h3>
@@ -138,7 +138,7 @@ function renderPrivacy() {
 function renderRefundPolicy() {
   return `<div class="legal-page">
     <h2>Refund &amp; Cancellation Policy</h2>
-    <p class="muted">Last updated: 11 November 2026</p>
+    <p class="muted">Last updated: 12 November 2026</p>
 
     <h3>1. Before a vendor confirms your order</h3>
     <p>You can cancel freely from your Orders page. Anything you already paid for the order is refunded as described in section 8 (Paystack's payment fee is not refunded).</p>
