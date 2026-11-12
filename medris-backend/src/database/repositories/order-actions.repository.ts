@@ -66,8 +66,8 @@ export class OrderActionsRepository {
     return row?.id ?? null;
   }
 
-  async teamOf(vendorId: string): Promise<{ user_id: string; name: string | null; email: string | null; role: string; status: string; created_at: string }[]> {
-    return jsonRows(this.db, sql`select m.user_id, u.name, u.email, m.role, m.status, m.created_at
+  async teamOf(vendorId: string): Promise<{ user_id: string; name: string | null; email: string | null; avatar_url: string | null; role: string; status: string; created_at: string }[]> {
+    return jsonRows(this.db, sql`select m.user_id, u.name, u.email, u.avatar_url, m.role, m.status, m.created_at
       from public.vendor_members m join public.users u on u.id = m.user_id where m.vendor_id = ${vendorId}::uuid order by m.created_at`);
   }
 
@@ -110,13 +110,13 @@ export class OrderActionsRepository {
     return rows.length;
   }
 
-  async myTeams(userId: string): Promise<{ vendor_id: string; business_name: string; role: string }[]> {
-    return jsonRows(this.db, sql`select m.vendor_id, v.business_name, m.role from public.vendor_members m
+  async myTeams(userId: string): Promise<{ vendor_id: string; business_name: string; logo_url: string | null; role: string }[]> {
+    return jsonRows(this.db, sql`select m.vendor_id, v.business_name, v.logo_url, m.role from public.vendor_members m
       join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid and m.status = 'active' order by m.created_at`);
   }
 
-  async myInvites(userId: string): Promise<{ vendor_id: string; business_name: string; role: string; created_at: string }[]> {
-    return jsonRows(this.db, sql`select m.vendor_id, v.business_name, m.role, m.created_at from public.vendor_members m
+  async myInvites(userId: string): Promise<{ vendor_id: string; business_name: string; logo_url: string | null; role: string; created_at: string }[]> {
+    return jsonRows(this.db, sql`select m.vendor_id, v.business_name, v.logo_url, m.role, m.created_at from public.vendor_members m
       join public.vendors v on v.id = m.vendor_id and v.deleted_at is null where m.user_id = ${userId}::uuid and m.status = 'pending' order by m.created_at desc`);
   }
 
@@ -133,6 +133,7 @@ export class OrderActionsRepository {
   /** The shop's conversations for the team workspace, newest first, with the customer's name and the unread count. */
   async teamChats(vendorId: string): Promise<unknown[]> {
     return jsonRows(this.db, sql`select c.id, (select u.name from public.users u where u.id = c.buyer_id) as buyer_name,
+        (select u.avatar_url from public.users u where u.id = c.buyer_id) as buyer_avatar,
         (select m.body from public.messages m where m.conversation_id = c.id and m.deleted_at is null order by m.created_at desc limit 1) as last_body,
         (select max(m.created_at) from public.messages m where m.conversation_id = c.id) as last_at,
         (select count(*)::int from public.messages m where m.conversation_id = c.id and m.sender_id = c.buyer_id and m.read_at is null and m.deleted_at is null) as unread

@@ -65,3 +65,28 @@ describe("shop team permissions (migration 0057/0059)", () => {
     expect(rows).toHaveLength(0);
   });
 });
+
+/** Migration 0065: a missing or broken team table must never stop an order alert or a chat message. */
+describe("team features never block orders or chat (migration 0065)", () => {
+  it("still notifies and still takes a message when the team table is gone", async () => {
+    const db = await createTestDatabase();
+    try {
+      const owner = (await seedUser(db)).id;
+      const buyer = (await seedUser(db)).id;
+      const vendorId = (await seedVendor(db, owner)).id;
+      await db.query(`drop table public.vendor_members cascade`);
+      await db.query(
+        `insert into public.notifications (user_id, type, title, body, vendor_id, notification_category) values ($1, 'new_order', 'New order', 'b', $2, 'order')`,
+        [owner, vendorId],
+      );
+      expect(await db.query(`select 1 from public.notifications where user_id = $1 and type = 'new_order'`, [owner])).toHaveLength(1);
+      const conv = (await db.query<{ id: string }>(`insert into public.conversations (buyer_id, vendor_id) values ($1, $2) returning id`, [buyer, vendorId]))[0]!.id;
+      await db.query(`insert into public.messages (conversation_id, sender_id, body) values ($1, $2, 'hello')`, [conv, buyer]);
+      expect(await db.query(`select 1 from public.notifications where user_id = $1 and type = 'new_message'`, [owner])).toHaveLength(1);
+      const { rows } = await (await db.sqlClient()).client.query<{ ok: boolean }>(`select public.team_can($1::uuid, $2::uuid, 'orders') as ok`, [buyer, vendorId]);
+      expect(rows[0]!.ok).toBe(false);
+    } finally {
+      await db.close();
+    }
+  });
+});

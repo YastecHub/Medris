@@ -847,7 +847,7 @@ function lvShowTeamInvite() {
   m.id = "lvInviteModal";
   m.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:1rem;";
   m.innerHTML = `<div style="background:var(--bg-card,#fff);color:var(--text,#111);border-radius:20px;padding:1.3rem;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)">
-    <div style="width:56px;height:56px;border-radius:50%;background:rgba(31,138,91,.14);color:#1f8a5b;display:flex;align-items:center;justify-content:center;margin:0 auto .6rem;font-size:1.5rem"><i class="fa-solid fa-people-group"></i></div>
+    <div class="tm-av" style="width:60px;height:60px;margin:0 auto .6rem;font-size:1.5rem">${inv.logo_url ? lvAvInner(inv.logo_url, inv.business_name) : '<i class="fa-solid fa-people-group"></i>'}</div>
     <h3 style="margin:0 0 .3rem">${esc(inv.business_name)}</h3>
     <p class="muted" style="margin:0 0 1rem">invited you to join their team as <b>${esc(inv.role === "manager" ? "Manager" : "Staff")}</b>.</p>
     <div class="flex" style="gap:.5rem"><button type="button" class="btn btn-outline" id="lvInvNo" style="flex:1">Decline</button><button type="button" class="btn" id="lvInvYes" style="flex:1">Accept</button></div>
@@ -879,6 +879,8 @@ function lvTeamOverlay(id, title, bodyHtml, sub) {
 }
 const LV_ROLE_LABEL = { manager: "Manager", staff: "Staff" };
 const lvInitial = (n) => esc(String(n || "?").trim().charAt(0).toUpperCase() || "?");
+// a person's or shop's picture, or their initial when they have none
+const lvAvInner = (url, name) => (url ? `<img src="${esc(url)}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${lvInitial(name)}'))">` : lvInitial(name));
 
 // ---------- Team page (the shop owner) ----------
 async function lvOpenTeamPage() {
@@ -888,7 +890,7 @@ async function lvOpenTeamPage() {
     const { data, error } = await sb.rpc("list_shop_team");
     const rows = Array.isArray(data) ? data : [];
     const body = el.querySelector("[data-lv-body]");
-    const card = (m) => `<div class="tm-card"><div class="tm-row"><div class="tm-av">${lvInitial(m.name)}</div>
+    const card = (m) => `<div class="tm-card"><div class="tm-row"><div class="tm-av">${lvAvInner(m.avatar_url, m.name)}</div>
         <div class="tm-grow"><div class="tm-name">${esc(m.name || "Member")}</div>
           <div style="margin-top:.2rem"><span class="tm-chip">${esc(LV_ROLE_LABEL[m.role] || m.role)}</span>${m.status === "pending" ? ` <span class="tm-chip amber">Waiting for reply</span>` : ""}</div></div>
         <button type="button" class="tm-iconbtn" data-rm="${esc(m.user_id)}" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div></div>`;
@@ -1024,7 +1026,7 @@ async function lvOpenTeamWorkspace(vendorId, shopName, role) {
   const el = lvTeamOverlay("lvTeamWorkspace", shopName || "Shop", `<p class="muted">Loading…</p>`);
   const body = el.querySelector("[data-lv-body]");
   let tab = "orders", timer = null;
-  const hero = () => `<div class="tm-card tm-hero"><div class="tm-av">${lvInitial(shopName)}</div><div><div class="tm-hero-name">${esc(shopName || "Shop")}</div><div class="tm-hero-sub">You work here as ${esc((LV_ROLE_LABEL[myRole] || "Staff").toLowerCase())}</div></div></div>`;
+  const hero = () => `<div class="tm-card tm-hero"><div class="tm-av">${lvAvInner(team && team.logo_url, shopName)}</div><div><div class="tm-hero-name">${esc(shopName || "Shop")}</div><div class="tm-hero-sub">You work here as ${esc((LV_ROLE_LABEL[myRole] || "Staff").toLowerCase())}</div></div></div>`;
   const tabs = () => `<div class="tm-seg"><button type="button" class="${tab === "orders" ? "on" : ""}" data-tab="orders">Orders</button><button type="button" class="${tab === "chats" ? "on" : ""}" data-tab="chats">Chats</button></div>`;
   const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
   const bindTabs = () => body.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { tab = b.getAttribute("data-tab"); stop(); draw(); }));
@@ -1055,17 +1057,17 @@ async function lvOpenTeamWorkspace(vendorId, shopName, role) {
     const { data, error } = await sb.rpc("get_team_shop_chats", { p_vendor_id: vendorId });
     const rows = Array.isArray(data) ? data : [];
     body.innerHTML = hero() + tabs() + (error ? `<div class="tm-err">${esc(error.message)}</div>` : "") +
-      (rows.length ? rows.map((c) => `<button type="button" class="tm-card tm-row" data-conv="${esc(c.id)}" data-name="${esc(c.buyer_name || "Customer")}" style="width:100%;text-align:left;cursor:pointer;color:inherit"><div class="tm-av">${lvInitial(c.buyer_name)}</div><div class="tm-grow"><div class="tm-name">${esc(c.buyer_name || "Customer")}</div><div class="tm-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.last_body || "")}</div></div>${c.unread > 0 ? `<span class="tm-unread">${c.unread}</span>` : ""}</button>`).join("") : `<div class="tm-card tm-empty"><i class="fa-regular fa-comments"></i><b>No chats yet</b>Customer messages will show up here.</div>`);
+      (rows.length ? rows.map((c) => `<button type="button" class="tm-card tm-row" data-conv="${esc(c.id)}" data-name="${esc(c.buyer_name || "Customer")}" data-av="${esc(c.buyer_avatar || "")}" style="width:100%;text-align:left;cursor:pointer;color:inherit"><div class="tm-av">${lvAvInner(c.buyer_avatar, c.buyer_name)}</div><div class="tm-grow"><div class="tm-name">${esc(c.buyer_name || "Customer")}</div><div class="tm-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.last_body || "")}</div></div>${c.unread > 0 ? `<span class="tm-unread">${c.unread}</span>` : ""}</button>`).join("") : `<div class="tm-card tm-empty"><i class="fa-regular fa-comments"></i><b>No chats yet</b>Customer messages will show up here.</div>`);
     bindTabs();
-    body.querySelectorAll("[data-conv]").forEach((b) => (b.onclick = () => openThread(b.getAttribute("data-conv"), b.getAttribute("data-name"))));
+    body.querySelectorAll("[data-conv]").forEach((b) => (b.onclick = () => openThread(b.getAttribute("data-conv"), b.getAttribute("data-name"), b.getAttribute("data-av"))));
   };
-  const openThread = async (convId, name) => {
+  const openThread = async (convId, name, avatarUrl) => {
     stop();
     const paint = async (keepDraft) => {
       const draft = keepDraft ? (byId("lvTeamMsg")?.value || "") : "";
       const { data, error } = await sb.rpc("get_team_chat_messages", { p_conversation_id: convId });
       const msgs = Array.isArray(data) ? data : [];
-      body.innerHTML = `<div class="tm-row" style="margin-bottom:.6rem"><button type="button" class="tm-iconbtn" id="lvTeamBackChats" aria-label="Back to chats"><i class="fa-solid fa-chevron-left"></i></button><div class="tm-av" style="width:36px;height:36px;font-size:.9rem">${lvInitial(name)}</div><div class="tm-name">${esc(name)}</div></div>
+      body.innerHTML = `<div class="tm-row" style="margin-bottom:.6rem"><button type="button" class="tm-iconbtn" id="lvTeamBackChats" aria-label="Back to chats"><i class="fa-solid fa-chevron-left"></i></button><div class="tm-av" style="width:36px;height:36px;font-size:.9rem">${lvAvInner(avatarUrl, name)}</div><div class="tm-name">${esc(name)}</div></div>
         ${error ? `<div class="tm-err">${esc(error.message)}</div>` : ""}
         <div class="tm-card"><div id="lvTeamThread" class="tm-thread">${msgs.map((m) => `<div class="tm-bubble ${m.from_customer ? "in" : "out"}">${esc(m.body)}</div>`).join("") || `<div class="tm-sub">No messages yet.</div>`}</div></div>
         <div class="tm-compose"><input id="lvTeamMsg" class="tm-input" type="text" maxlength="2000" placeholder="Reply as the shop…" value="${esc(draft)}" /><button type="button" class="tm-btn" id="lvTeamSend" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></div>`;
