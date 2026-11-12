@@ -73,7 +73,7 @@ function vendorOrderTopHtml(order, ctx) {
     h += `<p class="od-muted" style="margin:0">Customer details are not available for this order.</p>`;
   }
   // the order cancelled by itself because the shop did not confirm in time: one tap tells the customer it is still available
-  if (String(order.status || "") === "cancelled" && /^Cancelled automatically/i.test(String(order.cancellation_reason || ""))) h += `<div class="od-cust-actions" style="margin-top:.6rem"><button type="button" class="od-btn od-btn-small" onclick="sendStillAvailable('${esc(order.id)}',this)"><i class="fa-regular fa-paper-plane"></i> Tell the customer it's still available</button></div><p class="od-muted" style="margin:.4rem 0 0">Sends: "Sorry, we missed your order. It's still available - are you still interested?" (once, within 7 days).</p>`;
+  if (String(order.status || "") === "cancelled" && /^Cancelled automatically/i.test(String(order.cancellation_reason || ""))) h += `<div class="od-cust-actions" style="margin-top:.6rem"><button type="button" class="od-btn od-btn-small" onclick="sendStillAvailable('${esc(order.id)}',this)"><i class="fa-regular fa-paper-plane"></i> Tell the customer it's still available</button></div><p class="od-muted" style="margin:.4rem 0 0">Sends: "Sorry, we missed your order. It's still available - are you still interested?" (you can send it up to 3 times for this order, no more).</p>`;
   // the chat for a cancelled / completed order has closed: the shop can ask the customer for permission to message them
   if (!ctx.chatWindowOpen && ["cancelled", "completed"].includes(String(order.status || ""))) h += `<div class="od-cust-actions"><button type="button" class="od-btn od-btn-light od-btn-small" onclick="requestCustomerChat('${esc(order.id)}',this)"><i class="fa-regular fa-comment-dots"></i> Ask to message</button></div><p class="od-muted" style="margin:.4rem 0 0">Chat is closed for this order. The customer decides whether to allow a new chat.</p>`;
   if (mapReady) h += `<div id="orderBuyerLocationWrap-${esc(order.id)}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${esc(order.id)}" class="muted"></span></div><div id="orderBuyerLocationMap-${esc(order.id)}" class="order-buyer-location-map"></div></div>`;
@@ -823,8 +823,8 @@ async function remindOrderVendor(orderId,button){
 }
 async function sendStillAvailable(orderId,button){
   if(button)button.disabled=true;
-  try{const {error}=await sb.rpc('send_order_still_available',{p_order_id:orderId});if(error)throw error;showToast('Sent. The customer will see it in the app and on WhatsApp.','success');if(button){button.innerHTML='<i class="fa-solid fa-check"></i> Sent';}}
-  catch(err){showToast(err.message||'Could not send the message.','error');if(button)button.disabled=false;}
+  try{const {error}=await sb.rpc('send_order_still_available',{p_order_id:orderId});if(error)throw error;showToast('Sent. The customer will see it in the app and on WhatsApp.','success');if(button){button.innerHTML='<i class="fa-solid fa-check"></i> Sent (tap to send again, up to 3 times)';button.disabled=false;}}
+  catch(err){const m=err.message||'Could not send the message.';showToast(m,'error');if(button){if(/3 times|No more can be sent/i.test(m)){button.innerHTML='<i class="fa-solid fa-ban"></i> Sent 3 times (no more)';button.disabled=true;}else button.disabled=false;}}
 }
 async function requestCustomerChat(orderId,button){
   if(button)button.disabled=true;

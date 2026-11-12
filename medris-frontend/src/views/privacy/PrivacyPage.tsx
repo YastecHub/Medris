@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <div className="legal-page">
       <h2>Privacy Policy</h2>
-      <p className="muted">Last updated: 11 November 2026</p>
+      <p className="muted">Last updated: 12 November 2026</p>
       <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
       <h3>1. What we collect</h3>
