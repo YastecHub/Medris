@@ -8099,3 +8099,60 @@ html body #app .sr-thumb .lv-noimg svg{width:55%;height:55%}
 .pd-presence{display:flex;order:0;padding:0!important;margin:.05rem 0 .35rem 2.6rem!important;font-size:.72rem!important;opacity:.7;font-weight:400}
 .pd-presence[hidden]{display:none!important}
 .service-vendor-info-head .pd-presence{margin-left:0!important}
+
+/* ===== Team, business switcher (tm-): full-screen pages that respect the phone's notch and home bar ===== */
+.tm-page{position:fixed;inset:0;z-index:99990;background:var(--bg,#f5f7fb);color:var(--text,#111);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.tm-wrap{max-width:640px;margin:0 auto;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 96px)}
+.tm-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:.75rem;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;margin:0 -16px 6px;background:color-mix(in srgb,var(--bg,#f5f7fb) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tm-back{width:42px;height:42px;flex:none;border-radius:14px;border:1px solid var(--border,rgba(128,128,128,.25));background:var(--card,#fff);color:var(--text,#111);display:flex;align-items:center;justify-content:center;font-size:.95rem;cursor:pointer}
+.tm-title{margin:0;font-size:1.3rem;font-weight:800;letter-spacing:-.015em;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-sub{margin:.1rem 0 0;font-size:.8rem;color:var(--text-muted,#6b7280)}
+.tm-card{background:var(--card,#fff);border:1px solid var(--border,rgba(128,128,128,.16));border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 10px 28px rgba(16,24,40,.05)}
+.tm-hero{display:flex;align-items:center;gap:.85rem;border:0;color:#fff;background:linear-gradient(135deg,#17855a,#25b57a)}
+.tm-hero .tm-av{background:rgba(255,255,255,.22);color:#fff}
+.tm-hero-name{font-weight:800;font-size:1.08rem;line-height:1.2}
+.tm-hero-sub{opacity:.85;font-size:.82rem;margin-top:.1rem}
+.tm-av{width:44px;height:44px;flex:none;border-radius:50%;background:linear-gradient(135deg,#1f8a5b,#34c38a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem}
+.tm-row{display:flex;align-items:center;gap:.75rem}
+.tm-grow{flex:1;min-width:0}
+.tm-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.12rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;background:rgba(31,138,91,.14);color:#1f8a5b}
+.tm-chip.amber{background:rgba(245,158,11,.18);color:#b45309}
+.tm-chip.blue{background:rgba(59,130,246,.15);color:#2563eb}
+.tm-chip.grey{background:rgba(128,128,128,.16);color:var(--text-muted,#6b7280)}
+.tm-seg{display:flex;gap:4px;padding:4px;border-radius:16px;background:rgba(128,128,128,.14);margin:2px 0 14px}
+.tm-seg button{flex:1;border:0;border-radius:12px;padding:.6rem .4rem;font-weight:700;font-size:.92rem;background:transparent;color:var(--text-muted,#6b7280);cursor:pointer}
+.tm-seg button.on{background:var(--card,#fff);color:var(--text,#111);box-shadow:0 1px 4px rgba(16,24,40,.12)}
+.tm-btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border:0;border-radius:14px;padding:.8rem 1.1rem;font-weight:700;font-size:.95rem;background:#1f8a5b;color:#fff;cursor:pointer;min-height:46px}
+.tm-btn.block{width:100%}
+.tm-btn.ghost{background:rgba(31,138,91,.12);color:#1f8a5b}
+.tm-btn.danger{background:rgba(220,38,38,.1);color:#dc2626}
+.tm-btn.sm{padding:.5rem .8rem;min-height:38px;font-size:.88rem;border-radius:12px}
+.tm-btn[disabled]{opacity:.55}
+.tm-iconbtn{width:38px;height:38px;border-radius:12px;border:0;background:rgba(128,128,128,.14);color:var(--text-muted,#6b7280);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.tm-input{width:100%;box-sizing:border-box;border:1px solid var(--border,rgba(128,128,128,.3));border-radius:14px;padding:.85rem 1rem;font-size:1rem;background:var(--input-bg,var(--card,#fff));color:var(--text,#111);outline:none}
+.tm-input:focus{border-color:#1f8a5b;box-shadow:0 0 0 3px rgba(31,138,91,.18)}
+.tm-label{font-weight:800;font-size:.95rem;margin:0 0 .6rem}
+.tm-roles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:.7rem 0}
+.tm-role{border:1.5px solid var(--border,rgba(128,128,128,.3));border-radius:14px;padding:.7rem;text-align:left;background:transparent;color:var(--text,#111);cursor:pointer}
+.tm-role b{display:block;font-size:.92rem}
+.tm-role span{display:block;font-size:.76rem;color:var(--text-muted,#6b7280);margin-top:.1rem}
+.tm-role.on{border-color:#1f8a5b;background:rgba(31,138,91,.1)}
+.tm-empty{text-align:center;padding:2rem 1rem;color:var(--text-muted,#6b7280)}
+.tm-empty i{font-size:2.2rem;opacity:.45;display:block;margin-bottom:.5rem}
+.tm-empty b{display:block;color:var(--text,#111);font-size:1rem;margin-bottom:.15rem}
+.tm-err{color:#dc2626;font-size:.85rem;margin:.5rem 0 0}
+.tm-money{font-weight:800;font-size:1.05rem}
+.tm-meta{display:flex;flex-wrap:wrap;gap:.35rem .6rem;color:var(--text-muted,#6b7280);font-size:.82rem;margin:.35rem 0 .2rem}
+.tm-items{font-size:.92rem;margin:.35rem 0 .75rem;line-height:1.35}
+.tm-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.tm-actions .tm-btn{flex:1}
+.tm-bubble{max-width:82%;padding:.5rem .75rem;border-radius:16px;white-space:pre-wrap;word-break:break-word;line-height:1.35}
+.tm-bubble.in{align-self:flex-start;background:rgba(128,128,128,.16);border-bottom-left-radius:6px}
+.tm-bubble.out{align-self:flex-end;background:#1f8a5b;color:#fff;border-bottom-right-radius:6px}
+.tm-thread{display:flex;flex-direction:column;gap:6px;max-height:58vh;overflow:auto;padding:.3rem 0}
+.tm-compose{display:flex;gap:.5rem;margin-top:.7rem}
+.tm-compose .tm-input{flex:1;padding:.7rem .9rem}
+.tm-unread{background:#1f8a5b;color:#fff;border-radius:999px;min-width:1.4rem;height:1.4rem;padding:0 .4rem;font-size:.76rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+/* the floating Levi helper stays out of the way while a team / business page is open */
+body:has(.tm-page) .levro-static-rails{display:none!important}

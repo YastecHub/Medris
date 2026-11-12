@@ -112,3 +112,12 @@ decides who can see orders and chat - the most sensitive part of the app.
   "Waiting for reply"); "Add business" shows the three steps for a second business.
 - **WhatsApp via Twilio (optional, instead of Meta direct):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
   `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_CONTENT_SID` (approved template body "Levromart: {{1}}") on Vercel; Twilio is used when all four are set.
+
+## Several businesses on one login (12 Nov 2026, migration 0064)
+- **Add business** (profile menu and Team page) asks for a business name and creates another Levromart account for it, linked to the
+  signed-in person in `business_links`. The owner switches between businesses with **Switch business** without logging in
+  again: the server (`api/delete-account.js`: `create-business`, `list-businesses`, `switch-business`) checks the link and gives back a
+  fresh session. Each business keeps its own earnings, bank details, verification, billing and 3% commission, so none of the ~40
+  one-shop-per-account places had to change. A business account can only go back to its owner; the owner can open only their own
+  businesses (up to 5).
+- Not tested against a real Supabase here (only with a simulated one): please try create -> switch -> switch back on a test account.

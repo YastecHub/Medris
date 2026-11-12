@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { readBody, env } = require("./_util");
 const sharp = require("sharp");
 
@@ -498,6 +499,119 @@ async function registerAccount(body, res) {
 }
 
 /* ============================================================
+   SEVERAL BUSINESSES FROM ONE LOGIN
+   "Add business" creates another Levromart account for the new business and links it to the signed-in person (business_links).
+   The owner can then switch between their accounts without logging in again: the server checks the link and hands back a fresh
+   session for the other account. Each business keeps its own earnings, bank details, verification and billing.
+   ============================================================ */
+async function signedInUser(body, supabaseUrl, anonKey) {
+  const accessToken = String(body?.accessToken || "");
+  if (!accessToken) return null;
+  const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` } });
+  const me = await readJson(r);
+  return r.ok && me?.id ? me : null;
+}
+
+// The links the person is part of: businesses they own, or the owner of the business account they are in.
+async function linksFor(supabaseUrl, headers, userId) {
+  const id = encodeURIComponent(userId);
+  const r = await fetch(`${supabaseUrl}/rest/v1/business_links?or=(owner_id.eq.${id},business_user_id.eq.${id})&select=owner_id,business_user_id,label`, { headers });
+  const rows = r.ok ? await readJson(r) : [];
+  const list = Array.isArray(rows) ? rows : [];
+  return { asOwner: list.filter((l) => l.owner_id === userId), asBusiness: list.find((l) => l.business_user_id === userId) || null };
+}
+
+// A fresh session for another account, only after the caller has been checked against business_links.
+async function mintSession(supabaseUrl, anonKey, headers, userId) {
+  const ur = await fetch(`${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, { headers });
+  const user = await readJson(ur);
+  if (!ur.ok || !user?.email) throw new Error("Could not open that business account.");
+  const gl = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, { method: "POST", headers, body: JSON.stringify({ type: "magiclink", email: user.email }) });
+  const link = await readJson(gl);
+  const tokenHash = link?.hashed_token || link?.properties?.hashed_token;
+  if (!gl.ok || !tokenHash) throw new Error("Could not open that business account.");
+  const vr = await fetch(`${supabaseUrl}/auth/v1/verify`, { method: "POST", headers: { apikey: anonKey, "Content-Type": "application/json" }, body: JSON.stringify({ type: "magiclink", token_hash: tokenHash }) });
+  const session = await readJson(vr);
+  if (!vr.ok || !session?.access_token || !session?.refresh_token) throw new Error("Could not open that business account.");
+  return { access_token: session.access_token, refresh_token: session.refresh_token };
+}
+
+async function createBusiness(body, res) {
+  const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const me = await signedInUser(body, supabaseUrl, anonKey);
+  if (!me) return res.status(401).json({ error: "Please log in again." });
+  const name = String(body?.name || "").trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 80) return res.status(400).json({ error: "Enter the business name (2 to 80 characters)." });
+  const headers = serviceHeaders(serviceKey);
+  const links = await linksFor(supabaseUrl, headers, me.id);
+  if (links.asBusiness) return res.status(403).json({ error: "Switch to your main account to add another business." });
+  if (links.asOwner.length >= 5) return res.status(400).json({ error: "You can have up to 5 extra businesses." });
+
+  // a private login the owner never types: it only exists to be switched into from the main account
+  const authEmail = `biz.${crypto.randomUUID()}@accounts.levromart.app`;
+  const password = crypto.randomBytes(36).toString("base64url");
+  const created = await readJson(await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+    method: "POST", headers,
+    body: JSON.stringify({ email: authEmail, password, email_confirm: true, user_metadata: { name, role: "buyer", requested_role: "vendor", email_optional: true, business_of: me.id } })
+  }));
+  if (!created?.id) return res.status(400).json({ error: created?.msg || created?.message || "Could not create the business." });
+  const undo = () => fetch(`${supabaseUrl}/auth/v1/admin/users/${created.id}`, { method: "DELETE", headers }).catch(() => {});
+
+  const profile = await fetch(`${supabaseUrl}/rest/v1/users`, {
+    method: "POST", headers: { ...headers, Prefer: "resolution=ignore-duplicates,return=minimal" },
+    body: JSON.stringify({ id: created.id, name, email: null, phone: null, city: String(body?.city || "").trim(), role: "buyer", role_selected: true, has_password: true })
+  });
+  if (!profile.ok && profile.status !== 409) { await undo(); return res.status(500).json({ error: "Could not create the business profile." }); }
+  const link = await fetch(`${supabaseUrl}/rest/v1/business_links`, {
+    method: "POST", headers: { ...headers, Prefer: "return=minimal" },
+    body: JSON.stringify({ business_user_id: created.id, owner_id: me.id, label: name })
+  });
+  if (!link.ok) { await undo(); return res.status(500).json({ error: "Could not link the business to your account." }); }
+  try {
+    const session = await mintSession(supabaseUrl, anonKey, headers, created.id);
+    return res.status(201).json({ created: true, userId: created.id, name, session });
+  } catch (e) {
+    return res.status(502).json({ error: "The business was created. Please use Switch business to open it.", userId: created.id });
+  }
+}
+
+async function listBusinesses(body, res) {
+  const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const me = await signedInUser(body, supabaseUrl, anonKey);
+  if (!me) return res.status(401).json({ error: "Please log in again." });
+  const headers = serviceHeaders(serviceKey);
+  const links = await linksFor(supabaseUrl, headers, me.id);
+  const ids = links.asBusiness ? [links.asBusiness.owner_id] : links.asOwner.map((l) => l.business_user_id);
+  if (!ids.length) return res.status(200).json({ isBusiness: false, businesses: [] });
+  const list = ids.map(encodeURIComponent).join(",");
+  const [uRes, vRes] = await Promise.all([
+    fetch(`${supabaseUrl}/rest/v1/users?id=in.(${list})&select=id,name`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/vendors?user_id=in.(${list})&deleted_at=is.null&select=user_id,business_name,verification_status`, { headers })
+  ]);
+  const users = uRes.ok ? await readJson(uRes) : []; const vendors = vRes.ok ? await readJson(vRes) : [];
+  const out = ids.map((id) => {
+    const u = (Array.isArray(users) ? users : []).find((x) => x.id === id); const v = (Array.isArray(vendors) ? vendors : []).find((x) => x.user_id === id);
+    return { userId: id, name: v?.business_name || u?.name || "Business", status: v ? v.verification_status : "setup_needed" };
+  });
+  return res.status(200).json({ isBusiness: !!links.asBusiness, businesses: out });
+}
+
+async function switchBusiness(body, res) {
+  const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const me = await signedInUser(body, supabaseUrl, anonKey);
+  if (!me) return res.status(401).json({ error: "Please log in again." });
+  const target = String(body?.targetUserId || "");
+  if (!/^[0-9a-f-]{36}$/i.test(target) || target === me.id) return res.status(400).json({ error: "Choose a business to open." });
+  const headers = serviceHeaders(serviceKey);
+  const links = await linksFor(supabaseUrl, headers, me.id);
+  // the owner may open any of their businesses; a business account may only go back to its owner
+  const allowed = links.asBusiness ? links.asBusiness.owner_id === target : links.asOwner.some((l) => l.business_user_id === target);
+  if (!allowed) return res.status(403).json({ error: "You can't open that account." });
+  try { return res.status(200).json({ session: await mintSession(supabaseUrl, anonKey, headers, target) }); }
+  catch (e) { return res.status(502).json({ error: e.message || "Could not open that business." }); }
+}
+
+/* ============================================================
    DELETE ACCOUNT
    ============================================================ */
 // Re-creates a missing public.users row for the signed-in account (for example after an Auth account was deleted and
@@ -771,6 +885,9 @@ module.exports = async function handler(req, res) {
     if (action === "account-exists" || action === "check-email") return accountExists(body, res);
     if (action === "register") return registerAccount(body, res);
     if (action === "ensure-profile") return ensureProfile(body, res);
+    if (action === "create-business") return createBusiness(body, res);
+    if (action === "list-businesses") return listBusinesses(body, res);
+    if (action === "switch-business") return switchBusiness(body, res);
     // Only the Delete account screen (no action) or an explicit "delete" deletes an account. Anything else is refused:
     // the app's "ensure-profile" request used to fall through to here and wiped the signed-in person's account.
     if (action === "" || action === "delete" || action === "delete-account") return deleteAccount(body, res);
