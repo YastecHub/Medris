@@ -8164,3 +8164,13 @@ body:has(.tm-page) .levro-static-rails{display:none!important}
 .lw-locked .lw-fav{margin-left:auto;margin-right:.35rem;width:36px;height:36px;border-radius:50%;border:0;background:rgba(128,128,128,.14);color:var(--text-muted,#6b7280);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;flex:none}
 .lw-locked .lw-fav.on{background:rgba(236,72,153,.14);color:#ec4899}
 .lw-locked .lw-fav + #lwChange{margin-left:0}
+/* Chat bubbles: WhatsApp-style. The time sits at the bottom-right of the bubble, beside a short message (or just under a
+   long one), never wrapping letter by letter, and a text bubble is never narrower than its time. */
+html body .chat-page-wrap .chat-bubble:not(.photo-only):not(.lv-stk-only){min-width:4.7rem}
+html body .chat-page-wrap .chat-bubble .chat-bubble-text{display:inline;overflow-wrap:anywhere;word-break:normal}
+html body .chat-page-wrap .chat-bubble .chat-time{display:inline-flex!important;float:right;width:auto!important;margin:.34rem 0 -.1rem .6rem;white-space:nowrap;flex:none;align-items:center;justify-content:flex-end;gap:.3rem;line-height:1.1}
+html body .chat-page-wrap .chat-bubble .chat-time-text{white-space:nowrap;flex:none}
+html body .chat-page-wrap .chat-bubble::after{content:"";display:block;clear:both}
+html body .chat-page-wrap .chat-bubble .chat-image-attachment ~ .chat-time{margin:.3rem .1rem -.05rem .6rem}
+html body .chat-page-wrap .chat-media-group .chat-bubble .chat-time{float:none!important;margin:.15rem .45rem .35rem!important;display:block!important}
+html body .chat-page-wrap .chat-media-group .chat-media-group-item:not(:last-child) .chat-time{display:none!important}
