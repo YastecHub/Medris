@@ -410,7 +410,7 @@ function updateAuthUI() {
     // divider -> plain utility rows (no icons) -> divider -> Settings & Privacy.
     let miniStats = [];
     let plainLinks = [];
-    const teamLinks = [...(window.lvMyTeams || []).map((t) => ({ icon: "fa-people-group", tone: "green", label: "Work for " + t.business_name, action: "lvOpenTeamWorkspace('" + escJs(t.vendor_id) + "','" + escJs(t.business_name) + "')" })), ...((window.lvTeamInvites || []).length ? [{ icon: "fa-envelope", tone: "amber", label: "Team invitation (" + window.lvTeamInvites.length + ")", action: "lvShowTeamInvite()" }] : []), ...((window.lvBiz && (window.lvBiz.isBusiness || window.lvBiz.count > 0)) ? [{ icon: "fa-repeat", tone: "green", label: "Switch business", action: "lvOpenSwitchBusiness()" }] : [])];
+    const teamLinks = [...(window.lvMyTeams || []).map((t) => ({ icon: "fa-people-group", tone: "green", label: "Work for " + t.business_name, action: "lvOpenTeamWorkspace('" + escJs(t.vendor_id) + "','" + escJs(t.business_name) + "')" })), ...((window.lvTeamInvites || []).length ? [{ icon: "fa-envelope", tone: "amber", label: "Team invitation (" + window.lvTeamInvites.length + ")", action: "lvShowTeamInvite()" }] : []), ...((window.lvBiz && (window.lvBiz.isBusiness || window.lvBiz.count > 0)) ? [{ icon: "fa-repeat", tone: "green", label: "Switch business", action: "lvOpenSwitchBusiness()" }] : []), ...((typeof lvIsAndroid === "function" && lvIsAndroid()) ? [{ icon: "fa-bell", tone: "amber", label: "Alert tips", action: "lvPushTips()" }] : [])];
     if (vendor && profile.role !== "admin") {
       miniStats = [
         { label: "Pending orders", value: Number(vendorPendingOrderCount || 0), action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },

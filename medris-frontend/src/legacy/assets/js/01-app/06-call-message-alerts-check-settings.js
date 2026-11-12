@@ -65,8 +65,33 @@ async function enablePushNotifications() {
     byId("notifPromptModal")?.classList.add("hidden");
     if (dismissibleModalId === "notifPromptModal") dismissibleModalId = null;
     showToast("Notifications turned on.", "success");
+    try { lvPushTipsOnce(); } catch (_) {}
   } catch (err) {
     showToast(err?.message || "Couldn't turn on notifications on this device.", "error");
   }
 }
 
+
+// ---------- "Make alerts pop up at the top" (Android) ----------
+// Android decides how a web alert is shown from the phone's own notification settings for the app, which a website cannot change.
+// These are the settings that make alerts arrive reliably and pop up on screen, even when Levromart is closed.
+function lvIsAndroid() { return /Android/i.test(navigator.userAgent || ""); }
+function lvPushTips() {
+  document.getElementById("lvPushTips")?.remove();
+  const steps = [
+    ["fa-mobile-screen", "Install Levromart", "In the browser menu choose \"Add to Home screen\" / \"Install app\", and open Levromart from that icon."],
+    ["fa-bell", "Allow notifications", "Tap Allow when Levromart asks, or turn it on in your phone's site settings."],
+    ["fa-arrow-up-right-from-square", "Set it to pop up", "Phone Settings > Apps > Levromart (or Chrome) > Notifications > choose \"Urgent\" / \"Pop on screen\" and allow sound."],
+    ["fa-battery-full", "Don't let the phone sleep it", "Phone Settings > Apps > Levromart (or Chrome) > Battery > choose \"Unrestricted\"."],
+    ["fa-moon", "Do Not Disturb", "Allow Levromart in your Do Not Disturb exceptions so alerts still come through."]
+  ];
+  const el = document.createElement("div"); el.id = "lvPushTips"; el.className = "tm-page";
+  el.innerHTML = '<div class="tm-wrap"><div class="tm-top"><button type="button" class="tm-back" data-x aria-label="Close"><i class="fa-solid fa-chevron-left"></i></button><div><h2 class="tm-title">Alerts that pop up</h2><p class="tm-sub">So you never miss an order or a message</p></div></div>' +
+    steps.map((s, i) => '<div class="tm-card tm-row"><div class="tm-av" style="background:rgba(31,138,91,.14);color:#1f8a5b"><i class="fa-solid ' + s[0] + '"></i></div><div class="tm-grow"><div class="tm-name">' + (i + 1) + ". " + s[1] + '</div><div class="tm-sub" style="white-space:normal">' + s[2] + '</div></div></div>').join("") +
+    '<button type="button" class="tm-btn block" id="lvPushTest"><i class="fa-regular fa-paper-plane"></i> Send me a test alert</button></div>';
+  document.body.appendChild(el);
+  el.querySelector("[data-x]").onclick = () => el.remove();
+  byId("lvPushTest").onclick = function () { levroTestPush(this); };
+}
+// shown once, right after alerts are turned on, on Android
+const lvPushTipsOnce = () => { try { if (lvIsAndroid() && !localStorage.getItem("lv-push-tips-seen")) { localStorage.setItem("lv-push-tips-seen", "1"); setTimeout(lvPushTips, 1200); } } catch (_) {} };

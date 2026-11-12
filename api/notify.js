@@ -318,16 +318,9 @@ async function pickNotificationIcon(SUPABASE_URL, svcHeaders, n) {
 }
 
 async function sendPush(SUPABASE_URL, svcHeaders, n) {
-  // While the app is open on screen the person sees everything in-app, so no system push
-  // (calls still ring). The page sends a heartbeat every ~20s; clear_presence runs on hide.
-  if (n.type !== "incoming_call") {
-    try {
-      const since = new Date(Date.now() - 45000).toISOString();
-      const pr = await fetch(`${SUPABASE_URL}/rest/v1/app_presence?user_id=eq.${n.user_id}&seen_at=gte.${encodeURIComponent(since)}&select=user_id`, { headers: svcHeaders });
-      const rows = await pr.json();
-      if (Array.isArray(rows) && rows.length) return { sent: 0, reason: "user is in the app" };
-    } catch (_) { /* fall through and push */ }
-  }
+  // Always send the push. Whether to show it is decided on the phone: the service worker (src/service-worker/sw.js) shows nothing when
+  // the app is open and on screen. Skipping the push here because the app "looked open" in the last 45 seconds used to drop alerts that
+  // arrived just after the app was closed or swiped away (no "closed" signal reaches the server in that case).
   const subsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=eq.${n.user_id}&select=*`,
     { headers: svcHeaders }
