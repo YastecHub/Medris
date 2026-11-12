@@ -24,23 +24,50 @@
       "source": "/api/listing-payments",
       "destination": "/api/vendor-payments"
     },
-    { "source": "/s/:id", "destination": "/api/delete-account?storefront=:id" },
-    { "source": "/p/:id", "destination": "/api/delete-account?product=:id" },
-    { "source": "/k/:id", "destination": "/api/delete-account?package=:id" },
-    { "source": "/l/:id", "destination": "/api/delete-account?levi=:id" },
+    {
+      "source": "/s/:id",
+      "destination": "/api/delete-account?storefront=:id"
+    },
+    {
+      "source": "/p/:id",
+      "destination": "/api/delete-account?product=:id"
+    },
+    {
+      "source": "/k/:id",
+      "destination": "/api/delete-account?package=:id"
+    },
+    {
+      "source": "/l/:id",
+      "destination": "/api/delete-account?levi=:id"
+    },
     {
       "source": "/",
-      "has": [{ "type": "query", "key": "storefront" }],
+      "has": [
+        {
+          "type": "query",
+          "key": "storefront"
+        }
+      ],
       "destination": "/api/delete-account"
     },
     {
       "source": "/",
-      "has": [{ "type": "query", "key": "product" }],
+      "has": [
+        {
+          "type": "query",
+          "key": "product"
+        }
+      ],
       "destination": "/api/delete-account"
     },
     {
       "source": "/",
-      "has": [{ "type": "query", "key": "package" }],
+      "has": [
+        {
+          "type": "query",
+          "key": "package"
+        }
+      ],
       "destination": "/api/delete-account"
     }
   ],
@@ -49,7 +76,11 @@
       "maxDuration": 60
     },
     "api/delete-account.js": {
-      "includeFiles": "medris-frontend/dist/{index.html,og-frame.png,og-levromart.png,icon-512.png,levromart-notification-icon.png,notif-icons/*.png,levromart-badge.png,fonts/*.ttf}"
+      "includeFiles": "medris-frontend/dist/{index.html,og-frame.png,og-levromart.png,icon-512.png,levromart-notification-icon.png,notif-icons/*.png,levromart-badge.png,fonts/*.ttf}",
+      "excludeFiles": "{node_modules/@img/sharp-libvips-linuxmusl-x64/**,node_modules/@img/sharp-linuxmusl-x64/**}"
+    },
+    "api/vendor-payments.js": {
+      "excludeFiles": "{node_modules/@img/sharp-libvips-linuxmusl-x64/**,node_modules/@img/sharp-linuxmusl-x64/**}"
     }
   },
   "crons": [
@@ -57,5 +88,6 @@
       "path": "/api/daily-cron",
       "schedule": "0 3 * * *"
     }
-  ]
+  ],
+  "ignoreCommand": "bash scripts/vercel-ignore.sh"
 }
