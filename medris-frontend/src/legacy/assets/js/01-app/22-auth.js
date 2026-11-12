@@ -158,7 +158,8 @@ async function refreshAuthState() {
   updateAuthUI();
   renderBottomNav();
   if (typeof lvAskCustomerWhatsapp === "function") setTimeout(lvAskCustomerWhatsapp, 1800);
-  if (typeof lvLoadMyTeams === "function") lvLoadMyTeams().then(() => { try { updateAuthUI(); } catch (_) {} });
+  if (typeof lvLoadMyTeams === "function") Promise.all([lvLoadMyTeams(), typeof lvLoadBusinessLinks === "function" ? lvLoadBusinessLinks() : null]).then(() => { try { updateAuthUI(); } catch (_) {} });
+  if (typeof lvAfterSwitch === "function") setTimeout(lvAfterSwitch, 900);
   // Badge/count refresh is independent of rendering the current page; do not
   // hold the initial app screen hostage to those background reads.
   refreshNotifications(false).catch(() => {});
@@ -409,7 +410,7 @@ function updateAuthUI() {
     // divider -> plain utility rows (no icons) -> divider -> Settings & Privacy.
     let miniStats = [];
     let plainLinks = [];
-    const teamLinks = [...(window.lvMyTeams || []).map((t) => ({ icon: "fa-people-group", tone: "green", label: "Work for " + t.business_name, action: "lvOpenTeamWorkspace('" + escJs(t.vendor_id) + "','" + escJs(t.business_name) + "')" })), ...((window.lvTeamInvites || []).length ? [{ icon: "fa-envelope", tone: "amber", label: "Team invitation (" + window.lvTeamInvites.length + ")", action: "lvShowTeamInvite()" }] : [])];
+    const teamLinks = [...(window.lvMyTeams || []).map((t) => ({ icon: "fa-people-group", tone: "green", label: "Work for " + t.business_name, action: "lvOpenTeamWorkspace('" + escJs(t.vendor_id) + "','" + escJs(t.business_name) + "')" })), ...((window.lvTeamInvites || []).length ? [{ icon: "fa-envelope", tone: "amber", label: "Team invitation (" + window.lvTeamInvites.length + ")", action: "lvShowTeamInvite()" }] : []), ...((window.lvBiz && (window.lvBiz.isBusiness || window.lvBiz.count > 0)) ? [{ icon: "fa-repeat", tone: "green", label: "Switch business", action: "lvOpenSwitchBusiness()" }] : [])];
     if (vendor && profile.role !== "admin") {
       miniStats = [
         { label: "Pending orders", value: Number(vendorPendingOrderCount || 0), action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
@@ -426,7 +427,7 @@ function updateAuthUI() {
         { icon: "fa-trophy", tone: "amber", label: "Leaderboard", action: "navigate('leaderboard')" },
         { icon: "fa-gift", tone: "violet", label: "Refer &amp; earn", action: "navigate('leaderboard',{tab:'refer'})" },
         { icon: "fa-people-group", tone: "violet", label: "Team", action: "lvOpenTeamPage()" },
-        { icon: "fa-plus", tone: "green", label: "Add business", action: "lvOpenAddBusiness()" },
+        ...((window.lvBiz && window.lvBiz.isBusiness) ? [] : [{ icon: "fa-plus", tone: "green", label: "Add business", action: "lvOpenAddBusiness()" }]),
         { icon: "fa-user-group", tone: "violet", label: "Followers", action: "navigate('vendorFollowers')" },
         { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
         { icon: "fa-hand", tone: "pink", label: "Requests", badge: Number(requestOfferBadgeCount || 0), action: "navigate('vendorRequests')" },
