@@ -98,6 +98,7 @@ async function showTour(customSteps) {
   liveTourRunToken++;
   const token = liveTourRunToken;
   window.__lvTourNews = Array.isArray(customSteps);
+  try { byId("lvTour")?.classList.toggle("lvt-news", Array.isArray(customSteps)); const sy = document.querySelector("#lvTour .lvt-says"); if (sy) sy.lastChild.textContent = Array.isArray(customSteps) ? " New on Levromart" : " Levi says"; } catch (_) {}
   LIVE_TOUR_STEPS = Array.isArray(customSteps) ? resolveTourSteps(customSteps) : vendor ? [...resolveTourSteps(HOME_TOUR_STEPS), VENDOR_TOUR_STEP] : resolveTourSteps(HOME_TOUR_STEPS);
   liveTourStep = 0;
   clearTourTargetLock();
