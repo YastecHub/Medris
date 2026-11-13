@@ -118,7 +118,7 @@ window.runR2Migration = runR2Migration;
 function renderAdminR2Migration() {
   if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   let html = `<h2><i class="fa-solid fa-cloud-arrow-up"></i> Migrate images to R2</h2>`;
-  html += adminNavHtml("adminR2Migration");
+  html += adminNavHtml("adminR2Migration"); html += lvR2Tabs("adminR2Migration");
   html += `<div class="card" style="max-width:560px;">
     <p class="muted">Copies every existing file in product-photos, homepage-carousel, avatars and vendor-logos over to Cloudflare R2. Doesn't touch the database or delete anything from Supabase, and it's safe to run more than once, anything already copied is skipped, not re-uploaded.</p>
     <button class="btn" id="r2MigrateBtn" onclick="runR2Migration()"><i class="fa-solid fa-play"></i> Start migration</button>

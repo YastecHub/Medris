@@ -91,7 +91,7 @@ window.runR2Optimize = runR2Optimize;
 function renderAdminR2Optimize() {
   if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   let html = `<h2><i class="fa-solid fa-compress"></i> R2 image size</h2>`;
-  html += adminNavHtml("adminR2Optimize");
+  html += adminNavHtml("adminR2Optimize"); html += lvR2Tabs("adminR2Optimize");
   html += `<div class="card" style="max-width:560px;">
     <p class="muted">Shrinks every image already in R2 that's larger than it needs to be for the app (resized and re-compressed), and makes sure every file -- images or not -- is set to cache indefinitely in the browser and at Cloudflare's edge, so repeat views never have to be re-served from storage. New uploads already get this automatically; this is a one-time pass for what's already there. Safe to run more than once.</p>
     <button class="btn" id="r2OptimizeBtn" onclick="runR2Optimize()"><i class="fa-solid fa-play"></i> Start image size pass</button>
