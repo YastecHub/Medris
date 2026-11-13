@@ -8530,3 +8530,43 @@ html body #app .ap-who{display:flex;align-items:center;gap:.6rem}
 .lvst-prev{position:relative;margin:.9rem 0 .7rem;height:15rem;border-radius:22px;overflow:hidden;background:#111}
 .lvst-prev img{width:100%;height:100%;object-fit:cover}.lvst-prev span{position:absolute;left:.7rem;bottom:.7rem;padding:.4rem .8rem;border-radius:12px;background:rgba(0,0,0,.62);color:#fff;font-weight:700;font-size:.85rem}
 .lvst-chips{display:flex;gap:.5rem;margin:.6rem 0 .9rem}.lvst-chips button{border:0;padding:.5rem .9rem;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);font-weight:700;font-size:.82rem}.lvst-chips button.on{background:color-mix(in srgb,var(--primary,#16a34a) 18%,transparent);color:var(--primary,#16a34a)}
+/* --- hourglass: flat glass, a colour that follows the time left, and a little hop every so often --- */
+.lv-hg{--hg:#3b82f6;--hg2:#2563eb}
+.lv-hg[data-tone="purple"]{--hg:#8b5cf6;--hg2:#6d28d9}.lv-hg[data-tone="orange"]{--hg:#f59e0b;--hg2:#d97706}.lv-hg[data-tone="red"]{--hg:#ef4444;--hg2:#b91c1c}
+html body .lv-hg{border-color:color-mix(in srgb,var(--hg) 34%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--hg) 15%,var(--card)),var(--card))}
+html body .lv-hg .hg-left{color:var(--hg2)!important}
+:root[data-theme="dark"] .lv-hg .hg-left,:root[data-theme="black"] .lv-hg .hg-left{color:var(--hg)!important}
+.lv-hg .hg-top,.lv-hg .hg-bot{fill:var(--hg);transition:fill .6s}
+.lv-hg .hg-stream{stroke:var(--hg2)}
+.lv-hg .hg-svg{filter:drop-shadow(0 5px 7px color-mix(in srgb,var(--hg) 40%,transparent));transform-origin:50% 90%}
+.lv-hg .hg-hop{animation:lvHgHop .9s cubic-bezier(.3,1.4,.5,1)}
+@keyframes lvHgHop{0%{transform:translateY(0) rotate(0)}30%{transform:translateY(-9px) rotate(-8deg)}55%{transform:translateY(0) rotate(5deg)}75%{transform:translateY(-3px) rotate(-2deg)}100%{transform:none}}
+.lv-hg[data-tone="red"] .hg-svg{animation:lvHgShake 2.4s ease-in-out infinite}
+@keyframes lvHgShake{0%,86%,100%{transform:none}90%{transform:rotate(-6deg)}94%{transform:rotate(6deg)}}
+
+/* --- "Missed this order?" card --- */
+.od-avail{display:flex;align-items:center;gap:.8rem;margin:.7rem 0 0;padding:.8rem .9rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--primary,#16a34a) 25%,transparent);background:color-mix(in srgb,var(--primary,#16a34a) 9%,var(--card))}
+.od-avail-ic{flex:none;width:2.6rem;height:2.6rem;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:1.05rem;background:linear-gradient(145deg,#22c55e,#15803d)}
+.od-avail-t{flex:1;min-width:0}.od-avail-t b{display:block;font-size:.95rem}.od-avail-t small{display:block;margin-top:.1rem;font-size:.78rem;line-height:1.35;color:var(--text-muted,#6b7280)}
+html body .od-avail-btn{flex:none;height:2.5rem;padding:0 1rem;border:0;border-radius:13px;background:var(--primary,#16a34a);color:#fff;-webkit-text-fill-color:#fff;font:inherit;font-weight:700;font-size:.88rem;display:inline-flex;align-items:center;gap:.4rem}
+.od-avail-btn:disabled{opacity:.6}
+/* --- "Confirm orders in time" sheet --- */
+html body .lvw-sheet.lvx{text-align:center;padding:.55rem 1.3rem calc(1.2rem + env(safe-area-inset-bottom,0px))}
+.lvx-ic{width:3.4rem;height:3.4rem;margin:.2rem auto .7rem;border-radius:18px;display:grid;place-items:center;font-size:1.5rem;color:var(--primary,#16a34a);background:color-mix(in srgb,var(--primary,#16a34a) 14%,var(--card))}
+.lvx-t{margin:0 0 .3rem;font-size:1.25rem;font-weight:800;letter-spacing:-.02em}
+.lvx-s{margin:0 auto 1.1rem;max-width:20rem;font-size:.88rem;line-height:1.5;color:var(--text-muted,#6b7280)}
+.lvx-sel{position:relative;display:block;margin:0 0 1rem}
+.lvx-sel select{width:100%;height:3.3rem;padding:0 2.6rem 0 1rem;border:1.5px solid transparent;border-radius:16px;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);font:inherit;font-weight:600;font-size:1rem;-webkit-appearance:none;appearance:none;text-align:left}
+.lvx-sel select:focus{outline:none;border-color:var(--primary,#16a34a)}
+.lvx-sel i{position:absolute;right:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted,#6b7280);pointer-events:none}
+html body .lvx-go{display:flex;align-items:center;justify-content:center;width:100%;height:3.3rem;border:0;border-radius:16px;background:var(--primary,#16a34a);color:#fff;-webkit-text-fill-color:#fff;font:inherit;font-weight:700;font-size:1.02rem;text-align:center}
+.lvx-later{width:100%;margin-top:.2rem;padding:.8rem;border:0;background:none;color:var(--text-muted,#6b7280);font:inherit;font-weight:600}
+.lvx-fine{margin:.2rem 0 0;font-size:.75rem;color:var(--text-muted,#8b919c)}
+/* --- Vendors page: flat square cards, no banner (the logo sits in the middle, round) --- */
+html:root:root:root:root body #app .vc2{background:var(--card)!important;background-image:none!important;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;border-radius:20px!important;box-shadow:none!important;padding:1.15rem .8rem .9rem!important;text-align:center}
+html:root:root:root:root body #app .vc2 .vc2-banner{display:none!important}
+html:root:root:root:root body #app .vc2 .vc2-logo{position:relative!important;left:auto!important;top:auto!important;margin:0 auto .55rem!important;width:4.8rem!important;height:4.8rem!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 10%,transparent)!important;border:0!important}
+html:root:root:root:root body #app .vc2 .vc2-body{padding:0!important;text-align:center;align-items:center}
+html:root:root:root:root body #app .vc2>.vc2-more{top:.5rem;right:.5rem;background:color-mix(in srgb,var(--text) 7%,transparent)!important;color:var(--text)!important;box-shadow:none!important}
+html:root:root:root:root body #app .vc2 .vc2-actions{width:100%;justify-content:center}
+html:root:root:root:root body #app .vd-card{background:var(--card)!important;background-image:none!important;border-radius:20px!important;box-shadow:none!important}

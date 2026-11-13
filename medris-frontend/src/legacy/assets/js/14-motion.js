@@ -7896,11 +7896,12 @@ window.lvGoToNewOrder = function (orderId) {
     var v = (typeof vendor !== "undefined" ? vendor : null); if (!v || !v.id || document.getElementById("lvExpirySheet")) return;
     var m = document.createElement("div");
     m.id = "lvExpirySheet"; m.className = "lvw-sheet-wrap lw-wrap";
-    m.innerHTML = '<div class="lvw-sheet lw-sheet" role="dialog" aria-modal="true" aria-label="Order confirmation time"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
-      '<div class="lvw-sheet-head"><h3>When should unconfirmed orders cancel?</h3></div>' +
-      '<p class="muted" style="margin:.2rem 0 .7rem">If you do not confirm a new order in time, it is cancelled for you and the customer is told. You can also set this per product, and change it any time in your shop profile.</p>' +
-      '<select id="lvExpirySel" class="ve-input"><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours (good for food and snacks)</option><option value="180">3 hours</option><option value="1440">1 day</option><option value="2880">2 days</option><option value="10080">1 week</option><option value="0">Never cancel by itself</option></select>' +
-      '<div style="display:flex;gap:.6rem;margin-top:.9rem"><button type="button" class="btn btn-secondary" id="lvExpiryLater" style="flex:1">I will do it later</button><button type="button" class="btn btn-primary" id="lvExpirySave" style="flex:1">Save</button></div></div>';
+    m.innerHTML = '<div class="lvw-sheet lw-sheet lvx" role="dialog" aria-modal="true" aria-label="Order confirmation time"><div class="lvw-sheet-grab" aria-hidden="true"></div>' +
+      '<div class="lvx-ic"><i class="fa-regular fa-clock"></i></div><h3 class="lvx-t">Confirm orders in time</h3>' +
+      '<p class="lvx-s">An order you don\'t confirm within this time cancels itself and the customer is told.</p>' +
+      '<label class="lvx-sel"><select id="lvExpirySel"><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours (good for food and snacks)</option><option value="180">3 hours</option><option value="1440">1 day</option><option value="2880">2 days</option><option value="10080">1 week</option><option value="0">Never cancel by itself</option></select><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></label>' +
+      '<button type="button" class="lvx-go" id="lvExpirySave">Save</button><button type="button" class="lvx-later" id="lvExpiryLater">Do it later</button>' +
+      '<p class="lvx-fine">You can change this any time in your shop profile, or per product.</p></div>';
     m.addEventListener("click", function (e) { if (e.target === m) m.remove(); });
     document.body.appendChild(m);
     var sel = m.querySelector("#lvExpirySel"); sel.value = String(v.order_expiry_minutes == null ? 30 : v.order_expiry_minutes);
