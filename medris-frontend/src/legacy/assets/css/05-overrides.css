@@ -8773,7 +8773,7 @@ html:root:root body #notifPromptModal .lv-drop-act .btn-outline{border:0!importa
 @keyframes lvDropIn{0%{transform:translateY(-130%);opacity:0}100%{transform:translateY(0);opacity:1}}
 @keyframes lvBellRing{0%,60%,100%{transform:rotate(0)}66%{transform:rotate(12deg)}72%{transform:rotate(-10deg)}78%{transform:rotate(7deg)}84%{transform:rotate(-4deg)}}
 /* ===== Order pages: a calmer layout with the main actions always in reach ===== */
-html body #app .od-dock{position:fixed;left:.75rem;right:.75rem;max-width:34rem;margin:0 auto;bottom:calc(5.2rem + env(safe-area-inset-bottom,0px));z-index:60;display:flex;flex-direction:column;gap:.55rem;padding:.75rem;border-radius:22px;background:color-mix(in srgb,var(--card,#fff) 92%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent);box-shadow:0 16px 40px -18px rgba(0,0,0,.45)}
+html body #app .od-dock{position:static!important;display:flex;flex-direction:column;gap:.6rem;padding:0;margin:1rem 0 .6rem;background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html body #app .od-dock.od-dock-empty{display:none}
 html body #app .od-dock .od-action-wrap,html body #app .od-dock .order-action-wrap{display:flex;flex-direction:column;gap:.55rem;margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
 html body #app .od-dock .od-bottom-bar{display:flex;gap:.55rem;margin:0;padding:0}
@@ -8816,9 +8816,7 @@ html body #app:has(.vendor-profile-header-card) .vendor-profile-header-card .ven
 .lv-dlg-btn.go{background:#16a34a;color:#fff}
 .lv-dlg-btn.bad{background:#e11d48;color:#fff}
 /* the shared confirm / type-a-reason pop-ups get the same treatment */
-html:root body #confirmModal .modal-content,html:root body #textPromptModal .modal-content{border-radius:28px!important;padding:3.9rem 1.2rem 1.1rem!important;text-align:center;position:relative;box-shadow:0 30px 70px -24px rgba(0,0,0,.55)!important;animation:lvDlgIn .35s cubic-bezier(.2,1.2,.4,1) both}
-html:root body #confirmModal .modal-content::before,html:root body #textPromptModal .modal-content::before{content:"\f059";font-family:"Font Awesome 6 Free","Font Awesome 5 Free";font-weight:900;position:absolute;top:.9rem;left:50%;transform:translateX(-50%);width:3rem;height:3rem;border-radius:18px;display:grid;place-items:center;font-size:1.3rem;color:#fff;background:linear-gradient(145deg,#2bbb7d,#0e7a4e);box-shadow:0 12px 22px -12px rgba(14,122,78,.8)}
-html:root body #confirmModal .modal-content:has(#confirmModalOk.btn-danger)::before,html:root body #textPromptModal .modal-content:has(#textPromptModalOk.btn-danger)::before{content:"\f071";background:linear-gradient(145deg,#f43f5e,#be123c);box-shadow:0 12px 22px -12px rgba(190,18,60,.8)}
+html:root body #confirmModal .modal-content,html:root body #textPromptModal .modal-content{border-radius:28px!important;padding:1.4rem 1.2rem 1.1rem!important;text-align:center;position:relative;box-shadow:0 30px 70px -24px rgba(0,0,0,.55)!important;animation:lvDlgIn .35s cubic-bezier(.2,1.2,.4,1) both}
 html:root body #confirmModal h3,html:root body #textPromptModal h3{font-size:1.15rem!important;font-weight:800!important;margin:0 0 .2rem!important}
 html:root body #confirmModal .flex,html:root body #textPromptModal .flex{display:flex!important;gap:.6rem!important;justify-content:stretch!important}
 html:root body #confirmModal .flex .btn,html:root body #textPromptModal .flex .btn{flex:1;height:2.9rem;border-radius:999px!important;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border:0!important}
@@ -8967,3 +8965,5 @@ html:root body #lvTour.lvt-news .lvt-hole{box-shadow:0 0 0 9999px rgba(30,10,60,
 .lvu-name .lvst-tick{color:#4ade80}
 .vendor-profile-header-avatar.lvst-chat-live{box-shadow:0 0 0 3px var(--card,#fff),0 0 0 6px #22c55e!important}
 .vendor-profile-header-avatar.lvst-chat-live.lvst-sf-seen{box-shadow:0 0 0 3px var(--card,#fff),0 0 0 6px #9ca3af!important}
+
+html body #app .od-dock-sp{display:none!important}
