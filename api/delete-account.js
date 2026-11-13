@@ -627,6 +627,33 @@ async function switchBusiness(body, res) {
   catch (e) { return res.status(502).json({ error: e.message || "Could not open that business." }); }
 }
 
+// The owner deletes one of their businesses: they must type their own password, and everything deleteAccount refuses
+// (active orders, unsettled commission, money still in the wallet) also stops this.
+async function deleteBusiness(body, res) {
+  const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const me = await signedInUser(body, supabaseUrl, anonKey);
+  if (!me) return res.status(401).json({ error: "Please log in again." });
+  const target = String(body?.targetUserId || "");
+  const password = String(body?.password || "");
+  if (!/^[0-9a-f-]{36}$/i.test(target) || target === me.id) return res.status(400).json({ error: "Choose a business to delete." });
+  if (!password) return res.status(400).json({ error: "Enter your password to confirm." });
+  const headers = serviceHeaders(serviceKey);
+  const links = await linksFor(supabaseUrl, headers, me.id);
+  if (links.asBusiness || !links.asOwner.some((l) => l.business_user_id === target)) return res.status(403).json({ error: "You can only delete your own businesses from your main account." });
+  if (!me.email) return res.status(400).json({ error: "This account has no password to confirm with." });
+  const pw = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, { method: "POST", headers: { apikey: anonKey, "Content-Type": "application/json" }, body: JSON.stringify({ email: me.email, password }) });
+  if (!pw.ok) return res.status(403).json({ error: "That password is not correct." });
+  let session;
+  try { session = await mintSession(supabaseUrl, anonKey, headers, target); } catch (e) { return res.status(502).json({ error: e.message || "Could not open that business." }); }
+  const out = { status: 200, body: null };
+  const fake = { status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; } };
+  await deleteAccount({ accessToken: session.access_token }, fake);
+  if (out.status === 200 && out.body && out.body.deleted) {
+    try { await fetch(`${supabaseUrl}/rest/v1/business_links?business_user_id=eq.${encodeURIComponent(target)}`, { method: "DELETE", headers }); } catch (_) {}
+  }
+  return res.status(out.status).json(out.body || { error: "Could not delete that business." });
+}
+
 /* ============================================================
    DELETE ACCOUNT
    ============================================================ */
@@ -904,6 +931,7 @@ module.exports = async function handler(req, res) {
     if (action === "create-business") return createBusiness(body, res);
     if (action === "list-businesses") return listBusinesses(body, res);
     if (action === "switch-business") return switchBusiness(body, res);
+    if (action === "delete-business") return deleteBusiness(body, res);
     // Only the Delete account screen (no action) or an explicit "delete" deletes an account. Anything else is refused:
     // the app's "ensure-profile" request used to fall through to here and wiped the signed-in person's account.
     if (action === "" || action === "delete" || action === "delete-account") return deleteAccount(body, res);

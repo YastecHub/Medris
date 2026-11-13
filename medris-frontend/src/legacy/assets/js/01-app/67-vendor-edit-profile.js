@@ -1054,6 +1054,23 @@ function lvOpenAddBusiness() {
   setTimeout(() => byId("lvBizName")?.focus(), 150);
   return el;
 }
+function lvDeleteBusiness(b, back) {
+  if (!b) return;
+  const ov = lvTeamOverlay("lvDelBiz", "Delete this business?", "", "This cannot be undone");
+  const body = ov.querySelector("[data-lv-body]");
+  body.innerHTML = `<div class="tm-hero tm-hero-soft"><div class="tm-av" style="width:3.2rem;height:3.2rem">${lvAvInner(b.logo, b.name)}</div><div><div class="tm-hero-name">${esc(b.name)}</div><div class="tm-hero-sub">${b.status === "verified" ? "Verified shop" : b.status === "setup_needed" ? "Not set up yet" : "Under review"}</div></div></div>
+    <div class="tm-card"><b>What happens</b><div class="tm-sub">Its listings, followers, chats, wallet and everything else in this business are removed. It is not possible while it still has an order that is not finished, money in its wallet or commission to pay.</div></div>
+    <label class="tm-label">Type your password to confirm</label><input type="password" id="lvDelBizPw" class="tm-input" autocomplete="current-password" placeholder="Your password">
+    <div id="lvDelBizErr" class="tm-err" hidden></div>
+    <button type="button" class="tm-btn danger block" id="lvDelBizGo"><i class="fa-regular fa-trash-can"></i> Delete ${esc(b.name)}</button>`;
+  byId("lvDelBizGo").onclick = async function () {
+    const pw = byId("lvDelBizPw").value; const err = byId("lvDelBizErr"); err.hidden = true;
+    if (!pw) { err.textContent = "Enter your password."; err.hidden = false; return; }
+    this.disabled = true;
+    try { await lvBizCall("delete-business", { targetUserId: b.userId, password: pw }); showToast("Business deleted.", "success"); ov.remove(); if (back) back.remove(); lvOpenSwitchBusiness(); }
+    catch (e) { this.disabled = false; err.textContent = e.message; err.hidden = false; }
+  };
+}
 async function lvOpenSwitchBusiness() {
   if (!session) return;
   const el = lvTeamOverlay("lvSwitchBiz", "Businesses", `<p class="muted">Loading…</p>`, "Switch between your accounts");
@@ -1082,6 +1099,10 @@ async function lvOpenSwitchBusiness() {
       byId("lvSwAdd").onclick = () => lvOpenAddBusiness();
     }
     body.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.getAttribute("data-go"), b.getAttribute("data-view"), b)));
+    if (!d.isBusiness && (d.businesses || []).length) {
+      body.insertAdjacentHTML("beforeend", `<p class="tm-label" style="margin-top:1.2rem">Remove a business</p><div class="tm-list">${d.businesses.map((b) => `<div class="tm-biz tm-biz-del"><div class="tm-av">${lvAvInner(b.logo, b.name)}</div><div class="tm-grow"><div class="tm-name">${esc(b.name)}</div></div><button type="button" class="tm-btn danger" data-del-biz="${esc(b.userId)}"><i class="fa-regular fa-trash-can"></i> Delete</button></div>`).join("")}</div>`);
+      body.querySelectorAll("[data-del-biz]").forEach((x) => (x.onclick = () => lvDeleteBusiness((d.businesses || []).find((b) => b.userId === x.getAttribute("data-del-biz")), el)));
+    }
     // opening this page refreshes the badge
     window.lvBiz = Object.assign({}, window.lvBiz, { unread: (d.businesses || []).reduce((n, b) => n + Number(b.unread || 0), 0), list: d.businesses || [] });
     try { lvPaintBizBadge(); updateAuthUI(); } catch (_) {}
