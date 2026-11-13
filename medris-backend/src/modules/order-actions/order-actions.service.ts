@@ -289,6 +289,33 @@ export class OrderActionsService {
     });
   }
 
+  /** The shop owner promotes a staff member to manager or demotes a manager to staff; the person is told. */
+  async teamSetRole(me: Identity | null, userId: string, role: string): Promise<{ role: string; changed: boolean }> {
+    if (!me) throw forbidden("Authentication required.");
+    if (role !== "manager" && role !== "staff") throw badRequest("Choose Manager or Staff.");
+    return this.db().asService(async (tx) => {
+      const orders = new OrderActionsRepository(tx);
+      const shop = await orders.ownShopId(me.userId);
+      if (!shop) throw forbidden("Only a shop owner can manage a team.");
+      const done = await orders.setMemberRole(shop, userId, role);
+      if (!done) throw notFound("That person is not on your team.");
+      const changed = done.old_role !== role;
+      if (changed && done.status === "active") {
+        const shopName = (await orders.vendorName(shop)) ?? "the shop";
+        await orders.notify({
+          userId,
+          type: "team_role_changed",
+          title: role === "manager" ? `You are now a manager at ${shopName}` : `Your role at ${shopName} is now staff`,
+          body: role === "manager" ? "You can now help with orders, chats and listings." : "You can help with orders and chats.",
+          targetParams: { vendorId: shop },
+          category: "team",
+          targetView: "home",
+        });
+      }
+      return { role, changed };
+    });
+  }
+
   async teamRemove(me: Identity | null, userId: string): Promise<{ removed: number }> {
     if (!me) throw forbidden("Authentication required.");
     return this.db().asService(async (tx) => {

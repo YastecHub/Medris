@@ -536,6 +536,7 @@ async function mintSession(supabaseUrl, anonKey, headers, userId) {
   return { access_token: session.access_token, refresh_token: session.refresh_token };
 }
 
+const MAX_BUSINESSES = 5;   // businesses one person can add to their login
 async function createBusiness(body, res) {
   const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
   const me = await signedInUser(body, supabaseUrl, anonKey);
@@ -545,7 +546,7 @@ async function createBusiness(body, res) {
   const headers = serviceHeaders(serviceKey);
   const links = await linksFor(supabaseUrl, headers, me.id);
   if (links.asBusiness) return res.status(403).json({ error: "Switch to your main account to add another business." });
-  if (links.asOwner.length >= 5) return res.status(400).json({ error: "You can have up to 5 extra businesses." });
+  if (links.asOwner.length >= MAX_BUSINESSES) return res.status(400).json({ error: `You can have up to ${MAX_BUSINESSES} businesses.` });
 
   // a private login the owner never types: it only exists to be switched into from the main account
   const authEmail = `biz.${crypto.randomUUID()}@accounts.levromart.app`;
@@ -586,18 +587,29 @@ async function listBusinesses(body, res) {
   const headers = serviceHeaders(serviceKey);
   const links = await linksFor(supabaseUrl, headers, me.id);
   const ids = links.asBusiness ? [links.asBusiness.owner_id] : links.asOwner.map((l) => l.business_user_id);
-  if (!ids.length) return res.status(200).json({ isBusiness: false, businesses: [] });
+  if (!ids.length) return res.status(200).json({ isBusiness: false, businesses: [], max: MAX_BUSINESSES });
   const list = ids.map(encodeURIComponent).join(",");
-  const [uRes, vRes] = await Promise.all([
-    fetch(`${supabaseUrl}/rest/v1/users?id=in.(${list})&select=id,name`, { headers }),
-    fetch(`${supabaseUrl}/rest/v1/vendors?user_id=in.(${list})&deleted_at=is.null&select=user_id,business_name,verification_status`, { headers })
+  const [uRes, vRes, nRes] = await Promise.all([
+    fetch(`${supabaseUrl}/rest/v1/users?id=in.(${list})&select=id,name,avatar_url,phone`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/vendors?user_id=in.(${list})&deleted_at=is.null&select=user_id,business_name,logo_url,verification_status,whatsapp_number,city,cac_number`, { headers }),
+    // unread notifications of the OTHER accounts (shown as a badge, like Instagram's account switcher)
+    fetch(`${supabaseUrl}/rest/v1/notifications?user_id=in.(${list})&read=eq.false&deleted_at=is.null&select=user_id&limit=1000`, { headers })
   ]);
   const users = uRes.ok ? await readJson(uRes) : []; const vendors = vRes.ok ? await readJson(vRes) : [];
+  const unreadRows = nRes.ok ? await readJson(nRes) : [];
+  const unread = {};
+  (Array.isArray(unreadRows) ? unreadRows : []).forEach((r) => { unread[r.user_id] = (unread[r.user_id] || 0) + 1; });
   const out = ids.map((id) => {
     const u = (Array.isArray(users) ? users : []).find((x) => x.id === id); const v = (Array.isArray(vendors) ? vendors : []).find((x) => x.user_id === id);
-    return { userId: id, name: v?.business_name || u?.name || "Business", status: v ? v.verification_status : "setup_needed" };
+    return { userId: id, name: v?.business_name || u?.name || "Business", logo: v?.logo_url || u?.avatar_url || null, status: v ? v.verification_status : "setup_needed", unread: unread[id] || 0 };
   });
-  return res.status(200).json({ isBusiness: !!links.asBusiness, businesses: out });
+  const payload = { isBusiness: !!links.asBusiness, businesses: out, max: MAX_BUSINESSES };
+  if (links.asBusiness) {
+    // the owner's contact details, so a business's shop application can be pre-filled instead of typed again
+    const ou = (Array.isArray(users) ? users : []).find((x) => x.id === links.asBusiness.owner_id); const ov = (Array.isArray(vendors) ? vendors : []).find((x) => x.user_id === links.asBusiness.owner_id);
+    payload.owner = { name: ov?.business_name || ou?.name || "", phone: ou?.phone || "", whatsapp: ov?.whatsapp_number || "", city: ov?.city || "", cac: ov?.cac_number || "" };
+  }
+  return res.status(200).json(payload);
 }
 
 async function switchBusiness(body, res) {

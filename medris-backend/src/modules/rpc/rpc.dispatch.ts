@@ -352,6 +352,7 @@ export const RPC: Record<string, RpcEntry> = {
   list_shop_team: { run: (s, me) => s.orderActions.teamList(me) },
   add_shop_team_member: { run: (s, me, a) => s.orderActions.teamAdd(me, str(a.p_identifier), str(a.p_role)), limit: L.orders },
   remove_shop_team_member: { run: (s, me, a) => s.orderActions.teamRemove(me, id(a.p_user_id)), limit: L.orders },
+  set_shop_team_role: { run: (s, me, a) => s.orderActions.teamSetRole(me, id(a.p_user_id), String(a.p_role ?? "")), limit: L.orders },
   get_my_shop_teams: { run: (s, me) => s.orderActions.myTeams(me) },
   get_team_shop_orders: { run: (s, me, a) => s.orderActions.teamOrders(me, id(a.p_vendor_id), a.p_active_only !== false) },
   request_customer_chat: { run: (s, me, a) => s.orderActions.requestCustomerChat(me, id(a.p_order_id)).then(pick("id")), limit: L.orders },

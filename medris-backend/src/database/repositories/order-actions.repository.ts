@@ -61,6 +61,11 @@ export class OrderActionsRepository {
   // ---- the shop's team (migrations 0057-0060) ----
 
   /** The shop the person owns (live), if any. */
+  async vendorName(vendorId: string): Promise<string | null> {
+    const [row] = rowsOf<{ n: string | null }>(await this.db.execute(sql`select business_name as n from public.vendors where id = ${vendorId}::uuid`));
+    return row?.n ?? null;
+  }
+
   async ownShopId(userId: string): Promise<string | null> {
     const [row] = rowsOf<{ id: string }>(await this.db.execute(sql`select id from public.vendors where user_id = ${userId}::uuid and deleted_at is null limit 1`));
     return row?.id ?? null;
@@ -103,6 +108,15 @@ export class OrderActionsRepository {
     const rows = rowsOf<{ status: string }>(await this.db.execute(sql`insert into public.vendor_members (vendor_id, user_id, role, invited_by, status) values (${vendorId}::uuid, ${userId}::uuid, ${role}, ${invitedBy}::uuid, 'pending')
       on conflict (vendor_id, user_id) do update set role = excluded.role returning status`));
     return rows[0]?.status ?? "pending";
+  }
+
+  /** Changes the role of someone already on the team (manager <-> staff). Returns their status and old role, or null when they are not on the team. */
+  async setMemberRole(vendorId: string, userId: string, role: string): Promise<{ status: string; old_role: string } | null> {
+    const rows = rowsOf<{ status: string; old_role: string }>(await this.db.execute(sql`
+      with old as (select role from public.vendor_members where vendor_id = ${vendorId}::uuid and user_id = ${userId}::uuid)
+      update public.vendor_members set role = ${role} where vendor_id = ${vendorId}::uuid and user_id = ${userId}::uuid
+      returning status, (select role from old) as old_role`));
+    return rows[0] ?? null;
   }
 
   async removeMember(vendorId: string, userId: string): Promise<number> {
