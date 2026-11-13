@@ -9017,3 +9017,13 @@ html body #app .vc2-feat .vc2-actions{padding:.4rem .8rem .65rem!important}
 .aor-acts{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}
 .aor-btn{display:inline-flex;align-items:center;gap:.4rem;border:0;border-radius:999px;padding:.55rem .95rem;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);font:inherit;font-weight:700;font-size:.8rem;text-decoration:none;cursor:pointer}
 .aor-btn.go{background:#16a34a;color:#fff}
+/* Updates placeholders: soft colour, a round icon and a gentle shimmer */
+html body .lvu-ghost{border:1.5px dashed transparent!important;color:#fff!important;position:relative;overflow:hidden;gap:.55rem}
+html body .lvu-ghost.g1{background:linear-gradient(160deg,#22c55e,#0e7a4e)!important}
+html body .lvu-ghost.g2{background:linear-gradient(160deg,#f59e0b,#ea580c)!important}
+html body .lvu-ghost.g3{background:linear-gradient(160deg,#8b5cf6,#5b21b6)!important}
+html body .lvu-ghost::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);transform:translateX(-120%);animation:lvuShine 3.4s ease-in-out infinite}
+@keyframes lvuShine{to{transform:translateX(120%)}}
+.lvu-gi{width:2.8rem;height:2.8rem;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22);font-size:1.15rem}
+html body .lvu-ghost b{font-size:.72rem;line-height:1.25;font-weight:800;color:#fff}
+html body .lvu-ghost i{font-size:inherit}

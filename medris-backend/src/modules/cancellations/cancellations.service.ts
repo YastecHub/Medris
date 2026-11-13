@@ -1,6 +1,7 @@
 import type { DataContext, Identity } from "../../database/context.js";
 import { AccessRepository } from "../../database/repositories/access.repository.js";
 import { CancellationsRepository } from "../../database/repositories/cancellations.repository.js";
+import { OrderActionsRepository } from "../../database/repositories/order-actions.repository.js";
 import { NotificationWriter } from "../../database/repositories/notification-writer.repository.js";
 import { badRequest, conflict, forbidden, notFound } from "../../shared/errors/app-error.js";
 
@@ -75,7 +76,11 @@ export class CancellationsService {
       const repo = new CancellationsRepository(tx);
       const c = await repo.byId(id);
       if (!c || c.requester_role !== "buyer") throw notFound("Refund request not found.");
-      if (c.vendor_user_id !== me.userId) throw forbidden("Only the shop can answer this request.");
+      if (c.vendor_user_id !== me.userId) {
+        // a manager of the shop may answer too, exactly like the owner
+        const ord = await repo.order(c.order_id);
+        if (!ord || !(await new OrderActionsRepository(tx).teamCan(me.userId, ord.vendor_id, "listings"))) throw forbidden("Only the shop can answer this request.");
+      }
       if (c.status !== "requested") throw conflict("This request was already decided.");
       const notify = new NotificationWriter(tx);
       if (decision === "decline") {
