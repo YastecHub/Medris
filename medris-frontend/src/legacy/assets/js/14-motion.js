@@ -8691,3 +8691,101 @@ window.lvNoImageHtml = function (seed) {
   }
   setTimeout(tick, 9000);
 })();
+
+/* ===== Admin pages: Login logs, Finance and Inventory get pictures, groups, and CSV / print-ready PDF with the Levromart letter-head ===== */
+(function () {
+  "use strict";
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  var TONES = ["#16a34a", "#2563eb", "#7c3aed", "#ea580c", "#db2777", "#0891b2", "#ca8a04", "#4f46e5"];
+  function tone(k) { var h = 0, s = String(k || "?"); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return TONES[h % TONES.length]; }
+  var ICONS = [[/fashion|cloth|beauty|hair|jewel|perfume|bag/i, "fa-shirt"], [/food|grocer|snack|drink|bever|bak/i, "fa-utensils"], [/tech|phone|gadget|electr|laptop/i, "fa-laptop"], [/book|stationer|school|educat/i, "fa-book"], [/service|repair|clean|tutor/i, "fa-screwdriver-wrench"], [/home|furnit|kitchen|decor/i, "fa-couch"], [/health|pharm|care/i, "fa-heart-pulse"], [/gift|art|craft/i, "fa-gift"]];
+  function iconFor(name) { for (var i = 0; i < ICONS.length; i++) if (ICONS[i][0].test(name || "")) return ICONS[i][1]; return "fa-box"; }
+  window.lvInvIconHtml = function (sector) { return '<span class="inv-ic" style="background:' + tone(sector) + '"><i class="fa-solid ' + iconFor(sector) + '"></i></span>'; };
+  window.lvInvIcon = function (sector) { var t = document.createElement("template"); t.innerHTML = window.lvInvIconHtml(sector); return t.content.firstChild; };
+  function avatar(url, name) {
+    var ini = E(String(name || "?").trim().charAt(0).toUpperCase() || "?");
+    return '<span class="adm-av" style="background:' + tone(name) + '">' + (url ? '<img src="' + E(url) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "<b>" + ini + "</b></span>";
+  }
+  /* letter-head + diagonal watermark for printed pages */
+  window.lvLetterhead = function (title) {
+    var css = '<style>@page{margin:14mm}body{position:relative}.lh{display:flex;align-items:center;gap:14px;border-bottom:3px solid #16a34a;padding-bottom:10px;margin-bottom:6px}.lh .lg{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#2bbb7d,#0e7a4e);display:grid;place-items:center}.lh h1{margin:0;font-size:22px;color:#0e7a4e}.lh small{color:#5c7269;display:block}.wm{position:fixed;left:0;right:0;top:38%;text-align:center;font-size:96px;font-weight:900;letter-spacing:.2em;color:rgba(22,163,74,.08);transform:rotate(-28deg);pointer-events:none;z-index:0}table,.stats{position:relative;z-index:1}tr{page-break-inside:avoid}thead{display:table-header-group}</style>';
+    var logo = '<svg viewBox="0 0 64 64" width="30" height="30"><g fill="none" stroke="#fff" stroke-width="5.4" stroke-linecap="round"><path d="M22 20a17 17 0 0 0 0 24"/><path d="M42 44a17 17 0 0 0 0-24"/></g><circle cx="32" cy="32" r="6" fill="#fff"/></svg>';
+    return { css: css, head: '<div class="wm">LEVROMART</div><div class="lh"><span class="lg">' + logo + '</span><div><h1>Levromart · ' + E(title) + '</h1><small>Generated ' + E(new Date().toLocaleString()) + "</small></div></div>" };
+  };
+  function csvCell(v) { var t = String(v == null ? "" : v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }
+  window.lvDownloadCsv = function (name, headers, rows) {
+    var text = "﻿" + [headers].concat(rows).map(function (r) { return r.map(csvCell).join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+  window.lvPrintTable = function (title, headers, rows, sub) {
+    var w = window.open("", "_blank"); if (!w) { showToast("Please allow pop-ups to export the PDF.", "error"); return; }
+    var lh = window.lvLetterhead(title);
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Levromart ' + E(title) + "</title>" + lh.css + '<style>body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;color:#0d201c;padding:1.2rem}table{width:100%;border-collapse:collapse;margin-top:1rem;font-size:.82rem}th,td{padding:.45rem .55rem;text-align:left;border-bottom:1px solid #e2e8f0}th{background:#f3f8f7}</style></head><body>' + lh.head + (sub ? '<p style="color:#5c7269">' + E(sub) + "</p>" : "") + "<table><thead><tr>" + headers.map(function (h) { return "<th>" + E(h) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + E(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table><scr" + "ipt>window.onload=function(){window.print()}<\/script></body></html>");
+    w.document.close();
+  };
+  function exportBar(csvFn, pdfFn) { return '<span class="adm-exp"><button type="button" class="fin-icbtn" title="Download CSV" aria-label="Download CSV" data-lvcsv><i class="fa-solid fa-file-csv"></i></button><button type="button" class="fin-icbtn" title="Print or save as PDF" aria-label="PDF" data-lvpdf><i class="fa-solid fa-file-pdf"></i></button></span>'; }
+
+  /* ---- Login logs / admin activity ---- */
+  var ACTION = { approve_vendor: ["approved vendor", "fa-circle-check", "ok"], reject_vendor: ["rejected vendor", "fa-circle-xmark", "bad"], pause_storefront: ["paused storefront", "fa-pause", "warn"], reactivate_storefront: ["reactivated storefront", "fa-play", "ok"], suspend_user: ["suspended account", "fa-user-slash", "bad"], unsuspend_user: ["reinstated account", "fa-user-check", "ok"], promote_admin: ["promoted to admin", "fa-user-shield", "warn"], demote_admin: ["removed admin access", "fa-user-minus", "bad"] };
+  var logRows = [];
+  window.renderAdminLog = async function () {
+    if (!session || typeof isSuperAdmin !== "function" || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
+    var r = await sb.from("admin_actions").select("*").order("created_at", { ascending: false }).limit(300);
+    var log = (r && r.data) || []; logRows = log;
+    var html = '<h2><i class="fa-solid fa-clock-rotate-left"></i> Admin activity log</h2>' + adminNavHtml("adminLog");
+    if (!log.length) return html + '<div class="empty-state"><i class="fa-regular fa-clock"></i><b>Nothing logged yet</b></div>';
+    html += '<div class="adm-bar"><input type="search" placeholder="Search the log…" oninput="lvLogFilter(this.value)">' + exportBar() + "</div>";
+    var byDate = {}, order = [];
+    log.forEach(function (e) { var k = new Date(e.created_at).toLocaleDateString("en-NG", { weekday: "short", year: "numeric", month: "short", day: "numeric" }); if (!byDate[k]) { byDate[k] = []; order.push(k); } byDate[k].push(e); });
+    html += '<div id="lvLogList">' + order.map(function (k) {
+      return '<div class="adm-day">' + E(k) + "</div>" + byDate[k].map(function (e) {
+        var m = ACTION[e.action] || [String(e.action || "").replace(/_/g, " "), "fa-circle-info", ""];
+        return '<div class="adm-row" data-q="' + E((e.admin_name + " " + m[0] + " " + (e.target_label || "")).toLowerCase()) + '">' + avatar("", e.admin_name || "?") + '<div class="adm-main"><b>' + E(e.admin_name || "Admin") + '</b><span class="adm-pill ' + m[2] + '"><i class="fa-solid ' + m[1] + '"></i> ' + E(m[0]) + "</span><small>" + E(e.target_label || e.target_id || "") + '</small></div><time>' + E(new Date(e.created_at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })) + "</time></div>";
+      }).join("");
+    }).join("") + "</div>";
+    return html;
+  };
+  window.lvLogFilter = function (q) { q = String(q || "").toLowerCase(); document.querySelectorAll("#lvLogList .adm-row").forEach(function (r) { r.style.display = !q || r.getAttribute("data-q").indexOf(q) >= 0 ? "" : "none"; }); };
+  function logTable() { return [["Date", "Time", "Admin", "Action", "Target"], logRows.map(function (e) { var m = ACTION[e.action] || [String(e.action || "")]; var d = new Date(e.created_at); return [d.toLocaleDateString("en-NG"), d.toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }), e.admin_name || "", m[0], e.target_label || e.target_id || ""]; })]; }
+
+  /* ---- Finance: picture, sector groups, exports ---- */
+  var vendorMeta = null;
+  async function regroupFinance() {
+    var list = document.querySelector(".financeVendorsTableWrap"); if (!list || list.__lvG) return;
+    var rows = [].slice.call(list.querySelectorAll(":scope > .fin-row")); if (!rows.length) return;
+    list.__lvG = 1;
+    if (!vendorMeta) {
+      vendorMeta = {};
+      try { var r = await sb.from("vendors").select("id,logo_url,sector:sectors(name)").is("deleted_at", null).limit(2000); ((r && r.data) || []).forEach(function (v) { vendorMeta[String(v.id)] = { logo: v.logo_url, sector: v.sector && v.sector.name }; }); } catch (_) {}
+      window.__lvVendorMeta = vendorMeta;
+    }
+    if (!list.isConnected) return;
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      var id = r.getAttribute("data-vendor-id"), m = vendorMeta[id] || {}, nm = r.querySelector(".fin-name"), nmWrap = r.querySelector(".fin-nm");
+      if (nmWrap && !nmWrap.querySelector(".adm-av")) nmWrap.insertAdjacentHTML("afterbegin", avatar(m.logo, nm ? nm.textContent : ""));
+      var s = m.sector || "Other"; if (!groups[s]) { groups[s] = []; order.push(s); } groups[s].push(r);
+    });
+    order.sort(function (a, b) { return a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b); });
+    var frag = document.createDocumentFragment();
+    order.forEach(function (s) { var h = document.createElement("div"); h.className = "adm-day"; h.innerHTML = '<i class="fa-solid ' + iconFor(s) + '"></i> ' + E(s) + " · " + groups[s].length; frag.appendChild(h); groups[s].forEach(function (r) { frag.appendChild(r); }); });
+    list.appendChild(frag);
+    var bar = document.createElement("div"); bar.className = "adm-bar"; bar.innerHTML = '<span class="muted">Vendors by sector</span>' + exportBar(); list.before(bar);
+    bar.__kind = "vendors";
+  }
+  function vendorTable() { var d = ((typeof __adminFinanceData !== "undefined" ? __adminFinanceData.vendors : []) || []).map(function (v) { var m = (window.__lvVendorMeta || {})[String(v.vendor_id)] || {}; return Object.assign({}, v, { sector_name: m.sector }); }); return [["Sector", "Vendor", "Verification", "Commission %", "Completed orders", "Collected", "Commission owed", "Status"], d.slice().sort(function (a, b) { return String(a.sector_name || "~").localeCompare(String(b.sector_name || "~")) || String(a.business_name).localeCompare(String(b.business_name)); }).map(function (v) { return [v.sector_name || "Other", v.business_name, v.verification_status, v.commission_pct, v.completed_orders, v.total_paid_in, v.commission_owed, v.commission_status]; })]; }
+  /* ---- Inventory CSV ---- */
+  window.lvInventoryCsv = function () {
+    var all = window.__adminInventoryAll || []; if (!all.length) { showToast("No inventory to export yet.", "error"); return; }
+    window.lvDownloadCsv("levromart-inventory.csv", ["Sector", "Category", "Product", "Vendor", "Price", "Status", "Quantity left", "Added"], all.slice().sort(function (a, b) { return String(a.sector_name).localeCompare(String(b.sector_name)) || String(a.name).localeCompare(String(b.name)); }).map(function (p) { return [p.sector_name, p.category_name, p.name, p.vendor_name, p.price, p.status, p.quantity_available, p.created_at ? new Date(p.created_at).toISOString().slice(0, 10) : ""]; }));
+  };
+  document.addEventListener("click", function (e) {
+    var c = e.target.closest && e.target.closest("[data-lvcsv]"), p = e.target.closest && e.target.closest("[data-lvpdf]"); if (!c && !p) return;
+    var bar = (c || p).closest(".adm-bar"), isLog = !!document.getElementById("lvLogList"), t = isLog ? logTable() : vendorTable(), title = isLog ? "Admin activity log" : "Vendors by sector";
+    if (!isLog && !(bar && bar.__kind === "vendors")) return;
+    e.preventDefault(); e.stopPropagation();
+    if (c) window.lvDownloadCsv("levromart-" + title.toLowerCase().replace(/\W+/g, "-") + ".csv", t[0], t[1]); else window.lvPrintTable(title, t[0], t[1]);
+  }, true);
+  var raf = 0;
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { regroupFinance(); } catch (_) {} }); }).observe(document.body, { childList: true, subtree: true });
+})();
