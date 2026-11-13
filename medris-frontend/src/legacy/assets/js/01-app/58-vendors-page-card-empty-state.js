@@ -245,6 +245,9 @@ function renderVendorsDirectory() {
       <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view" aria-pressed="false"><i class="fa-solid fa-map-location-dot"></i></button>
     </div>
   </div>`;
+  // the Updates strip, the title and "Near you" are in the page from the first frame (filled in right after), so nothing shifts when they arrive
+  html += `<h2 class="lv-vd-title">Updates</h2><section id="lvStStrip" class="lvst-strip"><div class="lvu-row">${'<div class="lvu-card sk"></div>'.repeat(3)}</div></section>`;
+  html += `<section id="lvNear" class="lv-near"><div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">${'<span class="lv-nc sk"></span>'.repeat(4)}</div></section><div id="lvAllHead" class="lv-sec"><b>All shops</b><button type="button" data-lvsort>Sort ▾</button></div>`;
   html += `<div class="vendor-listing-tabs" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
     <button type="button" class="vendor-listing-tab active" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
     <button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>

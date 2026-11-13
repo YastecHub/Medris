@@ -121,6 +121,15 @@
       );
       if(error) throw error;
       const products=Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : (Array.isArray(data?.products) ? data.products : []));
+      // the first picture of each product (the inventory list itself carries none)
+      try{
+        const ids=products.map(p=>p.id);
+        for(let i=0;i<ids.length;i+=400){
+          const r=await withRouteTimeout(sb.from("products").select("id,photos").in("id",ids.slice(i,i+400)),6000,{data:[]});
+          const m=new Map(((r&&r.data)||[]).map(x=>[String(x.id),x.photos&&x.photos[0]||""]));
+          products.forEach(p=>{if(m.has(String(p.id)))p.photo=m.get(String(p.id));});
+        }
+      }catch(_){}
       window.__adminInventoryAll=products;
       window.__adminInventoryCache={products,loadedAt:Date.now()};
       return buildAdminInventoryHtml(products);
@@ -160,7 +169,7 @@
         </select>
         <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
         <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
-        <button type="button" class="btn btn-outline btn-sm" onclick="exportInventoryPdf()"><i class="fa-solid fa-file-pdf"></i> Download PDF report</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="exportInventoryPdf()"><i class="fa-solid fa-file-pdf"></i> PDF report</button><button type="button" class="btn btn-outline btn-sm" onclick="lvInventoryCsv()"><i class="fa-solid fa-file-csv"></i> CSV</button>
       </div>
       <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${visible.length} ${statusLabel.toLowerCase()}</div>
       <div class="admin-inventory-table-wrap">
@@ -220,7 +229,7 @@
 
     const w=window.open("","_blank");
     if(!w){showToast("Please allow pop-ups to export the PDF.","error");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Levromart Inventory Report</title>
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Levromart Inventory Report</title>${window.lvLetterhead?window.lvLetterhead('x').css:''}
     <style>
       body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0d201c;padding:2rem;}
       h1{color:#3fb97f;margin:0 0 .2rem;} .muted{color:#5c7269;margin-top:0;}
@@ -532,7 +541,7 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
 </style>
 
 </head><body>
-    <h1>Levromart Inventory Report</h1>
+    ${window.lvLetterhead?window.lvLetterhead('Inventory Report').head:'<h1>Levromart Inventory Report</h1>'}
     <p class="muted">Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
       <div class="stat"><b>${total}</b>Total products</div>
@@ -551,10 +560,13 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
   };
 
   function renderAdminInventoryRows(rows){
-    return rows.map((p,i)=>{
+    let lastSector=null;
+    return rows.slice().sort((x,y)=>String(x.sector_name||'Unassigned').localeCompare(String(y.sector_name||'Unassigned'),undefined,{sensitivity:'base'})).map((p,i)=>{
+      const secName=p.sector_name||'Unassigned';const head=secName!==lastSector?`<tr class="inv-sec"><td colspan="8"><i class="fa-solid fa-layer-group"></i> ${esc(secName)}</td></tr>`:'';lastSector=secName;
       const price=(p.price===null||p.price===undefined||p.price==="")?"-":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
       const st=String(p.status||"");
-      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"-"}</td><td><div class="admin-inv-acts"><button type="button" class="btn btn-sm btn-outline admin-inventory-suspend-btn" onclick="adminSuspendProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}','${esc(st)}',event)"><i class="fa-solid ${st==="suspended"?"fa-play":"fa-ban"}"></i> ${st==="suspended"?"Restore":"Suspend"}</button><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></div></td></tr>`;
+      const thumb=p.photo?`<img class="inv-th" src="${esc(p.photo)}" alt="" loading="lazy" onerror="this.replaceWith(lvInvIcon('${esc(secName).replace(/'/g,'')}'))">`:'';const tile=thumb||(window.lvInvIconHtml?window.lvInvIconHtml(secName):'');
+      return head+`<tr><td>${i+1}</td><td><span class="inv-nm">${tile}<strong>${esc(p.name||"Unnamed product")}</strong></span></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"-"}</td><td><div class="admin-inv-acts"><button type="button" class="btn btn-sm btn-outline admin-inventory-suspend-btn" onclick="adminSuspendProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}','${esc(st)}',event)"><i class="fa-solid ${st==="suspended"?"fa-play":"fa-ban"}"></i> ${st==="suspended"?"Restore":"Suspend"}</button><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></div></td></tr>`;
     }).join("")||`<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
   }
 

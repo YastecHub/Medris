@@ -761,7 +761,7 @@ function exportFinancePdf() {
     return;
   }
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Levromart Transactions (${rangeLabel(adminFinanceRange)})</title>
-    <style>
+    ${window.lvLetterhead ? window.lvLetterhead("Transactions").css : ""}<style>
       body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0d201c;padding:2rem;}
       h1{color:#3fb97f;margin:0 0 .2rem;} .muted{color:#5c7269;margin-top:0;}
       table{width:100%;border-collapse:collapse;margin-top:1.2rem;font-size:.85rem;}
@@ -771,7 +771,7 @@ function exportFinancePdf() {
       .stat b{display:block;font-size:1.3rem;color:#3fb97f;}
     </style>
 </head><body>
-    <h1>Levromart Transactions</h1>
+    ${window.lvLetterhead ? window.lvLetterhead("Transactions").head : "<h1>Levromart Transactions</h1>"}
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
       <div class="stat"><b>${paid.length}</b>Paid transactions</div>
