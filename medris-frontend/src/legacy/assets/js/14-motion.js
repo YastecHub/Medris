@@ -8385,4 +8385,29 @@ window.lvNoImageHtml = function (seed) {
     paint();
   }
   window.lvStatusOpen = openPage; window.lvStatusAdd = openAdd;
+  /* ---- the same ring on a shop's picture on its storefront and in chats: tap it to see the status ---- */
+  function liveFor(vid) { var g = groups(cache.rows).filter(function (x) { return x.id === vid; })[0]; return g || null; }
+  function decorate() {
+    if (Date.now() - cache.at > 60000) { load(false).then(decorate); return; }
+    // storefront
+    try {
+      var vid = typeof currentView !== "undefined" && currentView === "storefront" && currentViewParams && currentViewParams.vendorId;
+      var btn = vid && document.querySelector("#app .storefront-avatar-button"), g = vid && liveFor(vid);
+      if (btn) { btn.classList.toggle("lvst-sf-live", !!g); btn.classList.toggle("lvst-sf-seen", !!g && !g.unseen); if (g) btn.setAttribute("data-lvst", vid); else btn.removeAttribute("data-lvst"); }
+    } catch (_) {}
+    // chat list rows (the shop is the other side for a buyer)
+    document.querySelectorAll("#app .conv-list-item[data-conversation-id]").forEach(function (row) {
+      var c = (window.__conversations || []).filter(function (x) { return x.conversation_id === row.getAttribute("data-conversation-id"); })[0];
+      var av = row.querySelector(".avatar-circle, img, .avatar-fallback, [class*='avatar']");
+      if (!c || !c.vendor_id || !av) return;
+      var g = liveFor(c.vendor_id), host = av.closest("button,span,div") || av;
+      host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
+      if (g) host.setAttribute("data-lvst", c.vendor_id); else host.removeAttribute("data-lvst");
+    });
+  }
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest && e.target.closest("[data-lvst]"); if (!el) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); openViewer(el.getAttribute("data-lvst"));
+  }, true);
+  var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
 })();

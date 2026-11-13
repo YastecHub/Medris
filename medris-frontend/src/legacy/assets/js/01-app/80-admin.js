@@ -47,8 +47,14 @@ function openAdminNavSheet() {
     const it = e.target.closest(".admin-nav-item"); if (it) { close(); navigate(it.dataset.v); }
   });
 }
+// the two storage tools live under one "Storage" section: Migration and Image size
+function lvR2Tabs(active) {
+  const t = (v, l) => `<button type="button" class="lv-r2-tab${v === active ? " on" : ""}" onclick="navigate('${v}')">${l}</button>`;
+  return `<div class="lv-r2-tabs" role="tablist">${t("adminR2Migration", "Migration")}${t("adminR2Optimize", "Image size")}</div>`;
+}
 function adminNavHtml(active) {
-  if (active === "adminCampuses") active = "adminPanel";   // one Vendors section: applications and students/campuses live together
+  if (active === "adminCampuses") active = "adminPanel";
+  if (active === "adminR2Optimize") active = "adminR2Migration";   // one Storage section with two tabs inside   // one Vendors section: applications and students/campuses live together
   const items = [
     ["adminPeople", "fa-users", "People"],
     ["adminPanel", "fa-user-check", "Vendors"],
@@ -63,8 +69,7 @@ function adminNavHtml(active) {
     ["adminConversations", "fa-comments", "Conversations"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
-    ["adminR2Migration", "fa-cloud-arrow-up", "R2 migration"],
-    ["adminR2Optimize", "fa-compress", "R2 image size"],
+    ["adminR2Migration", "fa-cloud-arrow-up", "Storage"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
   const cur = items.find(([v]) => v === active) || items[0];
   const picker = `<button type="button" class="admin-nav-pick" onclick="openAdminNavSheet()"><span class="admin-nav-pick-ico"><i class="fa-solid ${cur[1]}"></i></span><span class="admin-nav-pick-txt"><small>Admin section</small><b>${cur[2]}</b></span>${active!=="adminPayments"?`<span class="dash-tab-dot lv-pay-badge ap-pick-badge ${Number(window.__lvPayPending||0)?"":"hidden"}">${Number(window.__lvPayPending||0)>9?"9+":Number(window.__lvPayPending||0)}</span>`:""}<i class="fa-solid fa-chevron-down"></i></button>`;

@@ -8570,3 +8570,10 @@ html:root:root:root:root body #app .vc2 .vc2-body{padding:0!important;text-align
 html:root:root:root:root body #app .vc2>.vc2-more{top:.5rem;right:.5rem;background:color-mix(in srgb,var(--text) 7%,transparent)!important;color:var(--text)!important;box-shadow:none!important}
 html:root:root:root:root body #app .vc2 .vc2-actions{width:100%;justify-content:center}
 html:root:root:root:root body #app .vd-card{background:var(--card)!important;background-image:none!important;border-radius:20px!important;box-shadow:none!important}
+
+/* status ring on a shop's picture (storefront and chats) */
+html body .lvst-sf-live,html body .lvst-chat-live{border-radius:50%;box-shadow:0 0 0 3px var(--bg,#fff),0 0 0 6px #22c55e!important}
+html body .lvst-sf-live.lvst-sf-seen,html body .lvst-chat-live.lvst-sf-seen{box-shadow:0 0 0 3px var(--bg,#fff),0 0 0 6px color-mix(in srgb,var(--text) 22%,transparent)!important}
+.lv-r2-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;padding:.25rem;margin:.6rem 0 .9rem;border-radius:16px;background:color-mix(in srgb,var(--text) 7%,transparent)}
+.lv-r2-tab{height:2.6rem;border:0;border-radius:12px;background:transparent;color:var(--text-muted,#6b7280);font:inherit;font-weight:700}
+.lv-r2-tab.on{background:var(--card);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.12)}
