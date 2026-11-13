@@ -871,7 +871,7 @@ function lvHourglassHtml(order, isVendor) {
         <path class="hg-frame" d="M7 2H53a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H52C52 26 45 33 42 40.5c3 1.5 10 8 10 29V72h1a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h1V69.500C8 48.500 15 42 18 40.500C15 33 8 26 8 12H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3Z" fill="#eef1f4"/>
         <g clip-path="url(#hgIn${esc(String(order.id).slice(0,6))})"><rect x="8" y="6" width="44" height="72" fill="#dfe3e8"/>
           <rect class="hg-top" x="8" y="6" width="44" height="36"/><rect class="hg-bot" x="8" y="78" width="44" height="0"/></g>
-        <line class="hg-stream" x1="30" y1="40" x2="30" y2="76" stroke-width="1.6" stroke-dasharray="3 3"/>
+        <path class="hg-stream" d="M30 39 C29 50 31 60 30 77" fill="none" stroke-width="2.2" stroke-linecap="round"/><path class="hg-stream2" d="M30 39 C31 52 29 62 30 77" fill="none" stroke-width="1" stroke-linecap="round"/>
       </g></svg>
     <div class="hg-text"><strong class="hg-left">--</strong><small>${isVendor ? "to confirm this order before it cancels itself" : "for the shop to confirm before the order cancels itself"}</small></div>
   </div>`;

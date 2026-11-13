@@ -8452,3 +8452,45 @@ window.lvNoImageHtml = function (seed) {
   var t = 0;
   new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; dress(); }, 250); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
+
+/* ===== Vendors page, final layout: Near you strip, "All shops" header with Sort, floating Map button ===== */
+(function () {
+  "use strict";
+  var LABEL = { rated: "Top rated", closest: "Nearest", alphabetical: "A to Z", shuffled: "Mixed" };
+  function E(x) { return typeof esc === "function" ? esc(x) : String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function pic(v) { return v.profile_avatar_url || v.avatar_url || v.logo_url || ""; }
+  function nearList() {
+    var all = (window.__filteredVendors || []).filter(function (v) { return v && v.id; }), loc = typeof buyerLocation !== "undefined" ? buyerLocation : null, hav = typeof haversineKm === "function" ? haversineKm : null;
+    var withD = all.map(function (v) { var d = loc && hav && v.lat != null && v.lng != null ? hav(loc.lat, loc.lng, v.lat, v.lng) : null; return { v: v, d: d }; });
+    var near = withD.filter(function (x) { return x.d != null; }).sort(function (a, b) { return a.d - b.d; });
+    if (near.length) return near.slice(0, 10);
+    // no location yet: shops from the shopper's own campus first, then the best rated
+    var cid = typeof profile !== "undefined" && profile && profile.campus_id;
+    var pool = withD.slice().sort(function (a, b) { return ((cid && b.v.campus_id === cid) - (cid && a.v.campus_id === cid)) || (Number(b.v.avg_rating || 0) - Number(a.v.avg_rating || 0)); });
+    return pool.slice(0, 10);
+  }
+  function dist(d) { return d == null ? "" : d < 1 ? Math.round(d * 1000) + " m" : d.toFixed(1) + " km"; }
+  function build() {
+    var grid = document.getElementById("vendorsGrid"); if (!grid) return;
+    var page = grid.closest(".vd-page"); if (!page || page.dataset.lvFinal === "map") return;
+    var mapMode = !document.getElementById("vendorsMapWrap") || !document.getElementById("vendorsMapWrap").classList.contains("hidden");
+    var list = nearList();
+    var near = document.getElementById("lvNear");
+    if (!near) { near = document.createElement("section"); near.id = "lvNear"; near.className = "lv-near"; grid.before(near); }
+    var head = document.getElementById("lvAllHead");
+    if (!head) { head = document.createElement("div"); head.id = "lvAllHead"; head.className = "lv-sec"; grid.before(head); }
+    near.innerHTML = list.length ? '<div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">' + list.map(function (x) { var u = pic(x.v); return '<button type="button" class="lv-nc" onclick="navigate(\'storefront\',{vendorId:\'' + E(x.v.id) + '\'})">' + (u ? '<img src="' + E(u) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lv-nc-i">' + E(String(x.v.business_name || "?").charAt(0).toUpperCase()) + "</span>") + "<b>" + E(x.v.business_name) + "</b><small>" + (x.d != null ? dist(x.d) : E(x.v.city || "Lagos")) + "</small></button>"; }).join("") + "</div>" : "";
+    head.innerHTML = "<b>All shops</b><button type=\"button\" data-lvsort>Sort: " + E(LABEL[window.__lvVdSort || "rated"]) + " ▾</button>";
+    if (!document.getElementById("lvVdMapBtn")) { var f = document.createElement("button"); f.type = "button"; f.id = "lvVdMapBtn"; f.className = "lvvd-mapbtn"; f.innerHTML = '<i class="fa-solid fa-map-location-dot"></i> Map'; f.setAttribute("data-lvmap", ""); document.body.appendChild(f); }
+  }
+  function cleanup() { if (!document.querySelector("#app .vd-page")) { var f = document.getElementById("lvVdMapBtn"); if (f) f.remove(); } }
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-lvmap]")) { e.preventDefault(); try { navigate("vendorsMap"); } catch (_) {} return; }
+    if (e.target.closest("[data-lvsort]") && typeof lvSheet === "function") {
+      var go = function (m) { return function () { window.__lvVdSort = m; try { setVendorDirectorySort(m); } catch (_) {} setTimeout(build, 50); }; };
+      lvSheet("Sort shops", "", [{ label: "Top rated", icon: "fa-star", run: go("rated") }, { label: "Nearest to me", icon: "fa-location-dot", run: go("closest") }, { label: "A to Z", icon: "fa-arrow-down-a-z", run: go("alphabetical") }, { label: "Mixed", icon: "fa-shuffle", run: go("shuffled") }]);
+    }
+  });
+  var t = 0;
+  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; try { build(); cleanup(); } catch (_) {} }, 200); }).observe(document.documentElement, { childList: true, subtree: true });
+})();

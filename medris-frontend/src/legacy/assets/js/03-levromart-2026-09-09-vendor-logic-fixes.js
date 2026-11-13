@@ -26,7 +26,7 @@
      Grid/list/map are separate presentation modes.
      --------------------------------------------------------------- */
   let vendorDirectoryExpanded = false;
-  let vendorDirectorySort = "shuffled";   // mixed order by default; A-Z / closest are one tap away
+  let vendorDirectorySort = "rated";   // mixed order by default; A-Z / closest are one tap away
   let vendorDirectoryMode = "map";
 
   // A vendor's place in the mixed order depends on its id and the current 10-minute slot,
@@ -40,6 +40,7 @@
   }
   function vendorDirectorySortList(list) {
     const out = [...(list || [])];
+    if (vendorDirectorySort === "rated") return out.sort((a, b) => (Number(b.avg_rating || 0) - Number(a.avg_rating || 0)) || (Number(b.review_count || 0) - Number(a.review_count || 0)) || (vendorShuffleRank(a.id) - vendorShuffleRank(b.id)));
     if (vendorDirectorySort === "shuffled") return out.sort((a, b) => vendorShuffleRank(a.id) - vendorShuffleRank(b.id));
     if (vendorDirectorySort === "closest" && typeof buyerLocation !== "undefined" && buyerLocation) {
       return out.sort((a, b) => {
@@ -151,7 +152,8 @@
   };
 
   window.setVendorDirectorySort = function (mode) {
-    vendorDirectorySort = ["closest", "alphabetical", "shuffled"].includes(mode) ? mode : "shuffled";
+    vendorDirectorySort = ["closest", "alphabetical", "shuffled", "rated"].includes(mode) ? mode : "rated";
+    window.__lvVdSort = vendorDirectorySort;
     vendorDirectoryExpanded = true;
     renderVendorDirectoryCards();
   };
@@ -198,6 +200,7 @@
         <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
         <label>Category<select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select></label>
         <label>Arrange<select id="vendorSortFilter" onchange="setVendorDirectorySort(this.value)">
+          <option value="rated">Top rated</option>
           <option value="shuffled">Mixed (changes every few minutes)</option>
           <option value="alphabetical">A–Z</option>
           <option value="closest">Closest first</option>
