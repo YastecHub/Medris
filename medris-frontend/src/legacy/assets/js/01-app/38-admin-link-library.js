@@ -196,7 +196,7 @@ async function renderAdminCarousel() {
     <div class="admin-carousel-add">
       <h4 style="margin:0 0 .7rem;"><i class="fa-solid fa-cloud-arrow-up"></i> Add a new banner</h4>
       <div class="admin-carousel-form-grid">
-        <label class="admin-carousel-file full">Banner image<input type="file" id="adminCarouselNewFile" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
+        <label class="admin-carousel-file full">Banner image <small class="muted">Any size or shape works: it fits the banner by itself.</small><input type="file" id="adminCarouselNewFile" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
         <div><label>Alt text</label><input id="adminCarouselNewAlt" maxlength="180" placeholder="Describe this banner" /></div>
         <div><label>Display order</label><input id="adminCarouselNewOrder" type="number" min="0" step="1" value="100" /></div>
         <div class="full"><label>Optional link URL</label><input id="adminCarouselNewLink" type="url" placeholder="https://… (optional)" /></div>

@@ -9022,3 +9022,11 @@ html:root:root body #loginModal.lv-auth a,html:root:root body #loginModal.lv-aut
 :root[data-theme="dark"] .lv-onb:has(.lv-slide.on),:root[data-theme="dark"] #loginModal.lv-auth{--lv-c1:#0f1714;--lv-c2:#0b1210}
 :root[data-theme="black"] .lv-onb:has(.lv-slide.on),:root[data-theme="black"] #loginModal.lv-auth{--lv-c1:#000;--lv-c2:#000}
 :root[data-theme="dark"] body .lv-onb .lv-eyebrow,:root[data-theme="black"] body .lv-onb .lv-eyebrow,:root[data-theme="dark"] body .lv-onb h2 em,:root[data-theme="black"] body .lv-onb h2 em,:root[data-theme="dark"] body #loginModal.lv-auth h1 em,:root[data-theme="black"] body #loginModal.lv-auth h1 em{color:var(--lv-acd)!important}
+/* carousel: pictures of any shape fit the banner */
+html body #app .home-promotional-slide .hpc-bg{position:absolute;inset:-12%;z-index:0;background-size:cover;background-position:center;filter:blur(26px) brightness(.82) saturate(1.2);transform:scale(1.1)}
+html body #app .home-promotional-slide[data-fit="cover"] img{object-fit:cover!important;width:100%;height:100%}
+html body #app .home-promotional-slide[data-fit="contain"] img{object-fit:contain!important;position:relative;z-index:1}
+html body #app .home-promotional-slide[data-fit="cover"] img{animation:lvBannerDrift 14s ease-in-out infinite alternate}
+html body #app .home-promotional-slide[data-fit="contain"] img{animation:lvBannerFloat 7s ease-in-out infinite alternate}
+@keyframes lvBannerDrift{from{transform:scale(1)}to{transform:scale(1.07)}}
+@keyframes lvBannerFloat{from{transform:scale(.97)}to{transform:scale(1)}}
