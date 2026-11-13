@@ -8479,20 +8479,25 @@ window.lvNoImageHtml = function (seed) {
     var r = await sb.from("products").select("id,name,photos,sale_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(60);
     var list = (r && r.data) || [], picks = [], showPrice = true;
     if (!list.length) { body.innerHTML = '<div class="tm-empty"><i class="fa-solid fa-box-open"></i><b>No products yet</b>Add a product first, then share it as an update.</div>'; return; }
-    var cap = "", anim = "none";
+    var caps = {}, active = null, anim = "none";
     function paint() {
-      var p = list.find(function (x) { return x.id === picks[picks.length - 1]; }), ph0 = p && p.photos && p.photos[0];
-      var prev = '<div class="lvad-prev' + (p ? " on" : "") + '">' + (p ? (ph0 ? '<img src="' + E(ph0) + '" alt="">' : '<span class="lvad-ph"></span>') + '<span class="lvad-sh"></span><span class="lvad-who">' + avatar(vendor.logo_url, vendor.business_name, "lvu-av") + "<b>" + E(vendor.business_name) + '</b></span><span class="lvad-tx"><b>' + E(p.name) + (showPrice && p.sale_price ? " · " + naira(p.sale_price) : "") + "</b>" + (cap ? "<small>" + E(cap) + "</small>" : "") + "</span>" : '<span class="lvad-empty"><i class="fa-regular fa-image"></i>Pick a product below to see how your update will look</span>') + "</div>";
+      if (picks.indexOf(active) < 0) active = picks[picks.length - 1] || null;
+      var p = list.find(function (x) { return x.id === active; }), ph0 = p && p.photos && p.photos[0];
+      var prev = '<div class="lvad-prev' + (p ? " on" : "") + '">' + (p ? (ph0 ? '<img src="' + E(ph0) + '" alt="">' : '<span class="lvad-ph"></span>') + '<span class="lvad-sh"></span><span class="lvad-who">' + avatar(vendor.logo_url, vendor.business_name, "lvu-av") + "<b>" + E(vendor.business_name) + '</b></span><span class="lvad-tx"><b>' + E(p.name) + (showPrice && p.sale_price ? " · " + naira(p.sale_price) : "") + "</b>" + (caps[active] ? "<small>" + E(caps[active]) + "</small>" : "") + "</span>" : '<span class="lvad-empty"><i class="fa-regular fa-image"></i>Pick a product below to see how your update will look</span>') + "</div>";
       var tiles = list.map(function (x) { var ph = x.photos && x.photos[0]; return '<button type="button" class="lvad-t' + (picks.indexOf(x.id) >= 0 ? " sel" : "") + '" data-p="' + E(x.id) + '" aria-label="' + E(x.name) + '"><span class="lvad-ti">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<i class="fa-solid fa-image"></i>') + '<em><i class="fa-solid fa-check"></i></em></span><b>' + E(x.name) + "</b><small>" + (x.sale_price ? naira(x.sale_price) : "") + "</small></button>"; }).join("");
-      body.innerHTML = '<div class="lvad">' + prev + '<div class="lvad-form"><input id="lvStCap" class="tm-input" maxlength="140" placeholder="Add a short line (optional)" value="' + E(cap) + '"><label class="lvad-sw"><span>Show the price</span><button type="button" data-price class="' + (showPrice ? "on" : "") + '" role="switch" aria-checked="' + showPrice + '"><i></i></button></label>' + animChips(anim) + '<p class="lvad-note"><i class="fa-regular fa-clock"></i> Stays up for 24 hours. Followers who allow it get an alert.</p></div><p class="tm-label">Choose products <span class="lvad-hint">(tap more than one to share each as its own update)</span></p><div class="lvad-grid">' + tiles + '</div><div class="lvad-bar"><button type="button" class="btn lvad-go" id="lvStGo"' + (picks.length ? "" : " disabled") + '>' + (picks.length > 1 ? "Share " + picks.length + " updates" : "Share update") + '</button></div></div>';
-      var ci = document.getElementById("lvStCap"); if (ci) ci.oninput = function () { cap = ci.value; var t = body.querySelector(".lvad-tx"); if (t && p) { var sm = t.querySelector("small"); if (cap) { if (!sm) { sm = document.createElement("small"); t.appendChild(sm); } sm.textContent = cap; } else if (sm) sm.remove(); } };
+      var capHtml = picks.length ? picks.map(function (id) { var x = list.find(function (y) { return y.id === id; }); if (!x) return ""; var ph = x.photos && x.photos[0]; return '<div class="lvad-cr' + (id === active ? " on" : "") + '"><span class="lvad-cth">' + (ph ? '<img src="' + E(ph) + '" alt="">' : '<i class="fa-solid fa-image"></i>') + '</span><span class="lvad-cin"><b>' + E(x.name) + '</b><input class="tm-input" data-cap="' + E(id) + '" maxlength="140" placeholder="Add a short line for this one (optional)" value="' + E(caps[id] || "") + '"></span></div>'; }).join("") : '<p class="lvad-note">Pick one or more products below, then add a short line for each.</p>';
+      body.innerHTML = '<div class="lvad">' + prev + '<div class="lvad-form">' + capHtml + '<label class="lvad-sw"><span>Show the price</span><button type="button" data-price class="' + (showPrice ? "on" : "") + '" role="switch" aria-checked="' + showPrice + '"><i></i></button></label>' + animChips(anim) + '<p class="lvad-note"><i class="fa-regular fa-clock"></i> Stays up for 24 hours. Followers who allow it get an alert.</p></div><p class="tm-label">Choose products <span class="lvad-hint">(tap more than one to share each as its own update)</span></p><div class="lvad-grid">' + tiles + '</div><div class="lvad-bar"><button type="button" class="btn lvad-go" id="lvStGo"' + (picks.length ? "" : " disabled") + '>' + (picks.length > 1 ? "Share " + picks.length + " updates" : "Share update") + '</button></div></div>';
+      body.querySelectorAll("[data-cap]").forEach(function (inp) {
+        var id = inp.getAttribute("data-cap");
+        inp.oninput = function () { caps[id] = inp.value; if (id !== active) return; var t = body.querySelector(".lvad-tx"); if (!t) return; var sm = t.querySelector("small"); if (inp.value) { if (!sm) { sm = document.createElement("small"); t.appendChild(sm); } sm.textContent = inp.value; } else if (sm) sm.remove(); };
+        inp.onfocus = function () { if (active === id) return; active = id; var keep = id; paint(); var again = body.querySelector('[data-cap="' + keep + '"]'); if (again) { again.focus(); try { again.setSelectionRange(again.value.length, again.value.length); } catch (_) {} } };
+      });
       body.querySelectorAll("[data-p]").forEach(function (b) { b.onclick = function () { var id = b.getAttribute("data-p"), at = picks.indexOf(id); if (at >= 0) picks.splice(at, 1); else picks.push(id); paint(); }; });
       body.querySelectorAll("[data-anim]").forEach(function (b) { b.onclick = function () { anim = b.getAttribute("data-anim"); paint(); }; });
       var pr = body.querySelector("[data-price]"); if (pr) pr.onclick = function () { showPrice = !showPrice; paint(); };
       var go = document.getElementById("lvStGo"); if (go) go.onclick = async function () {
         go.disabled = true; go.textContent = "Sharing…";
-        var capV = (document.getElementById("lvStCap").value || "").trim() || null;
-        var rowsA = picks.map(function (id) { return { vendor_id: vid, product_id: id, caption: capV, show_price: showPrice, animation: anim }; });
+        var rowsA = picks.map(function (id) { return { vendor_id: vid, product_id: id, caption: (caps[id] || "").trim() || null, show_price: showPrice, animation: anim }; });
         var ins = await sb.from("vendor_statuses").insert(rowsA);
         if (ins.error && /animation|column/i.test(ins.error.message || "")) ins = await sb.from("vendor_statuses").insert(rowsA.map(function (x) { return { vendor_id: x.vendor_id, product_id: x.product_id, caption: x.caption, show_price: x.show_price }; }));
         if (ins.error) { go.disabled = false; go.textContent = "Share update"; showToast(/not valid|does not exist|relation/i.test(ins.error.message || "") ? "Updates are not switched on yet. Please try again shortly." : (ins.error.message || "Could not share it."), "error"); return; }
@@ -8924,7 +8929,7 @@ window.lvNoImageHtml = function (seed) {
     var isVendor = false; try { isVendor = !!(typeof vendor !== "undefined" && vendor && vendor.id); } catch (_) {}
     if (!pen) {
       var right = document.querySelector(".header-right"); if (!right) return;
-      pen = document.createElement("button"); pen.type = "button"; pen.id = "lvVdPen"; pen.className = "icon-btn lv-vd-pen"; pen.setAttribute("aria-label", "My updates"); pen.title = "My updates"; pen.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1-4.2L16.6 4.2a2 2 0 0 1 2.8 0l1.4 1.4a2 2 0 0 1 0 2.8L9.2 20z"/><path d="M14.5 6.3l3.2 3.2"/></svg>';
+      pen = document.createElement("button"); pen.type = "button"; pen.id = "lvVdPen"; pen.className = "icon-btn lv-vd-pen"; pen.setAttribute("aria-label", "My updates"); pen.title = "My updates"; pen.innerHTML = '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H7.5A3.5 3.5 0 0 0 4 7.5v9A3.5 3.5 0 0 0 7.5 20h9a3.5 3.5 0 0 0 3.5-3.5V13"/><path d="M18.4 3.6a1.9 1.9 0 0 1 2.7 2.7l-8.1 8.1-3.6.9.9-3.6z" fill="currentColor" fill-opacity=".14"/></svg>';
       pen.onclick = function () { try { window.lvStatusOpen(); } catch (_) {} };
       right.prepend(pen);
     }
@@ -8934,4 +8939,12 @@ window.lvNoImageHtml = function (seed) {
     if (!on && inp.value) { inp.value = ""; }
   }
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { ensure(); } catch (_) {} }); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-view"] });
+  // scrolling down slides the bar away so it never covers the list; scrolling up (or reaching the top) brings it back
+  var lastY = 0;
+  window.addEventListener("scroll", function () {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0, b = document.body;
+    if (!b.classList.contains("lv-vd-bar")) { b.classList.remove("lv-vd-away"); lastY = y; return; }
+    if (y > lastY + 6 && y > 60) b.classList.add("lv-vd-away"); else if (y < lastY - 6 || y < 30) b.classList.remove("lv-vd-away");
+    lastY = y;
+  }, { passive: true });
 })();
