@@ -10,7 +10,7 @@ export default function RefundPolicyPage() {
   return (
     <div className="legal-page">
       <h2>Refund &amp; Cancellation Policy</h2>
-      <p className="muted">Last updated: 12 November 2026</p>
+      <p className="muted">Last updated: 13 November 2026</p>
 
       <h3>1. Before a vendor confirms your order</h3>
       <p>You can cancel freely from your Orders page. Anything you already paid for the order is refunded as described in section 8 (Paystack's payment fee is not refunded).</p>

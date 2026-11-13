@@ -207,15 +207,33 @@ async function saveRequiredBuyerPhone() {
     const { error: updateError } = await sb.from("users").update({ phone }).eq("id", session.user.id);
     if (updateError) throw updateError;
     profile.phone = phone;
+    clearTimeout(window.__lvPhoneTimer); window.__lvPhoneLaterUntil = 0;
     byId("requiredBuyerPhoneModal")?.classList.add("hidden");
     updateAuthUI();
     showToast("Phone number saved.", "success");
     await runPostAuthChecks();
   } catch (e) {
-    if(error){error.textContent=e?.message || "Could not save your phone number.";error.classList.remove("hidden");}
+    if(error){error.textContent=lvFriendlyPhoneError(e);error.classList.remove("hidden");}
   } finally {
     if (btn) { btn.disabled=false; btn.classList.remove("is-busy"); }
   }
+}
+// A plain sentence instead of the database's wording ("duplicate key value violates unique constraint ...").
+function lvFriendlyPhoneError(e) {
+  const m = String((e && e.message) || e || "");
+  if ((e && e.code === "23505") || /duplicate key|users_phone_key|unique constraint|already (registered|exists)/i.test(m))
+    return "This phone number is already registered on another Levromart account. Use a different number, or sign in to the account that has it.";
+  return m || "Could not save your phone number. Please try again.";
+}
+// "I'll do it later": the box closes for now and comes back every 10 minutes and every time the app is opened, until a number is saved.
+function requiredBuyerPhoneLater() {
+  byId("requiredBuyerPhoneModal")?.classList.add("hidden");
+  window.__lvPhoneLaterUntil = Date.now() + 10 * 60 * 1000;
+  clearTimeout(window.__lvPhoneTimer);
+  window.__lvPhoneTimer = setTimeout(() => {
+    if (session && profile && profile.role !== "admin" && !String(profile.phone || "").trim()) openRequiredBuyerPhoneModal();
+  }, 10 * 60 * 1000 + 500);
+  runPostAuthChecks();   // carry on with the other first-time checks meanwhile
 }
 
 async function chooseAccountRole(role) {
@@ -287,7 +305,7 @@ async function runPostAuthChecks() {
   // collects it; this gate covers Google sign-in and older accounts that predate
   // the requirement. Do this before the password/OTP checks so the account cannot
   // proceed as a fully configured buyer until the contact number is supplied.
-  if (profile.role !== "admin" && !String(profile.phone || "").trim()) {
+  if (profile.role !== "admin" && !String(profile.phone || "").trim() && Date.now() >= (window.__lvPhoneLaterUntil || 0)) {
     openRequiredBuyerPhoneModal();
     return;
   }

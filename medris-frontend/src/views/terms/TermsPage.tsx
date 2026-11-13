@@ -4,7 +4,7 @@ import { go } from "@/views/legacy-navigate";
  * Terms of Service, drawn by React.
  *
  * Converted one-to-one from renderTerms() (src/legacy/assets/js/01-app/85-legal-pages.js:2): same
- * markup, same classes, same text ("Last updated: 12 November 2026"). The text is a static string of
+ * markup, same classes, same text ("Last updated: 13 November 2026"). The text is a static string of
  * our own, so it is written as plain JSX (escaped by React); nothing comes from the database.
  * Until the legacy screen is deleted (a later pull request) any wording change must be made in
  * BOTH places; the parity test (tests/e2e/pilot-terms.spec.ts) fails if they drift apart.
@@ -15,7 +15,7 @@ export default function Terms() {
   return (
     <div className="legal-page">
       <h2>Terms of Service</h2>
-      <p className="muted">Last updated: 12 November 2026</p>
+      <p className="muted">Last updated: 13 November 2026</p>
       <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
       <h3>1. What Levromart is (and isn't)</h3>
