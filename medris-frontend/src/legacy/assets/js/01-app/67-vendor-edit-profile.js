@@ -1100,7 +1100,12 @@ async function lvOpenSwitchBusiness() {
     }
     body.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.getAttribute("data-go"), b.getAttribute("data-view"), b)));
     if (!d.isBusiness && (d.businesses || []).length) {
-      body.insertAdjacentHTML("beforeend", `<p class="tm-label" style="margin-top:1.2rem">Remove a business</p><div class="tm-list">${d.businesses.map((b) => `<div class="tm-biz tm-biz-del"><div class="tm-av">${lvAvInner(b.logo, b.name)}</div><div class="tm-grow"><div class="tm-name">${esc(b.name)}</div></div><button type="button" class="tm-btn danger" data-del-biz="${esc(b.userId)}"><i class="fa-regular fa-trash-can"></i> Delete</button></div>`).join("")}</div>`);
+      body.insertAdjacentHTML("beforeend", `<p class="tm-label" style="margin-top:1.2rem">Remove a business</p><div class="tm-list">${d.businesses.map((b) => `<div class="tm-biz tm-biz-del"><div class="tm-av">${lvAvInner(b.logo, b.name)}</div><div class="tm-grow"><div class="tm-name">${esc(b.name)}</div></div><button type="button" class="tm-btn ghost" data-pause-biz="${esc(b.userId)}" data-paused="${b.paused ? 1 : 0}"><i class="fa-solid ${b.paused ? "fa-play" : "fa-pause"}"></i> ${b.paused ? "Resume" : "Pause"}</button><button type="button" class="tm-btn danger" data-del-biz="${esc(b.userId)}"><i class="fa-regular fa-trash-can"></i> Delete</button></div>`).join("")}</div>`);
+      body.querySelectorAll("[data-pause-biz]").forEach((x) => (x.onclick = async () => {
+        const nowPaused = x.getAttribute("data-paused") === "1"; x.disabled = true;
+        try { await lvBizCall("pause-business", { targetUserId: x.getAttribute("data-pause-biz"), paused: !nowPaused }); showToast(nowPaused ? "Business is live again." : "Business paused. Customers cannot find or order from it.", "success"); el.remove(); lvOpenSwitchBusiness(); }
+        catch (e) { x.disabled = false; showToast(e.message, "error"); }
+      }));
       body.querySelectorAll("[data-del-biz]").forEach((x) => (x.onclick = () => lvDeleteBusiness((d.businesses || []).find((b) => b.userId === x.getAttribute("data-del-biz")), el)));
     }
     // opening this page refreshes the badge
