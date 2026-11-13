@@ -61,6 +61,16 @@ function renderSettingsAppRows() {
   renderNotif("settingsNotifRow");
   renderInstall("settingsInstallPageRow");
   renderNotif("settingsNotifPageRow");
+  // Android only: how to make alerts pop up at the top (moved here from the profile menu)
+  try {
+    if (typeof lvIsAndroid === "function" && lvIsAndroid()) ["settingsNotifRow", "settingsNotifPageRow"].forEach((id) => {
+      const r = byId(id); if (!r || r.nextElementSibling?.classList.contains("lv-alert-tips-row")) return;
+      const t = document.createElement("div"); t.className = (r.className || "settings-simple-row") + " lv-alert-tips-row"; t.setAttribute("role", "button"); t.tabIndex = 0; t.style.cursor = "pointer";
+      t.innerHTML = '<i class="fa-solid fa-bolt settings-row-icon"></i><span class="settings-row-copy"><strong>Alert tips</strong><small>Make alerts pop up at the top of your screen.</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i>';
+      t.onclick = () => { try { lvPushTips(); } catch (_) {} };
+      r.after(t);
+    });
+  } catch (_) {}
   renderAiConsentRow();
 }
 
