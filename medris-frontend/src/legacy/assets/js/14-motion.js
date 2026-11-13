@@ -8411,3 +8411,34 @@ window.lvNoImageHtml = function (seed) {
   }, true);
   var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
+
+/* ===== Vendors page: one clear row per shop (logo, name, rating, place, a peek of products, Follow) ===== */
+(function () {
+  "use strict";
+  var peekCache = {}, pending = 0;
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  async function fetchPeeks(ids) {
+    var need = ids.filter(function (i) { return !(i in peekCache); }); if (!need.length) return;
+    need.forEach(function (i) { peekCache[i] = null; });
+    try {
+      var r = await sb.from("products").select("vendor_id,photos").in("vendor_id", need).eq("status", "active").order("created_at", { ascending: false }).limit(need.length * 8);
+      var by = {}; ((r && r.data) || []).forEach(function (p) { if (p.photos && p.photos[0]) (by[p.vendor_id] = by[p.vendor_id] || []).push(p.photos[0]); });
+      need.forEach(function (i) { peekCache[i] = by[i] || []; });
+    } catch (_) { need.forEach(function (i) { peekCache[i] = []; }); }
+  }
+  async function dress() {
+    var grid = document.getElementById("vendorsGrid"); if (!grid || grid.classList.contains("vendors-list-mode") && false) return;
+    var page = grid.closest(".vd-page"); if (page && !page.querySelector(".lv-vd-title")) { var h = document.createElement("h2"); h.className = "lv-vd-title"; h.textContent = "Vendors"; var strip = page.querySelector(".lvst-strip"); if (strip) strip.before(h); else page.prepend(h); }
+    var cards = [].slice.call(grid.querySelectorAll(".vc2[data-vendor-id]"));
+    if (!cards.length) return;
+    await fetchPeeks(cards.map(function (c) { return c.getAttribute("data-vendor-id"); }));
+    cards.forEach(function (c) {
+      if (c.querySelector(".lv-peek")) return;
+      var ph = peekCache[c.getAttribute("data-vendor-id")]; if (!ph || !ph.length) return;
+      var body = c.querySelector(".vc2-body"); if (!body) return;
+      body.insertAdjacentHTML("beforeend", '<div class="lv-peek">' + ph.slice(0, 3).map(function (u) { return '<img src="' + E(u) + '" alt="" loading="lazy" onerror="this.remove()">'; }).join("") + (ph.length > 3 ? "<span>+" + (ph.length - 3) + "</span>" : "") + "</div>");
+    });
+  }
+  var t = 0;
+  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; dress(); }, 250); }).observe(document.documentElement, { childList: true, subtree: true });
+})();

@@ -8577,3 +8577,26 @@ html body .lvst-sf-live.lvst-sf-seen,html body .lvst-chat-live.lvst-sf-seen{box-
 .lv-r2-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;padding:.25rem;margin:.6rem 0 .9rem;border-radius:16px;background:color-mix(in srgb,var(--text) 7%,transparent)}
 .lv-r2-tab{height:2.6rem;border:0;border-radius:12px;background:transparent;color:var(--text-muted,#6b7280);font:inherit;font-weight:700}
 .lv-r2-tab.on{background:var(--card);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+/* ===================== Vendors page: a feed of shops (one row each) ===================== */
+html body #app .lv-vd-title{margin:.5rem .2rem .1rem;font-size:1.6rem;font-weight:800;letter-spacing:-.025em}
+html body #app .vd-page .lv-hero2-vendors,html body #app .vd-page .lv-hero2{display:none!important}
+html:root:root:root:root body #app #vendorsGrid.vd-grid{display:flex!important;flex-direction:column;gap:0!important;padding:0;margin:.4rem 0 0}
+html:root:root:root:root body #app #vendorsGrid .vc2{position:relative;display:grid!important;grid-template-columns:auto 1fr auto;grid-template-areas:"logo body act";align-items:center;column-gap:.85rem;text-align:left;padding:.85rem .1rem!important;border:0!important;border-top:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;border-radius:0!important;background:transparent!important;min-height:0}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-logo{grid-area:logo;width:3.7rem!important;height:3.7rem!important;margin:0!important}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-body{grid-area:body;min-width:0;align-items:flex-start!important;text-align:left;display:flex;flex-direction:column;gap:.15rem}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-name{font-size:.98rem;font-weight:800;line-height:1.2}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-meta{justify-content:flex-start;font-size:.78rem;color:var(--text-muted,#6b7280)}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-tags{justify-content:flex-start}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-tags em{font-style:normal;font-size:.76rem;padding:0;background:none;color:var(--text-muted,#6b7280)}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-actions{grid-area:act;width:auto!important}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow{height:2.3rem;width:auto!important;padding:0 1.05rem;border-radius:999px;border:0!important;background:var(--primary,#16a34a)!important;color:#fff!important;-webkit-text-fill-color:#fff;font-weight:700;font-size:.85rem}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow.following{background:color-mix(in srgb,var(--text) 10%,transparent)!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)}
+html:root:root:root:root body #app #vendorsGrid .vc2>.vc2-more{display:none!important}
+.lv-peek{display:flex;align-items:center;gap:.3rem;margin-top:.35rem}
+.lv-peek img{width:2.4rem;height:2.4rem;border-radius:9px;object-fit:cover;background:color-mix(in srgb,var(--text) 8%,transparent)}
+.lv-peek span{margin-left:.1rem;font-size:.76rem;font-weight:700;color:var(--text-muted,#6b7280)}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow,html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow span,html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow i{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important;background-image:none!important}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow.following,html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow.following span{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-name{display:block;text-align:left!important;width:100%}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-body>*{margin:0!important}
+html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-tags{margin:0!important;padding:0!important;min-height:0}
