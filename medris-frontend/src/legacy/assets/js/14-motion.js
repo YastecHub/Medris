@@ -6404,6 +6404,9 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
       var r = await sb.rpc("get_order_cancellation", { p_order_id: id }); var c = r && r.data;
       if (!c || document.getElementById("lvRqCard")) return;
       var uid = session && session.user && session.user.id, isBuyer = uid === c.buyer_id, isShop = uid === c.vendor_user_id;
+      if (!isBuyer && !isShop) {   // a manager of the shop answers refund requests like the owner
+        try { var ov = await sb.from("orders").select("vendor_id").eq("id", id).maybeSingle(); var vid = ov && ov.data && ov.data.vendor_id; isShop = !!vid && (window.lvMyTeams || []).some(function (t) { return String(t.vendor_id) === String(vid) && t.role === "manager"; }); } catch (_) {}
+      }
       var html = card(c, isShop, isBuyer); if (!html) return;
       var first = document.querySelector("#app .od-card"); if (!first) return;
       var wrap = document.createElement("div"); wrap.id = "lvRqCard"; wrap.innerHTML = html;
@@ -8339,7 +8342,8 @@ window.lvNoImageHtml = function (seed) {
     host.hidden = false; try { paintNavBadge(); } catch (_) {}
     if (!h && !drawStrip.__retry && typeof session !== "undefined" && session) { drawStrip.__retry = 1; setTimeout(function () { paintStrip(); paintNavBadge(); }, 2500); }
     var real = gs.length + (mine ? 1 : 0), ghosts = Math.max(0, 3 - real), gh = "";
-    for (var gi = 0; gi < ghosts; gi++) gh += '<div class="lvu-card lvu-ghost" aria-hidden="true"><i class="fa-regular fa-image"></i>' + (gi === 0 && !gs.length ? "<b>Updates from shops you follow show here</b>" : "") + "</div>";
+    var GH = [["fa-store", "Updates from shops you follow show here", "g1"], ["fa-bag-shopping", "New arrivals", "g2"], ["fa-tags", "Fresh offers", "g3"]];
+    for (var gi = 0; gi < ghosts; gi++) { var g3 = GH[(gi + (3 - ghosts)) % 3]; gh += '<div class="lvu-card lvu-ghost ' + g3[2] + '" aria-hidden="true"><span class="lvu-gi"><i class="fa-solid ' + g3[0] + '"></i></span><b>' + g3[1] + "</b></div>"; }
     var html = '<p class="lvu-cap">From shops you follow</p><div class="lvu-row">' + h + gh + "</div>";
     if (host.__h !== html) { host.__h = html; host.innerHTML = html; }
   }
