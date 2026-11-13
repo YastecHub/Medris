@@ -2467,11 +2467,11 @@ window.lvAskCancel = async function (orderId) {
   window.lvRefundAccount = async function (fromPopup) {
     if (pendingAcct() && !(cache && cache.data && cache.data.has_account)) { if (await activatePending(true)) return; }
     var m = sheet(fromPopup ? "Where should your money go?" : "Your bank account",
-      '<p class="muted" style="margin:0 0 .8rem;font-size:.88rem;line-height:1.45">When you withdraw from your Levromart wallet (refunds, money sent to you, money you added), it goes to this account. It must be an account in your own name. For your safety, you can withdraw 24 hours after you add or change it, and the first withdrawal to it is checked by Levromart. Check the details carefully: Levromart is not responsible for money sent to an account that was entered wrongly.</p>' +
+      '<p class="lvrw-lead">Add the account you want your money to go to. It must be in your own name.</p><p class="lvrw-note"><i class="fa-solid fa-shield-halved"></i><span>You can withdraw 24 hours after adding it, and the first withdrawal is checked. Please check the details carefully.</span></p>' +
       '<label class="lvrw-l">Bank</label><button type="button" class="lvrw-bankbtn" id="lvrwBankBtn"><span class="ve-bank-ico" id="lvrwBankIco"><i class="fa-solid fa-building-columns"></i></span><span id="lvrwBankLabel" class="lvrw-bank-label">Choose your bank</span><i class="fa-solid fa-chevron-down"></i></button>' +
       '<label class="lvrw-l">Account number</label><input id="lvrwNum" class="lvrw-in" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="off">' +
       '<p id="lvrwMsg" class="lvw-sheet-msg" hidden></p><div id="lvrwName" class="lvrw-name" hidden></div>' +
-      '<button type="button" class="btn lvw-wd-go" id="lvrwGo">Check account</button>' + (fromPopup ? '<button type="button" class="lvrw-later" onclick="lvRefundLater()">I\'ll do it later</button><p class="muted" style="margin:.5rem 0 0;font-size:.78rem;text-align:center">You can add it any time from your profile. Refunds can only reach you once it is added.</p>' : ""));
+      '<button type="button" class="btn lvw-wd-go" id="lvrwGo">Check account</button>' + (fromPopup ? '<button type="button" class="lvrw-later" onclick="lvRefundLater()">I\'ll do it later</button>' : ""));
     if (fromPopup) {   // no close button or tap-outside: "I'll do it later" is the way out, so the choice is a clear one
       var x0 = m.querySelector(".lvw-eye"); if (x0) x0.remove();
       m.classList.add("lvrw-locked");

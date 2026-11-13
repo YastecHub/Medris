@@ -9120,3 +9120,55 @@ html:root:root body #app .lvu-card .lvu-ring{box-shadow:none!important}
 html:root:root:root body #app#app .orders-title-row.lvo-ready>h2,html:root:root:root body #app#app .orders-title-row>h2{display:none!important}
 html:root:root:root body #app#app .orders-title-row.lvo-ready{justify-content:flex-end}
 html:root:root:root body #app#app .order-history-page .orders-title-row>h2{display:block!important}
+
+/* ===== My listings: a calmer, tidier list (soft cards, neutral status, quiet actions, quick filter chips) ===== */
+html:root body #app .vl-tools{display:flex;align-items:center;gap:.5rem;margin:1.1rem 0 .6rem}
+html:root body #app .vl-tools .vl-listtitle{flex:1;margin:0;font-size:1.15rem;font-weight:800}
+html:root body #app .vl-tools .vl-select-filter{display:none!important}
+html:root body #app .vl-tools .vl-select-sort{border-radius:99px;min-height:2.3rem;padding:0 .8rem;font-size:.82rem;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);background:color-mix(in srgb,var(--text) 5%,var(--card,#fff))}
+html:root body #app .vl-search-row{border-radius:99px!important;min-height:2.7rem;background:color-mix(in srgb,var(--text) 5%,var(--card,#fff))!important;border:1px solid color-mix(in srgb,var(--text) 10%,transparent)!important;box-shadow:none!important}
+html:root body #app .vl-chips{display:flex;gap:.45rem;overflow-x:auto;scrollbar-width:none;padding:.6rem 0 .8rem}
+html:root body #app .vl-chips::-webkit-scrollbar{display:none}
+html:root body #app .vl-chipbtn{flex:none;border:0;border-radius:99px;padding:.5rem .95rem;font:inherit;font-weight:700;font-size:.82rem;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
+html:root body #app .vl-chipbtn.on{background:var(--text);color:var(--bg,#fff)}
+html:root body #app .vl-card{position:relative;display:grid;grid-template-columns:5.2rem 1fr;gap:.85rem;align-items:start;padding:.8rem;border-radius:22px;border:1px solid color-mix(in srgb,var(--text) 8%,transparent);background:var(--card,#fff);box-shadow:0 10px 26px -20px rgba(0,0,0,.35);margin-bottom:.75rem}
+html:root body #app .vl-card .vl-media{width:5.2rem;height:5.2rem;border-radius:16px;overflow:hidden}
+html:root body #app .vl-card .vl-media img{width:100%;height:100%;object-fit:cover}
+html:root body #app .vl-card .vl-top{display:flex;align-items:flex-start;gap:.4rem}
+html:root body #app .vl-card .vl-name{flex:1;min-width:0;font-size:1rem;font-weight:800;line-height:1.2;margin:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+html:root body #app .vl-card .vl-price{display:block;margin-top:.25rem;font-size:1.05rem;color:var(--text)}
+html:root body #app .vl-card .vl-status{display:inline-flex;align-items:center;gap:.35rem;background:none!important;border:0!important;padding:0!important;font-size:.74rem;font-weight:700;color:var(--text-muted,#6b7280)!important;box-shadow:none!important}
+html:root body #app .vl-card .vl-status i{width:.5rem;height:.5rem;border-radius:50%;background:#9ca3af;display:inline-block}
+html:root body #app .vl-card .vl-status-ok i{background:#22c55e}.vl-card .vl-status-warn i{background:#f59e0b}
+html:root body #app .vl-card .vl-meta{display:flex;flex-wrap:wrap;gap:.2rem .8rem;margin-top:.35rem;font-size:.76rem;color:var(--text-muted,#6b7280)}
+html:root body #app .vl-card .vl-meta i{opacity:.7}
+html:root body #app .vl-card .vl-actions{display:flex;gap:.5rem;margin-top:.7rem}
+html:root body #app .vl-card .vl-btn{flex:1;min-height:2.4rem;border-radius:99px;font-size:.82rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;box-shadow:none!important;background:color-mix(in srgb,var(--text) 6%,transparent)!important;color:var(--text)!important;border:0!important}
+html:root body #app .vl-card .vl-btn-edit{background:var(--text)!important;color:var(--bg,#fff)!important}
+html:root body #app .vl-card .vl-btn-delete{flex:none;width:2.4rem;padding:0;color:#dc2626!important;background:rgba(220,38,38,.08)!important}
+html:root body #app .vl-card .vl-btn-delete span{display:none}
+
+/* ===== View full profile: the picture sits half on the banner and half below it, like on a storefront ===== */
+html:root:root body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-body{margin-top:-2.9rem!important;position:relative!important;z-index:3!important}
+html:root:root body #app .buyer-profile-card.lv-profile-hero .vendor-profile-header-avatar-row{margin-top:0!important;transform:none!important;top:auto!important}
+html:root:root body #app .buyer-profile-card.lv-profile-hero{overflow:visible!important}
+
+/* ===== Updates pages: a flat pen and a flat back arrow (no grey disc); the Add page cannot be dragged sideways ===== */
+html:root body.lv-vd-bar #lvVdPen.lv-vd-pen{background:transparent!important;box-shadow:none!important;border-radius:0!important;width:34px;height:34px}
+html:root body .tm-page .tm-back,html:root body .tm-page [data-lv-close]{background:transparent!important;box-shadow:none!important;border:0!important}
+html:root body #lvStAdd,html:root body #lvStAdd .tm-wrap{overflow-x:hidden!important;touch-action:pan-y!important;overscroll-behavior-x:none}
+html:root body #lvStAdd [data-lv-body]{overflow-x:hidden!important;max-width:100vw}
+html:root body #lvStAdd .lvad,html:root body #lvStAdd .lvad *{max-width:100%}
+html:root body #lvStAdd .lvad .lvad-note,html:root body #lvStAdd .lvad .tm-label{white-space:normal;overflow-wrap:anywhere}
+html:root body #lvStAdd .lvad .lvad-prev{width:100%!important;max-width:100%!important}
+html:root body #lvStAdd .lvad .lvad-prev{height:min(34vh,17rem)!important}
+
+/* ===== Bank account sheet: short, clean and calm ===== */
+html:root body .lvrw-lead{margin:0 0 .6rem;font-size:1rem;font-weight:700;line-height:1.35;color:var(--text)}
+html:root body .lvrw-note{display:flex;gap:.55rem;align-items:flex-start;margin:0 0 1rem;padding:.7rem .8rem;border-radius:14px;background:color-mix(in srgb,#16a34a 9%,transparent);font-size:.8rem;line-height:1.4;color:var(--text-muted,#5b6b64)}
+html:root body .lvrw-note i{color:#16a34a;margin-top:.15rem}
+html:root body .lvrw-l{display:block;margin:.8rem 0 .35rem;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted,#6b7280)}
+html:root body .lvrw-bankbtn,html:root body .lvrw-in{width:100%;min-height:3.1rem;border-radius:16px!important;border:1px solid color-mix(in srgb,var(--text) 12%,transparent)!important;background:color-mix(in srgb,var(--text) 4%,var(--card,#fff))!important;box-shadow:none!important;font-size:.95rem}
+html:root body .lvrw-in{padding:0 1rem;letter-spacing:.12em}
+html:root body #lvrwGo{width:100%;min-height:3.1rem;margin-top:1.1rem;border-radius:99px!important;border:0!important;background:linear-gradient(135deg,#16a34a,#0e7a4e)!important;color:#fff!important;font-weight:800;font-size:1rem;box-shadow:0 14px 26px -16px rgba(22,163,74,.9)!important}
+html:root body .lvrw-later{display:block;width:100%;margin-top:.5rem;padding:.7rem;border:0;background:none;font:inherit;font-weight:700;color:var(--text-muted,#6b7280)}

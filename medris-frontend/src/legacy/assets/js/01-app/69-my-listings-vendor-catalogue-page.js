@@ -220,7 +220,8 @@ async function renderVendorProducts() {
     <label class="vl-select vl-select-sort"><i class="fa-solid fa-arrow-up-wide-short" aria-hidden="true"></i><span id="vlSortLabel">Newest first</span><i class="fa-solid fa-chevron-down vl-chev" aria-hidden="true"></i>
       <select id="vendorProductSort" aria-label="Sort listings" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="price_low">Price: Low to High</option><option value="price_high">Price: High to Low</option><option value="az">Name A–Z</option><option value="za">Name Z–A</option></select></label>
   </div>
-  <label class="vl-search vl-search-row"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorProductSearch" placeholder="Search your listings..." autocomplete="off" enterkeyhint="search" aria-label="Search your listings" oninput="filterVendorProducts()" /></label>`;
+  <label class="vl-search vl-search-row"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorProductSearch" placeholder="Search your listings..." autocomplete="off" enterkeyhint="search" aria-label="Search your listings" oninput="filterVendorProducts()" /></label>
+  <div class="vl-chips" id="vlChips" role="tablist" aria-label="Show">${[["all", "All"], ["active", "Active"], ["paused", "Paused"], ["sale", "For sale"], ["rent", "For rent"]].map(([v, l], i) => `<button type="button" role="tab" class="vl-chipbtn${i ? "" : " on"}" data-vlc="${v}" onclick="vlChip('${v}')">${l}</button>`).join("")}</div>`;
 
   if (vendorProductsView === "table" && products && products.length > 0) {
     const totalRevenue = Object.values(revenueByProduct).reduce((s, n) => s + n, 0);
@@ -311,6 +312,11 @@ function showProductRegions(productId, productName) {
       </div>`).join("")
     : `<p class="muted">No orders yet for this product.</p>`;
   byId("productRegionsModal").classList.remove("hidden");
+}
+function vlChip(v) {
+  const f = byId("vendorProductFilter"); if (f) { f.value = v; f.dataset.prev = v; }
+  document.querySelectorAll("#vlChips .vl-chipbtn").forEach((c) => c.classList.toggle("on", c.dataset.vlc === v));
+  filterVendorProducts();
 }
 function vlOnFilterChange() {
   const f = byId("vendorProductFilter");
