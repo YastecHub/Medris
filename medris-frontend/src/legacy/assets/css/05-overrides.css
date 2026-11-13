@@ -9115,3 +9115,8 @@ html:root:root body #app .lvu-card.lvu-ghost::before,html:root:root body #app .l
 html:root:root body #app .lvu-card .lvu-hit{border:0!important;box-shadow:none!important;outline:0!important;background:none!important}
 html:root:root body #app .lvu-card .lvu-gi{box-shadow:none!important}
 html:root:root body #app .lvu-card .lvu-ring{box-shadow:none!important}
+
+/* ===== Orders page: no "Orders" / "My Orders" heading above the Stats and History buttons ===== */
+html:root:root:root body #app#app .orders-title-row.lvo-ready>h2,html:root:root:root body #app#app .orders-title-row>h2{display:none!important}
+html:root:root:root body #app#app .orders-title-row.lvo-ready{justify-content:flex-end}
+html:root:root:root body #app#app .order-history-page .orders-title-row>h2{display:block!important}
