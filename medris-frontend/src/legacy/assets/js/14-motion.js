@@ -8349,13 +8349,14 @@ window.lvNoImageHtml = function (seed) {
   });
   var t = 0;
   new MutationObserver(function () {
-    if (t) return; t = setTimeout(function () {
+    if (t) return; t = requestAnimationFrame(function () {
       t = 0;
       var page = document.querySelector("#app .vd-page"); if (!page) return;
+      var preStrip = document.getElementById("lvStStrip"); if (preStrip && !preStrip.__p) { preStrip.__p = 1; paintStrip(); }
       if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = false; s.innerHTML = '<div class="lvu-row">' + [1, 2, 3].map(function () { return '<div class="lvu-card sk"></div>'; }).join("") + "</div>"; if (head) head.before(s); else page.prepend(s); paintStrip(); }
       var vs = page.querySelector(".vd-views");
       if (vs && !document.getElementById("vendorsViewStatusBtn")) { var b = document.createElement("button"); b.type = "button"; b.className = "vd-view"; b.id = "vendorsViewStatusBtn"; b.title = "Updates"; b.setAttribute("aria-label", "Updates"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.6"/><circle cx="12" cy="12" r="3.2"/></svg>'; vs.appendChild(b); }
-    }, 80);
+    });
   }).observe(document.documentElement, { childList: true, subtree: true });
 
   /* ---- the Status page (like WhatsApp's Updates) ---- */
@@ -8564,7 +8565,7 @@ window.lvNoImageHtml = function (seed) {
     });
   }
   var t = 0;
-  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; dress(); }, 250); }).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(function () { if (t) return; t = requestAnimationFrame(function () { t = 0; dress(); }); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
 
 /* ===== Vendors page, final layout: Near you strip, "All shops" header with Sort, floating Map button ===== */
@@ -8593,7 +8594,7 @@ window.lvNoImageHtml = function (seed) {
     if (!near) { near = document.createElement("section"); near.id = "lvNear"; near.className = "lv-near"; grid.before(near); }
     var head = document.getElementById("lvAllHead");
     if (!head) { head = document.createElement("div"); head.id = "lvAllHead"; head.className = "lv-sec"; grid.before(head); }
-    var nh = list.length ? '<div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">' + list.map(function (x) { var u = pic(x.v); return '<button type="button" class="lv-nc" onclick="navigate(\'storefront\',{vendorId:\'' + E(x.v.id) + '\'})">' + (u ? '<img src="' + E(u) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lv-nc-i">' + E(String(x.v.business_name || "?").charAt(0).toUpperCase()) + "</span>") + "<b>" + E(x.v.business_name) + "</b><small>" + (x.d != null ? dist(x.d) : E(x.v.city || "Lagos")) + "</small></button>"; }).join("") + "</div>" : "";
+    var nh = list.length ? '<div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">' + list.map(function (x) { var u = pic(x.v); return '<button type="button" class="lv-nc" onclick="navigate(\'storefront\',{vendorId:\'' + E(x.v.id) + '\'})">' + (u ? '<img src="' + E(u) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lv-nc-i">' + E(String(x.v.business_name || "?").charAt(0).toUpperCase()) + "</span>") + "<b>" + E(x.v.business_name) + "</b><small>" + (x.d != null ? dist(x.d) : E(x.v.city || "Lagos")) + "</small></button>"; }).join("") + "</div>" : '<div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">' + [1, 2, 3, 4].map(function () { return '<span class="lv-nc sk"></span>'; }).join("") + "</div>";
     if (near.__h !== nh) { near.__h = nh; near.innerHTML = nh; }
     var hh = "<b>All shops</b><button type=\"button\" data-lvsort>Sort: " + E(LABEL[window.__lvVdSort || "rated"]) + " ▾</button>";
     if (head.__h !== hh) { head.__h = hh; head.innerHTML = hh; }
@@ -8608,7 +8609,7 @@ window.lvNoImageHtml = function (seed) {
     }
   });
   var t = 0;
-  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; try { build(); cleanup(); } catch (_) {} }, 200); }).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(function () { if (t) return; t = requestAnimationFrame(function () { t = 0; try { build(); cleanup(); } catch (_) {} }); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
 
 /* ===== Photo viewer for request photos and verification documents: one picture at a time, with names (ID card / Biodata / Selfie) ===== */
