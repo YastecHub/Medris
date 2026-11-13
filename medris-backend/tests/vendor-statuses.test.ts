@@ -63,3 +63,31 @@ describe("vendor status alerts to followers (migration 0069)", () => {
     } finally { await db.close(); }
   }, 60000);
 });
+
+describe("status likes, viewers, edits (migration 0071)", () => {
+  it("shop edits caption only; viewer name is recorded; a like is seen by the shop only", async () => {
+    const db = await createTestDatabase();
+    try {
+      const owner = (await seedUser(db, { role: "vendor" })).id, fan = (await seedUser(db)).id, other = (await seedUser(db)).id;
+      const shop = (await seedVendor(db, owner)).id, product = await seedProduct(db, shop);
+      const [st] = await db.query<{ id: string }>(`insert into public.vendor_statuses (vendor_id, product_id, caption, created_by) values ($1, $2, 'old', $3) returning id`, [shop, product, owner]);
+      const as = async (u: string, sql: string, p: unknown[] = []) => {
+        const { client, release } = await db.sqlClient();
+        try {
+          await client.query(`select set_config('request.jwt.claims', $1, false), set_config('request.jwt.claim.sub', $2, false)`, [JSON.stringify({ sub: u, role: "authenticated" }), u]);
+          await client.query(`set role authenticated`);
+          return (await client.query(sql, p)).rows as Record<string, unknown>[];
+        } finally { await client.query(`reset role`); release(); }
+      };
+      expect(await as(owner, `update public.vendor_statuses set caption = 'new', animation = 'zoom', expires_at = now() + interval '9 days' where id = $1 returning id`, [st!.id])).toHaveLength(1);
+      const [row] = await db.query<{ caption: string; animation: string; h: string }>(`select caption, animation, round(extract(epoch from (expires_at - created_at)) / 3600)::text as h from public.vendor_statuses where id = $1`, [st!.id]);
+      expect(row).toEqual({ caption: "new", animation: "zoom", h: "24" });
+      expect(await as(fan, `update public.vendor_statuses set caption = 'hack' where id = $1 returning id`, [st!.id])).toHaveLength(0);
+      await as(fan, `insert into public.vendor_status_views (status_id, viewer_id) values ($1, $2)`, [st!.id, fan]);
+      await as(fan, `insert into public.vendor_status_likes (status_id, user_id) values ($1, $2)`, [st!.id, fan]);
+      expect((await as(owner, `select user_id from public.vendor_status_likes where status_id = $1`, [st!.id]))).toHaveLength(1);
+      expect((await as(other, `select viewer_id from public.vendor_status_views where status_id = $1`, [st!.id]).catch(() => []))).toHaveLength(0);
+      expect((await as(other, `select user_id from public.vendor_status_likes where status_id = $1`, [st!.id]))).toHaveLength(0);
+    } finally { await db.close(); }
+  }, 60000);
+});

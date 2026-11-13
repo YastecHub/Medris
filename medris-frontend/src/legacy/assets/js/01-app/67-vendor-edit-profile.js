@@ -522,15 +522,16 @@ function lvAskCustomerWhatsapp() {
   lvAskingCustomerWa = true;
   const m = document.createElement("div");
   m.id = "lvCwaModal";
-  m.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:1rem;";
-  m.innerHTML = `<div style="background:var(--bg-card,#fff);color:var(--text,#111);border-radius:18px;padding:1.2rem;max-width:360px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)">
-    <h3 style="margin:0 0 .3rem">Add your WhatsApp number</h3>
-    <p class="muted" style="margin:0 0 .8rem;font-size:.9rem">So your orders and reminders reach you faster.</p>
-    <input id="lvCwaInput" type="tel" inputmode="tel" placeholder="e.g. 08012345678" style="width:100%;box-sizing:border-box" />
-    <div id="lvCwaErr" class="error-text hidden" style="margin-top:.4rem"></div>
-    <div class="flex" style="margin-top:.8rem;gap:.5rem;justify-content:flex-end">
-      <button type="button" class="btn btn-sm btn-outline" id="lvCwaLater">Later</button>
-      <button type="button" class="btn btn-sm" id="lvCwaSave">Save</button>
+  m.className = "lv-dlg-back";
+  m.innerHTML = `<div class="lv-dlg" role="dialog" aria-modal="true" aria-label="Add your WhatsApp number">
+    <span class="lv-dlg-ic lv-dlg-ic-wa"><i class="fa-brands fa-whatsapp"></i></span>
+    <h3>Add your WhatsApp number</h3>
+    <p>So your orders and reminders reach you faster.</p>
+    <label class="lv-dlg-field"><i class="fa-solid fa-phone"></i><input id="lvCwaInput" type="tel" inputmode="tel" placeholder="e.g. 08012345678" /></label>
+    <div id="lvCwaErr" class="error-text hidden"></div>
+    <div class="lv-dlg-act">
+      <button type="button" class="lv-dlg-btn soft" id="lvCwaLater"><i class="fa-regular fa-clock"></i> Later</button>
+      <button type="button" class="lv-dlg-btn go" id="lvCwaSave"><i class="fa-solid fa-check"></i> Save</button>
     </div></div>`;
   document.body.appendChild(m);
   const close = () => { m.remove(); lvAskingCustomerWa = false; };
