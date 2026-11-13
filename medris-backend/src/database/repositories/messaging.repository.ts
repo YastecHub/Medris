@@ -30,6 +30,15 @@ export class NotifyRepository {
     return rows.length > 0;
   }
 
+  /** When the account is one of someone's businesses: the owner and the business's name, so its alerts can reach the owner's phone. */
+  async businessOwner(userId: string): Promise<{ owner_id: string; name: string | null } | null> {
+    try {
+      return await jsonRow<{ owner_id: string; name: string | null }>(this.db, sql`select l.owner_id, coalesce(v.business_name, l.label) as name from public.business_links l left join public.vendors v on v.user_id = l.business_user_id where l.business_user_id = ${userId}::uuid limit 1`);
+    } catch {
+      return null;
+    }
+  }
+
   /** Every push subscription of the user (all columns). */
   pushSubscriptions(userId: string): Promise<{ id: string; endpoint: string; p256dh: string; auth_key: string; created_at?: string }[]> {
     return jsonRows(this.db, sql`select * from public.push_subscriptions where user_id = ${userId}`);
