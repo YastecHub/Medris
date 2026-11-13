@@ -9172,3 +9172,7 @@ html:root body .lvrw-bankbtn,html:root body .lvrw-in{width:100%;min-height:3.1re
 html:root body .lvrw-in{padding:0 1rem;letter-spacing:.12em}
 html:root body #lvrwGo{width:100%;min-height:3.1rem;margin-top:1.1rem;border-radius:99px!important;border:0!important;background:linear-gradient(135deg,#16a34a,#0e7a4e)!important;color:#fff!important;font-weight:800;font-size:1rem;box-shadow:0 14px 26px -16px rgba(22,163,74,.9)!important}
 html:root body .lvrw-later{display:block;width:100%;margin-top:.5rem;padding:.7rem;border:0;background:none;font:inherit;font-weight:700;color:var(--text-muted,#6b7280)}
+
+/* My listings: the delete button shows its bin icon */
+html:root body #app .vl-page .vl-actions .vl-btn-delete i{display:inline-block!important;font-size:1rem;line-height:1;color:#dc2626}
+html:root body #app .vl-page .vl-actions .vl-btn-delete{display:inline-flex!important;align-items:center;justify-content:center}
