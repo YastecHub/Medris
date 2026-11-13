@@ -8341,10 +8341,12 @@ window.lvNoImageHtml = function (seed) {
     if (gs.length) h += '<div class="lvu-card lvu-all"><button type="button" class="lvu-hit" data-page aria-label="See all updates"><i class="fa-solid fa-arrow-right"></i><b class="lvu-name">See all</b></button></div>';
     host.hidden = false; try { paintNavBadge(); } catch (_) {}
     if (!h && !drawStrip.__retry && typeof session !== "undefined" && session) { drawStrip.__retry = 1; setTimeout(function () { paintStrip(); paintNavBadge(); }, 2500); }
-    var real = gs.length + (mine ? 1 : 0), ghosts = Math.max(0, 3 - real), gh = "";
+    var real = gs.length + (mine ? 1 : 0), ghosts = 0, gh = "";
     var GH = [["fa-store", "Updates from shops you follow show here", "g1"], ["fa-bag-shopping", "New arrivals", "g2"], ["fa-tags", "Fresh offers", "g3"]];
     for (var gi = 0; gi < ghosts; gi++) { var g3 = GH[(gi + (3 - ghosts)) % 3]; gh += '<div class="lvu-card lvu-ghost ' + g3[2] + '" aria-hidden="true"><span class="lvu-gi"><i class="fa-solid ' + g3[0] + '"></i></span><b>' + g3[1] + "</b></div>"; }
-    var html = '<p class="lvu-cap">From shops you follow</p><div class="lvu-row">' + h + gh + "</div>";
+    var html = !gs.length && !mine
+      ? '<div class="lvst-none lvst-none-h">' + NOSTATUS + '<span><b>Updates from shops you follow</b>Only shops you follow show here, and each update disappears after 24 hours.</span></div>'
+      : '<p class="lvu-cap">From shops you follow</p><div class="lvu-row">' + h + gh + "</div>";
     if (host.__h !== html) { host.__h = html; host.innerHTML = html; }
   }
   document.addEventListener("click", function (e) {
