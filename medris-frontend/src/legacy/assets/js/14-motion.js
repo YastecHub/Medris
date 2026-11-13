@@ -3717,9 +3717,11 @@ window.lvAskCancel = async function (orderId) {
   }
   var claimOf = function (o) { return (o.payments || []).find(function (p) { return p.status === "pending" && ["buyer_report", "service_offer_report"].indexOf(String(p.provider_reference || "").toLowerCase()) >= 0; }); };
   window.lvAdpTab = function (t) {
+    window.__adpTab = t;
     document.querySelectorAll(".adp-tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); b.setAttribute("aria-selected", String(b.dataset.t === t)); });
     document.querySelectorAll(".adp-panel").forEach(function (p) { p.classList.toggle("hidden", p.dataset.t !== t); });
   };
+  window.lvAdpFold = function (e, card) { if (e.target.closest("button,a,textarea,input")) return; card.classList.toggle("open"); };
   window.lvAdpOutcome = function (id, v, btn) {
     var inp = document.getElementById("newstatus-" + id); if (inp) inp.value = v;
     var wrap = btn && btn.parentElement; if (wrap) wrap.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); b.setAttribute("aria-checked", String(b === btn)); });
@@ -3748,7 +3750,7 @@ window.lvAskCancel = async function (orderId) {
   }
   function doneCard(d, refunded) {
     var o = d.order || {}, back = refunded[o.id] || 0, st = String(o.status || "");
-    return '<article class="adp-card adp-done"><header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div>' +
+    return '<article class="adp-card adp-done" onclick="lvAdpFold(event,this)"><header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div>' +
       '<span class="adp-pill adp-st-' + esc(st) + '">' + esc(nice(st)) + '</span></header>' +
       '<div class="adp-block"><label>Reason</label><p>' + esc(d.reason || "") + '</p></div>' +
       (d.admin_notes ? '<div class="adp-block"><label>Your notes</label><p>' + esc(d.admin_notes) + '</p></div>' : "") +
@@ -3789,7 +3791,8 @@ window.lvAskCancel = async function (orderId) {
       if (bids.length) { var ur = await sb.from("users").select("id,name").in("id", bids); var nm = {}; ((ur && ur.data) || []).forEach(function (u) { nm[u.id] = u.name; }); open.forEach(function (d) { d.__buyer = d.order && nm[d.order.buyer_id]; }); }
     } catch (_) {}
     var tab = "open";
-    var tabs = '<div class="adp-tabs" role="tablist"><button role="tab" class="adp-tab on" data-t="open" aria-selected="true" onclick="lvAdpTab(\'open\')">Open' + (open.length ? '<i>' + open.length + '</i>' : "") + '</button><button role="tab" class="adp-tab" data-t="resolved" aria-selected="false" onclick="lvAdpTab(\'resolved\')">Resolved' + (resolved.length ? '<i class="ok">' + resolved.length + '</i>' : "") + '</button>' + (checks ? '<button role="tab" class="adp-tab" data-t="checks" aria-selected="false" onclick="lvAdpTab(\'checks\')">Payment checks<i>' + checks + '</i></button>' : "") + '</div>';
+    var tabs = '<div class="adp-tabs" role="tablist"><button role="tab" class="adp-tab on" data-t="open" aria-selected="true" onclick="lvAdpTab(\'open\')">Open' + (open.length ? '<i>' + open.length + '</i>' : "") + '</button><button role="tab" class="adp-tab" data-t="resolved" aria-selected="false" onclick="lvAdpTab(\'resolved\')"><span class="fa-solid fa-clock-rotate-left"></span> History' + (resolved.length ? '<i class="ok">' + resolved.length + '</i>' : "") + '</button>' + (checks ? '<button role="tab" class="adp-tab" data-t="checks" aria-selected="false" onclick="lvAdpTab(\'checks\')">Payment checks<i>' + checks + '</i></button>' : "") + '</div>';
+    setTimeout(function () { var want = window.__adpTab; if (want === "checks" && !checks) want = "open"; if (want && want !== "open") window.lvAdpTab(want); }, 0);
     var empty = function (t, ic) { return '<div class="adp-empty"><i class="fa-solid ' + ic + '"></i><strong>' + t + '</strong></div>'; };
     return head + '<div class="adp">' + tabs +
       '<section class="adp-panel" data-t="open">' + (open.length ? open.map(function (d) { return card(d, refunded); }).join("") : empty("No open disputes", "fa-circle-check")) + '</section>' +
@@ -8273,7 +8276,7 @@ window.lvNoImageHtml = function (seed) {
     loading = (async function () {
       for (var tries = 0; tries < 3; tries++) {
         try {
-          var r = await sb.from("vendor_statuses").select("id,vendor_id,product_id,caption,show_price,animation,created_at,expires_at,vendor:vendors(id,business_name,logo_url),product:products(id,name,photos,sale_price,discount_price,is_service)").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: true }).limit(200);
+          var r = await sb.from("vendor_statuses").select("id,vendor_id,product_id,caption,show_price,animation,created_at,expires_at,vendor:vendors(id,business_name,logo_url,verification_status),product:products(id,name,photos,sale_price,discount_price,is_service)").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: true }).limit(200);
           if (r && !r.error && Array.isArray(r.data)) { cache = { at: Date.now(), rows: r.data }; try { localStorage.setItem(KEEP, JSON.stringify({ rows: r.data })); } catch (_) {} return cache.rows; }
         } catch (_) {}
         await new Promise(function (ok) { setTimeout(ok, 700 * (tries + 1)); });
@@ -8310,6 +8313,7 @@ window.lvNoImageHtml = function (seed) {
     rows.forEach(function (s) { if (!s.vendor) return; if (s.vendor_id !== mine && !followed(s.vendor_id)) return; var g = by[s.vendor_id] || (by[s.vendor_id] = { id: s.vendor_id, vendor: s.vendor, items: [], unseen: 0, latest: 0, own: s.vendor_id === mine }); g.items.push(s); if (!seen[s.id]) g.unseen++; g.latest = Math.max(g.latest, +new Date(s.created_at)); });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return (b.own - a.own) || ((b.unseen > 0) - (a.unseen > 0)) || (b.latest - a.latest); });
   }
+  function vtick(v) { return v && v.verification_status === "verified" ? ' <i class="fa-solid fa-circle-check lvst-tick" title="Verified" aria-label="Verified"></i>' : ""; }
   function ago(d) { var m = Math.max(1, Math.round((Date.now() - new Date(d)) / 60000)); return m < 60 ? m + "m ago" : Math.round(m / 60) + "h ago"; }
 
   /* ---- the strip on the Vendors page ---- */
@@ -8326,7 +8330,7 @@ window.lvNoImageHtml = function (seed) {
       var attr = g ? 'data-open="' + E(g.id) + '"' : "data-add";
       return '<div class="lvu-card' + (g && !isOwn && !g.unseen ? " seen" : "") + (isOwn ? " own" : "") + '"><button type="button" class="lvu-hit" ' + attr + ' aria-label="' + E(name) + '">' +
         (ph ? '<img class="lvu-ph" src="' + E(ph) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lvu-ph lvu-none"></span>') + '<span class="lvu-shade"></span>' +
-        '<span class="lvu-ring">' + avatar(logo, bname, "lvu-av") + "</span>" + '<b class="lvu-name">' + E(name) + "</b></button>" +
+        '<span class="lvu-ring">' + avatar(logo, bname, "lvu-av") + "</span>" + '<b class="lvu-name">' + E(name) + (isOwn ? "" : vtick(g && g.vendor)) + "</b></button>" +
         (isOwn ? '<button type="button" class="lvu-plus" data-add aria-label="Add an update"><i class="fa-solid fa-plus"></i></button>' : "") + "</div>";
     }
     if (mine) h += card(own || null, true);
@@ -8359,7 +8363,7 @@ window.lvNoImageHtml = function (seed) {
     if (typeof lvTeamOverlay !== "function") return;
     var el = lvTeamOverlay("lvStPage", "Updates", '<p class="muted">Loading…</p>', "Updates from vendors, for 24 hours");
     var body = el.querySelector("[data-lv-body]"), mine = myVendorId();
-    var row = function (g) { var last = g.items[g.items.length - 1]; var p = last.product, ph = p && p.photos && p.photos[0]; return '<button type="button" class="lvst-li" data-open="' + E(g.id) + '"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '">' + avatar(g.vendor.logo_url, g.vendor.business_name) + '</div><div class="lvst-lt"><b>' + E(g.vendor.business_name) + "</b><small>" + ago(last.created_at) + " · " + g.items.length + " update" + (g.items.length === 1 ? "" : "s") + "</small></div>" + (ph ? '<img class="lvst-th" src="' + E(ph) + '" alt="" loading="lazy">' : "") + "</button>"; };
+    var row = function (g) { var last = g.items[g.items.length - 1]; var p = last.product, ph = p && p.photos && p.photos[0]; return '<button type="button" class="lvst-li" data-open="' + E(g.id) + '"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '">' + avatar(g.vendor.logo_url, g.vendor.business_name) + '</div><div class="lvst-lt"><b>' + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(last.created_at) + " · " + g.items.length + " update" + (g.items.length === 1 ? "" : "s") + "</small></div>" + (ph ? '<img class="lvst-th" src="' + E(ph) + '" alt="" loading="lazy">' : "") + "</button>"; };
     var paintPage = function (gs) {
     var own = gs.filter(function (g) { return g.own; })[0], rest = gs.filter(function (g) { return !g.own; }), fresh = rest.filter(function (g) { return g.unseen; }), old = rest.filter(function (g) { return !g.unseen; });
     body.innerHTML = (mine ? '<div class="lvst-me"><div class="lvst-ring own' + (own ? " live" : "") + '" ' + (own ? 'data-open="' + E(mine) + '"' : "") + ">" + avatar(vendor.logo_url, vendor.business_name) + '</div><div class="lvst-lt"><b>My update</b><small>' + (own ? own.items.length + " live · tap to view" : "Add a product for 24 hours") + '</small></div><button type="button" class="lvst-addbtn" data-add><i class="fa-solid fa-plus"></i> Add</button></div>' : "") +
@@ -8398,7 +8402,7 @@ window.lvNoImageHtml = function (seed) {
     var ANIMS = ["zoom", "pan", "advert"], anim = s.animation && s.animation !== "none" ? (s.animation === "random" ? ANIMS[Math.floor(Math.random() * ANIMS.length)] : s.animation) : "none";
     V.el.innerHTML = '<div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div><div class="lvst-shade"></div>' +
       '<div class="lvst-bars">' + g.items.map(function (_, k) { return '<i class="' + (k < V.i ? "d" : k === V.i ? "run" : "") + '"></i>'; }).join("") + "</div>" +
-      '<div class="lvst-top">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + "<div><b>" + E(g.vendor.business_name) + "</b><small>" + ago(s.created_at) + '</small></div><button type="button" class="lvst-x" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<div class="lvst-top">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + "<div><b>" + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(s.created_at) + '</small></div><button type="button" class="lvst-x" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>' +
       '<button type="button" class="lvst-tap l" data-p aria-label="Previous"></button><button type="button" class="lvst-tap r" data-n aria-label="Next"></button>' +
       (own ? '<div class="lvst-own"><button type="button" id="lvStViews" data-views><i class="fa-regular fa-eye"></i> …</button><button type="button" data-edit><i class="fa-regular fa-pen-to-square"></i> Edit</button><button type="button" data-del><i class="fa-regular fa-trash-can"></i> Delete</button></div>' : '<button type="button" class="lvst-like" id="lvStLike" data-like aria-label="Like"><i class="fa-regular fa-heart"></i></button>') +
       '<div class="lvst-card' + (anim === "advert" ? " lvst-adv" : "") + '">' + (s.caption ? '<p class="lvst-cap">' + E(s.caption) + "</p>" : "") + "<h4>" + E(p.name || "Product") + "</h4>" + (price ? '<div class="lvst-pr">' + price + "</div>" : "") + '<div class="lvst-acts"><button type="button" data-go>View ' + (p.is_service ? "service" : "product") + '</button><button type="button" class="pri" data-go>' + (p.is_service ? "Book now" : "Place order") + "</button></div></div>";
@@ -8496,6 +8500,11 @@ window.lvNoImageHtml = function (seed) {
       var btn = vid && document.querySelector("#app .storefront-avatar-button"), g = vid && liveFor(vid);
       if (btn) { btn.classList.toggle("lvst-sf-live", !!g); btn.classList.toggle("lvst-sf-seen", !!g && !g.unseen); if (g) btn.setAttribute("data-lvst", vid); else btn.removeAttribute("data-lvst"); }
     } catch (_) {}
+    // the shop's own profile page: its picture shows the ring when it has a live update
+    try {
+      var mine = typeof vendor !== "undefined" && vendor && vendor.id, av = mine && document.querySelector("#app .vendor-profile-header-avatar, #app .vendor-profile-header-avatar-row .avatar-circle");
+      if (av) { var og = liveFor(vendor.id), ho = av.closest("span,div") || av; var host2 = av.parentElement && av.parentElement.classList.contains("vendor-profile-header-avatar-row") ? av : av; host2.classList.toggle("lvst-chat-live", !!og); host2.classList.toggle("lvst-sf-seen", !!og && !og.unseen); if (og) host2.setAttribute("data-lvst", vendor.id); else host2.removeAttribute("data-lvst"); }
+    } catch (_) {}
     // chat list rows (the shop is the other side for a buyer)
     document.querySelectorAll("#app .conv-list-item[data-conversation-id]").forEach(function (row) {
       var c = (window.__conversations || []).filter(function (x) { return x.conversation_id === row.getAttribute("data-conversation-id"); })[0];
@@ -8521,7 +8530,7 @@ window.lvNoImageHtml = function (seed) {
       host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
     });
   }
-  var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); try { if (document.getElementById("searchPageResults") || document.querySelector(".search-page")) decorateSearch(); } catch (_) {} }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
+  var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); try { decorateSearch(); } catch (_) {} }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
 
 /* ===== Vendors page: one clear row per shop (logo, name, rating, place, a peek of products, Follow) ===== */
@@ -8662,20 +8671,30 @@ window.lvNoImageHtml = function (seed) {
   function seen() { try { return localStorage.getItem(KEY) === VER; } catch (_) { return true; } }
   function mark() { try { localStorage.setItem(KEY, VER); } catch (_) {} }
   var VENDORS_TAB = "#bottomNav .bottom-nav-item[onclick*=\"'vendors'\"]";
+  function panelOpen() { var p = document.getElementById("profilePanel"); if (!p) return false; var r = p.getBoundingClientRect(); return r.width > 0 && r.right > 30 && r.left < innerWidth - 30; }
+  async function openPanelOn(label) {
+    try { if (!panelOpen()) toggleProfilePanel(); } catch (_) {}
+    await new Promise(function (ok) { setTimeout(ok, 450); });
+    try { var row = document.querySelector('#profilePanel .lv-pp-row[data-lbl="' + label + '"]'); if (row) row.scrollIntoView({ block: "center" }); } catch (_) {}
+  }
   function steps() {
+    var isVendor = false; try { isVendor = !!(typeof vendor !== "undefined" && vendor && vendor.id); } catch (_) {}
+    var closePanel = function () { try { closeAllPanels(); } catch (_) {} };
     var out = [
       { icon: "fa-wand-magic-sparkles", title: "What's new on Levromart", body: "A quick look at what we added. This shows only once.", selector: null },
-      { icon: "fa-bullhorn", title: "Updates from shops you follow", body: "Open Vendors to see photos and offers from the shops you follow, like WhatsApp Updates. A green number shows when something is new.", selector: VENDORS_TAB },
-      { icon: "fa-location-dot", title: "Shops near you and the map", body: "The Vendors page now lists shops near you first. Tap the floating 3D map pin to open the map.", selector: VENDORS_TAB },
-      { icon: "fa-receipt", title: "Orders are easier", body: "Pay, cancel, ask for a refund or say you received it from the buttons that stay at the bottom of the order page.", selector: "#bottomNav .bottom-nav-item[onclick*=\"Orders\"]" },
-      { icon: "fa-wallet", title: "A smarter wallet", body: "Send money with a PIN, and share a receipt in a style you like.", selector: null }
+      { icon: "fa-bullhorn", title: "Updates from shops you follow", body: "Photos and offers from the shops you follow, like WhatsApp Updates. New ones come first, and a green number shows on the Vendors tab.", view: "vendors", selector: "#lvStStrip", onEnter: closePanel },
+      { icon: "fa-location-crosshairs", title: "Shops near you", body: "The closest shops come first. Slide sideways to see more.", view: "vendors", selector: "#lvNear" },
+      { icon: "fa-map-location-dot", title: "Open the map", body: "Tap the floating 3D pin any time to see shops on the map.", view: "vendors", selector: "#lvMapFab" },
+      { icon: "fa-receipt", title: "Orders are easier", body: "Pay, cancel, ask for a refund or say you received it from the buttons that stay at the bottom of every order.", selector: "#bottomNav .bottom-nav-item[onclick*=\"Orders\"]" },
+      { icon: "fa-wallet", title: "A faster wallet", body: "Send money with your PIN, add money, and share a receipt in a style you like.", view: isVendor ? "vendorDashboard" : "buyerProfile", selector: ".lvw-card" }
     ];
-    var isVendor = false; try { isVendor = !!(typeof vendor !== "undefined" && vendor && vendor.id); } catch (_) {}
     if (isVendor) {
-      out.push({ icon: "fa-circle-plus", title: "Post an update", body: "On Vendors tap the + on Your update, pick a product and share it for 24 hours. People who follow you get an alert.", selector: VENDORS_TAB });
-      out.push({ icon: "fa-building", title: "Businesses and your team", body: "Run up to 5 businesses with one login, and invite managers and staff to help. Find them in your profile panel.", selector: "#profilePanel", onEnter: function () { try { toggleProfilePanel(); } catch (_) {} }, onExit: function () { try { closeAllPanels(); } catch (_) {} } });
-      out.push({ icon: "fa-hourglass-half", title: "Order time limit", body: "Choose how long you wait before an order cancels itself. The hourglass on each order shows the time left.", selector: null });
+      out.push({ icon: "fa-circle-plus", title: "Post an update", body: "Tap the + on Your update, pick a product, choose a style (even an animated advert) and share it for 24 hours. You can see who viewed and liked it.", view: "vendors", selector: ".lvu-card.own" });
+      out.push({ icon: "fa-building", title: "Businesses", body: "Run up to 5 businesses with one login and switch between them here.", selector: '#profilePanel .lv-pp-row[data-lbl="Businesses"]', onEnter: function () { return openPanelOn("Businesses"); } });
+      out.push({ icon: "fa-people-group", title: "Your team", body: "Invite managers and staff. Managers can manage listings, staff handle orders and chats.", selector: '#profilePanel .lv-pp-row[data-lbl="Team"]', onEnter: function () { return openPanelOn("Team"); } });
     }
+    out.push({ icon: "fa-heart", title: "Your wishlist", body: "Everything you saved is here, for customers and vendors alike.", selector: '#profilePanel .lv-pp-row[data-lbl="Wishlist"]', onEnter: function () { return openPanelOn("Wishlist"); }, onExit: closePanel });
+    if (isVendor) out.push({ icon: "fa-hourglass-half", title: "Order time limit", body: "Choose how long you wait before an order cancels itself. The hourglass on each order shows the time left.", selector: null, onEnter: closePanel });
     return out;
   }
   function tick() {
