@@ -8600,3 +8600,11 @@ html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-follow.following,html:
 html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-name{display:block;text-align:left!important;width:100%}
 html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-body>*{margin:0!important}
 html:root:root:root:root body #app #vendorsGrid .vc2 .vc2-tags{margin:0!important;padding:0!important;min-height:0}
+
+.lvst-none{margin:0;padding:.2rem .2rem .6rem;font-size:.82rem;color:var(--text-muted,#6b7280)}
+/* back button on these full pages: not hard against the edge of the phone */
+html body .tm-wrap{padding-left:max(1rem,env(safe-area-inset-left,0px));padding-right:max(1rem,env(safe-area-inset-right,0px))}
+html body .tm-top{padding-left:.15rem}
+html body .tm-back{margin-left:0!important;width:2.6rem;height:2.6rem;background:color-mix(in srgb,var(--text) 7%,transparent)}
+/* Add to status */
+.lvst-chips button{opacity:1}.lvst-chips button:disabled{color:var(--primary,#16a34a)}

@@ -8285,9 +8285,8 @@ window.lvNoImageHtml = function (seed) {
     var h = "";
     if (mine) h += '<div class="lvst-item"><div class="lvst-ring own' + (hasOwn ? " live" : "") + '"><button type="button" class="lvst-hit" data-open="' + E(mine) + '" aria-label="Your status">' + avatar(vendor.logo_url, vendor.business_name) + '</button><button type="button" class="lvst-plus" data-add aria-label="Add to your status"><i class="fa-solid fa-plus"></i></button></div><span>Your status</span></div>';
     gs.filter(function (g) { return !g.own; }).forEach(function (g) { h += '<div class="lvst-item"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '"><button type="button" class="lvst-hit" data-open="' + E(g.id) + '" aria-label="' + E(g.vendor.business_name) + ' status">' + avatar(g.vendor.logo_url, g.vendor.business_name) + "</button></div><span>" + E(g.vendor.business_name) + "</span></div>"; });
-    if (!h) { host.hidden = true; return; }
     host.hidden = false;
-    host.innerHTML = '<div class="lvst-head"><b>Status</b><button type="button" data-page>See all</button></div><div class="lvst-row">' + h + "</div>";
+    host.innerHTML = '<div class="lvst-head"><b>Status</b><button type="button" data-page>See all</button></div>' + (h ? '<div class="lvst-row">' + h + "</div>" : '<p class="lvst-none">No statuses right now. When a vendor posts a product it shows here for 24 hours.</p>');
   }
   document.addEventListener("click", function (e) {
     var o = e.target.closest && e.target.closest("#lvStStrip [data-open]"), a = e.target.closest && e.target.closest("#lvStStrip [data-add], .lvst-addbtn"), pg = e.target.closest && e.target.closest("#lvStStrip [data-page], #vendorsViewStatusBtn");
@@ -8300,7 +8299,7 @@ window.lvNoImageHtml = function (seed) {
     if (t) return; t = setTimeout(function () {
       t = 0;
       var page = document.querySelector("#app .vd-page"); if (!page) return;
-      if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = true; if (head) head.before(s); else page.prepend(s); paintStrip(); }
+      if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = false; s.innerHTML = '<div class="lvst-head"><b>Status</b></div><p class="lvst-none">Loading…</p>'; if (head) head.before(s); else page.prepend(s); paintStrip(); }
       var vs = page.querySelector(".vd-views");
       if (vs && !document.getElementById("vendorsViewStatusBtn")) { var b = document.createElement("button"); b.type = "button"; b.className = "vd-view"; b.id = "vendorsViewStatusBtn"; b.title = "Status"; b.setAttribute("aria-label", "Status"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.6"/><circle cx="12" cy="12" r="3.2"/></svg>'; vs.appendChild(b); }
     }, 80);
@@ -8409,7 +8408,18 @@ window.lvNoImageHtml = function (seed) {
     var el = e.target.closest && e.target.closest("[data-lvst]"); if (!el) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); openViewer(el.getAttribute("data-lvst"));
   }, true);
-  var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
+  // search results: shop rows/cards get the ring too
+  function decorateSearch() {
+    document.querySelectorAll("#app [data-vendor-id], #app [onclick*=\"storefront\"]").forEach(function (row) {
+      if (row.closest("#lvStStrip,.vd-page,.lvst-v")) return;
+      var vid = row.getAttribute("data-vendor-id"); if (!vid) { var m = /vendorId:'([0-9a-f-]{36})'/.exec(row.getAttribute("onclick") || ""); vid = m && m[1]; }
+      if (!vid) return;
+      var av = row.querySelector(".avatar-circle, img, [class*='avatar'], [class*='logo'], .vd-initials"); if (!av) return;
+      var host = av.closest("span,div,button") || av, g = liveFor(vid);
+      host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
+    });
+  }
+  var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); try { if (document.getElementById("searchPageResults") || document.querySelector(".search-page")) decorateSearch(); } catch (_) {} }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
 
 /* ===== Vendors page: one clear row per shop (logo, name, rating, place, a peek of products, Follow) ===== */
