@@ -8987,3 +8987,12 @@ html:root body #lvTour.lvt-news .lvt-hole{box-shadow:0 0 0 9999px rgba(30,10,60,
 .lvu-name .lvst-tick{color:#4ade80}
 .vendor-profile-header-avatar.lvst-chat-live{box-shadow:0 0 0 3px var(--card,#fff),0 0 0 6px #22c55e!important}
 .vendor-profile-header-avatar.lvst-chat-live.lvst-sf-seen{box-shadow:0 0 0 3px var(--card,#fff),0 0 0 6px #9ca3af!important}
+/* Vendors page: every block has its final height from the first frame, so nothing shrinks or grows when the data arrives */
+html body #app .vd-page>#lvStStrip{min-height:10.8rem}
+html body #app .lvst-none{min-height:10.2rem;margin:.1rem 0 .5rem}
+html body #app .lv-near{min-height:12.4rem}
+html body #app .lv-near-row{min-height:9.1rem}
+html body #app .lv-nc{min-height:8.5rem}
+.lv-nc.sk{background:color-mix(in srgb,var(--text) 6%,var(--card,#fff));border-color:transparent;animation:lvStPulse 1.2s ease-in-out infinite}
+html body #app .lv-vd-title{min-height:2.2rem}
+html body #app .vd-page>#vendorCatChips{min-height:2.65rem}
