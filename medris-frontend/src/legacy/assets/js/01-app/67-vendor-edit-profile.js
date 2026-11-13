@@ -1112,7 +1112,8 @@ function lvTeamOrderCard(o) {
     ? `<button type="button" class="tm-btn" data-act="confirmed">Accept</button><button type="button" class="tm-btn ghost" data-act="decline">Decline</button>`
     : st === "confirmed"
       ? `<button type="button" class="tm-btn" data-act="handed_over">Mark handed over</button><button type="button" class="tm-btn danger" data-act="decline">Cancel</button>`
-      : st === "handed_over" ? `<div class="tm-sub">Waiting for the customer to confirm.</div>` : "";
+      : st === "handed_over" ? `<div class="tm-sub">Waiting for the customer to confirm.</div>`
+      : st === "cancelled" ? `<button type="button" class="tm-btn" data-avail><i class="fa-regular fa-paper-plane"></i> Still available</button>` : "";
   return `<div class="tm-card" data-oid="${esc(o.id)}" data-st="${esc(st)}">
     <div class="tm-row"><span class="tm-chip ${chipCls}">${esc(label)}</span><span class="tm-grow"></span><span class="tm-money">₦${Number(o.total_amount || 0).toLocaleString()}</span></div>
     <div class="tm-meta"><span><i class="fa-regular fa-user"></i> ${who}</span><span><i class="fa-solid ${o.delivery_method === "delivery" ? "fa-truck" : "fa-shop"}"></i> ${o.delivery_method === "delivery" ? "Delivery" : "Pickup"}</span><span><i class="fa-regular fa-clock"></i> ${esc(timeAgo(o.created_at))}</span></div>
@@ -1125,7 +1126,7 @@ async function lvOpenTeamWorkspace(vendorId, shopName, role) {
   const body = el.querySelector("[data-lv-body]");
   let tab = "orders", timer = null, ordFilter = "active";
   const hero = () => `<div class="tm-card tm-hero"><div class="tm-av">${lvAvInner(team && team.logo_url, shopName)}</div><div><div class="tm-hero-name">${esc(shopName || "Shop")}</div><div class="tm-hero-sub">You work here as ${esc((LV_ROLE_LABEL[myRole] || "Staff").toLowerCase())}</div></div></div>`;
-  const tabs = () => `<div class="tm-seg"><button type="button" class="${tab === "orders" ? "on" : ""}" data-tab="orders">Orders</button><button type="button" class="${tab === "chats" ? "on" : ""}" data-tab="chats">Chats</button></div>`;
+  const tabs = () => `<div class="tm-seg"><button type="button" class="${tab === "orders" ? "on" : ""}" data-tab="orders">Orders</button><button type="button" class="${tab === "chats" ? "on" : ""}" data-tab="chats">Chats</button>${myRole === "manager" ? `<button type="button" class="${tab === "listings" ? "on" : ""}" data-tab="listings">Listings</button>` : ""}</div>`;
   const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
   const bindTabs = () => body.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { tab = b.getAttribute("data-tab"); stop(); draw(); }));
   new MutationObserver((_, ob) => { if (!document.body.contains(el)) { stop(); ob.disconnect(); } }).observe(document.body, { childList: true });
@@ -1141,10 +1142,11 @@ async function lvOpenTeamWorkspace(vendorId, shopName, role) {
     byId("lvTeamRefresh").onclick = draw;
     body.querySelectorAll("[data-of]").forEach((b) => (b.onclick = () => { ordFilter = b.getAttribute("data-of"); stop(); draw(); }));
     body.querySelectorAll("[data-oid]").forEach((card) => (card.onclick = (ev) => {
-      if (ev.target.closest("[data-act]")) return;
+      if (ev.target.closest("[data-act],[data-avail]")) return;
       const oid = card.getAttribute("data-oid"); stop(); el.remove();
       try { navigate("orderDetail", { orderId: oid }); } catch (_) {}
     }));
+    body.querySelectorAll("[data-oid] [data-avail]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); sendStillAvailable(b.closest("[data-oid]").getAttribute("data-oid"), b); }));
     body.querySelectorAll("[data-oid] [data-act]").forEach((b) => (b.onclick = async () => {
       const card = b.closest("[data-oid]"); const oid = card.getAttribute("data-oid"); const act = b.getAttribute("data-act");
       b.disabled = true;
@@ -1191,6 +1193,22 @@ async function lvOpenTeamWorkspace(vendorId, shopName, role) {
     await paint(false);
     timer = setInterval(() => { if (document.body.contains(el) && !byId("lvTeamMsg")?.value) paint(true); }, 8000);
   };
-  const draw = () => (tab === "chats" ? drawChats() : drawOrders());
+  // managers can pause, resume and delete the shop's listings (adding and editing stay in the owner's own screens for now)
+  const drawListings = async () => {
+    const { data, error } = await sb.from("products").select("id,name,photos,sale_price,status,is_service").eq("vendor_id", vendorId).order("created_at", { ascending: false }).limit(80);
+    const rows = Array.isArray(data) ? data : [];
+    body.innerHTML = hero() + tabs() + (error ? `<div class="tm-err">${esc(error.message)}</div>` : "") +
+      (rows.length ? rows.map((p) => `<div class="tm-card tm-lst" data-pid="${esc(p.id)}"><div class="tm-row"><span class="tm-lst-ph">${p.photos && p.photos[0] ? `<img src="${esc(p.photos[0])}" alt="" loading="lazy">` : `<i class="fa-solid fa-image"></i>`}</span><div class="tm-grow"><b>${esc(p.name)}</b><div class="tm-sub">${p.sale_price ? "₦" + Number(p.sale_price).toLocaleString() + " · " : ""}${esc(p.status === "active" ? "Live" : p.status === "paused" ? "Paused" : String(p.status))}</div></div></div><div class="tm-actions"><button type="button" class="tm-btn ghost" data-lact="${p.status === "active" ? "paused" : "active"}">${p.status === "active" ? "Pause" : "Resume"}</button><button type="button" class="tm-btn danger" data-lact="delete">Delete</button></div></div>`).join("") : `<div class="tm-card tm-empty"><i class="fa-solid fa-box-open"></i><b>No listings yet</b>The owner's listings will show here.</div>`);
+    bindTabs();
+    body.querySelectorAll("[data-pid] [data-lact]").forEach((b) => (b.onclick = async () => {
+      const pid = b.closest("[data-pid]").getAttribute("data-pid"), act = b.getAttribute("data-lact");
+      if (act === "delete" && !window.confirm("Delete this listing for good?")) return;
+      b.disabled = true;
+      const r = act === "delete" ? await sb.from("products").delete().eq("id", pid) : await sb.from("products").update({ status: act }).eq("id", pid);
+      if (r.error) showToast(r.error.message || "That did not work.", "error"); else showToast(act === "delete" ? "Listing deleted." : act === "paused" ? "Listing paused." : "Listing is live again.", "success");
+      drawListings();
+    }));
+  };
+  const draw = () => (tab === "chats" ? drawChats() : tab === "listings" ? drawListings() : drawOrders());
   draw();
 }
