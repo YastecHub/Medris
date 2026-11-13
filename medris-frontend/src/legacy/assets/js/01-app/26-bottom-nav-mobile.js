@@ -61,7 +61,7 @@ function renderBottomNav() {
   } catch (_) {}
   const isVendorUser = session && navRole !== "admin" && (!!vendor || navRole === "vendor");
   const homeTab = { icon: lvLineIcon("home"), label: "Home", action: "lvHomeTap()", view: "home" };
-  const vendorsTab = { icon: lvLineIcon("map"), label: "Vendors", action: "navigate('vendorsMap')", view: "vendorsMap" };
+  const vendorsTab = { icon: lvLineIcon("store"), label: "Vendors", action: "navigate('vendors')", view: "vendors" };
   const addTab = isVendorUser
     ? { icon: lvLineIcon("plus"), label: "Add", action: "openAddChooser()", view: null }
     : { icon: lvLineIcon("request"), label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
