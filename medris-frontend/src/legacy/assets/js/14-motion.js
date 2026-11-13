@@ -7468,7 +7468,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var who = s.person ? (s.person.name || "@" + s.person.handle) : s.bank ? (s.bank.bank_name || "your bank") : s.shop || "";
     var isFav = s.person && s.person.handle && favs().some(function (f) { return f.handle === s.person.handle; });
     p.innerHTML = '<div class="lv-tx-top"><button type="button" class="lv-tx-x" data-x aria-label="Close"><i class="fa-solid fa-' + (done ? "xmark" : "arrow-left") + '"></i></button><span>' + E(done ? "" : "Transaction details") + '</span></div>' +
-      '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' : '<div class="lv-tx-logo">' + LV_FLAT_LOGO + "</div>") +
+      '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' : '<div class="lv-tx-logo">' + LV_FLAT_LOGO + "</div><small class=\"lv-tx-brand\">Levromart Wallet</small>") +
       '<h2>' + E(done ? s.title : (s.title || "Transaction")) + '</h2><div class="lv-tx-amt">' + (done ? "" : inKind ? "+" : "−") + nair(s.amountKobo) + '</div>' + (who ? '<p class="lv-tx-sub">' + E((inKind && s.person ? "from " : s.kind === "topup" ? "" : "to ") + (s.kind === "topup" ? "your wallet" : who)) + '</p>' : "") + '<span class="lv-tx-pill' + (ok ? "" : " bad") + '">' + E(s.status || "Successful") + '</span></div>' +
       '<div class="lv-tx-card" id="lvTxRows">' + rowsOf(s).map(function (r) { return '<div><span>' + E(r[0]) + '</span><b>' + E(r[1]) + '</b></div>'; }).join("") + '</div>' +
       '<div class="lv-tx-acts"><button type="button" data-a="share">' + ic("moved-up", "fa-share-nodes") + '<span>Share receipt</span></button>' +
@@ -8253,24 +8253,54 @@ window.lvNoImageHtml = function (seed) {
   setInterval(function () { if (!document.hidden && document.querySelector(".conv-list-item")) load(); }, 20000);
 })();
 
-/* ===== Vendor statuses: a strip on the Vendors page, a Status page, a full-screen viewer and "Add to status" (24 hours) ===== */
+/* ===== Vendor statuses: a strip on the Vendors page, a Status page, a full-screen viewer and "Add an update" (24 hours) ===== */
 (function () {
   "use strict";
   var SEEN = "lv-st-seen", cache = { at: 0, rows: [] };
   function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function seenMap() { try { return JSON.parse(localStorage.getItem(SEEN) || "{}"); } catch (_) { return {}; } }
-  function markSeen(id) { var m = seenMap(); m[id] = Date.now(); var keys = Object.keys(m); if (keys.length > 400) keys.sort(function (a, b) { return m[a] - m[b]; }).slice(0, 150).forEach(function (k) { delete m[k]; }); try { localStorage.setItem(SEEN, JSON.stringify(m)); } catch (_) {} }
+  function markSeen(id) { var m = seenMap(); m[id] = Date.now(); var keys = Object.keys(m); if (keys.length > 400) keys.sort(function (a, b) { return m[a] - m[b]; }).slice(0, 150).forEach(function (k) { delete m[k]; }); try { localStorage.setItem(SEEN, JSON.stringify(m)); } catch (_) {} try { window.lvStatusBadge && window.lvStatusBadge(); } catch (_) {} }
   function naira(n) { return "₦" + Number(n || 0).toLocaleString("en-NG"); }
   function myVendorId() { try { return typeof vendor !== "undefined" && vendor && vendor.id ? vendor.id : null; } catch (_) { return null; } }
   function avatar(url, name, cls) { return '<span class="' + (cls || "lvst-av") + '">' + (url ? '<img src="' + E(url) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + '<b>' + E(String(name || "?").trim().charAt(0).toUpperCase()) + "</b></span>"; }
+  var KEEP = "lv-st-cache";
+  try { var kept = JSON.parse(localStorage.getItem(KEEP) || "null"); if (kept && Array.isArray(kept.rows)) cache = { at: 0, rows: kept.rows.filter(function (r) { return r && new Date(r.expires_at) > new Date(); }) }; } catch (_) {}
+  var loading = null;
+  // Never throws away what we already know: if the request fails (slow network, session not ready yet) the last good list stays on screen
   async function load(force) {
-    if (!force && Date.now() - cache.at < 30000) return cache.rows;
-    try {
-      var r = await sb.from("vendor_statuses").select("id,vendor_id,product_id,caption,show_price,created_at,expires_at,vendor:vendors(id,business_name,logo_url),product:products(id,name,photos,sale_price,discount_price,is_service)").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: true }).limit(200);
-      cache = { at: Date.now(), rows: r && Array.isArray(r.data) ? r.data : [] };
-    } catch (_) { cache = { at: Date.now(), rows: [] }; }
-    return cache.rows;
+    if (!force && cache.at && Date.now() - cache.at < 30000) return cache.rows;
+    if (loading) return loading;
+    loading = (async function () {
+      for (var tries = 0; tries < 3; tries++) {
+        try {
+          var r = await sb.from("vendor_statuses").select("id,vendor_id,product_id,caption,show_price,created_at,expires_at,vendor:vendors(id,business_name,logo_url),product:products(id,name,photos,sale_price,discount_price,is_service)").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: true }).limit(200);
+          if (r && !r.error && Array.isArray(r.data)) { cache = { at: Date.now(), rows: r.data }; try { localStorage.setItem(KEEP, JSON.stringify({ rows: r.data })); } catch (_) {} return cache.rows; }
+        } catch (_) {}
+        await new Promise(function (ok) { setTimeout(ok, 700 * (tries + 1)); });
+      }
+      cache.at = Date.now() - 20000; // try again in about 10 seconds; keep showing the last good list
+      return cache.rows;
+    })();
+    try { return await loading; } finally { loading = null; }
   }
+  function unseenCount() { var seen = seenMap(), mine = myVendorId(); return cache.rows.filter(function (s) { return s.vendor && s.vendor_id !== mine && !seen[s.id] && new Date(s.expires_at) > new Date(); }).length; }
+  function paintNavBadge() {
+    var n = unseenCount();
+    document.querySelectorAll(".bottom-nav-item").forEach(function (b) {
+      if (!/navigate\('vendors'\)/.test(b.getAttribute("onclick") || "")) return;
+      var ic = b.querySelector(".bn-icon"); if (!ic) return; var old = ic.querySelector(".bn-badge.lv-st-badge");
+      if (!n) { if (old) old.remove(); return; }
+      if (!old) { old = document.createElement("span"); old.className = "bn-badge lv-st-badge"; ic.appendChild(old); }
+      old.textContent = n > 9 ? "9+" : String(n);
+    });
+  }
+  window.lvStatusBadge = paintNavBadge;
+  setTimeout(function () { load(false).then(paintNavBadge); }, 2500);
+  setInterval(function () { if (!document.hidden) load(true).then(function () { paintNavBadge(); paintStrip(); }); }, 90000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) load(true).then(function () { paintNavBadge(); paintStrip(); }); });
+  var nbT = 0;
+  new MutationObserver(function () { if (nbT) return; nbT = setTimeout(function () { nbT = 0; paintNavBadge(); }, 150); }).observe(document.body, { childList: true, subtree: true });
+  var NOSTATUS = '<svg class="lvst-noic" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/><circle cx="32" cy="32" r="17" fill="currentColor" fill-opacity=".1"/><path d="M26 32h12M32 26v12" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cx="50" cy="14" r="4" fill="#22c55e"/></svg>';
   function groups(rows) {
     var by = {}, seen = seenMap(), mine = myVendorId();
     rows.forEach(function (s) { if (!s.vendor) return; var g = by[s.vendor_id] || (by[s.vendor_id] = { id: s.vendor_id, vendor: s.vendor, items: [], unseen: 0, latest: 0, own: s.vendor_id === mine }); g.items.push(s); if (!seen[s.id]) g.unseen++; g.latest = Math.max(g.latest, +new Date(s.created_at)); });
@@ -8281,12 +8311,26 @@ window.lvNoImageHtml = function (seed) {
   /* ---- the strip on the Vendors page ---- */
   async function paintStrip() {
     var host = document.getElementById("lvStStrip"); if (!host) return;
-    var gs = groups(await load(false)), mine = myVendorId(), hasOwn = gs.some(function (g) { return g.own; });
-    var h = "";
-    if (mine) h += '<div class="lvst-item"><div class="lvst-ring own' + (hasOwn ? " live" : "") + '"><button type="button" class="lvst-hit" data-open="' + E(mine) + '" aria-label="Your status">' + avatar(vendor.logo_url, vendor.business_name) + '</button><button type="button" class="lvst-plus" data-add aria-label="Add to your status"><i class="fa-solid fa-plus"></i></button></div><span>Your status</span></div>';
-    gs.filter(function (g) { return !g.own; }).forEach(function (g) { h += '<div class="lvst-item"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '"><button type="button" class="lvst-hit" data-open="' + E(g.id) + '" aria-label="' + E(g.vendor.business_name) + ' status">' + avatar(g.vendor.logo_url, g.vendor.business_name) + "</button></div><span>" + E(g.vendor.business_name) + "</span></div>"; });
-    host.hidden = false;
-    host.innerHTML = '<div class="lvst-head"><b>Status</b><button type="button" data-page>See all</button></div>' + (h ? '<div class="lvst-row">' + h + "</div>" : '<p class="lvst-none">No statuses right now. When a vendor posts a product it shows here for 24 hours.</p>');
+    if (cache.rows.length) drawStrip(host, groups(cache.rows));
+    drawStrip(host, groups(await load(false)));
+  }
+  function cardPhoto(g) { var it = g.items[g.items.length - 1], p = it && it.product; return (p && p.photos && p.photos[0]) || ""; }
+  function drawStrip(host, gs) {
+    var mine = myVendorId(), own = gs.filter(function (g) { return g.own; })[0], h = "";
+    function card(g, isOwn) {
+      var ph = g ? cardPhoto(g) : "", name = isOwn ? "Your update" : g.vendor.business_name, logo = g ? g.vendor.logo_url : vendor.logo_url, bname = g ? g.vendor.business_name : vendor.business_name;
+      var attr = g ? 'data-open="' + E(g.id) + '"' : "data-add";
+      return '<div class="lvu-card' + (g && !isOwn && !g.unseen ? " seen" : "") + (isOwn ? " own" : "") + '"><button type="button" class="lvu-hit" ' + attr + ' aria-label="' + E(name) + '">' +
+        (ph ? '<img class="lvu-ph" src="' + E(ph) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lvu-ph lvu-none"></span>') + '<span class="lvu-shade"></span>' +
+        '<span class="lvu-ring">' + avatar(logo, bname, "lvu-av") + "</span>" + '<b class="lvu-name">' + E(name) + "</b></button>" +
+        (isOwn ? '<button type="button" class="lvu-plus" data-add aria-label="Add an update"><i class="fa-solid fa-plus"></i></button>' : "") + "</div>";
+    }
+    if (mine) h += card(own || null, true);
+    gs.filter(function (g) { return !g.own; }).forEach(function (g) { h += card(g, false); });
+    if (gs.length) h += '<div class="lvu-card lvu-all"><button type="button" class="lvu-hit" data-page aria-label="See all updates"><i class="fa-solid fa-arrow-right"></i><b class="lvu-name">See all</b></button></div>';
+    host.hidden = false; try { paintNavBadge(); } catch (_) {}
+    var html = h ? '<div class="lvu-row">' + h + "</div>" : '<div class="lvst-none">' + NOSTATUS + '<span><b>No updates yet</b>When a vendor posts a product it shows here for 24 hours.</span></div>';
+    if (host.__h !== html) { host.__h = html; host.innerHTML = html; }
   }
   document.addEventListener("click", function (e) {
     var o = e.target.closest && e.target.closest("#lvStStrip [data-open]"), a = e.target.closest && e.target.closest("#lvStStrip [data-add], .lvst-addbtn"), pg = e.target.closest && e.target.closest("#lvStStrip [data-page], #vendorsViewStatusBtn");
@@ -8299,22 +8343,26 @@ window.lvNoImageHtml = function (seed) {
     if (t) return; t = setTimeout(function () {
       t = 0;
       var page = document.querySelector("#app .vd-page"); if (!page) return;
-      if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = false; s.innerHTML = '<div class="lvst-head"><b>Status</b></div><p class="lvst-none">Loading…</p>'; if (head) head.before(s); else page.prepend(s); paintStrip(); }
+      if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = false; s.innerHTML = '<div class="lvu-row">' + [1, 2, 3].map(function () { return '<div class="lvu-card sk"></div>'; }).join("") + "</div>"; if (head) head.before(s); else page.prepend(s); paintStrip(); }
       var vs = page.querySelector(".vd-views");
-      if (vs && !document.getElementById("vendorsViewStatusBtn")) { var b = document.createElement("button"); b.type = "button"; b.className = "vd-view"; b.id = "vendorsViewStatusBtn"; b.title = "Status"; b.setAttribute("aria-label", "Status"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.6"/><circle cx="12" cy="12" r="3.2"/></svg>'; vs.appendChild(b); }
+      if (vs && !document.getElementById("vendorsViewStatusBtn")) { var b = document.createElement("button"); b.type = "button"; b.className = "vd-view"; b.id = "vendorsViewStatusBtn"; b.title = "Updates"; b.setAttribute("aria-label", "Updates"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.6"/><circle cx="12" cy="12" r="3.2"/></svg>'; vs.appendChild(b); }
     }, 80);
   }).observe(document.documentElement, { childList: true, subtree: true });
 
   /* ---- the Status page (like WhatsApp's Updates) ---- */
   async function openPage() {
     if (typeof lvTeamOverlay !== "function") return;
-    var el = lvTeamOverlay("lvStPage", "Status", '<p class="muted">Loading…</p>', "Updates from vendors, for 24 hours");
-    var body = el.querySelector("[data-lv-body]"), gs = groups(await load(true)), mine = myVendorId();
+    var el = lvTeamOverlay("lvStPage", "Updates", '<p class="muted">Loading…</p>', "Updates from vendors, for 24 hours");
+    var body = el.querySelector("[data-lv-body]"), mine = myVendorId();
     var row = function (g) { var last = g.items[g.items.length - 1]; var p = last.product, ph = p && p.photos && p.photos[0]; return '<button type="button" class="lvst-li" data-open="' + E(g.id) + '"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '">' + avatar(g.vendor.logo_url, g.vendor.business_name) + '</div><div class="lvst-lt"><b>' + E(g.vendor.business_name) + "</b><small>" + ago(last.created_at) + " · " + g.items.length + " update" + (g.items.length === 1 ? "" : "s") + "</small></div>" + (ph ? '<img class="lvst-th" src="' + E(ph) + '" alt="" loading="lazy">' : "") + "</button>"; };
+    var paintPage = function (gs) {
     var own = gs.filter(function (g) { return g.own; })[0], rest = gs.filter(function (g) { return !g.own; }), fresh = rest.filter(function (g) { return g.unseen; }), old = rest.filter(function (g) { return !g.unseen; });
-    body.innerHTML = (mine ? '<div class="lvst-me"><div class="lvst-ring own' + (own ? " live" : "") + '" ' + (own ? 'data-open="' + E(mine) + '"' : "") + ">" + avatar(vendor.logo_url, vendor.business_name) + '</div><div class="lvst-lt"><b>My status</b><small>' + (own ? own.items.length + " live · tap to view" : "Add a product for 24 hours") + '</small></div><button type="button" class="lvst-addbtn" data-add><i class="fa-solid fa-plus"></i> Add</button></div>' : "") +
+    body.innerHTML = (mine ? '<div class="lvst-me"><div class="lvst-ring own' + (own ? " live" : "") + '" ' + (own ? 'data-open="' + E(mine) + '"' : "") + ">" + avatar(vendor.logo_url, vendor.business_name) + '</div><div class="lvst-lt"><b>My update</b><small>' + (own ? own.items.length + " live · tap to view" : "Add a product for 24 hours") + '</small></div><button type="button" class="lvst-addbtn" data-add><i class="fa-solid fa-plus"></i> Add</button></div>' : "") +
       (fresh.length ? '<p class="tm-label">Recent updates</p>' + fresh.map(row).join("") : "") + (old.length ? '<p class="tm-label">Viewed</p>' + old.map(row).join("") : "") +
-      (!rest.length ? '<div class="tm-empty"><i class="fa-solid fa-circle-notch"></i><b>No statuses right now</b>When vendors post a product it shows here for 24 hours.</div>' : "");
+      (!rest.length ? '<div class="lvst-empty">' + NOSTATUS + '<b>No updates yet</b><span>When vendors you follow post a product, it shows here for 24 hours.</span></div>' : "");
+    };
+    if (cache.rows.length) paintPage(groups(cache.rows));
+    paintPage(groups(await load(true)));
     body.addEventListener("click", function (e) { var o = e.target.closest("[data-open]"); if (o) { el.remove(); openViewer(o.getAttribute("data-open")); } var a = e.target.closest("[data-add]"); if (a) { el.remove(); openAdd(); } });
   }
 
@@ -8360,25 +8408,25 @@ window.lvNoImageHtml = function (seed) {
     if (own) { try { var c = await sb.from("vendor_status_views").select("viewer_id", { count: "exact", head: true }).eq("status_id", s.id); var el = document.getElementById("lvStViews"); if (el) el.innerHTML = '<i class="fa-regular fa-eye"></i> ' + (c && c.count != null ? c.count : 0) + " view" + (c && c.count === 1 ? "" : "s"); } catch (_) {} }
   }
 
-  /* ---- Add to status (the shop's owner; one or more products) ---- */
+  /* ---- Add an update (the shop's owner; one or more products) ---- */
   async function openAdd() {
-    var vid = myVendorId(); if (!vid) { showToast("Only shops can add a status.", "info"); return; }
-    var el = lvTeamOverlay("lvStAdd", "Add to status", '<p class="muted">Loading your products…</p>', "Shown to everyone for 24 hours");
+    var vid = myVendorId(); if (!vid) { showToast("Only shops can add an update.", "info"); return; }
+    var el = lvTeamOverlay("lvStAdd", "Add an update", '<p class="muted">Loading your products…</p>', "Shown to everyone for 24 hours");
     var body = el.querySelector("[data-lv-body]");
     var r = await sb.from("products").select("id,name,photos,sale_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(60);
     var list = (r && r.data) || [], pick = null, showPrice = true;
-    if (!list.length) { body.innerHTML = '<div class="tm-empty"><i class="fa-solid fa-box-open"></i><b>No products yet</b>Add a product first, then share it as a status.</div>'; return; }
+    if (!list.length) { body.innerHTML = '<div class="tm-empty"><i class="fa-solid fa-box-open"></i><b>No products yet</b>Add a product first, then share it as an update.</div>'; return; }
     function paint() {
       var p = list.find(function (x) { return x.id === pick; });
       body.innerHTML = '<p class="tm-label">Choose a product</p><div class="lvst-pick">' + list.map(function (x) { var ph = x.photos && x.photos[0]; return '<button type="button" class="' + (x.id === pick ? "sel" : "") + '" data-p="' + E(x.id) + '" aria-label="' + E(x.name) + '">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<span><i class="fa-solid fa-image"></i></span>') + "</button>"; }).join("") + "</div>" +
-        (p ? '<div class="lvst-prev">' + (p.photos && p.photos[0] ? '<img src="' + E(p.photos[0]) + '" alt="">' : "") + "<span>" + E(p.name) + (showPrice && p.sale_price ? " · " + naira(p.sale_price) : "") + '</span></div><input id="lvStCap" class="tm-input" maxlength="140" placeholder="Add a short line (optional)"><div class="lvst-chips"><button type="button" class="on" disabled>24 hours</button><button type="button" data-price class="' + (showPrice ? "on" : "") + '">Show price</button></div><button type="button" class="tm-btn block" id="lvStGo">Share status</button>' : '<p class="tm-fine">Tap a product to preview it.</p>');
+        (p ? '<div class="lvst-prev">' + (p.photos && p.photos[0] ? '<img src="' + E(p.photos[0]) + '" alt="">' : "") + "<span>" + E(p.name) + (showPrice && p.sale_price ? " · " + naira(p.sale_price) : "") + '</span></div><input id="lvStCap" class="tm-input" maxlength="140" placeholder="Add a short line (optional)"><div class="lvst-chips"><button type="button" class="on" disabled>24 hours</button><button type="button" data-price class="' + (showPrice ? "on" : "") + '">Show price</button></div><button type="button" class="tm-btn block" id="lvStGo">Share update</button>' : '<p class="tm-fine">Tap a product to preview it.</p>');
       body.querySelectorAll("[data-p]").forEach(function (b) { b.onclick = function () { var cap = (document.getElementById("lvStCap") || {}).value; pick = b.getAttribute("data-p"); paint(); if (cap) document.getElementById("lvStCap").value = cap; }; });
       var pr = body.querySelector("[data-price]"); if (pr) pr.onclick = function () { var cap = document.getElementById("lvStCap").value; showPrice = !showPrice; paint(); document.getElementById("lvStCap").value = cap; };
       var go = document.getElementById("lvStGo"); if (go) go.onclick = async function () {
         go.disabled = true; go.textContent = "Sharing…";
         var ins = await sb.from("vendor_statuses").insert({ vendor_id: vid, product_id: pick, caption: (document.getElementById("lvStCap").value || "").trim() || null, show_price: showPrice });
-        if (ins.error) { go.disabled = false; go.textContent = "Share status"; showToast(/not valid|does not exist|relation/i.test(ins.error.message || "") ? "Statuses are not switched on yet. Please try again shortly." : (ins.error.message || "Could not share it."), "error"); return; }
-        cache.at = 0; showToast("Your status is live for 24 hours.", "success"); try { history.back(); } catch (_) { el.remove(); } setTimeout(paintStrip, 300);
+        if (ins.error) { go.disabled = false; go.textContent = "Share update"; showToast(/not valid|does not exist|relation/i.test(ins.error.message || "") ? "Updates are not switched on yet. Please try again shortly." : (ins.error.message || "Could not share it."), "error"); return; }
+        cache.at = 0; showToast("Your update is live for 24 hours.", "success"); try { history.back(); } catch (_) { el.remove(); } setTimeout(paintStrip, 300);
       };
     }
     paint();
@@ -8430,15 +8478,18 @@ window.lvNoImageHtml = function (seed) {
   async function fetchPeeks(ids) {
     var need = ids.filter(function (i) { return !(i in peekCache); }); if (!need.length) return;
     need.forEach(function (i) { peekCache[i] = null; });
-    try {
-      var r = await sb.from("products").select("vendor_id,photos").in("vendor_id", need).eq("status", "active").order("created_at", { ascending: false }).limit(need.length * 8);
-      var by = {}; ((r && r.data) || []).forEach(function (p) { if (p.photos && p.photos[0]) (by[p.vendor_id] = by[p.vendor_id] || []).push(p.photos[0]); });
-      need.forEach(function (i) { peekCache[i] = by[i] || []; });
-    } catch (_) { need.forEach(function (i) { peekCache[i] = []; }); }
+    // one small request per shop, so a shop with hundreds of products cannot crowd the others out
+    await Promise.all(need.map(async function (id) {
+      try {
+        var r = await sb.from("products").select("photos").eq("vendor_id", id).eq("status", "active").order("created_at", { ascending: false }).limit(6);
+        if (r && r.error) { delete peekCache[id]; return; }
+        peekCache[id] = ((r && r.data) || []).map(function (p) { return p.photos && p.photos[0]; }).filter(Boolean);
+      } catch (_) { delete peekCache[id]; }
+    }));
   }
   async function dress() {
     var grid = document.getElementById("vendorsGrid"); if (!grid || grid.classList.contains("vendors-list-mode") && false) return;
-    var page = grid.closest(".vd-page"); if (page && !page.querySelector(".lv-vd-title")) { var h = document.createElement("h2"); h.className = "lv-vd-title"; h.textContent = "Vendors"; var strip = page.querySelector(".lvst-strip"); if (strip) strip.before(h); else page.prepend(h); }
+    var page = grid.closest(".vd-page"); if (page && !page.querySelector(".lv-vd-title")) { var h = document.createElement("h2"); h.className = "lv-vd-title"; h.textContent = "Updates"; var strip = page.querySelector(".lvst-strip"); if (strip) strip.before(h); else page.prepend(h); }
     var cards = [].slice.call(grid.querySelectorAll(".vc2[data-vendor-id]"));
     if (!cards.length) return;
     await fetchPeeks(cards.map(function (c) { return c.getAttribute("data-vendor-id"); }));
@@ -8479,11 +8530,13 @@ window.lvNoImageHtml = function (seed) {
     if (!near) { near = document.createElement("section"); near.id = "lvNear"; near.className = "lv-near"; grid.before(near); }
     var head = document.getElementById("lvAllHead");
     if (!head) { head = document.createElement("div"); head.id = "lvAllHead"; head.className = "lv-sec"; grid.before(head); }
-    near.innerHTML = list.length ? '<div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">' + list.map(function (x) { var u = pic(x.v); return '<button type="button" class="lv-nc" onclick="navigate(\'storefront\',{vendorId:\'' + E(x.v.id) + '\'})">' + (u ? '<img src="' + E(u) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lv-nc-i">' + E(String(x.v.business_name || "?").charAt(0).toUpperCase()) + "</span>") + "<b>" + E(x.v.business_name) + "</b><small>" + (x.d != null ? dist(x.d) : E(x.v.city || "Lagos")) + "</small></button>"; }).join("") + "</div>" : "";
-    head.innerHTML = "<b>All shops</b><button type=\"button\" data-lvsort>Sort: " + E(LABEL[window.__lvVdSort || "rated"]) + " ▾</button>";
-    if (!document.getElementById("lvVdMapBtn")) { var f = document.createElement("button"); f.type = "button"; f.id = "lvVdMapBtn"; f.className = "lvvd-mapbtn"; f.innerHTML = '<i class="fa-solid fa-map-location-dot"></i> Map'; f.setAttribute("data-lvmap", ""); document.body.appendChild(f); }
+    var nh = list.length ? '<div class="lv-sec"><b>Near you</b><button type="button" data-lvmap>See map</button></div><div class="lv-near-row">' + list.map(function (x) { var u = pic(x.v); return '<button type="button" class="lv-nc" onclick="navigate(\'storefront\',{vendorId:\'' + E(x.v.id) + '\'})">' + (u ? '<img src="' + E(u) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lv-nc-i">' + E(String(x.v.business_name || "?").charAt(0).toUpperCase()) + "</span>") + "<b>" + E(x.v.business_name) + "</b><small>" + (x.d != null ? dist(x.d) : E(x.v.city || "Lagos")) + "</small></button>"; }).join("") + "</div>" : "";
+    if (near.__h !== nh) { near.__h = nh; near.innerHTML = nh; }
+    var hh = "<b>All shops</b><button type=\"button\" data-lvsort>Sort: " + E(LABEL[window.__lvVdSort || "rated"]) + " ▾</button>";
+    if (head.__h !== hh) { head.__h = hh; head.innerHTML = hh; }
+   
   }
-  function cleanup() { if (!document.querySelector("#app .vd-page")) { var f = document.getElementById("lvVdMapBtn"); if (f) f.remove(); } }
+  function cleanup() {}
   document.addEventListener("click", function (e) {
     if (e.target.closest("[data-lvmap]")) { e.preventDefault(); try { navigate("vendorsMap"); } catch (_) {} return; }
     if (e.target.closest("[data-lvsort]") && typeof lvSheet === "function") {
@@ -8493,4 +8546,36 @@ window.lvNoImageHtml = function (seed) {
   });
   var t = 0;
   new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; try { build(); cleanup(); } catch (_) {} }, 200); }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+/* ===== Photo viewer for request photos and verification documents: one picture at a time, with names (ID card / Biodata / Selfie) ===== */
+(function () {
+  "use strict";
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  window.reqPhotoOpen = function (k, i) {
+    var l = (window.__reqPhotoSets || [])[k] || []; if (!l.length) return;
+    var labels = l.labels || [], at = Math.max(0, Math.min(l.length - 1, Number(i) || 0));
+    var w = document.createElement("div"); w.className = "req-lightbox lvpv";
+    w.innerHTML = '<button type="button" class="x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+      (labels.length > 1 ? '<div class="lvpv-tabs">' + l.map(function (u, n) { return '<button type="button" data-n="' + n + '">' + E(labels[n] || "Photo " + (n + 1)) + "</button>"; }).join("") + "</div>" : "") +
+      '<div class="lvpv-stage"><button type="button" class="lvpv-nav prev" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button><img alt=""><button type="button" class="lvpv-nav next" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button></div><div class="n"></div>';
+    document.body.appendChild(w);
+    var img = w.querySelector("img");
+    function show(n) {
+      at = (n + l.length) % l.length; img.src = l[at];
+      w.querySelector(".n").textContent = (labels[at] ? labels[at] + " · " : "") + (at + 1) + " / " + l.length;
+      [].forEach.call(w.querySelectorAll(".lvpv-tabs button"), function (b) { b.classList.toggle("on", +b.getAttribute("data-n") === at); });
+      w.classList.toggle("single", l.length < 2);
+    }
+    show(at);
+    w.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-n]"); if (t) { show(+t.getAttribute("data-n")); return; }
+      if (e.target.closest(".prev")) { show(at - 1); return; }
+      if (e.target.closest(".next")) { show(at + 1); return; }
+      if (e.target === w || e.target.closest(".x") || e.target.classList.contains("lvpv-stage")) w.remove();
+    });
+    var x0 = null;
+    w.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    w.addEventListener("touchend", function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50 && l.length > 1) show(at + (dx < 0 ? 1 : -1)); }, { passive: true });
+  };
 })();

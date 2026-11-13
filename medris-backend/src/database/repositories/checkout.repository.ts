@@ -72,6 +72,12 @@ export class CheckoutRepository {
     return jsonRow(this.db, sql`select is_active, user_id, coalesce(delivery_fee, 0)::text as delivery_fee from public.vendors where id = ${vendorId}`);
   }
 
+  /** True when the person works for the shop (manager or staff, invitation accepted). */
+  async worksFor(vendorId: string, userId: string): Promise<boolean> {
+    const [row] = rowsOf<{ ok: boolean }>(await this.db.execute(sql`select exists (select 1 from public.vendor_members where vendor_id = ${vendorId}::uuid and user_id = ${userId}::uuid and status = 'active') as ok`));
+    return row?.ok === true;
+  }
+
   /** An active product of the shop, locked for the stock change (or not, for rentals). */
   async product(productId: string, vendorId: string, lock = true): Promise<(SaleProduct & { rental_rate: Numeric | null; rental_rate_unit: string | null; deposit_amount: Numeric }) | null> {
     const [row] = rowsOf<{ row: SaleProduct & { rental_rate: Numeric | null; rental_rate_unit: string | null; deposit_amount: Numeric } }>(

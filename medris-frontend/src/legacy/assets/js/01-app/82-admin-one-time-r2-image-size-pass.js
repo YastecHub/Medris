@@ -828,6 +828,7 @@ function finDetailHtml(vid) {
 function finSvHtml(vid, sv) {
   const st = { pending: "Pending review", approved: "Approved", rejected: "Rejected" }[sv.status] || sv.status;
   const imgs = [sv.id_card_url, sv.biodata_url, sv.selfie_url].filter(Boolean);
+  imgs.labels = [["ID card", sv.id_card_url], ["Biodata", sv.biodata_url], ["Selfie", sv.selfie_url]].filter((x) => x[1]).map((x) => x[0]);
   window.__reqPhotoSets = window.__reqPhotoSets || []; const k = window.__reqPhotoSets.push(imgs) - 1;
   return `<div class="fin-sv"><b><i class="fa-solid fa-user-graduate"></i> Student verification · ${esc(st)}</b>
     <div class="row"><b>Matric</b><span>${esc(sv.matric_number || "")}</span></div>

@@ -46,3 +46,20 @@ describe("vendor statuses (migration 0068)", () => {
     await expect(as(owner, `insert into public.vendor_statuses (vendor_id, product_id) values ($1, $2)`, [shop, product]), 'limit').rejects.toThrow(/at most 10/);
   });
 });
+
+describe("vendor status alerts to followers (migration 0069)", () => {
+  it("followers get one alert per hour; muted or opted-out followers do not", async () => {
+    const db = await createTestDatabase();
+    try {
+      const owner = (await seedUser(db, { role: "vendor" })).id, a = (await seedUser(db)).id, b = (await seedUser(db)).id, c = (await seedUser(db)).id;
+      const shop = (await seedVendor(db, owner)).id, product = await seedProduct(db, shop);
+      for (const u of [a, b, c]) await db.query(`insert into public.vendor_follows (follower_id, vendor_id) values ($1, $2)`, [u, shop]);
+      await db.query(`insert into public.vendor_follow_preferences (follower_id, vendor_id, notify_new_listing) values ($1, $2, false)`, [b, shop]);
+      await db.query(`insert into public.vendor_follow_preferences (follower_id, vendor_id, mute_mode, muted_until) values ($1, $2, '8h', now() + interval '1 day')`, [c, shop]);
+      await db.query(`insert into public.vendor_statuses (vendor_id, product_id, caption, created_by) values ($1, $2, 'New stock', $3)`, [shop, product, owner]);
+      await db.query(`insert into public.vendor_statuses (vendor_id, product_id, created_by) values ($1, $2, $3)`, [shop, product, owner]);
+      const rows = await db.query<{ user_id: string }>(`select user_id from public.notifications where type = 'vendor_status'`);
+      expect(rows.map((r) => r.user_id)).toEqual([a]);
+    } finally { await db.close(); }
+  }, 60000);
+});

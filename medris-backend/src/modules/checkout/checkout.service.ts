@@ -41,6 +41,7 @@ export class CheckoutService {
       const shop = await checkout.shop(vendorId);
       if (shop?.is_active !== true) throw badRequest("this shop is currently paused and not accepting orders");
       if (shop.user_id === me.userId) throw badRequest(own);
+      if (await checkout.worksFor(vendorId, me.userId)) throw badRequest(own.replace("your own shop", "a shop you work for"));
     }
     return checkout;
   }

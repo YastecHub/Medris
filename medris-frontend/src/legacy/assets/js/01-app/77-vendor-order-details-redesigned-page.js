@@ -172,6 +172,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       }
     } catch (_) { /* the server-side order/RLS checks remain authoritative */ }
   }
+  // a manager or staff member working for the shop sees the same page the owner would
+  if (!isVendor && !isCustomer && typeof lvWorksForVendor === "function" && lvWorksForVendor(order.vendor_id)) isVendor = true;
   if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
   if(order.service_offer_id){
@@ -871,7 +873,7 @@ function lvHourglassHtml(order, isVendor) {
         <path class="hg-frame" d="M7 2H53a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H52C52 26 45 33 42 40.5c3 1.5 10 8 10 29V72h1a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h1V69.500C8 48.500 15 42 18 40.500C15 33 8 26 8 12H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3Z" fill="#eef1f4"/>
         <g clip-path="url(#hgIn${esc(String(order.id).slice(0,6))})"><rect x="8" y="6" width="44" height="72" fill="#dfe3e8"/>
           <rect class="hg-top" x="8" y="6" width="44" height="36"/><rect class="hg-bot" x="8" y="78" width="44" height="0"/></g>
-        <path class="hg-stream" d="M30 39 C29 50 31 60 30 77" fill="none" stroke-width="2.2" stroke-linecap="round"/><path class="hg-stream2" d="M30 39 C31 52 29 62 30 77" fill="none" stroke-width="1" stroke-linecap="round"/>
+        <g class="hg-water"><path class="hg-stream" d="M30 40 L30 77" fill="none" stroke-width="1.7" stroke-linecap="round"/><path class="hg-flow" d="M30 40 L30 77" fill="none" stroke-width="1.7" stroke-linecap="butt"/><path class="hg-spark" d="M30 40 L30 77" fill="none" stroke-width="2.3" stroke-linecap="round"/><ellipse class="hg-splash" cx="30" cy="77" rx="3" ry="1"/></g>
       </g></svg>
     <div class="hg-text"><strong class="hg-left">--</strong><small>${isVendor ? "to confirm this order before it cancels itself" : "for the shop to confirm before the order cancels itself"}</small></div>
   </div>`;
@@ -905,7 +907,13 @@ function lvHourglassTick() {
     // the glass hops every so often (more often when time is short)
     const hop = f > 0.4 ? 20000 : f > 0.18 ? 10000 : 4000;
     if (left > 0 && Date.now() - (el.__hopAt || 0) > hop) { el.__hopAt = Date.now(); const g = el.querySelector(".hg-svg"); if (g) { g.classList.remove("hg-hop"); void g.getBoundingClientRect(); g.classList.add("hg-hop"); } }
-    if (st) st.style.display = left > 0 ? "" : "none";
+    const wt = el.querySelector(".hg-water");
+    if (wt) {
+      const y2 = Math.max(46, 78 - (1 - f) * 36 - 1), dd = "M30 40 L30 " + y2.toFixed(1);
+      wt.querySelectorAll("path").forEach((p) => p.setAttribute("d", dd));
+      const sp = wt.querySelector(".hg-splash"); if (sp) sp.setAttribute("cy", y2.toFixed(1));
+      wt.style.display = left > 0 ? "" : "none";
+    }
     if (lab) { const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000); lab.textContent = left > 0 ? (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m left` : `${m}:${String(sec).padStart(2, "0")} left`) : "Time is up. Cancelling…"; }
   });
 }

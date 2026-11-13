@@ -145,10 +145,13 @@ function navigationShellHtml(view) {
 function isOwnVendorId(vendorId) {
   return !!(session?.user?.id && vendor?.id && String(vendor.id) === String(vendorId));
 }
+function lvWorksForVendor(vendorId) {
+  try { return !!vendorId && (window.lvMyTeams || []).some((t) => String(t.vendor_id) === String(vendorId)); } catch (_) { return false; }
+}
 function blockOwnVendorPurchase(vendorId, verb = "buy") {
-  if (!isOwnVendorId(vendorId)) return false;
-  showToast(`You can't ${verb} from your own shop.`, "error");
-  return true;
+  if (isOwnVendorId(vendorId)) { showToast(`You can't ${verb} from your own shop.`, "error"); return true; }
+  if (lvWorksForVendor(vendorId)) { showToast(`You work for this shop, so you can't ${verb} from it.`, "error"); return true; }
+  return false;
 }
 function withRouteTimeout(promise, ms = 7000, timeoutValue = null) {
   let timer;
