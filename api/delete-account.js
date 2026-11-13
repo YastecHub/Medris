@@ -591,7 +591,7 @@ async function listBusinesses(body, res) {
   const list = ids.map(encodeURIComponent).join(",");
   const [uRes, vRes, nRes] = await Promise.all([
     fetch(`${supabaseUrl}/rest/v1/users?id=in.(${list})&select=id,name,avatar_url,phone`, { headers }),
-    fetch(`${supabaseUrl}/rest/v1/vendors?user_id=in.(${list})&deleted_at=is.null&select=user_id,business_name,logo_url,verification_status,whatsapp_number,city,cac_number`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/vendors?user_id=in.(${list})&deleted_at=is.null&select=user_id,business_name,logo_url,verification_status,whatsapp_number,city,cac_number,is_active`, { headers }),
     // unread notifications of the OTHER accounts (shown as a badge, like Instagram's account switcher)
     fetch(`${supabaseUrl}/rest/v1/notifications?user_id=in.(${list})&read=eq.false&deleted_at=is.null&select=user_id&limit=1000`, { headers })
   ]);
@@ -601,7 +601,7 @@ async function listBusinesses(body, res) {
   (Array.isArray(unreadRows) ? unreadRows : []).forEach((r) => { unread[r.user_id] = (unread[r.user_id] || 0) + 1; });
   const out = ids.map((id) => {
     const u = (Array.isArray(users) ? users : []).find((x) => x.id === id); const v = (Array.isArray(vendors) ? vendors : []).find((x) => x.user_id === id);
-    return { userId: id, name: v?.business_name || u?.name || "Business", logo: v?.logo_url || u?.avatar_url || null, status: v ? v.verification_status : "setup_needed", unread: unread[id] || 0 };
+    return { userId: id, name: v?.business_name || u?.name || "Business", logo: v?.logo_url || u?.avatar_url || null, status: v ? v.verification_status : "setup_needed", paused: !!v && v.is_active === false, unread: unread[id] || 0 };
   });
   const payload = { isBusiness: !!links.asBusiness, businesses: out, max: MAX_BUSINESSES };
   if (links.asBusiness) {
@@ -625,6 +625,50 @@ async function switchBusiness(body, res) {
   if (!allowed) return res.status(403).json({ error: "You can't open that account." });
   try { return res.status(200).json({ session: await mintSession(supabaseUrl, anonKey, headers, target) }); }
   catch (e) { return res.status(502).json({ error: e.message || "Could not open that business." }); }
+}
+
+// The owner pauses (or resumes) one of their businesses: customers cannot find or order from a paused shop.
+async function setBusinessPaused(body, res) {
+  const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const me = await signedInUser(body, supabaseUrl, anonKey);
+  if (!me) return res.status(401).json({ error: "Please log in again." });
+  const target = String(body?.targetUserId || "");
+  if (!/^[0-9a-f-]{36}$/i.test(target)) return res.status(400).json({ error: "Choose a business." });
+  const headers = serviceHeaders(serviceKey);
+  const links = await linksFor(supabaseUrl, headers, me.id);
+  if (links.asBusiness || !links.asOwner.some((l) => l.business_user_id === target)) return res.status(403).json({ error: "You can only pause your own businesses from your main account." });
+  const paused = body?.paused === true;
+  const r = await fetch(`${supabaseUrl}/rest/v1/vendors?user_id=eq.${encodeURIComponent(target)}&deleted_at=is.null`, { method: "PATCH", headers: Object.assign({}, headers, { Prefer: "return=representation" }), body: JSON.stringify({ is_active: !paused }) });
+  const rows = r.ok ? await readJson(r) : [];
+  if (!r.ok || !Array.isArray(rows) || !rows.length) return res.status(400).json({ error: "This business has no shop to pause yet." });
+  return res.status(200).json({ paused });
+}
+
+// The owner deletes one of their businesses: they must type their own password, and everything deleteAccount refuses
+// (active orders, unsettled commission, money still in the wallet) also stops this.
+async function deleteBusiness(body, res) {
+  const supabaseUrl = env("SUPABASE_URL"); const anonKey = env("SUPABASE_ANON_KEY"); const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const me = await signedInUser(body, supabaseUrl, anonKey);
+  if (!me) return res.status(401).json({ error: "Please log in again." });
+  const target = String(body?.targetUserId || "");
+  const password = String(body?.password || "");
+  if (!/^[0-9a-f-]{36}$/i.test(target) || target === me.id) return res.status(400).json({ error: "Choose a business to delete." });
+  if (!password) return res.status(400).json({ error: "Enter your password to confirm." });
+  const headers = serviceHeaders(serviceKey);
+  const links = await linksFor(supabaseUrl, headers, me.id);
+  if (links.asBusiness || !links.asOwner.some((l) => l.business_user_id === target)) return res.status(403).json({ error: "You can only delete your own businesses from your main account." });
+  if (!me.email) return res.status(400).json({ error: "This account has no password to confirm with." });
+  const pw = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, { method: "POST", headers: { apikey: anonKey, "Content-Type": "application/json" }, body: JSON.stringify({ email: me.email, password }) });
+  if (!pw.ok) return res.status(403).json({ error: "That password is not correct." });
+  let session;
+  try { session = await mintSession(supabaseUrl, anonKey, headers, target); } catch (e) { return res.status(502).json({ error: e.message || "Could not open that business." }); }
+  const out = { status: 200, body: null };
+  const fake = { status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; } };
+  await deleteAccount({ accessToken: session.access_token }, fake);
+  if (out.status === 200 && out.body && out.body.deleted) {
+    try { await fetch(`${supabaseUrl}/rest/v1/business_links?business_user_id=eq.${encodeURIComponent(target)}`, { method: "DELETE", headers }); } catch (_) {}
+  }
+  return res.status(out.status).json(out.body || { error: "Could not delete that business." });
 }
 
 /* ============================================================
@@ -904,6 +948,8 @@ module.exports = async function handler(req, res) {
     if (action === "create-business") return createBusiness(body, res);
     if (action === "list-businesses") return listBusinesses(body, res);
     if (action === "switch-business") return switchBusiness(body, res);
+    if (action === "delete-business") return deleteBusiness(body, res);
+    if (action === "pause-business") return setBusinessPaused(body, res);
     // Only the Delete account screen (no action) or an explicit "delete" deletes an account. Anything else is refused:
     // the app's "ensure-profile" request used to fall through to here and wiped the signed-in person's account.
     if (action === "" || action === "delete" || action === "delete-account") return deleteAccount(body, res);

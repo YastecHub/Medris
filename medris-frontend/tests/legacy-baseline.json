@@ -1,13 +1,13 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "ae03c68be5b763a91064ab59e113cba420645e489e793c5078550a1c1a771807",
+    "index.html": "aef82c3c8c601d1683809406211fb08163ac8caf99fcd8efe397de5e548373c2",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "105f2dff9e78540ad4fafd89c6450dcd539b1034c45cf5b6b867fec8db3fdf41",
     "assets/css/04-shell.css": "ee55c3fa57d56111b3e6e69997cadc9cbd9eea62b4dfb0f4917a7fc69917353f",
-    "assets/css/05-overrides.css": "a9d0cd328cd1ff4595563056c15667a5c34f21ab2e352c71a6a1de6ff9ee5ce5",
-    "assets/js/01-app.js": "37c60c9d1b6ed55df9a3fa8727147d5c4817874edefd8050cb4d0676b4cca350",
+    "assets/css/05-overrides.css": "127fceeff3c9386f1b73bdf5b4504932e84beec7cc90fc46f39532684539cab5",
+    "assets/js/01-app.js": "c9c52fa3294962414f44030d5ecf7e2bbd81066cf0cbe605eb15838a4f086425",
     "assets/js/02-levromart-legal-consent-final-js.js": "720a8f4753d379bad17e3eb85950afb753a32720694ab79097a84d28f83cb76b",
     "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "f82acf1a01c06b57f28780c2b1b570f38a87ea0f33259d471c2b1fb60f5be880",
     "assets/js/04-levromart-vendor-location-auto-script.js": "8ad4c70934c78c99e5de9b9dbe3b0990c2ae79f4bb7f84bdf889ee5e042b5cdd",
@@ -20,8 +20,8 @@
     "assets/js/11-levromart-global-broken-image-fallback.js": "386a13d33fd705122356e8f733fc0f0605158322c36a458df64a5208daff538d",
     "assets/js/12-lv-onboarding-auth-js.js": "c1b15c03150dc42db175432dbbd04eb455e11cd570b24d322bcedf1ca8b569fd",
     "assets/js/13-face-verify.js": "dede31602fd1d55a492f74d83804abe1dfc2b50a8da18b1fc039080bbd98cc96",
-    "assets/js/14-motion.js": "0081e24bba3d2bc24844deaf07704e9191077ceaa227148f5b58eff79cc171df",
+    "assets/js/14-motion.js": "6ac6119d5c02fe84cf5ce8ff1dabffed246a6732162b6a6a5c35bfc3e2d7ef15",
     "assets/js/15-autosave.js": "8e2bfd6570edb21f584bfa2a2ff848f34c173beb09e5e7dd9b622555c69b5582",
-    "sw.js": "38ef7b51dd0135be8ef61311dd2574b6900bf56c522fbff8a9f85202b3d963b6"
+    "sw.js": "77c1c7de9102e6c5402748d11339a5852ff97a346634c17a11bf551064591d57"
   }
 }

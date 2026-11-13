@@ -8341,9 +8341,9 @@ window.lvNoImageHtml = function (seed) {
     if (gs.length) h += '<div class="lvu-card lvu-all"><button type="button" class="lvu-hit" data-page aria-label="See all updates"><i class="fa-solid fa-arrow-right"></i><b class="lvu-name">See all</b></button></div>';
     host.hidden = false; try { paintNavBadge(); } catch (_) {}
     if (!h && !drawStrip.__retry && typeof session !== "undefined" && session) { drawStrip.__retry = 1; setTimeout(function () { paintStrip(); paintNavBadge(); }, 2500); }
-    var real = gs.length + (mine ? 1 : 0), ghosts = 0, gh = "";
-    var GH = [["fa-store", "Updates from shops you follow show here", "g1"], ["fa-bag-shopping", "New arrivals", "g2"], ["fa-tags", "Fresh offers", "g3"]];
-    for (var gi = 0; gi < ghosts; gi++) { var g3 = GH[(gi + (3 - ghosts)) % 3]; gh += '<div class="lvu-card lvu-ghost ' + g3[2] + '" aria-hidden="true"><span class="lvu-gi"><i class="fa-solid ' + g3[0] + '"></i></span><b>' + g3[1] + "</b></div>"; }
+    var real = gs.length + (mine ? 1 : 0), ghosts = mine ? 3 : 0, gh = "";
+    var GH = [["fa-bag-shopping", "New arrivals", "g2"], ["fa-tags", "Fresh offers", "g3"], ["fa-bullhorn", "Promote your shop", "g4"]];
+    for (var gi = 0; gi < ghosts; gi++) { var g3 = GH[gi % 3]; gh += '<div class="lvu-card lvu-ghost ' + g3[2] + '" aria-hidden="true"><span class="lvu-gi"><i class="fa-solid ' + g3[0] + '"></i></span><b>' + g3[1] + "</b></div>"; }
     var html = !gs.length && !mine
       ? '<div class="lvst-none lvst-none-h">' + NOSTATUS + '<span><b>Updates from shops you follow</b>Only shops you follow show here, and each update disappears after 24 hours.</span></div>'
       : '<p class="lvu-cap">From shops you follow</p><div class="lvu-row">' + h + gh + "</div>";
@@ -8895,4 +8895,63 @@ window.lvNoImageHtml = function (seed) {
     var f = e.target.closest && e.target.closest("[data-fold]"); if (f) { f.closest(".aor").classList.toggle("open"); return; }
     var c = e.target.closest && e.target.closest("[data-copy]"); if (c) { var txt = c.getAttribute("data-copy"); try { navigator.clipboard.writeText(txt).then(function () { showToast("Message copied.", "success"); }); } catch (_) { showToast("Could not copy.", "error"); } }
   });
+})();
+
+/* ===== Vendors map: the open shop card shows "Online now" or "Last seen ..." ===== */
+(function () {
+  "use strict";
+  var cache = {}, raf = 0;
+  function line(on, at) {
+    if (on) return '<span class="sf-pdot on"></span>Online now';
+    var ago = at && typeof timeAgo === "function" ? timeAgo(at) : "";
+    return ago ? '<span class="sf-pdot"></span>Last seen ' + ago : "";
+  }
+  function dress() {
+    var box = document.getElementById("vmpExpandedCard"); if (!box || box.classList.contains("hidden")) return;
+    var m = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(box.innerHTML); if (!m) return;
+    var id = m[0], cur = box.querySelector(".sf-presence");
+    if (cur && cur.getAttribute("data-v") === id) return;
+    if (cur) cur.remove();
+    try { if (typeof isOwnVendorId === "function" && isOwnVendorId(id)) return; } catch (_) {}
+    var el = document.createElement("div"); el.className = "sf-presence vmp-presence"; el.setAttribute("data-v", id); el.hidden = true;
+    var anchor = box.querySelector("h3,h4,strong,b"); if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(el, anchor.nextSibling); else box.prepend(el);
+    var paint = function (d) { var h = d ? line(d.online, d.last_seen_at) : ""; el.innerHTML = h; el.hidden = !h; };
+    var c = cache[id]; if (c && Date.now() - c.at < 60000) return paint(c.d);
+    Promise.resolve(sb.rpc("get_shop_presence", { p_vendor_id: id })).then(function (r) { var d = r && r.data; if (d && Array.isArray(d)) d = d[0]; cache[id] = { at: Date.now(), d: d }; paint(d); }).catch(function () {});
+  }
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { dress(); } catch (_) {} }); }).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* ===== Updates page top bar: your picture, a search bar for updates and shops, and a pen to manage your updates ===== */
+(function () {
+  "use strict";
+  var raf = 0;
+  function onVendors() { return document.body.getAttribute("data-view") === "vendors" || !!document.querySelector("#app .vd-page"); }
+  function ensure() {
+    var btn = document.querySelector(".header-search-row"); if (!btn) return;
+    var inp = document.getElementById("lvVdSearch");
+    if (!inp) {
+      inp = document.createElement("input"); inp.id = "lvVdSearch"; inp.type = "search"; inp.className = "lv-vd-search"; inp.placeholder = "Search updates and shops"; inp.setAttribute("aria-label", "Search updates and shops"); inp.autocomplete = "off";
+      btn.insertAdjacentElement("afterend", inp);
+      inp.addEventListener("input", function () {
+        var q = inp.value.trim().toLowerCase(), g = document.getElementById("vendorSearchInput");
+        if (g) { g.value = inp.value; try { filterVendorsDirectory(); } catch (_) {} }
+        document.querySelectorAll("#lvStStrip .lvu-card:not(.lvu-all)").forEach(function (c) { var n = (c.textContent || "").toLowerCase(); c.style.display = !q || n.indexOf(q) >= 0 || c.classList.contains("own") ? "" : "none"; });
+        document.querySelectorAll("#lvNear .lv-nc").forEach(function (c) { c.style.display = !q || (c.textContent || "").toLowerCase().indexOf(q) >= 0 ? "" : "none"; });
+      });
+    }
+    var pen = document.getElementById("lvVdPen");
+    var isVendor = false; try { isVendor = !!(typeof vendor !== "undefined" && vendor && vendor.id); } catch (_) {}
+    if (!pen) {
+      var right = document.querySelector(".header-right"); if (!right) return;
+      pen = document.createElement("button"); pen.type = "button"; pen.id = "lvVdPen"; pen.className = "icon-btn lv-vd-pen"; pen.setAttribute("aria-label", "My updates"); pen.title = "My updates"; pen.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      pen.onclick = function () { try { window.lvStatusOpen(); } catch (_) {} };
+      right.prepend(pen);
+    }
+    pen.hidden = !isVendor;
+    var on = onVendors();
+    document.body.classList.toggle("lv-vd-bar", on);
+    if (!on && inp.value) { inp.value = ""; }
+  }
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { ensure(); } catch (_) {} }); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-view"] });
 })();
