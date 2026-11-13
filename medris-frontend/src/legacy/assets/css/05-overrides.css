@@ -8772,3 +8772,24 @@ html:root:root body #notifPromptModal .lv-drop-act .btn{height:2.5rem;padding:0 
 html:root:root body #notifPromptModal .lv-drop-act .btn-outline{border:0!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;color:var(--text,#111)!important}
 @keyframes lvDropIn{0%{transform:translateY(-130%);opacity:0}100%{transform:translateY(0);opacity:1}}
 @keyframes lvBellRing{0%,60%,100%{transform:rotate(0)}66%{transform:rotate(12deg)}72%{transform:rotate(-10deg)}78%{transform:rotate(7deg)}84%{transform:rotate(-4deg)}}
+/* ===== Order pages: a calmer layout with the main actions always in reach ===== */
+html body #app .od-dock{position:fixed;left:.75rem;right:.75rem;max-width:34rem;margin:0 auto;bottom:calc(5.2rem + env(safe-area-inset-bottom,0px));z-index:60;display:flex;flex-direction:column;gap:.55rem;padding:.75rem;border-radius:22px;background:color-mix(in srgb,var(--card,#fff) 92%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent);box-shadow:0 16px 40px -18px rgba(0,0,0,.45)}
+html body #app .od-dock.od-dock-empty{display:none}
+html body #app .od-dock .od-action-wrap,html body #app .od-dock .order-action-wrap{display:flex;flex-direction:column;gap:.55rem;margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
+html body #app .od-dock .od-bottom-bar{display:flex;gap:.55rem;margin:0;padding:0}
+html body #app .od-dock .btn,html body #app .od-dock .od-btn{width:100%;min-height:3.1rem;border-radius:16px!important;font-weight:800;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+html body #app .od-dock .od-bottom-bar .od-btn{flex:1}
+html body #app .od-dock .order-action-neutral,html body #app .od-dock .pickup-pay-vendor-btn{background:#16a34a!important;color:#fff!important;border:0!important}
+html body #app .od-dock .od-btn-danger,html body #app .od-dock .btn-danger,html body #app .od-dock .order-action-cancel{background:transparent!important;color:#e11d48!important;border:1.5px solid color-mix(in srgb,#e11d48 45%,transparent)!important}
+html body #app .od-dock .od-btn-soft{background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;color:var(--text,#111)!important;border:0!important}
+html body #app .od-report{text-align:center;margin:.4rem 0 1.2rem}
+html body #app .od-report .od-report-link{font-size:.85rem;font-weight:700;text-decoration:none;opacity:.85}
+html body #app .product-detail-card .od-hero,html body #app .od-status-card{border-radius:24px}
+/* the permission reminder: same tidy drop-down card as "Turn on notifications" */
+html:root:root body .levi-permission-nudge{position:fixed!important;left:0!important;right:0!important;top:0!important;bottom:auto!important;z-index:2147483000!important;display:flex!important;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + .6rem) .7rem 0!important;background:none!important;pointer-events:none}
+html:root:root body .levi-permission-nudge-card{pointer-events:auto;position:relative;width:min(94vw,26rem)!important;display:grid!important;grid-template-columns:auto 1fr;column-gap:.8rem;row-gap:.6rem;align-items:center;padding:.9rem 1rem!important;border-radius:24px!important;background:var(--card,#fff)!important;border:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)!important;box-shadow:0 22px 50px -18px rgba(0,0,0,.5)!important;animation:lvDropIn .55s cubic-bezier(.2,1.25,.4,1) both}
+html:root:root body .levi-permission-nudge-icon{width:3rem!important;height:3rem!important;border-radius:16px!important;display:grid;place-items:center;background:linear-gradient(145deg,#2bbb7d,#0e7a4e)!important;color:#fff!important;font-size:1.2rem}
+html:root:root body .levi-permission-nudge-copy strong{display:block;font-size:1rem;font-weight:800;color:var(--text,#111);margin-bottom:.1rem;padding-right:1.6rem}
+html:root:root body .levi-permission-nudge-copy span{display:block;font-size:.8rem;line-height:1.35;color:var(--text-muted,#6b7280)}
+html:root:root body .levi-permission-nudge-action{grid-column:1/-1;justify-self:end;height:2.5rem;padding:0 1.4rem;border-radius:999px!important;border:0;background:#16a34a!important;color:#fff!important;font-weight:800}
+html:root:root body .levi-permission-nudge-close{position:absolute!important;top:.55rem;right:.6rem;width:1.9rem;height:1.9rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;color:var(--text,#111)!important}
