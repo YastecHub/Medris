@@ -79,7 +79,7 @@
       // empty array a real zero-result filter would, and wrongly claimed "no
       // vendors match" while the directory was simply still loading.
       grid.innerHTML = visible.length
-        ? visible.map(vendorDirectoryMode === "list" ? vendorDirectoryCardHtml : vendorPageCardHtml).join("")
+        ? visible.map(vendorPageCardHtml).join("")
         : Array.isArray(window.__allVendors)
           ? vendorDirectoryEmptyHtml(true)
           : vendorDirectorySkeletonHtml();
@@ -126,7 +126,7 @@
   window.switchVendorsView = function (mode) {
     if (mode === "map") { try { navigate("vendorsMap"); } catch (_) {} return; }   // the full-screen map is the only map
     vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "map";
-    try { localStorage.setItem("levromart_vendors_view", vendorDirectoryMode); } catch (_) {}
+    try { localStorage.setItem("levromart_vendors_view", vendorDirectoryMode === "list" ? "grid" : vendorDirectoryMode); } catch (_) {}
     renderVendorDirectoryCards();
     if (vendorDirectoryMode === "map") {
       byId("vendorsMapWrap")?.classList.remove("hidden");
@@ -165,7 +165,7 @@
     try {
       const savedView = localStorage.getItem("levromart_vendors_view");
       // the Vendors page opens as the grid (or the list if that was picked); the old inline map with its sideways row is no longer shown
-      vendorDirectoryMode = savedView === "list" ? "list" : "grid";
+      vendorDirectoryMode = "grid";   // the old list layout is gone: always the row layout with product previews
     } catch (_) { vendorDirectoryMode = "grid"; }
     vendorDirectorySort = "shuffled";
     // The "Rent Items" quick action sets this to 'rent' before navigating
