@@ -8996,3 +8996,29 @@ html body #app .lv-nc{min-height:8.5rem}
 .lv-nc.sk{background:color-mix(in srgb,var(--text) 6%,var(--card,#fff));border-color:transparent;animation:lvStPulse 1.2s ease-in-out infinite}
 html body #app .lv-vd-title{min-height:2.2rem}
 html body #app .vd-page>#vendorCatChips{min-height:2.65rem}
+/* ===== Welcome pages: each page has its own background and matching buttons ===== */
+@property --lv-c1{syntax:"<color>";inherits:true;initial-value:#f9fffc}
+@property --lv-c2{syntax:"<color>";inherits:true;initial-value:#e5f6ee}
+.lv-onb,#loginModal.lv-auth{--lv-c1:#f9fffc;--lv-c2:#e5f6ee;--lv-ac:#0b6e4a;--lv-acd:#4ade80;--lv-b1:#14ad6c;--lv-b2:#3fb97f;--lv-blob:#16a34a;transition:--lv-c1 .6s ease,--lv-c2 .6s ease}
+/* slide 2: royal purple */
+.lv-onb:has(.lv-slide:nth-child(2).on){--lv-c1:#f8f3ff;--lv-c2:#ebe0ff;--lv-ac:#6d28d9;--lv-acd:#c4b5fd;--lv-b1:#7c3aed;--lv-b2:#c084fc;--lv-blob:#a855f7}
+/* slide 3: sunset orange */
+.lv-onb:has(.lv-slide:nth-child(3).on){--lv-c1:#fff8ef;--lv-c2:#ffe8cf;--lv-ac:#c2410c;--lv-acd:#fdba74;--lv-b1:#ea580c;--lv-b2:#fdba74;--lv-blob:#fb923c}
+/* sign-in: ocean blue */
+#loginModal.lv-auth{--lv-c1:#f3f9ff;--lv-c2:#dcecff;--lv-ac:#1d4ed8;--lv-acd:#93c5fd;--lv-b1:#2563eb;--lv-b2:#60a5fa;--lv-blob:#3b82f6}
+html:root:root body .lv-onb,html:root:root body #loginModal.lv-auth,html:root:root body #loginModal.lv-auth .modal-content{background:linear-gradient(180deg,var(--lv-c1),var(--lv-c2))!important}
+html:root:root body #loginModal.lv-auth .modal-content{background:transparent!important}
+html:root:root body .lv-onb .lv-bgfx i,html:root:root body #loginModal.lv-auth .lv-bgfx i{background:var(--lv-blob)!important;opacity:.14!important}
+html:root:root:root:root:root:root body #lvOnb .lv-cta,html:root:root:root:root:root:root body #loginModal.lv-auth #authSubmitBtn{background:linear-gradient(135deg,var(--lv-b1),var(--lv-b2))!important;box-shadow:0 16px 26px -14px var(--lv-b1)!important}
+html:root:root body .lv-onb .lv-eyebrow,html:root:root body .lv-onb .lv-slide-copy h2 em,html:root:root body #loginModal.lv-auth h1 em{color:var(--lv-ac)!important}
+html:root:root body .lv-onb .lv-dot[aria-selected="true"]{background:var(--lv-b1)!important}
+html:root:root body #loginModal.lv-auth .auth-mode-tab.active{background:var(--lv-b1)!important;box-shadow:0 10px 18px -10px var(--lv-b1)!important}
+html:root:root body #loginModal.lv-auth input:focus{border-color:var(--lv-b1)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--lv-b1) 18%,transparent)!important}
+html:root:root body #loginModal.lv-auth .lv-auth-hero::before{background:radial-gradient(ellipse at 75% 30%,color-mix(in srgb,var(--lv-blob) 24%,transparent),transparent 65%)!important}
+html:root:root body .lv-onb .lv-slide-art:not(:has(.lvx-a2))::before{background:radial-gradient(circle,color-mix(in srgb,var(--lv-blob) 24%,transparent),transparent 68%)!important}
+html:root:root body .lv-onb .lvx-card.k2{background:linear-gradient(160deg,var(--lv-b1),var(--lv-ac))!important}
+html:root:root body #loginModal.lv-auth a,html:root:root body #loginModal.lv-auth .auth-link{color:var(--lv-ac)}
+/* dark and black keep their dark background; only the accent and buttons follow the page colour */
+:root[data-theme="dark"] .lv-onb:has(.lv-slide.on),:root[data-theme="dark"] #loginModal.lv-auth{--lv-c1:#0f1714;--lv-c2:#0b1210}
+:root[data-theme="black"] .lv-onb:has(.lv-slide.on),:root[data-theme="black"] #loginModal.lv-auth{--lv-c1:#000;--lv-c2:#000}
+:root[data-theme="dark"] body .lv-onb .lv-eyebrow,:root[data-theme="black"] body .lv-onb .lv-eyebrow,:root[data-theme="dark"] body .lv-onb h2 em,:root[data-theme="black"] body .lv-onb h2 em,:root[data-theme="dark"] body #loginModal.lv-auth h1 em,:root[data-theme="black"] body #loginModal.lv-auth h1 em{color:var(--lv-acd)!important}
