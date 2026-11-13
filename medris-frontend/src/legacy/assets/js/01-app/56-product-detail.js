@@ -899,6 +899,7 @@ window.__lvHoldHeight = function (el) {
     snap.querySelectorAll("video,audio").forEach((n) => n.remove());
     Object.assign(snap.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0", overflow: "hidden", zIndex: "5", pointerEvents: "none", transition: "none", background: "var(--bg,transparent)" });
     snap.classList.add("lv-swipe-snap");
+    snap.style.webkitBackfaceVisibility = "hidden"; snap.style.backfaceVisibility = "hidden"; snap.style.willChange = "transform, opacity";
     document.body.appendChild(snap);
     return snap;
   }
@@ -975,12 +976,12 @@ window.__lvHoldHeight = function (el) {
         // keep the preview over the page until the real photo has been painted, so the photo never blinks out
         try {
           const ri = now.querySelector(".product-gallery-main img, .product-gallery-carousel img, .product-detail-media img");
-          if (ri && !(ri.complete && ri.naturalWidth)) await Promise.race([ri.decode().catch(() => {}), new Promise((r) => setTimeout(r, 400))]);
+          if (ri && !(ri.complete && ri.naturalWidth)) await Promise.race([ri.decode().catch(() => {}), new Promise((r) => setTimeout(r, 900))]);
         } catch (_) {}
         now.style.opacity = ""; now.style.transform = "";
         snap.remove();
-        const f = pv.el.animate ? pv.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: "linear", fill: "forwards" }) : null;
-        if (f) { try { await f.finished; } catch (_) {} }
+        // no fade: the preview is lifted only after the real page has been painted twice, so nothing flashes on iPhone
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         pv.el.remove();
       } else {
         // no preview yet (very fast swipe on a slow connection): slide the real page in as soon as it exists
