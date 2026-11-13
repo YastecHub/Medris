@@ -12,7 +12,7 @@ const HOME_TOUR_STEPS = [
   { icon: "fa-fire", title: "Trending products", body: "Products people are looking at right now. Slide sideways to see more, or tap See all.", selector: ".trending-scroll:not(.service-trending)" },
   { icon: "fa-star", title: "Featured vendors", body: "Top-rated verified vendors. Tap one to open their storefront and follow them.", selector: ".top-rated-vendors-scroll" },
   { icon: "fa-table-cells-large", title: "Browse everything", body: "Switch between products, services and more, then filter and sort the whole marketplace.", selector: ".home-catalog-type-tabs" },
-  { icon: "fa-store", title: "Find vendors near you", body: "Open Vendors to see every verified vendor, on a map or a list, closest first.", selector: `#bottomNav .bottom-nav-item[onclick*="'vendors'"]` },
+  { icon: "fa-store", title: "Updates and shops near you", body: "Open Vendors for updates from the shops you follow (a green number shows when something is new), the shops near you, and the map.", selector: `#bottomNav .bottom-nav-item[onclick*="'vendors'"]` },
   "ORDERS_TOUR_STEP",
   "MESSAGES_TOUR_STEP",
   "NOTIFICATIONS_TOUR_STEP",
@@ -94,10 +94,11 @@ function tourPlace(el) {
   sheet.classList.toggle("top", r.top + r.height / 2 > vh * 0.55);
 }
 
-async function showTour() {
+async function showTour(customSteps) {
   liveTourRunToken++;
   const token = liveTourRunToken;
-  LIVE_TOUR_STEPS = vendor ? [...resolveTourSteps(HOME_TOUR_STEPS), VENDOR_TOUR_STEP] : resolveTourSteps(HOME_TOUR_STEPS);
+  window.__lvTourNews = Array.isArray(customSteps);
+  LIVE_TOUR_STEPS = Array.isArray(customSteps) ? resolveTourSteps(customSteps) : vendor ? [...resolveTourSteps(HOME_TOUR_STEPS), VENDOR_TOUR_STEP] : resolveTourSteps(HOME_TOUR_STEPS);
   liveTourStep = 0;
   clearTourTargetLock();
   closeAllPanels();
@@ -182,9 +183,10 @@ function finishTour() {
   liveTourRunToken++;
   liveTourBusy = false;
   byId("lvTour")?.classList.add("hidden");
-  try { localStorage.setItem("levromart-tour-seen", "1"); } catch (_) {}
+  try { localStorage.setItem("levromart-tour-seen", "1"); localStorage.setItem("lv-whatsnew-seen", "2026-11"); } catch (_) {}
+  window.__lvTourNews = false;
   if (dismissibleModalId === "tourModal") dismissibleModalId = null;
-  if (session) {
+  if (session && !window.__lvTourNews) {
     const panel = byId("aiChatPanel");
     if (panel && panel.classList.contains("hidden")) {
       panel.classList.remove("hidden");

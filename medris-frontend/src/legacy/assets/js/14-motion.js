@@ -8587,3 +8587,61 @@ window.lvNoImageHtml = function (seed) {
     w.addEventListener("touchend", function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50 && l.length > 1) show(at + (dx < 0 ? 1 : -1)); }, { passive: true });
   };
 })();
+
+/* ===== Order page: the main buttons (Pay, I've received it, Cancel, ask for a refund) live in one dock that stays on screen ===== */
+(function () {
+  "use strict";
+  var raf = 0;
+  function dock() {
+    var bar = document.querySelector("#app .od-bottom-bar"), main = document.querySelector("#app .od-action-wrap");
+    if (!bar && !main) return;
+    var d = document.querySelector("#app .od-dock");
+    if (!d) { d = document.createElement("div"); d.className = "od-dock"; (bar || main).before(d); }
+    if (main && main.parentNode !== d) d.appendChild(main);
+    if (bar && bar.parentNode !== d) d.appendChild(bar);
+    var empty = !d.querySelector("button,a");
+    d.classList.toggle("od-dock-empty", empty);
+    // the dock floats above the tab bar, so the page gets room under its last line
+    var sp = d.nextElementSibling && d.nextElementSibling.classList.contains("od-dock-sp") ? d.nextElementSibling : null;
+    if (!sp) { sp = document.createElement("div"); sp.className = "od-dock-sp"; d.after(sp); }
+    sp.style.height = empty ? "0" : Math.ceil(d.getBoundingClientRect().height + 16) + "px";
+  }
+  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { dock(); } catch (_) {} }); }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+/* ===== "What's new" tour: everyone who already uses the app sees it once, with Levi pointing at the new things ===== */
+(function () {
+  "use strict";
+  var KEY = "lv-whatsnew-seen", VER = "2026-11", tries = 0;
+  function seen() { try { return localStorage.getItem(KEY) === VER; } catch (_) { return true; } }
+  function mark() { try { localStorage.setItem(KEY, VER); } catch (_) {} }
+  var VENDORS_TAB = "#bottomNav .bottom-nav-item[onclick*=\"'vendors'\"]";
+  function steps() {
+    var out = [
+      { icon: "fa-wand-magic-sparkles", title: "What's new on Levromart", body: "A quick look at what we added. This shows only once.", selector: null },
+      { icon: "fa-bullhorn", title: "Updates from shops you follow", body: "Open Vendors to see photos and offers from the shops you follow, like WhatsApp Updates. A green number shows when something is new.", selector: VENDORS_TAB },
+      { icon: "fa-location-dot", title: "Shops near you and the map", body: "The Vendors page now lists shops near you first. Tap the floating 3D map pin to open the map.", selector: VENDORS_TAB },
+      { icon: "fa-receipt", title: "Orders are easier", body: "Pay, cancel, ask for a refund or say you received it from the buttons that stay at the bottom of the order page.", selector: "#bottomNav .bottom-nav-item[onclick*=\"Orders\"]" },
+      { icon: "fa-wallet", title: "A smarter wallet", body: "Send money with a PIN, and share a receipt in a style you like.", selector: null }
+    ];
+    var isVendor = false; try { isVendor = !!(typeof vendor !== "undefined" && vendor && vendor.id); } catch (_) {}
+    if (isVendor) {
+      out.push({ icon: "fa-circle-plus", title: "Post an update", body: "On Vendors tap the + on Your update, pick a product and share it for 24 hours. People who follow you get an alert.", selector: VENDORS_TAB });
+      out.push({ icon: "fa-building", title: "Businesses and your team", body: "Run up to 5 businesses with one login, and invite managers and staff to help. Find them in your profile panel.", selector: "#profilePanel", onEnter: function () { try { toggleProfilePanel(); } catch (_) {} }, onExit: function () { try { closeAllPanels(); } catch (_) {} } });
+      out.push({ icon: "fa-hourglass-half", title: "Order time limit", body: "Choose how long you wait before an order cancels itself. The hourglass on each order shows the time left.", selector: null });
+    }
+    return out;
+  }
+  function tick() {
+    if (seen()) return;
+    tries++;
+    try {
+      if (typeof localStorage !== "undefined" && !localStorage.getItem("levromart-tour-seen")) { mark(); return; }   // brand new: the full tour already covers everything
+      var busy = (typeof dismissibleModalId !== "undefined" && dismissibleModalId) || (function () { var o = document.getElementById("lvOnb"), m = document.getElementById("loginModal"); return (o && !o.hidden) || (m && !m.classList.contains("hidden")) || document.querySelector(".modal:not(.hidden):not(#loginModal), #lvTour:not(.hidden)"); })() || document.body.classList.contains("tour-active");
+      var ready = typeof showTour === "function";
+      if (ready && !busy && !document.hidden) { mark(); showTour(steps()); return; }
+    } catch (_) {}
+    if (tries < 40) setTimeout(tick, 4000);
+  }
+  setTimeout(tick, 9000);
+})();
