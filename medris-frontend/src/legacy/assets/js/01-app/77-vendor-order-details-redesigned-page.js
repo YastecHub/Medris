@@ -73,7 +73,7 @@ function vendorOrderTopHtml(order, ctx) {
     h += `<p class="od-muted" style="margin:0">Customer details are not available for this order.</p>`;
   }
   // the order cancelled by itself because the shop did not confirm in time: one tap tells the customer it is still available
-  if (String(order.status || "") === "cancelled" && /^Cancelled automatically/i.test(String(order.cancellation_reason || ""))) h += `<div class="od-cust-actions" style="margin-top:.6rem"><button type="button" class="od-btn od-btn-small" onclick="sendStillAvailable('${esc(order.id)}',this)"><i class="fa-regular fa-paper-plane"></i> Tell the customer it's still available</button></div><p class="od-muted" style="margin:.4rem 0 0">Sends: "Sorry, we missed your order. It's still available - are you still interested?" (you can send it up to 3 times for this order, no more).</p>`;
+  if (String(order.status || "") === "cancelled" && /^Cancelled automatically/i.test(String(order.cancellation_reason || ""))) h += `<div class="od-avail"><span class="od-avail-ic"><i class="fa-solid fa-store"></i></span><div class="od-avail-t"><b>Missed this order?</b><small>Tell the customer it's still available. You can send this up to 3 times.</small></div><button type="button" class="od-avail-btn" onclick="sendStillAvailable('${esc(order.id)}',this)"><i class="fa-regular fa-paper-plane"></i> Send</button></div>`;
   // the chat for a cancelled / completed order has closed: the shop can ask the customer for permission to message them
   if (!ctx.chatWindowOpen && ["cancelled", "completed"].includes(String(order.status || ""))) h += `<div class="od-cust-actions"><button type="button" class="od-btn od-btn-light od-btn-small" onclick="requestCustomerChat('${esc(order.id)}',this)"><i class="fa-regular fa-comment-dots"></i> Ask to message</button></div><p class="od-muted" style="margin:.4rem 0 0">Chat is closed for this order. The customer decides whether to allow a new chat.</p>`;
   if (mapReady) h += `<div id="orderBuyerLocationWrap-${esc(order.id)}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${esc(order.id)}" class="muted"></span></div><div id="orderBuyerLocationMap-${esc(order.id)}" class="order-buyer-location-map"></div></div>`;
@@ -823,8 +823,8 @@ async function remindOrderVendor(orderId,button){
 }
 async function sendStillAvailable(orderId,button){
   if(button)button.disabled=true;
-  try{const {error}=await sb.rpc('send_order_still_available',{p_order_id:orderId});if(error)throw error;showToast('Sent. The customer will see it in the app and on WhatsApp.','success');if(button){button.innerHTML='<i class="fa-solid fa-check"></i> Sent (tap to send again, up to 3 times)';button.disabled=false;}}
-  catch(err){const m=err.message||'Could not send the message.';showToast(m,'error');if(button){if(/3 times|No more can be sent/i.test(m)){button.innerHTML='<i class="fa-solid fa-ban"></i> Sent 3 times (no more)';button.disabled=true;}else button.disabled=false;}}
+  try{const {error}=await sb.rpc('send_order_still_available',{p_order_id:orderId});if(error)throw error;showToast('Sent. The customer will see it in the app and on WhatsApp.','success');if(button){button.innerHTML='<i class="fa-solid fa-check"></i> Sent, send again';button.disabled=false;}}
+  catch(err){const m=err.message||'Could not send the message.';showToast(m,'error');if(button){if(/3 times|No more can be sent/i.test(m)){button.innerHTML='<i class="fa-solid fa-ban"></i> Sent 3 times';button.disabled=true;}else button.disabled=false;}}
 }
 async function requestCustomerChat(orderId,button){
   if(button)button.disabled=true;
@@ -865,21 +865,14 @@ function lvHourglassHtml(order, isVendor) {
   const mins = Number(order.vendor?.order_expiry_minutes ?? LV_AUTO_CANCEL_MIN);
   if (!(mins > 0)) return `<div class="lv-hg"><div class="hg-text"><strong class="hg-left">No time limit</strong><small>${isVendor ? "this order waits for you" : "this order waits for the shop to confirm"}</small></div></div>`;
   return `<div class="lv-hg" data-vendor="${esc(order.vendor_id || order.vendor?.id || "")}" data-created="${esc(order.created_at)}" data-min="${mins}" role="timer" aria-live="off">
-    <svg viewBox="0 0 60 98" width="40" height="64" aria-hidden="true" class="hg-svg"><ellipse cx="30" cy="94" rx="20" ry="3.2" fill="#000" opacity=".22"/>
-      <defs>
-        <clipPath id="hgTop${esc(String(order.id).slice(0,6))}"><path d="M10 8H50L32 46H28Z"/></clipPath><clipPath id="hgBot${esc(String(order.id).slice(0,6))}"><path d="M28 46H32L50 84H10Z"/></clipPath>
-        <linearGradient id="hgSand" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ffd777"/><stop offset=".6" stop-color="#f0a92a"/><stop offset="1" stop-color="#c97d10"/></linearGradient>
-        <linearGradient id="hgWood" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset=".45" stop-color="#f5a623"/><stop offset="1" stop-color="#b86b06"/></linearGradient>
-        <linearGradient id="hgGlass" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity=".7"/><stop offset=".5" stop-color="#cfe9ff" stop-opacity=".18"/><stop offset="1" stop-color="#7fb2e0" stop-opacity=".55"/></linearGradient>
-      </defs>
-      <rect x="3" y="1" width="54" height="8" rx="4" fill="url(#hgWood)"/><rect x="3" y="83" width="54" height="8" rx="4" fill="url(#hgWood)"/><rect x="7" y="2.4" width="46" height="1.8" rx=".9" fill="#fff" opacity=".55"/><rect x="7" y="84.4" width="46" height="1.8" rx=".9" fill="#fff" opacity=".45"/>
-      <rect class="hg-top" x="0" y="8" width="60" height="38" fill="url(#hgSand)" clip-path="url(#hgTop${esc(String(order.id).slice(0,6))})"/>
-      <rect class="hg-bot" x="0" y="84" width="60" height="0" fill="url(#hgSand)" clip-path="url(#hgBot${esc(String(order.id).slice(0,6))})"/>
-      <line class="hg-stream" x1="30" y1="46" x2="30" y2="82" stroke="#f0a92a" stroke-width="1.5" stroke-dasharray="3 3"/>
-      <path d="M10 8H50L32 46L50 84H10L28 46Z" fill="url(#hgGlass)" stroke="#d7ecff" stroke-opacity=".85" stroke-width="1.8" stroke-linejoin="round"/>
-      <path d="M15 12L26 12L19 30Z" fill="#fff" opacity=".5"/>
-      <rect x="4" y="2" width="52" height="2.4" rx="1.2" fill="#fff" opacity=".28"/><rect x="4" y="83.5" width="52" height="2.4" rx="1.2" fill="#fff" opacity=".22"/>
-    </svg>
+    <svg viewBox="0 0 60 84" width="44" height="62" aria-hidden="true" class="hg-svg">
+      <defs><clipPath id="hgIn${esc(String(order.id).slice(0,6))}"><path d="M12 6H48V19C48 30 40 36 36 42C40 48 48 54 48 65V78H12V65C12 54 20 48 24 42C20 36 12 30 12 19Z"/></clipPath></defs>
+      <g class="hg-body">
+        <path class="hg-frame" d="M7 2H53a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H52C52 26 45 33 42 40.5c3 1.5 10 8 10 29V72h1a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h1V69.500C8 48.500 15 42 18 40.500C15 33 8 26 8 12H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3Z" fill="#eef1f4"/>
+        <g clip-path="url(#hgIn${esc(String(order.id).slice(0,6))})"><rect x="8" y="6" width="44" height="72" fill="#dfe3e8"/>
+          <rect class="hg-top" x="8" y="6" width="44" height="36"/><rect class="hg-bot" x="8" y="78" width="44" height="0"/></g>
+        <line class="hg-stream" x1="30" y1="40" x2="30" y2="76" stroke-width="1.6" stroke-dasharray="3 3"/>
+      </g></svg>
     <div class="hg-text"><strong class="hg-left">--</strong><small>${isVendor ? "to confirm this order before it cancels itself" : "for the shop to confirm before the order cancels itself"}</small></div>
   </div>`;
 }
@@ -905,8 +898,13 @@ function lvHourglassTick() {
     if (!created) return;
     const left = Math.max(0, created + total - Date.now()), f = Math.min(1, left / total);
     const top = el.querySelector(".hg-top"), bot = el.querySelector(".hg-bot"), st = el.querySelector(".hg-stream"), lab = el.querySelector(".hg-left");
-    if (top) { top.setAttribute("y", String(8 + (1 - f) * 38)); top.setAttribute("height", String(f * 38)); }
-    if (bot) { const h = (1 - f) * 38; bot.setAttribute("y", String(84 - h)); bot.setAttribute("height", String(h)); }
+    if (top) { top.setAttribute("y", String(6 + (1 - f) * 36)); top.setAttribute("height", String(f * 36)); }
+    if (bot) { const h = (1 - f) * 36; bot.setAttribute("y", String(78 - h)); bot.setAttribute("height", String(h)); }
+    // calm blue at the start, then purple, orange and red as the deadline gets close
+    el.dataset.tone = f > 0.66 ? "blue" : f > 0.4 ? "purple" : f > 0.18 ? "orange" : "red";
+    // the glass hops every so often (more often when time is short)
+    const hop = f > 0.4 ? 20000 : f > 0.18 ? 10000 : 4000;
+    if (left > 0 && Date.now() - (el.__hopAt || 0) > hop) { el.__hopAt = Date.now(); const g = el.querySelector(".hg-svg"); if (g) { g.classList.remove("hg-hop"); void g.getBoundingClientRect(); g.classList.add("hg-hop"); } }
     if (st) st.style.display = left > 0 ? "" : "none";
     if (lab) { const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000); lab.textContent = left > 0 ? (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m left` : `${m}:${String(sec).padStart(2, "0")} left`) : "Time is up. Cancelling…"; }
   });
