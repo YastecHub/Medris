@@ -19,6 +19,8 @@ function callToken(secret, callId, calleeId) {
 
 const VAPID_PUBLIC_KEY = "BJ7h-JVsXaOpYXY5st5L7esSDOPjhRROincFPTT013a1ZY3U62WIKPAoFEDzBgFB8g3H2DBNX1iRw8GzdPWR88k";
 
+// A sticker comment is stored as ::s:still/2b50::; in a notification it reads as the emoji itself.
+const cleanBody = (b) => String(b == null ? "" : b).replace(/::s:(?:still\/|3d\/)?([0-9a-f-]+)::/gi, (_m, hex) => { try { return String.fromCodePoint(...hex.split("-").map((h) => parseInt(h, 16))); } catch (_) { return "sticker"; } });
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -272,7 +274,7 @@ async function sendEmail(SUPABASE_URL, svcHeaders, n) {
     to: u.email,
     name: u.name,
     title: n.title,
-    body: n.body,
+    body: cleanBody(n.body),
     link
   });
 
@@ -379,7 +381,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     actions: callActions,
     call: callId ? { id: callId, token: declineToken } : undefined,
     title: n.title,
-    body: n.body,
+    body: cleanBody(n.body),
     url,
     target_view: n.target_view || "home",
     target_params: n.target_params || {},
@@ -392,7 +394,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     web_push: 8030,
     notification: {
       title: n.title,
-      body: n.body,
+      body: cleanBody(n.body),
       icon: iconUrl,
       badge: '/levromart-badge.png',
       silent: false,

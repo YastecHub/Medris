@@ -678,7 +678,14 @@ function messageLooksLikeContactBypass(text) {
 // (Roblox-style: "0801#######" instead of refusing to send at all) rather
 // than blocking the whole message -- masks the digits in place so the rest
 // of the sentence around them still sends normally.
+// Prices (₦14,000.00 → ₦15,000.00) are not phone numbers: they are kept out of the masking, and a sticker token shows as its emoji
 function maskSensitiveNumbers(text) {
+  const money = [];
+  let t = String(text || "").replace(/₦\s?[\d,]+(?:\.\d+)?/g, (m) => { money.push(m); return "\u0001" + (money.length - 1) + "\u0002"; });
+  t = t.replace(/::s:(?:still\/|3d\/)?([0-9a-f-]+)::/gi, (m, hex) => { try { return String.fromCodePoint(...hex.split("-").map((h) => parseInt(h, 16))); } catch (_) { return "sticker"; } });
+  return _maskSensitiveNumbersRaw(t).replace(/\u0001(\d+)\u0002/g, (m, i) => money[Number(i)] || "");
+}
+function _maskSensitiveNumbersRaw(text) {
   const str = String(text || "");
   const maskIndices = new Set();
 
