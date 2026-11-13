@@ -8896,43 +8896,20 @@ html:root:root:root:root:root:root body #bottomNav .bottom-nav-item .bn-icon svg
 .lvx-a3 .pin{right:6%;top:6%;color:#16a34a;animation-delay:-2s}
 .lv-slide:not(.on) .lvx-art *{animation-play-state:paused}
 /* the sign-in page */
-#loginModal.lv-auth .lv-auth-art{aspect-ratio:1/1;min-height:9.5rem}
 .lvx-auth .lvx-logo{width:4.2rem;height:4.2rem;border-radius:22px}
 .lvx-auth .lvx-ic{width:2.6rem;height:2.6rem;border-radius:14px;font-size:1rem}
 .lvx-auth .i1{left:0;top:6%;color:#f59e0b}.lvx-auth .i2{right:0;top:2%;color:#16a34a;animation-delay:-1s}.lvx-auth .i3{left:4%;bottom:6%;color:#ec4899;animation-delay:-2s}.lvx-auth .i4{right:2%;bottom:8%;color:#f59e0b;animation-delay:-3s}
-html:root body #loginModal.lv-auth .modal-content input:not([type=checkbox]):not([type=radio]){height:3.2rem;border-radius:16px!important;border:1.5px solid transparent!important;background-color:color-mix(in srgb,var(--text,#111) 6%,transparent)!important;padding-left:2.9rem!important;background-repeat:no-repeat!important;background-position:1rem center!important;background-size:1.1rem!important}
-html:root body #loginModal.lv-auth .modal-content input:focus{border-color:#16a34a!important;background-color:var(--card,#fff)!important;box-shadow:0 0 0 4px color-mix(in srgb,#16a34a 16%,transparent)!important}
-html:root body #loginModal.lv-auth #loginEmail{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='3'/%3E%3Cpath d='m4 7 8 6 8-6'/%3E%3C/svg%3E")!important}
-html:root body #loginModal.lv-auth #loginPassword,html:root body #loginModal.lv-auth #loginPasswordConfirm{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='3'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E")!important}
-html:root body #loginModal.lv-auth #loginName{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E")!important}
-html:root body #loginModal.lv-auth #loginPhone{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z'/%3E%3C/svg%3E")!important}
-html:root body #loginModal.lv-auth #loginCity{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='2.5'/%3E%3C/svg%3E")!important}
-html:root body #loginModal.lv-auth .modal-content .password-input-wrap input{padding-right:3rem!important}
-html:root body #loginModal.lv-auth .auth-mode-tabs{border-radius:999px;padding:.25rem;background:color-mix(in srgb,var(--text,#111) 7%,transparent)}
-html:root body #loginModal.lv-auth .auth-mode-tab{border-radius:999px;font-weight:800}
-html:root body #loginModal.lv-auth .auth-mode-tab.active{background:#16a34a!important;color:#fff!important;box-shadow:0 10px 18px -10px rgba(22,163,74,.9)}
-html:root body #loginModal.lv-auth .google-auth-btn{height:3.2rem;border-radius:999px!important;border:1.5px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;background:transparent!important;color:var(--text,#111)!important;font-weight:800}
-html:root body #loginModal.lv-auth #authSubmitBtn{height:3.3rem;border-radius:999px!important;font-weight:800;font-size:1rem;background:linear-gradient(135deg,#14ad6c,#3fb97f)!important;box-shadow:0 16px 26px -14px rgba(20,173,108,.9)}
 /* dark and black */
-:root[data-theme="dark"] .lv-onb,:root[data-theme="dark"] #loginModal.lv-auth{--lv-ink:#ecfff6;--lvx-tile:#1b2622;background:linear-gradient(180deg,#0f1714 0%,#0b1210 100%)!important}
-:root[data-theme="black"] .lv-onb,:root[data-theme="black"] #loginModal.lv-auth{--lv-ink:#ecfff6;--lvx-tile:#121816;background:#000!important}
-:root[data-theme="dark"] .lv-onb .lv-lead,:root[data-theme="black"] .lv-onb .lv-lead,:root[data-theme="dark"] #loginModal.lv-auth .lv-lead,:root[data-theme="black"] #loginModal.lv-auth .lv-lead{color:#9fb5ab!important}
+:root[data-theme="dark"] .lv-onb{--lv-ink:#ecfff6;--lvx-tile:#1b2622;background:linear-gradient(180deg,#0f1714 0%,#0b1210 100%)!important}
+:root[data-theme="black"] .lv-onb{--lv-ink:#ecfff6;--lvx-tile:#121816;background:#000!important}
+:root[data-theme="dark"] .lv-onb .lv-lead,:root[data-theme="black"] .lv-onb .lv-lead{color:#9fb5ab!important}
 :root[data-theme="dark"] .lv-onb .lv-eyebrow,:root[data-theme="black"] .lv-onb .lv-eyebrow{color:#5fe3a6!important}
-:root[data-theme="dark"] .lv-onb h2,:root[data-theme="black"] .lv-onb h2,:root[data-theme="dark"] #loginModal.lv-auth h1,:root[data-theme="black"] #loginModal.lv-auth h1{color:#ecfff6!important}
-:root[data-theme="dark"] .lv-onb .lv-logo,:root[data-theme="black"] .lv-onb .lv-logo,:root[data-theme="dark"] #loginModal.lv-auth .lv-logo,:root[data-theme="black"] #loginModal.lv-auth .lv-logo,:root[data-theme="dark"] .lv-onb .lv-skip,:root[data-theme="black"] .lv-onb .lv-skip{color:#ecfff6!important}
+:root[data-theme="dark"] .lv-onb h2,:root[data-theme="black"] .lv-onb h2{color:#ecfff6!important}
+:root[data-theme="dark"] .lv-onb .lv-logo,:root[data-theme="black"] .lv-onb .lv-logo,:root[data-theme="dark"] .lv-onb .lv-skip,:root[data-theme="black"] .lv-onb .lv-skip{color:#ecfff6!important}
 :root[data-theme="dark"] .lv-dot,:root[data-theme="black"] .lv-dot{background:rgba(255,255,255,.2)}
-:root[data-theme="dark"] #loginModal.lv-auth .modal-content,:root[data-theme="black"] #loginModal.lv-auth .modal-content{background:transparent!important;color:#ecfff6}
-:root[data-theme="dark"] #loginModal.lv-auth label,:root[data-theme="black"] #loginModal.lv-auth label{color:#cfe3d9}
-:root[data-theme="dark"] #loginModal.lv-auth .lv-bgfx i,:root[data-theme="black"] #loginModal.lv-auth .lv-bgfx i,:root[data-theme="dark"] .lv-onb .lv-bgfx i,:root[data-theme="black"] .lv-onb .lv-bgfx i{opacity:.35}
+:root[data-theme="dark"] .lv-onb .lv-bgfx i,:root[data-theme="black"] .lv-onb .lv-bgfx i{opacity:.35}
 @media (prefers-reduced-motion:reduce){.lvx-art *{animation:none!important}.lvx-card{opacity:1;transform:rotate(var(--r,0))}}
-:root[data-theme="dark"] .lv-onb em,:root[data-theme="black"] .lv-onb em,:root[data-theme="dark"] #loginModal.lv-auth h1 em,:root[data-theme="black"] #loginModal.lv-auth h1 em{color:#4ade80!important}
-html:root:root body #loginModal.lv-auth .auth-mode-tabs{display:flex!important;gap:.25rem;border-radius:999px!important;padding:.25rem!important}
-html:root:root body #loginModal.lv-auth .auth-mode-tabs .auth-mode-tab{flex:1;border-radius:999px!important;border:0!important;min-height:2.7rem}
-html:root:root body #loginModal.lv-auth .lv-auth-hero{position:relative;padding:.4rem 0 .2rem}
-html:root:root body #loginModal.lv-auth .lv-auth-hero::before{content:"";position:absolute;inset:-2rem -2rem auto -2rem;height:15rem;background:radial-gradient(ellipse at 75% 30%,color-mix(in srgb,#16a34a 22%,transparent),transparent 65%);pointer-events:none;z-index:-1}
-html:root:root body #loginModal.lv-auth .lv-auth-hero h1{font-size:clamp(2.3rem,10.5vw,3rem);letter-spacing:-.04em}
-html:root:root body #loginModal.lv-auth .lv-auth-art{min-height:11.5rem}
-html:root:root body #loginModal.lv-auth .lvx-auth .lvx-logo{width:4.8rem;height:4.8rem}
+:root[data-theme="dark"] .lv-onb em,:root[data-theme="black"] .lv-onb em{color:#4ade80!important}
 /* ===== Admin: pictures, groups, export bar ===== */
 .adm-av,.inv-ic{position:relative;flex:none;width:2.4rem;height:2.4rem;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;color:#fff;font-weight:800;font-size:.9rem;vertical-align:middle}
 .adm-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -8996,32 +8973,6 @@ html body #app .lv-nc{min-height:8.5rem}
 .lv-nc.sk{background:color-mix(in srgb,var(--text) 6%,var(--card,#fff));border-color:transparent;animation:lvStPulse 1.2s ease-in-out infinite}
 html body #app .lv-vd-title{min-height:2.2rem}
 html body #app .vd-page>#vendorCatChips{min-height:2.65rem}
-/* ===== Welcome pages: each page has its own background and matching buttons ===== */
-@property --lv-c1{syntax:"<color>";inherits:true;initial-value:#f9fffc}
-@property --lv-c2{syntax:"<color>";inherits:true;initial-value:#e5f6ee}
-.lv-onb,#loginModal.lv-auth{--lv-c1:#f9fffc;--lv-c2:#e5f6ee;--lv-ac:#0b6e4a;--lv-acd:#4ade80;--lv-b1:#14ad6c;--lv-b2:#3fb97f;--lv-blob:#16a34a;transition:--lv-c1 .6s ease,--lv-c2 .6s ease}
-/* slide 2: royal purple */
-.lv-onb:has(.lv-slide:nth-child(2).on){--lv-c1:#f8f3ff;--lv-c2:#ebe0ff;--lv-ac:#6d28d9;--lv-acd:#c4b5fd;--lv-b1:#7c3aed;--lv-b2:#c084fc;--lv-blob:#a855f7}
-/* slide 3: sunset orange */
-.lv-onb:has(.lv-slide:nth-child(3).on){--lv-c1:#fff8ef;--lv-c2:#ffe8cf;--lv-ac:#c2410c;--lv-acd:#fdba74;--lv-b1:#ea580c;--lv-b2:#fdba74;--lv-blob:#fb923c}
-/* sign-in: ocean blue */
-#loginModal.lv-auth{--lv-c1:#f3f9ff;--lv-c2:#dcecff;--lv-ac:#1d4ed8;--lv-acd:#93c5fd;--lv-b1:#2563eb;--lv-b2:#60a5fa;--lv-blob:#3b82f6}
-html:root:root body .lv-onb,html:root:root body #loginModal.lv-auth,html:root:root body #loginModal.lv-auth .modal-content{background:linear-gradient(180deg,var(--lv-c1),var(--lv-c2))!important}
-html:root:root body #loginModal.lv-auth .modal-content{background:transparent!important}
-html:root:root body .lv-onb .lv-bgfx i,html:root:root body #loginModal.lv-auth .lv-bgfx i{background:var(--lv-blob)!important;opacity:.14!important}
-html:root:root:root:root:root:root body #lvOnb .lv-cta,html:root:root:root:root:root:root body #loginModal.lv-auth #authSubmitBtn{background:linear-gradient(135deg,var(--lv-b1),var(--lv-b2))!important;box-shadow:0 16px 26px -14px var(--lv-b1)!important}
-html:root:root body .lv-onb .lv-eyebrow,html:root:root body .lv-onb .lv-slide-copy h2 em,html:root:root body #loginModal.lv-auth h1 em{color:var(--lv-ac)!important}
-html:root:root body .lv-onb .lv-dot[aria-selected="true"]{background:var(--lv-b1)!important}
-html:root:root body #loginModal.lv-auth .auth-mode-tab.active{background:var(--lv-b1)!important;box-shadow:0 10px 18px -10px var(--lv-b1)!important}
-html:root:root body #loginModal.lv-auth input:focus{border-color:var(--lv-b1)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--lv-b1) 18%,transparent)!important}
-html:root:root body #loginModal.lv-auth .lv-auth-hero::before{background:radial-gradient(ellipse at 75% 30%,color-mix(in srgb,var(--lv-blob) 24%,transparent),transparent 65%)!important}
-html:root:root body .lv-onb .lv-slide-art:not(:has(.lvx-a2))::before{background:radial-gradient(circle,color-mix(in srgb,var(--lv-blob) 24%,transparent),transparent 68%)!important}
-html:root:root body .lv-onb .lvx-card.k2{background:linear-gradient(160deg,var(--lv-b1),var(--lv-ac))!important}
-html:root:root body #loginModal.lv-auth a,html:root:root body #loginModal.lv-auth .auth-link{color:var(--lv-ac)}
-/* dark and black keep their dark background; only the accent and buttons follow the page colour */
-:root[data-theme="dark"] .lv-onb:has(.lv-slide.on),:root[data-theme="dark"] #loginModal.lv-auth{--lv-c1:#0f1714;--lv-c2:#0b1210}
-:root[data-theme="black"] .lv-onb:has(.lv-slide.on),:root[data-theme="black"] #loginModal.lv-auth{--lv-c1:#000;--lv-c2:#000}
-:root[data-theme="dark"] body .lv-onb .lv-eyebrow,:root[data-theme="black"] body .lv-onb .lv-eyebrow,:root[data-theme="dark"] body .lv-onb h2 em,:root[data-theme="black"] body .lv-onb h2 em,:root[data-theme="dark"] body #loginModal.lv-auth h1 em,:root[data-theme="black"] body #loginModal.lv-auth h1 em{color:var(--lv-acd)!important}
 /* carousel: pictures of any shape fit the banner */
 html body #app .home-promotional-slide .hpc-bg{position:absolute;inset:-12%;z-index:0;background-size:cover;background-position:center;filter:blur(26px) brightness(.82) saturate(1.2);transform:scale(1.1)}
 html body #app .home-promotional-slide[data-fit="cover"] img{object-fit:cover!important;width:100%;height:100%}
