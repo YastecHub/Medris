@@ -8174,3 +8174,10 @@ html body .chat-page-wrap .chat-bubble::after{content:"";display:block;clear:bot
 html body .chat-page-wrap .chat-bubble .chat-image-attachment ~ .chat-time{margin:.3rem .1rem -.05rem .6rem}
 html body .chat-page-wrap .chat-media-group .chat-bubble .chat-time{float:none!important;margin:.15rem .45rem .35rem!important;display:block!important}
 html body .chat-page-wrap .chat-media-group .chat-media-group-item:not(:last-child) .chat-time{display:none!important}
+
+/* Offline bar: the header and the page start directly below the red bar instead of sitting under it. The bar covers the
+   status-bar area, so the header drops its own top spacing and moves down by the bar's one text row (1.9rem). */
+#lvOfflineBar{line-height:1rem;white-space:nowrap;overflow:hidden}
+html.lv-offline-on{padding-top:1.9rem}
+html.lv-offline-on body > header{top:calc(1.9rem + env(safe-area-inset-top,0px))!important;padding-top:0!important}
+html.lv-offline-on #levromartHeaderSearchDock{margin-top:1.9rem!important}

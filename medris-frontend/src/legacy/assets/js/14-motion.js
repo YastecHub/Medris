@@ -6558,6 +6558,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var b = document.getElementById("lvOfflineBar");
     if (!b) { b = document.createElement("div"); b.id = "lvOfflineBar"; b.setAttribute("role", "alert"); b.innerHTML = '<i class="fa-solid fa-wifi"></i> No internet connection. What you see may be out of date.'; document.body.appendChild(b); }
     b.classList.toggle("on", !navigator.onLine);
+    document.documentElement.classList.toggle("lv-offline-on", !navigator.onLine);   // the header and page sit below the bar, never under it
   }
   window.addEventListener("online", function () { bar(); try { if (typeof refreshVisibleOrderView === "function") refreshVisibleOrderView(true); } catch (_) {} });
   window.addEventListener("offline", bar);

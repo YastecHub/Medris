@@ -39,7 +39,8 @@ function getOfflineHomeCache() { return offlineCatalog || readOfflineHomeCache()
 let __levroOfflineEventSeen = false;
 function browserLooksOffline() { return __levroOfflineEventSeen && navigator.onLine === false; }
 function offlineHomeNotice() {
-  return `<div class="offline-browse-notice" role="status"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Showing the latest Levromart marketplace saved on this device. You can still browse what was previously loaded.</span></div>`;
+  // The red "No internet connection" bar at the top already says this, so the page itself shows no second message.
+  return "";
 }
 function offlineFilterProducts(products, search, listing, catId, sectorId) {
   const q = String(search || "").trim().toLowerCase();
