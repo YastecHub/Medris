@@ -8821,29 +8821,6 @@ window.lvNoImageHtml = function (seed) {
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { regroupFinance(); } catch (_) {} }); }).observe(document.body, { childList: true, subtree: true });
 })();
 
-/* ===== Home carousel: any uploaded picture fits the banner by itself ===== */
-(function () {
-  "use strict";
-  // The banner is wider than tall. A picture whose shape is close is filled edge to edge; any other shape is shown whole over a soft blurred copy of itself, so there are never bars or stretching. It drifts gently.
-  function slideRatio(slide) { var r = slide.getBoundingClientRect(); return r.height ? r.width / r.height : 1.42; }
-  function fit(img) {
-    var slide = img.closest(".home-promotional-slide"); if (!slide || !img.naturalWidth) return;
-    var r = img.naturalWidth / img.naturalHeight, R = slideRatio(slide), close = Math.abs(Math.log(r / R)) < 0.28;
-    slide.setAttribute("data-fit", close ? "cover" : "contain");
-    if (!close && !slide.querySelector(".hpc-bg")) { var bg = document.createElement("span"); bg.className = "hpc-bg"; bg.setAttribute("aria-hidden", "true"); bg.style.backgroundImage = 'url("' + String(img.currentSrc || img.src).replace(/"/g, "%22") + '")'; slide.insertBefore(bg, slide.firstChild); }
-  }
-  function scan() {
-    document.querySelectorAll(".home-promotional-slide img").forEach(function (img) {
-      if (img.__fit) return; img.__fit = 1;
-      if (img.complete && img.naturalWidth) fit(img); else img.addEventListener("load", function () { fit(img); }, { once: true });
-    });
-  }
-  var raf = 0;
-  new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; scan(); }); }).observe(document.body, { childList: true, subtree: true });
-  window.addEventListener("resize", function () { document.querySelectorAll(".home-promotional-slide img").forEach(function (i) { if (i.naturalWidth) fit(i); }); });
-  scan();
-})();
-
 /* ===== Admin: Orders (every shop's orders, so admins can nudge shops that have not answered) ===== */
 (function () {
   "use strict";
