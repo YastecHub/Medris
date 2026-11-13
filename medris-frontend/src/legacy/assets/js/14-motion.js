@@ -8283,7 +8283,7 @@ window.lvNoImageHtml = function (seed) {
     })();
     try { return await loading; } finally { loading = null; }
   }
-  function unseenCount() { var seen = seenMap(), mine = myVendorId(); return cache.rows.filter(function (s) { return s.vendor && s.vendor_id !== mine && !seen[s.id] && new Date(s.expires_at) > new Date(); }).length; }
+  function unseenCount() { var seen = seenMap(), mine = myVendorId(); return cache.rows.filter(function (s) { return s.vendor && s.vendor_id !== mine && followed(s.vendor_id) && !seen[s.id] && new Date(s.expires_at) > new Date(); }).length; }
   function paintNavBadge() {
     var n = unseenCount();
     document.querySelectorAll(".bottom-nav-item").forEach(function (b) {
@@ -8301,9 +8301,13 @@ window.lvNoImageHtml = function (seed) {
   var nbT = 0;
   new MutationObserver(function () { if (nbT) return; nbT = setTimeout(function () { nbT = 0; paintNavBadge(); }, 150); }).observe(document.body, { childList: true, subtree: true });
   var NOSTATUS = '<svg class="lvst-noic" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/><circle cx="32" cy="32" r="17" fill="currentColor" fill-opacity=".1"/><path d="M26 32h12M32 26v12" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cx="50" cy="14" r="4" fill="#22c55e"/></svg>';
+  // people only see updates from the shops they follow (and their own shop's)
+  function followed(vid) {
+    try { var f = typeof window.followedVendorSet === "function" ? window.followedVendorSet() : null; return !!(f && f.has(String(vid))); } catch (_) { return false; }
+  }
   function groups(rows) {
     var by = {}, seen = seenMap(), mine = myVendorId();
-    rows.forEach(function (s) { if (!s.vendor) return; var g = by[s.vendor_id] || (by[s.vendor_id] = { id: s.vendor_id, vendor: s.vendor, items: [], unseen: 0, latest: 0, own: s.vendor_id === mine }); g.items.push(s); if (!seen[s.id]) g.unseen++; g.latest = Math.max(g.latest, +new Date(s.created_at)); });
+    rows.forEach(function (s) { if (!s.vendor) return; if (s.vendor_id !== mine && !followed(s.vendor_id)) return; var g = by[s.vendor_id] || (by[s.vendor_id] = { id: s.vendor_id, vendor: s.vendor, items: [], unseen: 0, latest: 0, own: s.vendor_id === mine }); g.items.push(s); if (!seen[s.id]) g.unseen++; g.latest = Math.max(g.latest, +new Date(s.created_at)); });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return (b.own - a.own) || ((b.unseen > 0) - (a.unseen > 0)) || (b.latest - a.latest); });
   }
   function ago(d) { var m = Math.max(1, Math.round((Date.now() - new Date(d)) / 60000)); return m < 60 ? m + "m ago" : Math.round(m / 60) + "h ago"; }
@@ -8329,6 +8333,7 @@ window.lvNoImageHtml = function (seed) {
     gs.filter(function (g) { return !g.own; }).forEach(function (g) { h += card(g, false); });
     if (gs.length) h += '<div class="lvu-card lvu-all"><button type="button" class="lvu-hit" data-page aria-label="See all updates"><i class="fa-solid fa-arrow-right"></i><b class="lvu-name">See all</b></button></div>';
     host.hidden = false; try { paintNavBadge(); } catch (_) {}
+    if (!h && !drawStrip.__retry && typeof session !== "undefined" && session) { drawStrip.__retry = 1; setTimeout(function () { paintStrip(); paintNavBadge(); }, 2500); }
     var html = h ? '<div class="lvu-row">' + h + "</div>" : '<div class="lvst-none">' + NOSTATUS + '<span><b>No updates yet</b>When a vendor posts a product it shows here for 24 hours.</span></div>';
     if (host.__h !== html) { host.__h = html; host.innerHTML = html; }
   }
