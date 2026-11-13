@@ -326,7 +326,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "vendorEarnings","vendorWallet","walletHistory","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","suggestionReplies","wishlist","buyerOrders","myEquipmentRequests","orderHistory","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminPayments","adminWalletHistory",
-    "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
+    "adminSupportRequests","adminPasswordResets","adminInventory","adminOrders","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminCampuses","adminLog","adminMonthlyListings","adminConversations","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration","adminR2Optimize"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
@@ -527,6 +527,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPasswordResets": html = await renderAdminPasswordResets(); break;
       case "adminInventory": html = await renderAdminInventory(); break;
+      case "adminOrders": html = await renderAdminOrders(); break;
       case "adminPeople": html = await renderAdminPeople(); break;
       case "adminFeedback": html = await renderAdminFeedback(); break;
       case "vendorSuggestionsInbox": html = await renderVendorSuggestionsInbox(); break;

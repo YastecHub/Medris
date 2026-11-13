@@ -8338,7 +8338,9 @@ window.lvNoImageHtml = function (seed) {
     if (gs.length) h += '<div class="lvu-card lvu-all"><button type="button" class="lvu-hit" data-page aria-label="See all updates"><i class="fa-solid fa-arrow-right"></i><b class="lvu-name">See all</b></button></div>';
     host.hidden = false; try { paintNavBadge(); } catch (_) {}
     if (!h && !drawStrip.__retry && typeof session !== "undefined" && session) { drawStrip.__retry = 1; setTimeout(function () { paintStrip(); paintNavBadge(); }, 2500); }
-    var html = h ? '<div class="lvu-row">' + h + "</div>" : '<div class="lvst-none">' + NOSTATUS + '<span><b>No updates yet</b>When a vendor posts a product it shows here for 24 hours.</span></div>';
+    var real = gs.length + (mine ? 1 : 0), ghosts = Math.max(0, 3 - real), gh = "";
+    for (var gi = 0; gi < ghosts; gi++) gh += '<div class="lvu-card lvu-ghost" aria-hidden="true"><i class="fa-regular fa-image"></i>' + (gi === 0 && !gs.length ? "<b>Updates from shops you follow show here</b>" : "") + "</div>";
+    var html = '<p class="lvu-cap">From shops you follow</p><div class="lvu-row">' + h + gh + "</div>";
     if (host.__h !== html) { host.__h = html; host.innerHTML = html; }
   }
   document.addEventListener("click", function (e) {
@@ -8831,4 +8833,60 @@ window.lvNoImageHtml = function (seed) {
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; scan(); }); }).observe(document.body, { childList: true, subtree: true });
   window.addEventListener("resize", function () { document.querySelectorAll(".home-promotional-slide img").forEach(function (i) { if (i.naturalWidth) fit(i); }); });
   scan();
+})();
+
+/* ===== Admin: Orders (every shop's orders, so admins can nudge shops that have not answered) ===== */
+(function () {
+  "use strict";
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function money(n) { return "₦" + Number(n || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 }); }
+  function ref(id) { return "#" + String(id || "").slice(0, 8).toUpperCase(); }
+  function age(iso) { var m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 1 ? "just now" : m < 60 ? m + " min" : m < 1440 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : Math.floor(m / 1440) + " d"; }
+  function mins(iso) { return Math.round((Date.now() - new Date(iso)) / 60000); }
+  var LABEL = { pending: "Waiting for the shop", confirmed: "Accepted", handed_over: "Out for delivery", completed: "Completed", cancelled: "Cancelled", disputed: "Disputed", payment_unresolved: "Payment check", returned: "Returned" };
+  var tab = "pending", rows = [], timer = 0;
+  var TABS = [["pending", "Pending", "fa-hourglass-half"], ["late", "Not answered (10+ min)", "fa-bell-slash"], ["active", "In progress", "fa-truck-fast"], ["all", "All recent", "fa-list"]];
+  function pick(o) {
+    if (tab === "pending") return o.status === "pending";
+    if (tab === "late") return o.status === "pending" && mins(o.created_at) >= 10;
+    if (tab === "active") return ["confirmed", "handed_over", "payment_unresolved", "disputed"].indexOf(o.status) >= 0;
+    return true;
+  }
+  function card(o) {
+    var v = o.vendor || {}, b = o.buyer || {}, items = o.items || [], first = items[0] && items[0].product, ph = first && first.photos && first.photos[0];
+    var m = mins(o.created_at), hot = o.status === "pending" && m >= 10, phone = v.whatsapp_number || v.phone || "";
+    var title = first ? first.name + (items.length > 1 ? " +" + (items.length - 1) + " more" : "") : "Order";
+    var msg = "Hi " + (v.business_name || "there") + ", you have a new order on Levromart (" + ref(o.id) + ", " + money(o.total_amount) + ") waiting for you. Please open the app to accept it.";
+    var wa = phone ? "https://wa.me/" + String(phone).replace(/\D/g, "").replace(/^0/, "234") + "?text=" + encodeURIComponent(msg) : "";
+    return '<article class="aor' + (hot ? " hot" : "") + '" data-id="' + E(o.id) + '"><button type="button" class="aor-top" data-fold><span class="aor-ph">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<i class="fa-solid fa-box"></i>') + '</span><span class="aor-main"><b>' + E(v.business_name || "Shop") + '</b><small>' + E(title) + " · " + money(o.total_amount) + '</small><small class="aor-age"><i class="fa-regular fa-clock"></i> ' + E(age(o.created_at)) + ' ago · ' + E(ref(o.id)) + '</small></span><span class="aor-st aor-st-' + E(o.status) + '">' + E(LABEL[o.status] || o.status) + '</span><i class="fa-solid fa-chevron-down aor-chev"></i></button>' +
+      '<div class="aor-more"><div class="aor-grid"><div><small>Customer</small><b>' + E(b.name || "Customer") + '</b></div><div><small>Delivery</small><b>' + E((o.delivery_method === "delivery" ? "Delivery" : "Pickup") + (o.delivery_address ? " · " + o.delivery_address : "")) + '</b></div><div><small>Type</small><b>' + E(String(o.order_type || "sale")) + '</b></div><div><small>Shop phone</small><b>' + E(phone || "not listed") + "</b></div></div>" +
+      '<div class="aor-items">' + items.map(function (i) { var p = i.product || {}; return '<div><span>' + E(p.name || "Item") + " × " + E(i.quantity) + "</span><b>" + money(Number(i.unit_price || 0) * Number(i.quantity || 1)) + "</b></div>"; }).join("") + '<div class="aor-tot"><span>Total</span><b>' + money(o.total_amount) + "</b></div></div>" +
+      '<div class="aor-acts">' + (wa ? '<a class="aor-btn go" href="' + E(wa) + '" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Tell the shop</a>' : "") + '<button type="button" class="aor-btn" data-copy="' + E(msg) + '"><i class="fa-regular fa-copy"></i> Copy message</button><button type="button" class="aor-btn" onclick="navigate(\'orderDetail\',{orderId:\'' + E(o.id) + '\'})"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open order</button></div></div></article>';
+  }
+  function paint() {
+    var host = document.getElementById("aorList"); if (!host) return;
+    var list = rows.filter(pick);
+    document.querySelectorAll(".aor-tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === tab); var c = b.querySelector("i.aor-n"); if (c) c.textContent = rows.filter(function (o) { var t = tab; tab = b.dataset.t; var r = pick(o); tab = t; return r; }).length; });
+    host.innerHTML = list.length ? list.map(card).join("") : '<div class="adp-empty"><i class="fa-solid fa-circle-check"></i><strong>' + (tab === "all" ? "No orders yet" : "Nothing waiting here") + "</strong></div>";
+  }
+  async function load() {
+    var r = await sb.from("orders").select("id,status,order_type,total_amount,delivery_method,delivery_address,created_at,buyer:users(name),vendor:vendors(id,business_name,phone,whatsapp_number),items:order_items(quantity,unit_price,product:products(name,photos))").order("created_at", { ascending: false }).limit(200);
+    if (r && !r.error && Array.isArray(r.data)) { rows = r.data; paint(); }
+    return r;
+  }
+  window.renderAdminOrders = async function () {
+    if (!session || !profile || profile.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+    var r = await load();
+    var head = '<h2><i class="fa-solid fa-clipboard-list"></i> Orders</h2>' + adminNavHtml("adminOrders");
+    if (r && r.error) return head + errorStateHtml(r.error);
+    var tabs = '<div class="adp-tabs aor-tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" role="tab" class="adp-tab aor-tab' + (t[0] === tab ? " on" : "") + '" data-t="' + t[0] + '"><span class="fa-solid ' + t[2] + '"></span> ' + t[1] + ' <i class="aor-n"></i></button>'; }).join("") + "</div>";
+    clearInterval(timer); timer = setInterval(function () { if (document.getElementById("aorList") && !document.hidden) load(); else if (!document.getElementById("aorList")) clearInterval(timer); }, 45000);
+    setTimeout(paint, 0);
+    return head + '<div class="adp">' + tabs + '<p class="aor-hint">New orders appear here at once. If a shop has not answered, tap the order and send it a message.</p><div id="aorList"></div></div>';
+  };
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest(".aor-tab"); if (t) { tab = t.dataset.t; paint(); return; }
+    var f = e.target.closest && e.target.closest("[data-fold]"); if (f) { f.closest(".aor").classList.toggle("open"); return; }
+    var c = e.target.closest && e.target.closest("[data-copy]"); if (c) { var txt = c.getAttribute("data-copy"); try { navigator.clipboard.writeText(txt).then(function () { showToast("Message copied.", "success"); }); } catch (_) { showToast("Could not copy.", "error"); } }
+  });
 })();
