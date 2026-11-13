@@ -2,14 +2,8 @@
 // The database table/storage bucket already exist in the Levromart project.
 // These bundled images are the initial launch set. Once an admin publishes them
 // to the carousel table, the homepage becomes fully database-driven.
-const INITIAL_HOME_CAROUSEL_SLIDES = [
-  { id: "bundled-support-local", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png`, alt_text: "Support Local Businesses", sort_order: 10, is_active: true, storage_path: "slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png", bundled: true },
-  { id: "bundled-trusted-services", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/c4eede28-ee51-4bee-bc47-5df821d6ad36.png`, alt_text: "Find Trusted Services", sort_order: 20, is_active: true, storage_path: "slides/c4eede28-ee51-4bee-bc47-5df821d6ad36.png", bundled: true },
-  { id: "bundled-quality-products", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/e2717c23-4210-4d9a-b11d-85ce7b61df5a.png`, alt_text: "Shop Quality Products", sort_order: 30, is_active: true, storage_path: "slides/e2717c23-4210-4d9a-b11d-85ce7b61df5a.png", bundled: true },
-  { id: "bundled-nearby-vendors", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/ff8c621b-ec6c-4ee4-90fe-b6065cfd5619.png`, alt_text: "Explore Nearby Vendors", sort_order: 40, is_active: true, storage_path: "slides/ff8c621b-ec6c-4ee4-90fe-b6065cfd5619.png", bundled: true },
-  { id: "bundled-everything", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/3ca26253-9bce-4c2a-8768-30d51fa97ee5.png`, alt_text: "Everything You Need in One Place", sort_order: 50, is_active: true, storage_path: "slides/3ca26253-9bce-4c2a-8768-30d51fa97ee5.png", bundled: true },
-  { id: "bundled-better-choices", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/b6fe961f-ee94-4fd4-8a84-493fac1ddc06.png`, alt_text: "Better Choices for a Brighter Tomorrow", sort_order: 60, is_active: true, storage_path: "slides/b6fe961f-ee94-4fd4-8a84-493fac1ddc06.png", bundled: true },
-];
+// The old bundled launch banners are gone: only banners an admin has saved in the carousel are shown (nothing flashes before they load).
+const INITIAL_HOME_CAROUSEL_SLIDES = [];
 let homeCarouselSlides = [];
 let homeCarouselIndex = 0;
 

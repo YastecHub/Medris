@@ -13,6 +13,9 @@ import { appOrigin, iconOrigin, requireEnv } from "../../config/env.js";
  * trigger for every new notification (ported from api/notify.js).
  */
 
+/** A sticker comment is stored as ::s:still/2b50::; in a notification it reads as the emoji itself. */
+const cleanBody = (b: string | null | undefined): string => String(b ?? "").replace(/::s:(?:still\/|3d\/)?([0-9a-f-]+)::/gi, (_m, hex: string) => { try { return String.fromCodePoint(...hex.split("-").map((h) => parseInt(h, 16))); } catch { return "sticker"; } });
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -159,7 +162,7 @@ export async function sendPush(data: DataContext, n: NotificationRow): Promise<P
     actions: callActions,
     call: callId ? { id: callId, token: declineToken } : undefined,
     title: n.title,
-    body: n.body,
+    body: cleanBody(n.body),
     url,
     target_view: n.target_view || "home",
     target_params: n.target_params || {},
@@ -172,7 +175,7 @@ export async function sendPush(data: DataContext, n: NotificationRow): Promise<P
     web_push: 8030,
     notification: {
       title: n.title,
-      body: n.body,
+      body: cleanBody(n.body),
       icon: iconUrl,
       badge: "/levromart-badge.png",
       silent: false,
