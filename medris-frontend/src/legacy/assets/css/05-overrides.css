@@ -8310,3 +8310,127 @@ html body .tm-seg button.on{background:var(--card);color:var(--text);box-shadow:
 .va-prefill i{color:var(--primary,#16a34a)}
 .tm-list + .tm-btn,.tm-empty + .tm-btn{margin-top:1rem}
 html body .tm-sheet-close{border:0!important;box-shadow:none!important}
+
+/* ===================== Wallet, PIN and receipts: a standard bank-app look (flat, calm, clear) ===================== */
+:root{--lvf-line:color-mix(in srgb,var(--text,#111) 9%,transparent);--lvf-fill:color-mix(in srgb,var(--text,#111) 6%,transparent);--lvf-mute:var(--text-muted,#6b7280);--lvf-g:var(--primary,#16a34a)}
+/* --- the sheets (Add money, Transfer, Withdraw, Change @tag) --- */
+html body .lvw-sheet-wrap{background:rgba(3,8,12,.58);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+html body .lvw-sheet.lw-sheet{border-radius:28px 28px 0 0;padding:.55rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px));box-shadow:0 -24px 60px rgba(0,0,0,.35)}
+html body .lvw-sheet.lw-sheet .lvw-sheet-head{margin:.1rem 0 .9rem}
+html body .lvw-sheet.lw-sheet .lvw-sheet-head h3{font-size:1.28rem;font-weight:800;letter-spacing:-.02em}
+html body .lvw-sheet.lw-sheet .lvw-sheet-head .lvw-eye{width:2.2rem;height:2.2rem;border-radius:50%}
+html body .lw-sheet .lw-hint{margin:.1rem 0 .9rem;font-size:.85rem;line-height:1.5;color:var(--lvf-mute)}
+html body .lw-sheet .lw-card-box{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0 0 1rem!important;border-radius:0!important}
+html body .lw-sheet .lw-l,html body .lw-sheet .lw-label{display:block;margin:0 0 .45rem;font-size:.8rem;font-weight:700;color:var(--lvf-mute);letter-spacing:.01em}
+html body .lw-sheet .lw-amt,html body .lw-sheet .lw-to,html body .lw-sheet .lw-in:not(.x){display:flex;align-items:center;gap:.55rem;box-sizing:border-box;width:100%;border-radius:18px;border:1.5px solid transparent!important;background:var(--lvf-fill)!important;padding:0 1.05rem;box-shadow:none!important}
+html body .lw-sheet .lw-amt{height:4.3rem;margin:0 0 .35rem}
+html body .lw-sheet .lw-to{height:3.5rem}
+html body .lw-sheet .lw-in:not(.x){height:3.4rem;color:var(--text)}
+html body .lw-sheet .lw-amt:focus-within,html body .lw-sheet .lw-to:focus-within,html body .lw-sheet .lw-in:focus{border-color:var(--lvf-g)!important;background:color-mix(in srgb,var(--lvf-g) 7%,var(--card))!important}
+html body .lw-sheet .lw-amt>span{font-size:1.55rem;font-weight:700;color:var(--lvf-mute)}
+html body .lw-sheet .lw-amt input{flex:1;min-width:0;height:100%;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;font-size:2rem;font-weight:800;letter-spacing:-.02em;color:var(--text);outline:none}
+html body .lw-sheet .lw-amt input::placeholder{color:color-mix(in srgb,var(--text) 26%,transparent)}
+html body .lw-sheet .lw-to>span{font-size:1.2rem;font-weight:800;color:var(--lvf-g)}
+html body .lw-sheet .lw-to input{flex:1;min-width:0;height:100%;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;font-size:1.08rem;font-weight:600;color:var(--text);outline:none}
+html body .lw-sheet .lw-chips{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin:.9rem 0 1.1rem}
+html body .lw-sheet .lw-chips button{height:2.6rem;border:0;border-radius:13px;background:var(--lvf-fill);color:var(--text);font-size:.9rem;font-weight:700}
+html body .lw-sheet .lw-chips button:active{background:color-mix(in srgb,var(--lvf-g) 18%,transparent);color:var(--lvf-g)}
+html body .lw-sheet .lw-go{display:flex;align-items:center;justify-content:center;width:100%;height:3.4rem;margin-top:.4rem;border:0;border-radius:17px;background:var(--lvf-g)!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff;font-size:1.03rem;font-weight:700;letter-spacing:.005em;box-shadow:none}
+html body .lw-sheet .lw-go:disabled{opacity:.45}
+html body .lw-sheet .lw-err{margin:.2rem 0 .6rem;padding:.6rem .8rem;border-radius:13px;font-size:.84rem;line-height:1.4;color:#b42318;background:color-mix(in srgb,#ef4444 10%,var(--card))}
+:root[data-theme="dark"] .lw-sheet .lw-err,:root[data-theme="black"] .lw-sheet .lw-err{color:#fca5a5}
+html body .lw-sheet .lw-bank{display:flex;align-items:center;gap:.85rem;margin:.2rem 0 1rem;padding:.9rem 1rem;border-radius:18px;background:var(--lvf-fill);border:0}
+html body .lw-sheet .lw-bank b{font-size:.98rem}
+html body .lw-sheet .lw-bank small,html body .lw-sheet .lw-bank span:not(.ve-bank-ico){color:var(--lvf-mute)}
+/* recents and favourites */
+html body .lw-sheet .lw-pp-tabs{display:inline-flex;gap:.2rem;padding:.2rem;border-radius:14px;background:var(--lvf-fill)}
+html body .lw-sheet .lw-pp-tabs button{border:0;border-radius:11px;padding:.5rem 1rem;background:transparent;color:var(--lvf-mute);font-weight:700}
+html body .lw-sheet .lw-pp-tabs button.on,html body .lw-sheet .lw-pp-tabs button[aria-selected="true"]{background:var(--card);color:var(--text);box-shadow:0 1px 6px rgba(0,0,0,.14)}
+html body .lw-sheet .lw-pp-row{border:0;border-bottom:1px solid var(--lvf-line);border-radius:0;background:none;padding:.8rem .1rem}
+html body .lw-sheet .lw-pp-row:last-child{border-bottom:0}
+
+/* --- the PIN sheet --- */
+html body .lvpin-wrap{background:rgba(3,8,12,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+html body .lvpin{max-width:480px;border-radius:28px 28px 0 0;padding:.6rem 1.25rem calc(1rem + env(safe-area-inset-bottom,0px));background:var(--card,#fff);color:var(--text,#0f172a);box-shadow:0 -24px 60px rgba(0,0,0,.35)}
+:root[data-theme="dark"] .lvpin,:root[data-theme="black"] .lvpin{background:var(--card,#161b22)}
+html body .lvpin-t{margin:.15rem 0 .9rem;text-align:center;font-size:.92rem;font-weight:700;color:var(--lvf-mute)}
+html body .lvpin-hero{text-align:center;margin:0 0 1.1rem}
+html body .lvpin-hero span{display:block;font-size:.8rem;font-weight:600;color:var(--lvf-mute)}
+html body .lvpin-hero b{display:block;margin-top:.15rem;font-size:2.45rem;font-weight:800;letter-spacing:-.035em;line-height:1.1}
+html body .lvpin-person{margin:.1rem 0 .7rem}
+html body .lvpin-av{width:3.4rem;height:3.4rem}
+html body .lvpin-rows{margin:0 0 .5rem;padding:0;border-radius:0;background:none;border-top:1px solid var(--lvf-line)}
+html body .lvpin-row{padding:.75rem .1rem;border-bottom:1px solid var(--lvf-line);font-size:.9rem}
+html body .lvpin-row span{opacity:1;color:var(--lvf-mute)}
+html body .lvpin-note{margin:.5rem 0 0;font-size:.76rem;line-height:1.45;color:var(--lvf-mute)}
+html body .lvpin-s{display:flex;align-items:center;justify-content:center;gap:.4rem;margin:.9rem 0 .6rem;font-size:.82rem;font-weight:600;opacity:1;color:var(--lvf-mute)}
+html body .lvpin-s i{font-size:.74rem}
+html body .lvpin-dots{gap:.95rem;margin:.2rem 0 .8rem}
+html body .lvpin-dots i{width:.85rem;height:.85rem;border:0;background:color-mix(in srgb,var(--text) 22%,transparent)}
+html body .lvpin-dots i.on{background:var(--lvf-g);transform:scale(1.12)}
+html body .lvpin-keys{max-width:330px;gap:.1rem .5rem}
+html body .lvpin-keys button{height:3.5rem;border:0;border-radius:18px;background:transparent;color:var(--text);font-size:1.65rem;font-weight:600;font-family:inherit}
+html body .lvpin-keys button:active{background:var(--lvf-fill)}
+html body .lvpin-go{height:3.4rem;margin-top:.7rem;border-radius:17px;background:var(--lvf-g);box-shadow:none;font-size:1.03rem;font-weight:700}
+html body .lvpin-go:disabled{opacity:.4}
+html body .lvpin-back{margin-top:.2rem;border:0;background:transparent;color:var(--lvf-mute);font-size:.95rem;font-weight:700;height:2.9rem}
+html body .lvpin-x{background:var(--lvf-fill)}
+
+/* --- the slim banner carousel (Transfer, Withdraw and Transaction history) --- */
+html body .lvpc{border-radius:16px;margin:0 0 1rem}
+html body .lvpc-slide{min-height:0;padding:.85rem 1rem;gap:.6rem;align-items:center}
+html body .lvpc-txt b{font-size:.98rem;letter-spacing:-.01em}
+html body .lvpc-txt span{font-size:.78rem;line-height:1.35;margin-top:.15rem;max-width:15.5rem}
+html body .lvpc-ic img{width:3.4rem;height:3.4rem}
+html body .lvpc-dots{bottom:.45rem;left:auto;right:.9rem;justify-content:flex-end}
+
+/* --- Transaction history page --- */
+html body .lvwh-page .lwh-filters{gap:.5rem}
+html body .lvwh-page .lwh-sel,html body .lvwh-page .lwh-sbtn{border-radius:14px;border:0;background:var(--lvf-fill);box-shadow:none}
+html body .lvwh-page .lwh-card{border-radius:22px;border:1px solid var(--lvf-line);background:var(--card);box-shadow:none}
+html body .lvwh-page .lw-day{margin:.9rem .2rem .3rem;font-size:.78rem;font-weight:700;color:var(--lvf-mute)}
+html body .lvwh-page .lw-list li{padding:.75rem .1rem;border-bottom:1px solid var(--lvf-line)}
+html body .lvwh-page .lw-list li:last-child{border-bottom:0}
+
+/* --- receipt picker (Share receipt) --- */
+.lv-rc{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:flex-end;justify-content:center;background:rgba(3,8,12,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+.lv-rc-in{width:100%;max-width:520px;max-height:94dvh;overflow:auto;box-sizing:border-box;padding:.55rem 1.1rem calc(1rem + env(safe-area-inset-bottom,0px));border-radius:28px 28px 0 0;background:var(--card,#fff);color:var(--text,#111)}
+.lv-rc-grab{display:block;width:2.6rem;height:.3rem;margin:.1rem auto .6rem;border-radius:99px;background:color-mix(in srgb,var(--text) 18%,transparent)}
+.lv-rc-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.lv-rc-h b{font-size:1.2rem;font-weight:800;letter-spacing:-.02em}
+.lv-rc-h button{width:2.2rem;height:2.2rem;border:0;border-radius:50%;background:var(--lvf-fill);color:var(--text)}
+.lv-rc-prev{position:relative;display:grid;place-items:center;max-height:46dvh;overflow:hidden;border-radius:18px;background:var(--lvf-fill);padding:.6rem}
+.lv-rc-prev img{display:block;max-width:100%;max-height:calc(46dvh - 1.2rem);width:auto;height:auto;border-radius:12px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4);transition:opacity .2s}
+.lv-rc-spin{position:absolute;font-size:1.6rem;color:var(--lvf-g);animation:lvrcspin .9s linear infinite}
+@keyframes lvrcspin{to{transform:rotate(360deg)}}
+.lv-rc-looks{display:flex;gap:.55rem;overflow-x:auto;padding:.85rem .1rem .5rem;scrollbar-width:none}
+.lv-rc-looks::-webkit-scrollbar{display:none}
+.lv-rc-looks button{flex:none;display:flex;flex-direction:column;align-items:center;gap:.3rem;border:0;background:none;color:var(--lvf-mute);font:inherit;font-size:.7rem;font-weight:700}
+.lv-rc-looks button i{width:3rem;height:3rem;border-radius:50%;border:3px solid transparent;box-shadow:0 0 0 2px transparent;transition:box-shadow .15s}
+.lv-rc-looks button.on{color:var(--text)}
+.lv-rc-looks button.on i{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--lvf-g)}
+.lv-rc-acts{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:.5rem;margin-top:.5rem}
+.lv-rc-acts button{display:flex;align-items:center;justify-content:center;gap:.4rem;height:3rem;border:0;border-radius:15px;background:var(--lvf-fill);color:var(--text);font:inherit;font-size:.86rem;font-weight:700}
+.lv-rc-acts button.pri{background:var(--lvf-g);color:#fff}
+
+/* --- notification icons: a coloured, slightly raised tile instead of a flat grey circle --- */
+html body .notif-type-icon:not(.lv3d-n){width:2.7rem;height:2.7rem;border-radius:15px!important;background:linear-gradient(145deg,color-mix(in srgb,var(--nti,#2563eb) 78%,#fff),var(--nti,#2563eb))!important;box-shadow:0 6px 14px -6px var(--nti,#2563eb),inset 0 1px 0 rgba(255,255,255,.4)}
+html body .notif-type-icon:not(.lv3d-n) i{color:#fff!important;font-size:1.05rem!important;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+
+/* --- Place order: the Levromart mark is bigger and sits closer to the words --- */
+html body .btn.pd-place-order{display:inline-flex;align-items:center;justify-content:center;gap:.4rem}
+html body .btn.pd-place-order .lv-mark-ico{width:1.7em;height:1.7em;margin:-.15em 0 -.15em -.2em}
+
+/* --- the Orders page: the empty message sits plainly on the page (no card, no glow behind it) --- */
+html body .lvo-empty,html body #app .lvo-empty,html body #app#app .orders-empty,html body #app#app .orders-empty-live{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+html body #app#app .orders-empty-live::before{display:none!important}
+html body .lvo-empty .lvo-empty-ico{background:transparent}
+
+/* --- map: the layers button sits just below the category chips --- */
+html:root:root body #app .vmpage .vmp-fabs{top:9.3rem!important}
+html:root:root body .lw-sheet .lw-chips{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:.55rem!important}
+html:root:root body .lw-sheet .lw-chips button{width:100%!important;margin:0!important}
+html:root:root:root:root:root[data-theme] body #app#app .lvo-empty,html:root:root:root:root:root[data-theme] body #app#app .orders-empty,html:root:root:root:root:root[data-theme] body #app#app .orders-empty-live{background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+html:root:root:root:root:root[data-theme] body #app#app .lvo-empty .lvo-empty-ico{background:transparent!important}
+html:root:root:root:root:root body #app#app .lvo-empty,html:root:root:root:root:root body #app#app .orders-empty{background:transparent!important;border:0!important;box-shadow:none!important}
+html body .btn.pd-place-order .lv-mark-ico{width:3em;height:3em;margin:-.9em -.2em -.9em -.6em}

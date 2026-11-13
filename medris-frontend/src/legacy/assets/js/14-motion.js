@@ -4585,6 +4585,7 @@ window.lvAskCancel = async function (orderId) {
     var STATUS = [["all", "All status"], ["ok", "Successful"], ["wait", "Pending"], ["bad", "Failed"]], status = "all";
     body.innerHTML = '<div class="lwh-filters"><label class="lwh-sel"><select id="lwhType">' + TYPES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join("") + '</select><i class="fa-solid fa-caret-down"></i></label><label class="lwh-sel"><select id="lwhStatus">' + STATUS.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join("") + '</select><i class="fa-solid fa-caret-down"></i></label><button type="button" class="lwh-sbtn" id="lwhSearchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button></div>' +
       '<input class="lwh-search" type="search" placeholder="Search name, @tag or note" autocomplete="off" hidden>' +
+      (window.lvPayCarousel ? window.lvPayCarousel("history") : "") +
       '<div class="lwh-card"><div class="lwh-head"><div><button type="button" class="lwh-pick" id="lwhMonth" aria-label="Pick a month"></button><div class="lwh-io" id="lwhSum"></div></div><button type="button" class="lwh-an" id="lwhAnalysis">Analysis</button></div>' +
       '<span hidden><button type="button" id="lwhPrev"></button><button type="button" id="lwhNext"></button><div class="lwh-chips"></div></span><div id="lwhList"></div></div>';
     function inPeriod(e) { var d = new Date(e.created_at); return d.getFullYear() === month.y && d.getMonth() === month.m && (!day || d.getDate() === day); }
@@ -6273,8 +6274,11 @@ window.lvAdminIconHtml = function (px) { return '<img class="lv3di lv-admin-ico"
     else if (st.locked_minutes > 0) { if (typeof showToast === "function") showToast("Too many wrong PINs. Try again in " + st.locked_minutes + " minute" + (st.locked_minutes === 1 ? "" : "s") + ".", "error"); return null; }
     return new Promise(function (resolve) {
       var person = o.person && (o.person.avatar_url ? '<img class="lvpin-av" src="' + esc(o.person.avatar_url) + '" alt="">' : '<span class="lvpin-av">' + esc(String(o.person.name || o.person.handle || "?").slice(0, 1).toUpperCase()) + "</span>");
-      var m = frame(o.title || "Confirm", '<h3 class="lvpin-t">' + esc(o.title || "Confirm") + "</h3>" + (person ? '<div class="lvpin-person">' + person + "</div>" : "") + rows(o.rows) +
-        (o.note ? '<p class="lvpin-note">' + esc(o.note) + "</p>" : "") + '<p class="lvpin-s">Enter your 6-digit PIN</p><div id="lvpPad"></div>' +
+      // the headline figure (the row marked strong) is shown big, like a bank app; the other rows are a plain list under it
+      var strong = (o.rows || []).filter(function (r) { return r[2]; })[0], rest = (o.rows || []).filter(function (r) { return r !== strong; });
+      var heroHtml = strong ? '<div class="lvpin-hero"><span>' + esc(strong[0]) + "</span><b>" + esc(strong[1]) + "</b></div>" : "";
+      var m = frame(o.title || "Confirm", '<h3 class="lvpin-t">' + esc(o.title || "Confirm") + "</h3>" + (person ? '<div class="lvpin-person">' + person + "</div>" : "") + heroHtml + (rest.length ? rows(rest) : "") +
+        (o.note ? '<p class="lvpin-note">' + esc(o.note) + "</p>" : "") + '<p class="lvpin-s"><i class="fa-solid fa-lock" aria-hidden="true"></i> Enter your 6-digit PIN</p><div id="lvpPad"></div>' +
         '<button type="button" class="lvpin-go" id="lvpGo" disabled>' + esc(o.cta || "Confirm") + '</button><button type="button" class="lvpin-back" id="lvpBack">Go back</button>');
       var go = m.querySelector("#lvpGo"), pin = "";
       var P = pad(m.querySelector("#lvpPad"), null, function (v) { pin = v; go.disabled = v.length !== LEN; });
@@ -7335,18 +7339,93 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
   }
   function ic(name, fa) { return typeof window.lv3dIcon === "function" && window.LV3D && window.LV3D[name] ? window.lv3dIcon(name, 40) : '<i class="fa-solid ' + fa + '"></i>'; }
   function close() { var p = document.getElementById("lvTxPage"); if (p) { p.classList.add("out"); setTimeout(function () { p.remove(); }, 180); } document.body.classList.remove("lv-tx-open"); }
-  async function receiptBlob(s) {
-    var rows = rowsOf(s), W = 750, H = 420 + rows.length * 78, c = document.createElement("canvas"); c.width = W; c.height = H;
-    var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
-    x.fillStyle = "#4f2fd0"; x.fillRect(0, 0, W, 150);
-    x.fillStyle = "#fff"; x.font = "700 44px system-ui,Arial"; x.fillText("Levromart", 40, 92); x.font = "500 26px system-ui,Arial"; x.fillText("Transaction receipt", 40, 128);
-    x.fillStyle = "#12a150"; x.beginPath(); x.arc(W / 2, 235, 40, 0, 7); x.fill(); x.strokeStyle = "#fff"; x.lineWidth = 8; x.lineCap = "round"; x.beginPath(); x.moveTo(W / 2 - 18, 236); x.lineTo(W / 2 - 4, 250); x.lineTo(W / 2 + 20, 220); x.stroke();
-    x.fillStyle = "#111"; x.textAlign = "center"; x.font = "800 56px system-ui,Arial"; x.fillText(nair(s.amountKobo), W / 2, 335); x.font = "500 28px system-ui,Arial"; x.fillStyle = "#555"; x.fillText(s.title || "Successful", W / 2, 378);
-    x.textAlign = "left"; var y = 440;
-    rows.forEach(function (r) { x.fillStyle = "#777"; x.font = "500 26px system-ui,Arial"; x.fillText(r[0], 40, y); x.fillStyle = "#111"; x.font = "600 26px system-ui,Arial"; x.textAlign = "right"; var v = String(r[1]); while (x.measureText(v).width > 470 && v.length > 4) v = v.slice(0, -2); if (v !== String(r[1])) v += "…"; x.fillText(v, W - 40, y); x.textAlign = "left"; x.strokeStyle = "#eee"; x.lineWidth = 2; x.beginPath(); x.moveTo(40, y + 26); x.lineTo(W - 40, y + 26); x.stroke(); y += 78; });
-    return new Promise(function (res) { c.toBlob(res, "image/jpeg", .92); });
+  // receipt looks (like a bank app's: pick one for a normal day, a celebration or something urgent)
+  var RTHEMES = [
+    { id: "classic", name: "Classic", a: "#0f9a69", b: "#06402e", ink: "#ffffff", tint: "#e8f7f0" },
+    { id: "midnight", name: "Midnight", a: "#1e293b", b: "#0b1220", ink: "#ffffff", tint: "#e8edf5" },
+    { id: "royal", name: "Royal", a: "#6d4aff", b: "#2a1a78", ink: "#ffffff", tint: "#eeeaff" },
+    { id: "sunset", name: "Sunset", a: "#ff8a3d", b: "#c2410c", ink: "#ffffff", tint: "#fff0e6" },
+    { id: "rose", name: "Rose", a: "#ec4899", b: "#9d174d", ink: "#ffffff", tint: "#fde8f2" },
+    { id: "urgent", name: "Urgent", a: "#ef4444", b: "#991b1b", ink: "#ffffff", tint: "#fee9e9", tag: "URGENT" },
+    { id: "festive", name: "Merry Christmas", a: "#15803d", m: "#14532d", b: "#b91c1c", ink: "#ffffff", tint: "#eaf6ec", tag: "MERRY CHRISTMAS", deco: "snow" }
+  ];
+  function theme(id) { for (var i = 0; i < RTHEMES.length; i++) if (RTHEMES[i].id === id) return RTHEMES[i]; return RTHEMES[0]; }
+  function savedTheme() { try { return localStorage.getItem("lv-receipt-theme") || "classic"; } catch (_) { return "classic"; } }
+  function rr(x, px, py, w, h, r) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
+  function fit(x, text, maxW) { var v = String(text == null ? "" : text); if (x.measureText(v).width <= maxW) return v; while (v.length > 3 && x.measureText(v + "…").width > maxW) v = v.slice(0, -1); return v + "…"; }
+  async function receiptBlob(s, themeId) {
+    var T = theme(themeId || savedTheme()), rows = rowsOf(s), W = 900, pad = 56, rowH = 84;
+    var headH = 380, bodyTop = headH + 40, H = bodyTop + rows.length * rowH + 250;
+    var c = document.createElement("canvas"); c.width = W; c.height = H; var x = c.getContext("2d");
+    var F = "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif";
+    x.fillStyle = "#f4f6f8"; x.fillRect(0, 0, W, H);
+    // header with the brand colours
+    var g = x.createLinearGradient(0, 0, W, headH); g.addColorStop(0, T.a); if (T.m) g.addColorStop(.5, T.m); g.addColorStop(1, T.b);
+    x.fillStyle = g; x.fillRect(0, 0, W, headH);
+    x.fillStyle = "rgba(255,255,255,.08)"; x.beginPath(); x.arc(W - 90, 60, 190, 0, 7); x.fill(); x.beginPath(); x.arc(70, headH - 20, 130, 0, 7); x.fill();
+    if (T.deco === "snow") { x.fillStyle = "rgba(255,255,255,.85)"; for (var i = 0; i < 46; i++) { var sx = (i * 197) % W, sy = (i * 83) % headH; if (sy < 150 && sx < 560) continue; x.beginPath(); x.arc(sx, sy, 2 + (i % 4), 0, 7); x.fill(); } }
+    x.fillStyle = T.ink; x.textAlign = "left"; x.font = "800 40px " + F; x.fillText("Levromart", pad, 84);
+    x.font = "600 24px " + F; x.globalAlpha = .85; x.fillText("Transaction receipt", pad, 122); x.globalAlpha = 1;
+    if (T.tag) { x.font = "800 22px " + F; var tw = x.measureText(T.tag).width + 44; rr(x, W - pad - tw, 56, tw, 46, 23); x.fillStyle = "rgba(255,255,255,.22)"; x.fill(); x.fillStyle = T.ink; x.textAlign = "center"; x.fillText(T.tag, W - pad - tw / 2, 88); x.textAlign = "left"; }
+    // the amount card
+    var ok = !/not sent|not approved|returned/i.test(s.status || ""), inKind = s.kind === "topup" || s.received;
+    rr(x, pad, 170, W - pad * 2, 250, 36); x.fillStyle = "#fff"; x.shadowColor = "rgba(15,23,42,.16)"; x.shadowBlur = 36; x.shadowOffsetY = 12; x.fill(); x.shadowColor = "transparent"; x.shadowBlur = 0; x.shadowOffsetY = 0;
+    x.fillStyle = ok ? T.a : "#dc2626"; x.beginPath(); x.arc(W / 2, 170, 34, 0, 7); x.fill(); x.fillStyle = "#fff"; x.beginPath(); x.arc(W / 2, 170, 29, 0, 7); x.fill();
+    x.fillStyle = ok ? T.a : "#dc2626"; x.beginPath(); x.arc(W / 2, 170, 24, 0, 7); x.fill();
+    x.strokeStyle = "#fff"; x.lineWidth = 6; x.lineCap = "round"; x.lineJoin = "round"; x.beginPath();
+    if (ok) { x.moveTo(W / 2 - 11, 171); x.lineTo(W / 2 - 3, 180); x.lineTo(W / 2 + 12, 161); } else { x.moveTo(W / 2 - 9, 161); x.lineTo(W / 2 + 9, 179); x.moveTo(W / 2 + 9, 161); x.lineTo(W / 2 - 9, 179); }
+    x.stroke();
+    x.textAlign = "center"; x.fillStyle = "#6b7280"; x.font = "600 26px " + F; x.fillText(s.title || "Successful", W / 2, 250);
+    x.fillStyle = "#0f172a"; x.font = "800 70px " + F; x.fillText((inKind ? "+" : "") + nair(s.amountKobo), W / 2, 330);
+    var pill = String(s.status || "Successful"); x.font = "700 22px " + F; var pw = x.measureText(pill).width + 44; rr(x, W / 2 - pw / 2, 352, pw, 44, 22);
+    x.fillStyle = ok ? T.tint : "#fee2e2"; x.fill(); x.fillStyle = ok ? T.b : "#b91c1c"; x.fillText(pill, W / 2, 382);
+    // the details
+    x.textAlign = "left"; var by = 470;
+    rr(x, pad, by, W - pad * 2, rows.length * rowH + 30, 32); x.fillStyle = "#fff"; x.fill();
+    rows.forEach(function (r, k) {
+      var y = by + 20 + k * rowH + 54;
+      x.font = "500 26px " + F; x.fillStyle = "#6b7280"; x.textAlign = "left"; x.fillText(r[0], pad + 36, y);
+      x.font = "700 27px " + F; x.fillStyle = "#0f172a"; x.textAlign = "right"; x.fillText(fit(x, r[1], 460), W - pad - 36, y);
+      if (k < rows.length - 1) { x.strokeStyle = "#eef0f3"; x.lineWidth = 2; x.beginPath(); x.moveTo(pad + 36, y + 24); x.lineTo(W - pad - 36, y + 24); x.stroke(); }
+    });
+    var fy = by + rows.length * rowH + 30 + 70;
+    x.textAlign = "center"; x.fillStyle = "#94a3b8"; x.font = "600 22px " + F; x.fillText("Thank you for using Levromart", W / 2, fy);
+    x.font = "500 20px " + F; x.fillText("levromart.com", W / 2, fy + 34);
+    return new Promise(function (res) { c.toBlob(res, "image/jpeg", .93); });
   }
+  // the receipt screen: a preview, the look to choose, then Share (WhatsApp and anywhere), Send in a chat, or Save
   async function shareReceipt(s) {
+    var d = document.createElement("div"); d.className = "lv-rc"; var cur = savedTheme(), url = "", blob = null, busy = false;
+    d.innerHTML = '<div class="lv-rc-in" role="dialog" aria-modal="true" aria-label="Share receipt"><span class="lv-rc-grab"></span><div class="lv-rc-h"><b>Share receipt</b><button type="button" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>' +
+      '<div class="lv-rc-prev"><img alt="Receipt preview"><i class="lv-rc-spin fa-solid fa-circle-notch"></i></div>' +
+      '<div class="lv-rc-looks" role="radiogroup" aria-label="Receipt look">' + RTHEMES.map(function (t) { return '<button type="button" role="radio" data-t="' + t.id + '" aria-checked="' + (t.id === cur) + '" class="' + (t.id === cur ? "on" : "") + '"><i style="background:linear-gradient(135deg,' + t.a + ',' + t.b + ')"></i><span>' + E(t.name) + '</span></button>'; }).join("") + '</div>' +
+      '<div class="lv-rc-acts"><button type="button" class="pri" data-a="share"><i class="fa-solid fa-share-nodes"></i> Share</button><button type="button" data-a="chat"><i class="fa-regular fa-comment-dots"></i> Send in chat</button><button type="button" data-a="save"><i class="fa-solid fa-download"></i> Save</button></div></div>';
+    document.body.appendChild(d);
+    var img = d.querySelector(".lv-rc-prev img"), spin = d.querySelector(".lv-rc-spin");
+    async function draw() {
+      spin.hidden = false; img.style.opacity = ".35";
+      var b = await receiptBlob(s, cur); if (!d.isConnected) return;
+      blob = b; if (url) URL.revokeObjectURL(url); url = URL.createObjectURL(b); img.src = url; img.onload = function () { spin.hidden = true; img.style.opacity = ""; };
+    }
+    function done() { if (url) URL.revokeObjectURL(url); d.remove(); }
+    draw();
+    d.onclick = async function (ev) {
+      if (ev.target === d || ev.target.closest("[data-x]")) return done();
+      var t = ev.target.closest("[data-t]");
+      if (t) { cur = t.dataset.t; try { localStorage.setItem("lv-receipt-theme", cur); } catch (_) {} d.querySelectorAll("[data-t]").forEach(function (x) { var on = x === t; x.classList.toggle("on", on); x.setAttribute("aria-checked", on); }); return draw(); }
+      var b = ev.target.closest("[data-a]"); if (!b || busy) return; var a = b.dataset.a; if (!blob) return;
+      var name = "levromart-receipt.jpg", file = null; try { file = new File([blob], name, { type: "image/jpeg" }); } catch (_) {}
+      if (a === "share") {
+        try {
+          if (file && navigator.canShare && navigator.canShare({ files: [file] })) { busy = true; await navigator.share({ files: [file], title: "Levromart receipt", text: (s.title || "Receipt") + " " + nair(s.amountKobo) }); busy = false; showToast("Receipt shared.", "success"); return done(); }
+        } catch (e) { busy = false; if (e && e.name === "AbortError") return; }
+        var a2 = document.createElement("a"); a2.href = url; a2.download = name; document.body.appendChild(a2); a2.click(); a2.remove(); showToast("Receipt saved. Open WhatsApp or any app and attach it.", "info");
+      } else if (a === "save") {
+        var a3 = document.createElement("a"); a3.href = url; a3.download = name; document.body.appendChild(a3); a3.click(); a3.remove(); showToast("Receipt saved to your phone.", "success");
+      } else if (a === "chat") { var keep = cur; done(); sendReceiptInChat(s, keep); }
+    };
+  }
+  async function sendReceiptInChat(s, themeId) {
     var d = document.createElement("div"); d.className = "lv-tx-pick"; d.innerHTML = '<div class="lv-tx-pick-in"><div class="lv-tx-pick-h"><b>Send receipt to</b><button type="button" data-x aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><input type="search" placeholder="Search chats" class="lv-tx-pick-s"><div class="lv-tx-pick-l"><p class="muted" style="padding:1rem;text-align:center">Loading chats…</p></div></div>';
     document.body.appendChild(d);
     var list = [];
@@ -7363,12 +7442,13 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
       var b = ev.target.closest(".lv-tx-pick-r"); if (!b) return;
       b.disabled = true; b.querySelector("b").textContent = "Sending…";
       try {
-        var blob = await receiptBlob(s);
+        var blob = await receiptBlob(s, themeId);
         await sendPreparedChatImage(b.dataset.id, { blob: blob, caption: "", name: "levromart-receipt.jpg", type: "image/jpeg" }, null, null);
         d.remove(); showToast("Receipt sent in the chat.", "success");
       } catch (e) { b.disabled = false; showToast((e && e.message) || "Could not send the receipt.", "error"); d.remove(); }
     };
   }
+  window.__lvReceiptTest = async function (entry, t) { var b = await receiptBlob(fromEntry(entry), t); return await new Promise(function (ok) { var fr = new FileReader(); fr.onload = function () { ok(fr.result); }; fr.readAsDataURL(b); }); };
   window.lvTxPage = async function (spec) {
     var s = spec.entry ? fromEntry(spec.entry) : Object.assign({ status: "Successful", when: Date.now() }, spec);
     if (spec.detail) s.detail = true;
@@ -7484,6 +7564,11 @@ window.lvGoToNewOrder = function (orderId) {
       ["Protected by your PIN", "Nothing leaves your wallet without your 6-digit PIN.", "withdrawal-approved", "#2f6bff,#1a3fa8"],
       ["Save your favourites", "Tap the heart on a receipt to send again in one tap.", "points", "#f59e0b,#b45309"]
     ],
+    history: [
+      ["Share any receipt", "Open a transaction and tap Share receipt to send it on WhatsApp or anywhere.", "moved-up", "#0f9a69,#06402e"],
+      ["See where your money goes", "Tap Analysis for a clear picture of your month.", "stat-views", "#5b3fe0,#2a1a78"],
+      ["Your wallet is protected", "Every payment, transfer and withdrawal needs your 6-digit PIN.", "withdrawal-approved", "#2f6bff,#1a3fa8"]
+    ],
     withdraw: [
       ["To any Nigerian bank", "Send your money to your own account, any time.", "payout-sent", "#0f9a69,#06402e"],
       ["Usually in minutes", "Most withdrawals arrive within minutes.", "tx-onway", "#2f6bff,#1a3fa8"],
@@ -7492,7 +7577,7 @@ window.lvGoToNewOrder = function (orderId) {
   };
   window.lvPayCarousel = function (kind) {
     var list = SLIDES[kind] || SLIDES.send, id = "lvpc" + Math.random().toString(36).slice(2, 7);
-    var ic = function (n) { return window.lv3dIcon && window.LV3D && window.LV3D[n] ? window.lv3dIcon(n, 92) : ""; };
+    var ic = function (n) { return window.lv3dIcon && window.LV3D && window.LV3D[n] ? window.lv3dIcon(n, 64) : ""; };
     setTimeout(function () {
       var el = document.getElementById(id); if (!el) return;
       var track = el.querySelector(".lvpc-track"), dots = el.querySelectorAll(".lvpc-dots i"), i = 0;

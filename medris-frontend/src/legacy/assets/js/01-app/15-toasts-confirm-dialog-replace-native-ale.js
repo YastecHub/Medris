@@ -42,6 +42,11 @@ function notificationSystemIconHtml(n) {
     payout_sent: ["fa-money-bill-transfer", "#059669"], payout_on_hold: ["fa-pause-circle", A], payout_failed: ["fa-triangle-exclamation", R],
     payout_account_changed: ["fa-building-columns", B], withdrawal_approved: ["fa-circle-check", "#059669"], withdrawal_rejected: ["fa-circle-xmark", R],
     withdrawal_requested: ["fa-hand-holding-dollar", V], refund_sent: ["fa-rotate-left", A],
+    team_invite: ["fa-envelope-open-text", V], team_invite_reply: ["fa-user-check", G], team_role_changed: ["fa-user-gear", V],
+    order_followup: ["fa-store", A], order_auto_cancelled: ["fa-hourglass-end", R], order_expired: ["fa-hourglass-end", R],
+    order_declined: ["fa-circle-xmark", R], order_declined_by_vendor: ["fa-circle-xmark", R], chat_request: ["fa-comment-dots", V],
+    wallet_received: ["fa-arrow-down-long", "#16a34a"], wallet_topup: ["fa-plus", "#16a34a"], wallet_hold: ["fa-hourglass-half", A],
+    leaderboard_up: ["fa-arrow-trend-up", G], rank_up: ["fa-arrow-trend-up", G], vendor_of_the_week: ["fa-crown", A],
   };
   let hit = map[T];
   if (T === "order_status_changed") {
@@ -51,7 +56,12 @@ function notificationSystemIconHtml(n) {
   }
   if (!hit && /^payout|^withdraw/.test(T)) hit = ["fa-money-bill-transfer", "#059669"];
   if (!hit && /^refund/.test(T)) hit = ["fa-rotate-left", A];
-  if (!hit) hit = ["fa-bell", GR];
+  if (!hit) {
+    // never a plain grey bell: guess from the wording, otherwise a friendly coloured one
+    const t = (T + " " + title).toLowerCase();
+    hit = /team|invite/.test(t) ? ["fa-envelope-open-text", V] : /order|cart|purchase/.test(t) ? ["fa-bag-shopping", G] : /message|chat/.test(t) ? ["fa-message", B]
+      : /pay|money|wallet|transfer|refund|withdraw/.test(t) ? ["fa-wallet", "#059669"] : /shop|store|vendor/.test(t) ? ["fa-store", B] : ["fa-bell", B];
+  }
   return `<span class="notification-system-icon notif-type-icon" style="--nti:${hit[1]}"><i class="fa-solid ${hit[0]}"></i></span>`;
 }
 function showToast(message, type = "info") {
