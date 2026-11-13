@@ -334,7 +334,7 @@ async function publicUserByEmail(supabaseUrl, key, email) {
 
 async function publicUserByPhone(supabaseUrl, key, phone) {
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/users?phone=eq.${encodeURIComponent(phone)}&select=id,email,phone`,
+    `${supabaseUrl}/rest/v1/users?phone=eq.${encodeURIComponent(phone)}&select=id,email,phone&order=created_at.asc&limit=1`,
     { headers: serviceHeaders(key) }
   );
   if (!response.ok) return null;
@@ -567,6 +567,10 @@ async function createBusiness(body, res) {
     body: JSON.stringify({ business_user_id: created.id, owner_id: me.id, label: name })
   });
   if (!link.ok) { await undo(); return res.status(500).json({ error: "Could not link the business to your account." }); }
+  // a business account may use the same phone number as its owner (migration 0066); until that migration is applied this just does nothing
+  await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${created.id}`, {
+    method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify({ is_business_account: true })
+  }).catch(() => {});
   try {
     const session = await mintSession(supabaseUrl, anonKey, headers, created.id);
     return res.status(201).json({ created: true, userId: created.id, name, session });

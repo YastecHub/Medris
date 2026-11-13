@@ -63,12 +63,14 @@
 </div>
 
 <div id="requiredBuyerPhoneModal" class="modal hidden" data-lock="true">
-  <div class="modal-content" style="max-width:400px;">
-    <div class="lv-ask-ico"><i class="fa-solid fa-phone"></i></div>
-    <h3 class="lv-ask-t">Your phone number</h3>
-    <div id="requiredBuyerPhoneError" class="error-text hidden"></div>
+  <div class="modal-content lv-phone-card" role="dialog" aria-modal="true" aria-labelledby="lvPhoneTitle" style="max-width:400px;">
+    <span class="lv-phone-ico" aria-hidden="true"><i class="fa-solid fa-mobile-screen-button"></i></span>
+    <h3 class="lv-phone-t" id="lvPhoneTitle">Add your phone number</h3>
+    <p class="lv-phone-s">So your orders, reminders and account help can reach you. You can use the same number for all your businesses.</p>
+    <div id="requiredBuyerPhoneError" class="error-text hidden" role="alert"></div>
     <input type="tel" id="requiredBuyerPhoneInput" inputmode="tel" autocomplete="tel" placeholder="08012345678" aria-label="Phone number" />
     <button type="button" class="btn" id="requiredBuyerPhoneSaveBtn" style="width:100%;margin-top:.9rem;" onclick="saveRequiredBuyerPhone()">Continue</button>
+    <button type="button" class="lv-phone-later" id="requiredBuyerPhoneLaterBtn" onclick="requiredBuyerPhoneLater()">I'll do it later</button>
   </div>
 </div>
 

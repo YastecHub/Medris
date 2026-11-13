@@ -54,7 +54,7 @@ export class UsersRepository {
 
   async findByContact(column: "email" | "phone", value: string): Promise<{ id: string; email: string | null; phone: string | null } | null> {
     const target = column === "email" ? users.email : users.phone;
-    const [row] = await this.db.select({ id: users.id, email: users.email, phone: users.phone }).from(users).where(eq(target, value)).limit(1);
+    const [row] = await this.db.select({ id: users.id, email: users.email, phone: users.phone }).from(users).where(eq(target, value)).orderBy(users.createdAt).limit(1);   // oldest first: a business account may share its owner's phone number (migration 0066)
     return row ?? null;
   }
 

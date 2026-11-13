@@ -8181,3 +8181,16 @@ html body .chat-page-wrap .chat-media-group .chat-media-group-item:not(:last-chi
 html.lv-offline-on{padding-top:1.9rem}
 html.lv-offline-on body > header{top:calc(1.9rem + env(safe-area-inset-top,0px))!important;padding-top:0!important}
 html.lv-offline-on #levromartHeaderSearchDock{margin-top:1.9rem!important}
+
+/* "Add your phone number" box: a clean card, a still (never moving) phone icon, a light field and a quiet "I'll do it later" */
+#requiredBuyerPhoneModal .lv-phone-card{text-align:center}
+#requiredBuyerPhoneModal .lv-phone-ico{width:3.6rem;height:3.6rem;margin:.1rem auto .75rem;border-radius:18px;display:grid;place-items:center;font-size:1.5rem;color:#fff;background:linear-gradient(145deg,#22c55e,#15803d);box-shadow:0 8px 20px rgba(22,163,74,.28);animation:none!important}
+#requiredBuyerPhoneModal .lv-phone-ico i{animation:none!important;transform:none!important}
+#requiredBuyerPhoneModal .lv-phone-t{margin:0 0 .35rem!important;font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
+#requiredBuyerPhoneModal .lv-phone-s{margin:0 0 1rem;font-size:.88rem;line-height:1.45;color:var(--text-muted,#667085)}
+#requiredBuyerPhoneModal .error-text{margin:0 0 .7rem;padding:.55rem .7rem;border-radius:12px;font-size:.84rem;line-height:1.35;text-align:left;background:color-mix(in srgb,#ef4444 10%,var(--card));color:#b42318}
+#requiredBuyerPhoneModal input{width:100%;box-sizing:border-box;text-align:center;font-size:1.05rem;font-weight:600;letter-spacing:.02em;background:var(--card);border:1.5px solid color-mix(in srgb,var(--text) 16%,transparent);color:var(--text)}
+#requiredBuyerPhoneModal input:focus{outline:none;border-color:var(--primary,#16a34a);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary,#16a34a) 20%,transparent)}
+#requiredBuyerPhoneModal .lv-phone-later{display:block;width:100%;margin-top:.55rem;padding:.7rem;background:none;border:0;font:inherit;font-size:.92rem;font-weight:600;color:var(--text-muted,#667085);cursor:pointer}
+:root[data-theme="dark"] #requiredBuyerPhoneModal .error-text{color:#fca5a5}
+:root[data-theme="black"] #requiredBuyerPhoneModal .error-text{color:#fca5a5}
