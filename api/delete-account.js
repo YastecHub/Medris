@@ -889,8 +889,8 @@ async function notifIcon(req, res) {
       const logo = await ogCircle(fs.readFileSync(path.join(root, "icon-512.png")), B);
       const disc = Buffer.from(`<svg width="${ring}" height="${ring}"><circle cx="${ring / 2}" cy="${ring / 2}" r="${ring / 2}" fill="#fff"/></svg>`);
       out = await sharp(base).composite([
-        { input: disc, left: S - ring, top: S - ring },
-        { input: logo, left: S - ring + 6, top: S - ring + 6 },
+        { input: disc, left: 0, top: S - ring },
+        { input: logo, left: 6, top: S - ring + 6 },
       ]).png().toBuffer();
     }
     res.setHeader("Content-Type", "image/png");

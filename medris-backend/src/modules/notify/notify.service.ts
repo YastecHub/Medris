@@ -60,7 +60,7 @@ export async function sendNotificationEmailFor(data: DataContext, n: Notificatio
 const TYPE_ICON: [RegExp, string][] = [
   [/payment|paid|payout|refund|commission/, "payment"],
   [/order|offer|request|reminder/, "order"],
-  [/follow/, "follow"],
+  [/follow|vendor_status/, "follow"],
   [/wishlist|favou?rite|like/, "heart"],
   [/review|comment|rating|points|rank_change/, "review"],
   [/admin|vendor_(approved|application|deleted|renamed)|dispute/, "admin"],
@@ -137,6 +137,19 @@ export async function sendPush(data: DataContext, n: NotificationRow): Promise<P
         return true;
       });
   }
+  // a business account's alerts also reach its owner's phone (the phone is signed in to the owner), marked with the business's name
+  let businessName: string | null = null;
+  try {
+    const bo = await data.asService((tx) => new NotifyRepository(tx).businessOwner(n.user_id));
+    if (bo) {
+      businessName = bo.name || "Your business";
+      const ownerSubs = await data.asService((tx) => new NotifyRepository(tx).pushSubscriptions(bo.owner_id));
+      const have = new Set((subs ?? []).map((x) => x.endpoint));
+      subs = [...(subs ?? []), ...(ownerSubs ?? []).filter((x) => !have.has(x.endpoint))];
+    }
+  } catch {
+    /* the business alert is still sent to its own devices */
+  }
   if (!subs || subs.length === 0) return { sent: 0, reason: "no push subscriptions" };
 
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || "";
@@ -161,7 +174,7 @@ export async function sendPush(data: DataContext, n: NotificationRow): Promise<P
   const payload = JSON.stringify({
     actions: callActions,
     call: callId ? { id: callId, token: declineToken } : undefined,
-    title: n.title,
+    title: businessName ? `${businessName}: ${n.title}` : n.title,
     body: cleanBody(n.body),
     url,
     target_view: n.target_view || "home",
@@ -174,7 +187,7 @@ export async function sendPush(data: DataContext, n: NotificationRow): Promise<P
     silent: false,
     web_push: 8030,
     notification: {
-      title: n.title,
+      title: businessName ? `${businessName}: ${n.title}` : n.title,
       body: cleanBody(n.body),
       icon: iconUrl,
       badge: "/levromart-badge.png",
