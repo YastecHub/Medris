@@ -9108,3 +9108,10 @@ html:root body #lvStAdd .lvad .lvad-cth img{width:100%;height:100%;object-fit:co
 html:root body #lvStAdd .lvad .lvad-cin{flex:1;min-width:0;display:flex;flex-direction:column;gap:.25rem}
 html:root body #lvStAdd .lvad .lvad-cin b{font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html:root body #lvStAdd .lvad .lvad-cin .tm-input{height:2.3rem;font-size:.85rem;margin:0}
+
+/* ===== Updates cards: completely flat (no border band, shine, shadow or bevel) ===== */
+html:root:root body #app .lvu-card,html:root:root body #app .lvu-card.lvu-ghost,html:root:root body #app .lvu-card.own{border:0!important;box-shadow:none!important;outline:0!important;filter:none!important;-webkit-mask-image:none!important;background-clip:border-box!important}
+html:root:root body #app .lvu-card.lvu-ghost::before,html:root:root body #app .lvu-card.lvu-ghost::after,html:root:root body #app .lvu-card::before,html:root:root body #app .lvu-card::after{content:none!important;display:none!important;animation:none!important}
+html:root:root body #app .lvu-card .lvu-hit{border:0!important;box-shadow:none!important;outline:0!important;background:none!important}
+html:root:root body #app .lvu-card .lvu-gi{box-shadow:none!important}
+html:root:root body #app .lvu-card .lvu-ring{box-shadow:none!important}
