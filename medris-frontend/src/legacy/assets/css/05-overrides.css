@@ -8861,7 +8861,8 @@ html:root body #loginModal .modal-content input{border-radius:16px!important}
 html:root:root:root:root:root:root body #bottomNav .bottom-nav-item .bn-icon svg.lv-shop-ic{fill:currentColor!important;stroke:none!important;width:25px;height:25px}
 html:root:root:root:root:root:root body #bottomNav .bottom-nav-item .bn-icon svg.lv-shop-ic path{fill:currentColor!important;stroke:none!important}
 /* ===== Welcome slides and sign-in: flat 2D art, light / dark / black ===== */
-.lv-onb .lv-hero,.lv-onb .lv-fb,#loginModal.lv-auth .lv-auth-char,#loginModal.lv-auth .lv-draw,#loginModal.lv-auth .lv-auth-art>.lv-chip{display:none!important}
+/* slide 1 and the sign-in page bring the 3D people back; slide 2 keeps the flat update cards */
+.lv-onb .lv-slide:nth-child(2) .lv-hero,.lvx-a1,.lvx-auth,.lvx-a3 .lvx-steps,.lvx-a3 .pin{display:none!important}
 .lvx-art{position:absolute;inset:0;display:grid;place-items:center;overflow:visible}
 .lvx-ring{position:absolute;left:50%;top:50%;border-radius:50%;transform:translate(-50%,-50%)}
 .lvx-ring.r1{width:min(86%,19rem);aspect-ratio:1;border:1.5px dashed color-mix(in srgb,#16a34a 45%,transparent);animation:lvxSpin 38s linear infinite}
@@ -8934,3 +8935,35 @@ html:root:root body #loginModal.lv-auth .lv-auth-hero::before{content:"";positio
 html:root:root body #loginModal.lv-auth .lv-auth-hero h1{font-size:clamp(2.3rem,10.5vw,3rem);letter-spacing:-.04em}
 html:root:root body #loginModal.lv-auth .lv-auth-art{min-height:11.5rem}
 html:root:root body #loginModal.lv-auth .lvx-auth .lvx-logo{width:4.8rem;height:4.8rem}
+/* Disputes history: each finished case folds up until it is tapped */
+html body .adp-card.adp-done{cursor:pointer;padding-bottom:.9rem}
+html body .adp-card.adp-done .adp-top{margin-bottom:0;position:relative;padding-right:1.6rem}
+html body .adp-card.adp-done .adp-top::after{content:"\f078";font-family:"Font Awesome 6 Free","Font Awesome 5 Free";font-weight:900;position:absolute;right:.1rem;top:.35rem;font-size:.75rem;color:var(--text-muted,#6b7280);transition:transform .25s}
+html body .adp-card.adp-done.open .adp-top::after{transform:rotate(180deg)}
+html body .adp-card.adp-done:not(.open)>.adp-block,html body .adp-card.adp-done:not(.open)>.adp-note,html body .adp-card.adp-done:not(.open)>.adp-row{display:none}
+html body .adp-card.adp-done.open>.adp-block:first-of-type{margin-top:.8rem}
+html body .adp-tab span.fa-clock-rotate-left{margin-right:.3rem;font-size:.8rem}
+
+/* the 3D people, cleaned up: soft disc behind, tidy shadow, centred and never cropped */
+.lv-onb .lv-slide-art:not(:has(.lvx-a2))::before{content:"";position:absolute;left:50%;top:54%;width:min(86%,22rem);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,#16a34a 22%,transparent),transparent 68%);z-index:0}
+.lv-onb .lv-slide:not(:nth-child(2)) .lv-hero{z-index:1;object-fit:contain;filter:drop-shadow(0 26px 26px rgba(8,60,40,.28))}
+.lv-onb .lv-fb{z-index:2}
+#loginModal.lv-auth .lv-auth-char{z-index:1;filter:drop-shadow(0 18px 20px rgba(8,60,40,.28))}
+.lvx-a3{place-items:start center;padding-top:.6rem;z-index:3}
+.lvx-a3 .lvx-wallet{width:min(80%,17rem);padding:.65rem .8rem;box-shadow:0 18px 30px -16px rgba(79,70,229,.85)}
+.lvx-a3 .lvx-wallet b{font-size:1.1rem}
+/* "What's new" tour: purple with a little gold, so it never looks like the normal tour */
+html:root body #lvTour.lvt-news .lvt-sheet{background:linear-gradient(150deg,#2e1065 0%,#4c1d95 62%,#5b21b6 100%)!important;color:#fff!important;border:1px solid rgba(251,191,36,.45)!important;box-shadow:0 24px 50px -16px rgba(76,29,149,.8),0 0 0 1px rgba(251,191,36,.12) inset!important}
+html:root body #lvTour.lvt-news .lvt-sheet h3,html:root body #lvTour.lvt-news .lvt-body{color:#fff!important}
+html:root body #lvTour.lvt-news .lvt-body{color:rgba(255,255,255,.86)!important}
+html:root body #lvTour.lvt-news .lvt-says{color:#fbbf24!important;letter-spacing:.12em;text-transform:uppercase;font-weight:900}
+html:root body #lvTour.lvt-news .lvt-skip{color:rgba(255,255,255,.75)!important}
+html:root body #lvTour.lvt-news .lvt-dot{background:rgba(255,255,255,.28)!important}
+html:root body #lvTour.lvt-news .lvt-dot.on{background:#fbbf24!important}
+html:root body #lvTour.lvt-news .lvt-pri{background:linear-gradient(135deg,#fde68a,#f59e0b)!important;color:#3b0764!important;font-weight:900;box-shadow:0 12px 22px -12px rgba(245,158,11,.9)!important}
+html:root body #lvTour.lvt-news .lvt-ghost{background:rgba(255,255,255,.12)!important;color:#fff!important;border:0!important}
+html:root body #lvTour.lvt-news .lvt-hole{box-shadow:0 0 0 9999px rgba(30,10,60,.72),0 0 0 3px #fbbf24,0 0 24px 6px rgba(251,191,36,.55)!important}
+.lvst-tick{color:#22c55e;font-size:.78em;margin-left:.2rem;vertical-align:baseline}
+.lvu-name .lvst-tick{color:#4ade80}
+.vendor-profile-header-avatar.lvst-chat-live{box-shadow:0 0 0 3px var(--card,#fff),0 0 0 6px #22c55e!important}
+.vendor-profile-header-avatar.lvst-chat-live.lvst-sf-seen{box-shadow:0 0 0 3px var(--card,#fff),0 0 0 6px #9ca3af!important}
