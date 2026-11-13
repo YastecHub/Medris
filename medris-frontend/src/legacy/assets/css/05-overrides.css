@@ -9096,3 +9096,15 @@ html:root body #lvStAdd .lvad .lvad-grid{flex-wrap:wrap;overflow:visible;gap:.7r
 html:root body #lvStAdd .lvad .lvad-t.sel .lvad-ti{outline:3px solid #16a34a;outline-offset:2px}
 html:root body #lvStAdd .lvad .lvad-bar{display:block;padding:.6rem .8rem calc(.8rem + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--bg,#fff) 35%)}
 html:root body #lvStAdd .lvad .lvad-go{width:100%;height:3rem;border-radius:999px;font-size:1rem;font-weight:800;box-shadow:none}
+
+/* ===== Updates top bar slides away while scrolling down; nicer pen; a caption for each product ===== */
+html body.lv-vd-bar > header{transition:transform .28s ease}
+html body.lv-vd-bar.lv-vd-away > header{transform:translateY(-115%)}
+html:root body.lv-vd-bar #lvVdPen.lv-vd-pen{width:38px;height:38px;border-radius:50%!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text,#111) 10%,transparent)}
+html:root body #lvStAdd .lvad .lvad-cr{display:flex;gap:.6rem;align-items:center;padding:.45rem;border-radius:16px;border:1.5px solid transparent;background:color-mix(in srgb,var(--text,#111) 5%,var(--card,#fff))}
+html:root body #lvStAdd .lvad .lvad-cr.on{border-color:#16a34a}
+html:root body #lvStAdd .lvad .lvad-cth{flex:none;width:3rem;height:3rem;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:color-mix(in srgb,var(--text,#111) 8%,transparent)}
+html:root body #lvStAdd .lvad .lvad-cth img{width:100%;height:100%;object-fit:cover}
+html:root body #lvStAdd .lvad .lvad-cin{flex:1;min-width:0;display:flex;flex-direction:column;gap:.25rem}
+html:root body #lvStAdd .lvad .lvad-cin b{font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html:root body #lvStAdd .lvad .lvad-cin .tm-input{height:2.3rem;font-size:.85rem;margin:0}
