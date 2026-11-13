@@ -1,5 +1,5 @@
 -- Migration:  0069_vendor_status_notify_followers
--- Why:        People who follow a shop should hear when it posts a status. They can switch this off per shop with the
+-- Why:        People who follow a shop should hear when it posts an update. They can switch this off per shop with the
 --             existing "new listing" setting in the shop's Follow menu (or mute the shop).
 -- Changes:    AFTER INSERT trigger on public.vendor_statuses adds one 'vendor_status' notification per follower
 --             (one per shop per hour, so posting several statuses does not spam). Skips muted followers and
@@ -16,7 +16,7 @@ begin
   begin
     select business_name, logo_url into v_name, v_logo from public.vendors where id = new.vendor_id;
     insert into public.notifications (user_id, type, title, body, target_view, target_params, actor_name, actor_avatar_url, vendor_id, notification_category, group_key)
-    select f.follower_id, 'vendor_status', coalesce(v_name, 'A shop') || ' posted a status',
+    select f.follower_id, 'vendor_status', coalesce(v_name, 'A shop') || ' posted an update',
            coalesce(nullif(new.caption, ''), 'Tap to see what is new today.'),
            'vendors', jsonb_build_object('status', new.vendor_id), v_name, v_logo, new.vendor_id, 'social',
            'vendor_status:' || new.vendor_id::text || ':' || to_char(now(), 'YYYYMMDDHH24')

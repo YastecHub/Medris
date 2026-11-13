@@ -8627,13 +8627,10 @@ html body #app .vd-page .vd-chips>.active,html body #app .vd-page .vd-chips>[ari
 .lv-nc img,.lv-nc-i{width:3.3rem;height:3.3rem;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:color-mix(in srgb,var(--primary,#16a34a) 15%,var(--card));color:var(--primary,#16a34a);font-weight:800}
 .lv-nc b{font-size:.76rem;font-weight:800;line-height:1.2;margin-top:.3rem;max-height:2.3em;overflow:hidden}
 .lv-nc small{font-size:.72rem;color:var(--text-muted,#6b7280)}
-.lvvd-mapbtn{position:fixed;right:1rem;bottom:calc(5.2rem + env(safe-area-inset-bottom,0px));z-index:900;display:inline-flex;align-items:center;gap:.45rem;height:2.9rem;padding:0 1.2rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-weight:700;font-size:.9rem;box-shadow:0 10px 24px -8px rgba(22,163,74,.7)}
 /* the floating Levi/map pin button is replaced by this Map button on this page */
-body:has(#app .vd-page) #aiChatFab{display:none!important}
 
 /* hourglass: the sand pours as one smooth flowing stream, like water */
-.lv-hg .hg-stream{stroke:var(--hg2);stroke-dasharray:none;animation:lvHgFlow 1.1s ease-in-out infinite;filter:drop-shadow(0 0 1px var(--hg))}
-.lv-hg .hg-stream2{stroke:#fff;opacity:.55;animation:lvHgFlow2 .8s ease-in-out infinite}
+.lv-hg .hg-stream{stroke:var(--hg2);opacity:.5;animation:none}
 @keyframes lvHgFlow{0%,100%{stroke-width:2.2;transform:translateX(-.4px)}50%{stroke-width:2.9;transform:translateX(.4px)}}
 @keyframes lvHgFlow2{0%,100%{transform:translateX(.5px);opacity:.35}50%{transform:translateX(-.5px);opacity:.75}}
 .lv-hg .hg-top{animation:lvHgSurface 2.4s ease-in-out infinite}
@@ -8645,13 +8642,10 @@ html:root:root:root body #app .vd-page>.lv-vd-title{order:1}html:root:root:root 
 html:root:root:root body #app .vd-page>.vd-toprow,html:root:root:root body #app .vd-page #vendorsListingTabs,html:root:root:root body #app .vd-page>.vd-head,html:root:root:root body #app .vd-page>.vd-tools{display:none!important}
 html:root:root:root body #app .vd-page .vd-chip-art,html:root:root:root body #app .vd-page .vd-chip img{display:none!important}
 html:root:root:root body #app .vd-page .vd-chip{padding:0 1rem!important;gap:0!important}
-html:root:root:root body .lvvd-mapbtn{z-index:2147480000}
-html:root:root:root body .mf-fab,html:root:root:root body #lvMapFab{display:none!important}
 html:root:root:root:root body .vd-toprow,html:root:root:root:root body #vendorsListingTabs{display:none!important}
 html:root:root:root:root body #vendorCatChips .vd-chip{background:color-mix(in srgb,var(--text) 8%,transparent)!important;border:0!important;box-shadow:none!important;border-radius:999px!important;color:var(--text-muted,#6b7280)!important;height:2.4rem}
 html:root:root:root:root body #vendorCatChips .vd-chip.active,html:root:root:root:root body #vendorCatChips .vd-chip[aria-pressed="true"]{background:var(--text)!important;color:var(--bg,#fff)!important}
 html:root:root:root:root body #vendorCatChips .vd-chip *{color:inherit!important}
-html body .lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn{position:fixed!important;right:1rem!important;bottom:calc(5.2rem + env(safe-area-inset-bottom,0px))!important;width:auto!important;min-width:6.2rem!important;height:2.9rem!important;min-height:2.9rem!important;padding:0 1.2rem!important;font-size:.9rem!important;line-height:1!important;display:inline-flex!important;transform:none!important;opacity:1!important}
 :root:root:root:root:root:root:root:root body #vendorCatChips .vd-chip.active,:root:root:root:root:root:root:root:root body #vendorCatChips .vd-chip[aria-pressed="true"]{background:var(--text)!important;color:var(--bg,#fff)!important;border:0!important}
 html body #app#app#app#app#app#app .vd-page .vd-seg,html body #app#app#app#app#app#app #vendorsListingTabs,html body #app#app#app#app#app#app .vd-toprow{display:none!important}
 /* ===== Status: empty states with an icon, loading skeleton, nav badge ===== */
@@ -8697,4 +8691,39 @@ html body .lvpv{padding:calc(3.6rem + env(safe-area-inset-top,0px)) 0 1rem}
 .lvpv-nav{position:absolute;top:50%;transform:translateY(-50%);width:2.6rem;height:2.6rem;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:1rem}
 .lvpv-nav.prev{left:.6rem}.lvpv-nav.next{right:.6rem}
 .lvpv.single .lvpv-nav{display:none}
-html body:has([data-lv-body]) .lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn,html body:has(.lvst-v) .lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn,html body:has(.req-lightbox) .lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn{display:none!important}
+/* Near you: steady scrolling, long names cut with dots */
+html body .lv-near-row{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scroll-snap-type:none}
+html body .lv-nc{width:6.6rem;min-width:6.6rem;max-width:6.6rem;overflow:hidden;box-sizing:border-box}
+html body .lv-nc b,html body .lv-nc small{display:block;max-width:100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;max-height:none}
+html body .lv-nc img,html body .lv-nc .lv-nc-i{flex:none}
+/* ===== Updates (WhatsApp style cards) ===== */
+html body #app .vd-page>#lvStStrip{margin:0 0 .3rem;padding:0}
+html body #app .vd-page>.lv-vd-title{margin:.1rem 0 .55rem;font-size:1.7rem}
+.lvu-row{display:flex;gap:.55rem;overflow-x:auto;padding:.1rem .1rem .5rem;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.lvu-row::-webkit-scrollbar{display:none}
+.lvu-card{position:relative;flex:none;width:6.6rem;height:10.2rem;border-radius:18px;overflow:hidden;background:color-mix(in srgb,var(--text) 8%,var(--card,#fff))}
+.lvu-card.sk{animation:lvStPulse 1.2s ease-in-out infinite}
+.lvu-hit{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;background:none;color:#fff;cursor:pointer;text-align:left}
+.lvu-ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.lvu-none{background:linear-gradient(160deg,#16a34a,#0e7a4e)}
+.lvu-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28) 0,transparent 38%,rgba(0,0,0,.62) 100%)}
+.lvu-ring{position:absolute;top:.5rem;left:.5rem;width:2.5rem;height:2.5rem;border-radius:50%;padding:2px;background:#22c55e;display:block}
+.lvu-card.seen .lvu-ring{background:rgba(255,255,255,.55)}
+.lvu-card.own .lvu-ring{background:rgba(255,255,255,.7)}
+.lvu-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;overflow:hidden;border:2px solid #000;background:#2b2b33;color:#fff;font-size:.8rem;font-weight:800;position:relative}
+.lvu-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.lvu-name{position:absolute;left:.55rem;right:.45rem;bottom:.5rem;font-size:.78rem;font-weight:800;line-height:1.15;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lvu-plus{position:absolute;right:.45rem;top:.55rem;width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid #fff;background:#16a34a;color:#fff;display:grid;place-items:center;font-size:.7rem;padding:0}
+.lvu-all .lvu-hit{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;color:var(--text,#111)}
+.lvu-all .lvu-hit i{width:2.4rem;height:2.4rem;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--text) 10%,transparent);font-size:.9rem}
+.lvu-all .lvu-name{position:static;color:var(--text,#111);text-shadow:none}
+
+/* hourglass: water-like pour (a steady column with droplets streaming down and a ripple where it lands) */
+.lv-hg .hg-flow{stroke:var(--hg2);stroke-dasharray:6 3;animation:lvHgDrops .38s linear infinite;opacity:.95}
+.lv-hg .hg-spark{stroke:#fff;stroke-dasharray:.8 7;opacity:.85;animation:lvHgDrops2 .55s linear infinite}
+.lv-hg .hg-splash{fill:var(--hg2);opacity:.7;transform-box:fill-box;transform-origin:center;animation:lvHgRipple .7s ease-out infinite}
+.lv-hg .hg-water{animation:lvHgSway 1.6s ease-in-out infinite;transform-origin:30px 40px}
+@keyframes lvHgDrops{to{stroke-dashoffset:-9}}
+@keyframes lvHgDrops2{to{stroke-dashoffset:-7.8}}
+@keyframes lvHgRipple{0%{transform:scale(.6,.6);opacity:.8}100%{transform:scale(2.2,1.3);opacity:0}}
+@keyframes lvHgSway{0%,100%{transform:skewX(-1.2deg)}50%{transform:skewX(1.2deg)}}
