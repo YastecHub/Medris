@@ -85,6 +85,6 @@ describe("api/delete-account.js: several businesses from one login", () => {
   it("lists the businesses with their set-up status", async () => {
     store.links.push({ owner_id: OWNER, business_user_id: BIZ, label: "Bola Bakes" });
     const res = response(); await handler(post({ action: "list-businesses", accessToken: "tok-owner" }), res);
-    expect(res.body).toEqual({ isBusiness: false, max: 5, businesses: [{ userId: BIZ, name: "Bola Bakes", status: "pending", logo: null, unread: 0 }] });
+    expect(res.body).toEqual({ isBusiness: false, max: 5, businesses: [{ userId: BIZ, name: "Bola Bakes", status: "pending", logo: null, paused: false, unread: 0 }] });
   });
 });

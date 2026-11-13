@@ -329,6 +329,21 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   );
 
   let subs = await subsRes.json();
+  // a business account's alerts also reach its owner's phone, marked with the business's name
+  let businessName = null;
+  try {
+    const lr = await fetch(`${SUPABASE_URL}/rest/v1/business_links?business_user_id=eq.${n.user_id}&select=owner_id,label&limit=1`, { headers: svcHeaders });
+    const link = lr.ok ? (await lr.json())[0] : null;
+    if (link && link.owner_id) {
+      const vr = await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${n.user_id}&select=business_name&limit=1`, { headers: svcHeaders });
+      const vrow = vr.ok ? (await vr.json())[0] : null;
+      businessName = (vrow && vrow.business_name) || link.label || "Your business";
+      const or = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=eq.${link.owner_id}&select=*`, { headers: svcHeaders });
+      const osubs = or.ok ? await or.json() : [];
+      const have = new Set((Array.isArray(subs) ? subs : []).map((x) => x.endpoint));
+      subs = [...(Array.isArray(subs) ? subs : []), ...(Array.isArray(osubs) ? osubs : []).filter((x) => !have.has(x.endpoint))];
+    }
+  } catch (_) { /* its own devices still get it */ }
   if (n.reminder && Array.isArray(subs) && subs.length > 1) {
     // Reminders repeat often: one per push service (newest first) so a phone with the app and a browser tab doesn't buzz twice.
     const seen = new Set();
@@ -380,7 +395,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   const payload = JSON.stringify({
     actions: callActions,
     call: callId ? { id: callId, token: declineToken } : undefined,
-    title: n.title,
+    title: businessName ? `${businessName}: ${n.title}` : n.title,
     body: cleanBody(n.body),
     url,
     target_view: n.target_view || "home",
@@ -393,7 +408,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     silent: false,
     web_push: 8030,
     notification: {
-      title: n.title,
+      title: businessName ? `${businessName}: ${n.title}` : n.title,
       body: cleanBody(n.body),
       icon: iconUrl,
       badge: '/levromart-badge.png',
