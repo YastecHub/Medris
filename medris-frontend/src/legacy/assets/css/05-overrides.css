@@ -5209,7 +5209,6 @@ html:root body .ap-bal{display:flex;gap:.45rem;align-items:center;margin:0 0 .7r
 /* Vendor wallet: a payout taking longer than usual (the reason is shown to admins only) */
 /* (the wallet card is dark green in both themes) */
 html:root body .lvw-card .lvw-paidline.lvw-delayed{color:#fde68a}
-=======
 /* Vendor sign-up ticks ("I'm not a student", "I don't have a matric number yet"): small ticks on the same line as their text */
 html:root:root body .lvv-notstudent,html:root:root body .sv-nodocs,html:root:root body .sv-nomatric{display:flex!important;flex-direction:row!important;align-items:center!important;gap:.7rem!important}
 html:root:root body .sv-nomatric{margin:.6rem 0 .9rem!important;font-weight:600!important;cursor:pointer}
@@ -5307,7 +5306,7 @@ html:root:root:root:root body #app .vd-views,html:root:root:root:root body #app 
 #aiChatFab.lv-levi-away{scale:.15!important;rotate:140deg!important;opacity:0!important;pointer-events:none!important;transition:scale .42s cubic-bezier(.5,0,.8,.4),rotate .42s ease-in,opacity .3s .1s!important}
 #aiChatFab:not(.lv-levi-away){transition:scale .5s cubic-bezier(.2,1.4,.4,1),rotate .5s ease-out,opacity .3s}
 /* The floating map pin */
-.lv-mapfab{position:fixed;z-index:7400;width:60px;height:60px;padding:0;border:0;border-radius:20px;background:transparent;color:#fff;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;scale:.1;rotate:-140deg;opacity:0;animation:mfJump 6s 2s infinite}
+.lvx-mapbtn{position:fixed;z-index:7400;width:60px;height:60px;padding:0;border:0;border-radius:20px;background:transparent;color:#fff;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;scale:.1;rotate:-140deg;opacity:0;animation:mfJump 6s 2s infinite}
 .lv-mapfab.mf-in{scale:1;rotate:0deg;opacity:1;transition:scale .6s cubic-bezier(.2,1.5,.4,1),rotate .6s cubic-bezier(.2,1.2,.4,1),opacity .3s}
 .lv-mapfab.mf-out{scale:.1;rotate:140deg;opacity:0;transition:scale .4s ease-in,rotate .4s ease-in,opacity .3s .1s;animation:none}
 .lv-mapfab.mf-drag{animation:none;scale:1.08}
@@ -8608,3 +8607,50 @@ html body .tm-top{padding-left:.15rem}
 html body .tm-back{margin-left:0!important;width:2.6rem;height:2.6rem;background:color-mix(in srgb,var(--text) 7%,transparent)}
 /* Add to status */
 .lvst-chips button{opacity:1}.lvst-chips button:disabled{color:var(--primary,#16a34a)}
+/* ===================== Vendors page: final feed layout ===================== */
+html body #app .vd-page .vd-seg,html body #app .vd-page .vd-head,html body #app .vd-page .vd-toprow,html body #app .vd-page .vd-tools{display:none!important}
+/* category chips: plain pills, no icons */
+html body #app .vd-page .vd-chips{display:flex;gap:.5rem;overflow-x:auto;padding:.3rem .1rem .6rem;margin:.2rem 0;scrollbar-width:none}
+html body #app .vd-page .vd-chips::-webkit-scrollbar{display:none}
+html body #app .vd-page .vd-chips>*{flex:none;display:inline-flex;align-items:center;height:2.4rem;padding:0 1rem;border:0!important;border-radius:999px!important;background:color-mix(in srgb,var(--text) 8%,transparent)!important;color:var(--text-muted,#6b7280)!important;font-weight:700;font-size:.86rem;box-shadow:none!important;white-space:nowrap}
+html body #app .vd-page .vd-chips>* :is(img,i,svg,.vd-chip-ic,.cat-ic,span.ic){display:none!important}
+html body #app .vd-page .vd-chips>.active,html body #app .vd-page .vd-chips>[aria-pressed="true"],html body #app .vd-page .vd-chips>.on{background:var(--text)!important;color:var(--bg,#fff)!important}
+/* sections */
+.lv-sec{display:flex;align-items:center;justify-content:space-between;padding:.7rem .2rem .45rem}
+.lv-sec b{font-size:1.02rem;font-weight:800}
+.lv-sec button{border:0;background:none;color:var(--primary,#16a34a);font:inherit;font-weight:700;font-size:.82rem}
+.lv-near{margin:0}
+.lv-near .lv-sec{padding-top:.4rem}
+.lv-near-row{display:flex;gap:.65rem;overflow-x:auto;padding:.1rem .1rem .6rem;scrollbar-width:none}
+.lv-near-row::-webkit-scrollbar{display:none}
+.lv-nc{flex:none;width:6.6rem;display:flex;flex-direction:column;align-items:center;gap:.15rem;padding:.8rem .5rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--text) 9%,transparent);background:var(--card);color:var(--text);text-align:center;font:inherit}
+.lv-nc img,.lv-nc-i{width:3.3rem;height:3.3rem;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:color-mix(in srgb,var(--primary,#16a34a) 15%,var(--card));color:var(--primary,#16a34a);font-weight:800}
+.lv-nc b{font-size:.76rem;font-weight:800;line-height:1.2;margin-top:.3rem;max-height:2.3em;overflow:hidden}
+.lv-nc small{font-size:.72rem;color:var(--text-muted,#6b7280)}
+.lvvd-mapbtn{position:fixed;right:1rem;bottom:calc(5.2rem + env(safe-area-inset-bottom,0px));z-index:900;display:inline-flex;align-items:center;gap:.45rem;height:2.9rem;padding:0 1.2rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-weight:700;font-size:.9rem;box-shadow:0 10px 24px -8px rgba(22,163,74,.7)}
+/* the floating Levi/map pin button is replaced by this Map button on this page */
+body:has(#app .vd-page) #aiChatFab{display:none!important}
+
+/* hourglass: the sand pours as one smooth flowing stream, like water */
+.lv-hg .hg-stream{stroke:var(--hg2);stroke-dasharray:none;animation:lvHgFlow 1.1s ease-in-out infinite;filter:drop-shadow(0 0 1px var(--hg))}
+.lv-hg .hg-stream2{stroke:#fff;opacity:.55;animation:lvHgFlow2 .8s ease-in-out infinite}
+@keyframes lvHgFlow{0%,100%{stroke-width:2.2;transform:translateX(-.4px)}50%{stroke-width:2.9;transform:translateX(.4px)}}
+@keyframes lvHgFlow2{0%,100%{transform:translateX(.5px);opacity:.35}50%{transform:translateX(-.5px);opacity:.75}}
+.lv-hg .hg-top{animation:lvHgSurface 2.4s ease-in-out infinite}
+@keyframes lvHgSurface{0%,100%{opacity:1}50%{opacity:.88}}
+
+html:root:root:root body #app .vd-page{display:flex;flex-direction:column}
+html:root:root:root body #app .vd-page>.lv-hero2{display:none!important}
+html:root:root:root body #app .vd-page>.lv-vd-title{order:1}html:root:root:root body #app .vd-page>#lvStStrip{order:2}html:root:root:root body #app .vd-page>#vendorCatChips{order:3}html:root:root:root body #app .vd-page>#lvNear{order:4}html:root:root:root body #app .vd-page>#lvAllHead{order:5}html:root:root:root body #app .vd-page>#vendorsGrid{order:6}html:root:root:root body #app .vd-page>#vendorsMapWrap{order:7}
+html:root:root:root body #app .vd-page>.vd-toprow,html:root:root:root body #app .vd-page #vendorsListingTabs,html:root:root:root body #app .vd-page>.vd-head,html:root:root:root body #app .vd-page>.vd-tools{display:none!important}
+html:root:root:root body #app .vd-page .vd-chip-art,html:root:root:root body #app .vd-page .vd-chip img{display:none!important}
+html:root:root:root body #app .vd-page .vd-chip{padding:0 1rem!important;gap:0!important}
+html:root:root:root body .lvvd-mapbtn{z-index:2147480000}
+html:root:root:root body .mf-fab,html:root:root:root body #lvMapFab{display:none!important}
+html:root:root:root:root body .vd-toprow,html:root:root:root:root body #vendorsListingTabs{display:none!important}
+html:root:root:root:root body #vendorCatChips .vd-chip{background:color-mix(in srgb,var(--text) 8%,transparent)!important;border:0!important;box-shadow:none!important;border-radius:999px!important;color:var(--text-muted,#6b7280)!important;height:2.4rem}
+html:root:root:root:root body #vendorCatChips .vd-chip.active,html:root:root:root:root body #vendorCatChips .vd-chip[aria-pressed="true"]{background:var(--text)!important;color:var(--bg,#fff)!important}
+html:root:root:root:root body #vendorCatChips .vd-chip *{color:inherit!important}
+html body .lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn.lvvd-mapbtn{position:fixed!important;right:1rem!important;bottom:calc(5.2rem + env(safe-area-inset-bottom,0px))!important;width:auto!important;min-width:6.2rem!important;height:2.9rem!important;min-height:2.9rem!important;padding:0 1.2rem!important;font-size:.9rem!important;line-height:1!important;display:inline-flex!important;transform:none!important;opacity:1!important}
+:root:root:root:root:root:root:root:root body #vendorCatChips .vd-chip.active,:root:root:root:root:root:root:root:root body #vendorCatChips .vd-chip[aria-pressed="true"]{background:var(--text)!important;color:var(--bg,#fff)!important;border:0!important}
+html body #app#app#app#app#app#app .vd-page .vd-seg,html body #app#app#app#app#app#app #vendorsListingTabs,html body #app#app#app#app#app#app .vd-toprow{display:none!important}
