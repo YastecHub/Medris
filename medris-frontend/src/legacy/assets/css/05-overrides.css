@@ -8857,3 +8857,6 @@ html:root body #loginModal .modal-content input{border-radius:16px!important}
 .lvvw-row{display:flex;align-items:center;gap:.8rem;padding:.65rem .2rem;border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent)}
 .lvvw-row .lvst-lt{flex:1;min-width:0}
 .lvvw-h{color:#ff3b5c}
+/* the Vendors tab picture is a solid shape: it takes the tab colour (grey, green when active, light in dark mode) like the line icons beside it */
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-item .bn-icon svg.lv-shop-ic{fill:currentColor!important;stroke:none!important;width:25px;height:25px}
+html:root:root:root:root:root:root body #bottomNav .bottom-nav-item .bn-icon svg.lv-shop-ic path{fill:currentColor!important;stroke:none!important}
