@@ -5306,7 +5306,7 @@ html:root:root:root:root body #app .vd-views,html:root:root:root:root body #app 
 #aiChatFab.lv-levi-away{scale:.15!important;rotate:140deg!important;opacity:0!important;pointer-events:none!important;transition:scale .42s cubic-bezier(.5,0,.8,.4),rotate .42s ease-in,opacity .3s .1s!important}
 #aiChatFab:not(.lv-levi-away){transition:scale .5s cubic-bezier(.2,1.4,.4,1),rotate .5s ease-out,opacity .3s}
 /* The floating map pin */
-.lvx-mapbtn{position:fixed;z-index:7400;width:60px;height:60px;padding:0;border:0;border-radius:20px;background:transparent;color:#fff;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;scale:.1;rotate:-140deg;opacity:0;animation:mfJump 6s 2s infinite}
+.lv-mapfab{position:fixed;z-index:7400;width:60px;height:60px;padding:0;border:0;border-radius:20px;background:transparent;color:#fff;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;scale:.1;rotate:-140deg;opacity:0;animation:mfJump 6s 2s infinite}
 .lv-mapfab.mf-in{scale:1;rotate:0deg;opacity:1;transition:scale .6s cubic-bezier(.2,1.5,.4,1),rotate .6s cubic-bezier(.2,1.2,.4,1),opacity .3s}
 .lv-mapfab.mf-out{scale:.1;rotate:140deg;opacity:0;transition:scale .4s ease-in,rotate .4s ease-in,opacity .3s .1s;animation:none}
 .lv-mapfab.mf-drag{animation:none;scale:1.08}
@@ -8759,3 +8759,16 @@ html body #app .vd-page>.lv-vd-title{margin:.1rem 0 .55rem;font-size:1.7rem}
 .lvad-go:disabled{opacity:.5}
 .tm-lst-ph{flex:none;width:3.2rem;height:3.2rem;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text-muted,#6b7280)}
 .tm-lst-ph img{width:100%;height:100%;object-fit:cover}
+/* ===== Turn on notifications: a card that drops down from the top ===== */
+html:root:root body #notifPromptModal.lv-drop{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;align-items:flex-start!important;justify-content:center!important;pointer-events:none;padding:0!important}
+html:root:root body #notifPromptModal.lv-drop .lv-drop-card{pointer-events:auto;width:min(94vw,26rem)!important;max-width:none!important;margin:calc(env(safe-area-inset-top,0px) + .6rem) auto 0!important;padding:.95rem 1rem .85rem!important;border-radius:24px!important;display:grid!important;grid-template-columns:auto 1fr;column-gap:.85rem;row-gap:.7rem;align-items:center;text-align:left!important;background:var(--card,#fff)!important;border:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)!important;box-shadow:0 22px 50px -18px rgba(0,0,0,.5)!important;animation:lvDropIn .55s cubic-bezier(.2,1.25,.4,1) both}
+html:root:root body #notifPromptModal .lv-drop-ic{width:3.4rem!important;height:3.4rem!important;margin:0!important;border-radius:18px!important;display:grid!important;place-items:center;background:linear-gradient(145deg,#2bbb7d,#0e7a4e)!important;box-shadow:0 10px 20px -10px rgba(14,122,78,.8)!important}
+html:root:root body #notifPromptModal .lv-drop-ic::before,html:root:root body #notifPromptModal .lv-drop-ic::after{display:none!important}
+html:root:root body #notifPromptModal .lv-drop-ic svg{transform-origin:50% 8%;animation:lvBellRing 2.6s ease-in-out .6s infinite}
+html:root:root body #notifPromptModal .lv-drop-tx h3{margin:0 0 .15rem!important;font-size:1.05rem!important;font-weight:800}
+html:root:root body #notifPromptModal .lv-drop-tx p{margin:0!important;font-size:.82rem!important;line-height:1.35}
+html:root:root body #notifPromptModal .lv-drop-act{grid-column:1/-1;display:flex!important;gap:.6rem;justify-content:flex-end;margin:0!important}
+html:root:root body #notifPromptModal .lv-drop-act .btn{height:2.5rem;padding:0 1.3rem;border-radius:999px!important;font-weight:800;font-size:.88rem}
+html:root:root body #notifPromptModal .lv-drop-act .btn-outline{border:0!important;background:color-mix(in srgb,var(--text,#111) 8%,transparent)!important;color:var(--text,#111)!important}
+@keyframes lvDropIn{0%{transform:translateY(-130%);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes lvBellRing{0%,60%,100%{transform:rotate(0)}66%{transform:rotate(12deg)}72%{transform:rotate(-10deg)}78%{transform:rotate(7deg)}84%{transform:rotate(-4deg)}}
