@@ -839,19 +839,43 @@ async function lvLoadMyTeams() {
   } catch (_) { window.lvMyTeams = []; window.lvTeamInvites = []; }
   if (window.lvTeamInvites.length) setTimeout(lvShowTeamInvite, 1200);
 }
+// A generated login address (business accounts, phone sign-ups) is never shown to people
+function lvShownEmail(e) { const v = String(e || ""); return /@accounts\.levromart\.app$/i.test(v) ? "" : v; }
+
+// ---------- a small bottom sheet for choices ----------
+function lvSheet(title, sub, actions) {
+  document.getElementById("lvSheet")?.remove();
+  const el = document.createElement("div");
+  el.id = "lvSheet"; el.className = "tm-sheet-wrap";
+  el.innerHTML = `<div class="tm-sheet-dim" data-x></div><div class="tm-sheet" role="dialog" aria-modal="true"><span class="tm-sheet-grab"></span>
+    <h3 class="tm-sheet-t">${esc(title)}</h3>${sub ? `<p class="tm-sheet-s">${esc(sub)}</p>` : ""}
+    ${actions.map((a, i) => `<button type="button" class="tm-sheet-a${a.danger ? " danger" : ""}" data-i="${i}"><i class="fa-solid ${esc(a.icon || "fa-circle")}"></i><span>${esc(a.label)}</span></button>`).join("")}
+    <button type="button" class="tm-sheet-close" data-x>Close</button></div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("on"));
+  const close = () => { el.classList.remove("on"); setTimeout(() => el.remove(), 180); };
+  el.querySelectorAll("[data-x]").forEach((b) => (b.onclick = close));
+  el.querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => { close(); actions[Number(b.getAttribute("data-i"))].run(); }));
+}
+
 // "<Shop> invited you to their team" - the person decides (nobody is added without saying yes)
 function lvShowTeamInvite() {
-  const inv = (window.lvTeamInvites || [])[0];
+  const list = window.lvTeamInvites || [];
+  const inv = list[0];
   if (!inv || document.getElementById("lvInviteModal") || !session) return;
+  const isMgr = inv.role === "manager";
   const m = document.createElement("div");
-  m.id = "lvInviteModal";
-  m.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:1rem;";
-  m.innerHTML = `<div style="background:var(--bg-card,#fff);color:var(--text,#111);border-radius:20px;padding:1.3rem;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)">
-    <div class="tm-av" style="width:60px;height:60px;margin:0 auto .6rem;font-size:1.5rem">${inv.logo_url ? lvAvInner(inv.logo_url, inv.business_name) : '<i class="fa-solid fa-people-group"></i>'}</div>
-    <h3 style="margin:0 0 .3rem">${esc(inv.business_name)}</h3>
-    <p class="muted" style="margin:0 0 1rem">invited you to join their team as <b>${esc(inv.role === "manager" ? "Manager" : "Staff")}</b>.</p>
-    <div class="flex" style="gap:.5rem"><button type="button" class="btn btn-outline" id="lvInvNo" style="flex:1">Decline</button><button type="button" class="btn" id="lvInvYes" style="flex:1">Accept</button></div>
-    <button type="button" id="lvInvLater" style="margin-top:.7rem;background:none;border:0;color:inherit;opacity:.6;font-size:.85rem">Decide later</button></div>`;
+  m.id = "lvInviteModal"; m.className = "lvinv"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
+  m.innerHTML = `<div class="lvinv-card">
+    <div class="lvinv-av">${lvAvInner(inv.logo_url, inv.business_name)}</div>
+    <p class="lvinv-kicker">Team invitation${list.length > 1 ? ` · 1 of ${list.length}` : ""}</p>
+    <h3 class="lvinv-name">${esc(inv.business_name)}</h3>
+    <p class="lvinv-text">has invited you to join their team</p>
+    <span class="lvinv-role"><i class="fa-solid ${isMgr ? "fa-user-gear" : "fa-user-check"}"></i> ${isMgr ? "Manager" : "Staff"}</span>
+    <p class="lvinv-perm">${isMgr ? "You'll help with orders, chats and the shop's listings." : "You'll help with orders and chats."}</p>
+    <div class="lvinv-actions"><button type="button" class="lvinv-no" id="lvInvNo">Decline</button><button type="button" class="lvinv-yes" id="lvInvYes">Accept</button></div>
+    <button type="button" class="lvinv-later" id="lvInvLater">Decide later</button>
+    <p class="lvinv-hint">You can answer later from <b>Team invitations</b> in your profile menu.</p></div>`;
   document.body.appendChild(m);
   const answer = async (accept) => {
     m.querySelectorAll("button").forEach((b) => (b.disabled = true));
@@ -870,7 +894,7 @@ function lvTeamOverlay(id, title, bodyHtml, sub) {
   document.getElementById(id)?.remove();
   const el = document.createElement("div");
   el.id = id; el.className = "tm-page";
-  el.innerHTML = `<div class="tm-wrap"><div class="tm-top"><button type="button" class="tm-back" data-lv-close aria-label="Back"><i class="fa-solid fa-chevron-left"></i></button><div style="min-width:0"><h2 class="tm-title">${esc(title)}</h2>${sub ? `<p class="tm-sub">${esc(sub)}</p>` : ""}</div></div><div data-lv-body>${bodyHtml}</div></div>`;
+  el.innerHTML = `<div class="tm-wrap"><div class="tm-top"><button type="button" class="tm-back" data-lv-close aria-label="Back"><i class="fa-solid fa-chevron-left"></i></button><div class="tm-top-t"><h2 class="tm-title">${esc(title)}</h2>${sub ? `<p class="tm-sub">${esc(sub)}</p>` : ""}</div></div><div data-lv-body>${bodyHtml}</div></div>`;
   document.body.appendChild(el);
   const onPop = () => { el.remove(); window.removeEventListener("popstate", onPop, true); };
   try { history.pushState(Object.assign({}, history.state, { lvOverlay: id }), ""); window.addEventListener("popstate", onPop, true); } catch (_) {}
@@ -889,33 +913,40 @@ async function lvOpenTeamPage() {
   const draw = async () => {
     const { data, error } = await sb.rpc("list_shop_team");
     const rows = Array.isArray(data) ? data : [];
+    const active = rows.filter((m) => m.status !== "pending"), pending = rows.filter((m) => m.status === "pending");
     const body = el.querySelector("[data-lv-body]");
-    const card = (m) => `<div class="tm-card"><div class="tm-row"><div class="tm-av">${lvAvInner(m.avatar_url, m.name)}</div>
+    const member = (m) => `<div class="tm-member"><div class="tm-av">${lvAvInner(m.avatar_url, m.name)}</div>
         <div class="tm-grow"><div class="tm-name">${esc(m.name || "Member")}</div>
-          <div style="margin-top:.2rem"><span class="tm-chip">${esc(LV_ROLE_LABEL[m.role] || m.role)}</span>${m.status === "pending" ? ` <span class="tm-chip amber">Waiting for reply</span>` : ""}</div></div>
-        <button type="button" class="tm-iconbtn" data-rm="${esc(m.user_id)}" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div></div>`;
+          <div class="tm-member-meta"><span class="tm-chip ${m.role === "manager" ? "violet" : ""}">${esc(LV_ROLE_LABEL[m.role] || m.role)}</span>${m.status === "pending" ? `<span class="tm-chip amber">Waiting for reply</span>` : ""}</div></div>
+        <button type="button" class="tm-more" data-more="${esc(m.user_id)}" aria-label="Options for ${esc(m.name || "member")}"><i class="fa-solid fa-ellipsis"></i></button></div>`;
     body.innerHTML = `
       ${error ? `<div class="tm-err">${esc(/not valid/i.test(error.message || "") ? "Teams aren't switched on yet. Please try again shortly." : error.message)}</div>` : ""}
-      ${rows.length ? rows.map(card).join("") : `<div class="tm-card tm-empty"><i class="fa-solid fa-people-group"></i><b>No one on your team yet</b>Invite someone to help with orders and chats.</div>`}
-      <div class="tm-card"><p class="tm-label">Invite someone</p>
-        <input id="lvTeamWho" class="tm-input" type="text" inputmode="email" autocomplete="off" placeholder="E-mail or phone number" />
+      <div class="tm-hero tm-hero-soft"><div class="tm-hero-ic"><i class="fa-solid fa-people-group"></i></div><div><div class="tm-hero-name">${active.length ? `${active.length} ${active.length === 1 ? "person" : "people"} on your team` : "Build your team"}</div><div class="tm-hero-sub">${pending.length ? `${pending.length} invitation${pending.length === 1 ? "" : "s"} waiting for a reply` : "Share the work of running your shop"}</div></div></div>
+      ${active.length ? `<p class="tm-label">Members</p><div class="tm-list">${active.map(member).join("")}</div>` : ""}
+      ${pending.length ? `<p class="tm-label">Waiting for a reply</p><div class="tm-list">${pending.map(member).join("")}</div>` : ""}
+      ${!rows.length ? `<div class="tm-empty"><i class="fa-solid fa-user-plus"></i><b>No one on your team yet</b>Invite someone below to help with orders and chats.</div>` : ""}
+      <p class="tm-label">Invite someone</p>
+      <div class="tm-card">
+        <input id="lvTeamWho" class="tm-input" type="text" inputmode="email" autocomplete="off" placeholder="Their e-mail or phone number" />
         <div class="tm-roles" id="lvTeamRoles">
-          <button type="button" class="tm-role on" data-role="staff"><b>Staff</b><span>Orders and chats</span></button>
-          <button type="button" class="tm-role" data-role="manager"><b>Manager</b><span>Orders, chats, listings</span></button></div>
+          <button type="button" class="tm-role on" data-role="staff"><i class="fa-solid fa-user-check"></i><b>Staff</b><span>Orders and chats</span></button>
+          <button type="button" class="tm-role" data-role="manager"><i class="fa-solid fa-user-gear"></i><b>Manager</b><span>Orders, chats and listings</span></button></div>
         <div id="lvTeamErr" class="tm-err hidden"></div>
-        <button type="button" class="tm-btn block" id="lvTeamAdd"><i class="fa-regular fa-paper-plane"></i> Send invitation</button></div>
-      <div class="tm-card"><div class="tm-row"><div class="tm-av" style="background:rgba(31,138,91,.14);color:#1f8a5b"><i class="fa-solid fa-store"></i></div>
-        <div class="tm-grow"><div class="tm-name">Another business?</div><div class="tm-sub">Add it to this account</div></div>
-        <button type="button" class="tm-btn sm" id="lvTeamAddBiz"><i class="fa-solid fa-plus"></i> Add</button></div></div>`;
+        <button type="button" class="tm-btn block" id="lvTeamAdd"><i class="fa-regular fa-paper-plane"></i> Send invitation</button>
+        <p class="tm-fine">They'll get a notification and must accept before they can see anything. Wallet, bank details and settings always stay with you.</p></div>`;
     let role = "staff";
     body.querySelectorAll("[data-role]").forEach((b) => (b.onclick = () => { role = b.getAttribute("data-role"); body.querySelectorAll("[data-role]").forEach((x) => x.classList.toggle("on", x === b)); }));
-    body.querySelectorAll("[data-rm]").forEach((b) => (b.onclick = async () => {
-      const ok = await showConfirmDialog("They will lose access to your shop.", { title: "Remove this person?", okLabel: "Remove" });
-      if (!ok) return;
-      const r = await sb.rpc("remove_shop_team_member", { p_user_id: b.getAttribute("data-rm") });
-      if (r.error) showToast(r.error.message, "error"); else { showToast("Removed.", "success"); draw(); }
+    body.querySelectorAll("[data-more]").forEach((b) => (b.onclick = () => {
+      const uid = b.getAttribute("data-more"); const m = rows.find((x) => x.user_id === uid); if (!m) return;
+      const acts = [];
+      if (m.status !== "pending") {
+        acts.push(m.role === "manager"
+          ? { label: "Make staff", icon: "fa-arrow-down", run: () => setRole(uid, "staff", m.name) }
+          : { label: "Make manager", icon: "fa-arrow-up", run: () => setRole(uid, "manager", m.name) });
+      }
+      acts.push({ label: m.status === "pending" ? "Cancel invitation" : "Remove from team", icon: "fa-user-minus", danger: true, run: () => removeMember(uid, m.status === "pending") });
+      lvSheet(m.name || "Member", `${LV_ROLE_LABEL[m.role] || m.role}${m.status === "pending" ? " · waiting for a reply" : ""}`, acts);
     }));
-    byId("lvTeamAddBiz").onclick = () => lvOpenAddBusiness();
     byId("lvTeamAdd").onclick = async () => {
       const err = byId("lvTeamErr"); err.classList.add("hidden");
       const btn = byId("lvTeamAdd"); btn.disabled = true;
@@ -926,22 +957,63 @@ async function lvOpenTeamPage() {
       draw();
     };
   };
+  const setRole = async (uid, role, name) => {
+    const r = await sb.rpc("set_shop_team_role", { p_user_id: uid, p_role: role });
+    if (r.error) showToast(r.error.message, "error"); else showToast(role === "manager" ? `${name || "They"} is now a manager.` : `${name || "They"} is now staff.`, "success");
+    draw();
+  };
+  const removeMember = async (uid, isPending) => {
+    const ok = await showConfirmDialog(isPending ? "The invitation will be cancelled." : "They will lose access to your shop.", { title: isPending ? "Cancel this invitation?" : "Remove this person?", okLabel: isPending ? "Cancel invitation" : "Remove" });
+    if (!ok) return;
+    const r = await sb.rpc("remove_shop_team_member", { p_user_id: uid });
+    if (r.error) showToast(r.error.message, "error"); else { showToast(isPending ? "Invitation cancelled." : "Removed.", "success"); draw(); }
+  };
   draw();
 }
 
 // ---------- Several businesses from one login ----------
 // "Add business" creates another business account linked to this login (server: api/delete-account.js). The owner switches
-// between them without logging in again; each business keeps its own earnings, bank details and verification.
-window.lvBiz = window.lvBiz || { isBusiness: false, count: 0 };
+// between them without logging in again; each business keeps its own earnings, bank details, team and verification.
+window.lvBiz = window.lvBiz || { isBusiness: false, count: 0, unread: 0, list: [], max: 5 };
 async function lvLoadBusinessLinks() {
   try {
-    if (!session) { window.lvBiz = { isBusiness: false, count: 0 }; return; }
+    if (!session) { window.lvBiz = { isBusiness: false, count: 0, unread: 0, list: [], max: 5 }; return; }
     const { data, error } = await sb.from("business_links").select("business_user_id, owner_id");
-    if (error || !Array.isArray(data)) { window.lvBiz = { isBusiness: false, count: 0 }; return; }
+    if (error || !Array.isArray(data)) { window.lvBiz = { isBusiness: false, count: 0, unread: 0, list: [], max: 5 }; return; }
     const me = session.user.id;
-    window.lvBiz = { isBusiness: data.some((l) => l.business_user_id === me), count: data.filter((l) => l.owner_id === me).length };
-  } catch (_) { window.lvBiz = { isBusiness: false, count: 0 }; }
+    const isBusiness = data.some((l) => l.business_user_id === me), count = data.filter((l) => l.owner_id === me).length;
+    window.lvBiz = Object.assign({ unread: 0, list: [], max: 5 }, { isBusiness, count });
+    if (isBusiness || count > 0) {
+      // the other accounts' pictures, state and unread notifications (only asked for people who actually have businesses)
+      try {
+        const d = await lvBizCall("list-businesses");
+        const list = Array.isArray(d.businesses) ? d.businesses : [];
+        window.lvBiz = { isBusiness: !!d.isBusiness, count: d.isBusiness ? 0 : list.length, list, owner: d.owner || null, max: d.max || 5, unread: list.reduce((n, b) => n + Number(b.unread || 0), 0), at: Date.now() };
+      } catch (_) {}
+    }
+  } catch (_) { window.lvBiz = { isBusiness: false, count: 0, unread: 0, list: [], max: 5 }; }
+  try { lvPaintBizBadge(); } catch (_) {}
 }
+// Instagram-style: a small number on your picture when your other accounts have something new
+function lvPaintBizBadge() {
+  const b = document.getElementById("avatarBtn"); if (!b) return;
+  const n = Number((window.lvBiz && window.lvBiz.unread) || 0);
+  let d = b.querySelector(".lv-biz-dot");
+  if (!n) { if (d) d.remove(); return; }
+  if (!d) { d = document.createElement("span"); d.className = "lv-biz-dot"; b.appendChild(d); }
+  d.textContent = n > 9 ? "9+" : String(n);
+}
+(function () {
+  const u0 = window.updateAuthUI;
+  if (typeof u0 === "function" && !u0.__lvbiz) {
+    const u1 = function () { const r = u0.apply(this, arguments); try { lvPaintBizBadge(); } catch (_) {} return r; };
+    u1.__lvbiz = true; window.updateAuthUI = u1; try { updateAuthUI = u1; } catch (_) {}
+  }
+  setInterval(() => {
+    if (document.visibilityState !== "visible" || typeof session === "undefined" || !session || !window.lvBiz || !(window.lvBiz.isBusiness || window.lvBiz.count > 0)) return;
+    lvLoadBusinessLinks().then(() => { try { updateAuthUI(); } catch (_) {} });
+  }, 90000);
+})();
 async function lvBizCall(action, extra) {
   const r = await fetch("/api/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ action, accessToken: session.access_token }, extra || {})) });
   const d = await r.json().catch(() => ({}));
@@ -962,12 +1034,13 @@ function lvAfterSwitch() {
 function lvOpenAddBusiness() {
   if (!session) return;
   const el = lvTeamOverlay("lvAddBiz", "Add a business", `
-    <div class="tm-card"><div class="tm-row" style="margin-bottom:.9rem"><div class="tm-av" style="background:rgba(31,138,91,.14);color:#1f8a5b"><i class="fa-solid fa-store"></i></div>
-      <div class="tm-grow"><div class="tm-name">New business</div><div class="tm-sub">Its own shop, earnings and bank details</div></div></div>
-      <input id="lvBizName" class="tm-input" type="text" maxlength="80" placeholder="Business name" autocomplete="off" />
+    <div class="tm-hero tm-hero-soft"><div class="tm-hero-ic"><i class="fa-solid fa-store"></i></div><div><div class="tm-hero-name">A new business</div><div class="tm-hero-sub">Its own shop, orders, earnings, bank details and team</div></div></div>
+    <div class="tm-card">
+      <label class="tm-field-l" for="lvBizName">Business name</label>
+      <input id="lvBizName" class="tm-input" type="text" maxlength="80" placeholder="e.g. Book Hub" autocomplete="off" />
       <div id="lvBizErr" class="tm-err hidden"></div>
-      <button type="button" class="tm-btn block" id="lvBizGo" style="margin-top:.8rem">Create business</button></div>
-    <p class="tm-sub" style="padding:0 .3rem">You can switch between your businesses any time from your profile menu, without logging in again.</p>`);
+      <button type="button" class="tm-btn block" id="lvBizGo" style="margin-top:.9rem">Create business</button></div>
+    <p class="tm-fine" style="padding:0 .4rem">Your details are filled in for you. You can switch between your businesses any time from <b>Businesses</b> in your profile menu, without logging in again.</p>`);
   byId("lvBizGo").onclick = async () => {
     const name = byId("lvBizName").value.trim(); const err = byId("lvBizErr"); err.classList.add("hidden");
     if (name.length < 2) { err.textContent = "Enter the business name."; err.classList.remove("hidden"); return; }
@@ -982,27 +1055,52 @@ function lvOpenAddBusiness() {
 }
 async function lvOpenSwitchBusiness() {
   if (!session) return;
-  const el = lvTeamOverlay("lvSwitchBiz", "Switch business", `<p class="muted">Loading…</p>`);
+  const el = lvTeamOverlay("lvSwitchBiz", "Businesses", `<p class="muted">Loading…</p>`, "Switch between your accounts");
   const body = el.querySelector("[data-lv-body]");
   const chip = (st) => st === "verified" ? `<span class="tm-chip">Verified</span>` : st === "setup_needed" ? `<span class="tm-chip amber">Set up needed</span>` : `<span class="tm-chip blue">Under review</span>`;
+  const badge = (n) => (Number(n) > 0 ? `<span class="tm-unread" aria-label="${Number(n)} new">${Number(n) > 99 ? "99+" : Number(n)}</span>` : "");
   try {
     const d = await lvBizCall("list-businesses");
+    const max = d.max || 5;
     const go = async (userId, view, btn) => {
       btn.style.opacity = ".6"; btn.disabled = true;
       try { const r = await lvBizCall("switch-business", { targetUserId: userId }); await lvUseSession(r.session, view); }
       catch (e) { btn.style.opacity = ""; btn.disabled = false; showToast(e.message, "error"); }
     };
     if (d.isBusiness) {
-      const owner = d.businesses[0];
-      body.innerHTML = `<button type="button" class="tm-card tm-row" style="width:100%;text-align:left;cursor:pointer;color:inherit" data-go="${esc(owner.userId)}" data-view="home"><div class="tm-av"><i class="fa-solid fa-arrow-left"></i></div><div class="tm-grow"><div class="tm-name">Back to ${esc(owner.name)}</div><div class="tm-sub">Your main account</div></div></button>`;
+      const owner = d.businesses[0] || { userId: "", name: "your main account", logo: null, unread: 0 };
+      body.innerHTML = `<p class="tm-label">You are in a business</p>
+        <button type="button" class="tm-biz" data-go="${esc(owner.userId)}" data-view="home"><div class="tm-av">${lvAvInner(owner.logo, owner.name)}</div><div class="tm-grow"><div class="tm-name">Back to ${esc(owner.name)}</div><div class="tm-member-meta"><span class="tm-chip grey">Your main account</span></div></div>${badge(owner.unread)}<i class="fa-solid fa-chevron-right tm-go"></i></button>
+        <p class="tm-fine" style="padding:0 .4rem">Orders, earnings, bank details and the team of this business are separate from your main account.</p>`;
     } else {
-      body.innerHTML = (d.businesses.length ? d.businesses.map((b) => `<button type="button" class="tm-card tm-row" style="width:100%;text-align:left;cursor:pointer;color:inherit" data-go="${esc(b.userId)}" data-view="${b.status === "setup_needed" ? "vendorApply" : "vendorDashboard"}"><div class="tm-av">${lvInitial(b.name)}</div><div class="tm-grow"><div class="tm-name">${esc(b.name)}</div><div style="margin-top:.2rem">${chip(b.status)}</div></div><i class="fa-solid fa-chevron-right" style="opacity:.4"></i></button>`).join("") : `<div class="tm-card tm-empty"><i class="fa-solid fa-store"></i><b>No other businesses yet</b>Add one to run it from this login.</div>`) +
-        `<button type="button" class="tm-btn ghost block" id="lvSwAdd"><i class="fa-solid fa-plus"></i> Add business</button>`;
+      const list = d.businesses || [];
+      const room = list.length < max;
+      body.innerHTML = `<div class="tm-hero tm-hero-soft"><div class="tm-hero-ic"><i class="fa-solid fa-store"></i></div><div><div class="tm-hero-name">${list.length} of ${max} businesses</div><div class="tm-hero-sub">${room ? "Add up to " + (max - list.length) + " more on this login" : "You've reached the limit of " + max}</div></div></div>
+        ${list.length ? `<p class="tm-label">Your businesses</p><div class="tm-list">${list.map((b) => `<button type="button" class="tm-biz" data-go="${esc(b.userId)}" data-view="${b.status === "setup_needed" ? "vendorApply" : "vendorDashboard"}"><div class="tm-av">${lvAvInner(b.logo, b.name)}</div><div class="tm-grow"><div class="tm-name">${esc(b.name)}</div><div class="tm-member-meta">${chip(b.status)}</div></div>${badge(b.unread)}<i class="fa-solid fa-chevron-right tm-go"></i></button>`).join("")}</div>` : `<div class="tm-empty"><i class="fa-solid fa-store"></i><b>No other businesses yet</b>Add one to run a second shop from this login.</div>`}
+        <button type="button" class="tm-btn block${room ? "" : " ghost"}" id="lvSwAdd" ${room ? "" : "disabled"}><i class="fa-solid fa-plus"></i> Add business</button>`;
       byId("lvSwAdd").onclick = () => lvOpenAddBusiness();
     }
     body.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.getAttribute("data-go"), b.getAttribute("data-view"), b)));
+    // opening this page refreshes the badge
+    window.lvBiz = Object.assign({}, window.lvBiz, { unread: (d.businesses || []).reduce((n, b) => n + Number(b.unread || 0), 0), list: d.businesses || [] });
+    try { lvPaintBizBadge(); updateAuthUI(); } catch (_) {}
   } catch (e) { body.innerHTML = `<div class="tm-err">${esc(e.message)}</div>`; }
 }
+// A business's shop application starts with the owner's phone, WhatsApp, city and CAC number filled in
+(function () {
+  new MutationObserver(function () {
+    const el = document.getElementById("vaPhone");
+    if (!el || el.dataset.lvPre) return;
+    el.dataset.lvPre = "1";
+    try {
+      const o = window.lvBiz && window.lvBiz.isBusiness && window.lvBiz.owner; if (!o) return;
+      const put = (id, v) => { const x = document.getElementById(id); if (x && !String(x.value || "").trim() && v) x.value = v; };
+      put("vaPhone", o.phone); put("vaWhatsapp", o.whatsapp); put("vaCac", o.cac); put("vaBusinessName", profile && profile.name);
+      const c = document.getElementById("vaCity"); if (c && o.city && /^lagos$/i.test(String(c.value || "").trim())) c.value = o.city;
+      const first = document.querySelector(".va-sec"); if (first && !document.getElementById("vaPrefillNote")) first.insertAdjacentHTML("beforebegin", '<div id="vaPrefillNote" class="va-prefill"><i class="fa-solid fa-wand-magic-sparkles"></i> We filled in your details from your main account. Check them and submit.</div>');
+    } catch (_) {}
+  }).observe(document.body, { childList: true, subtree: true });
+})();
 
 // ---------- Team workspace (a team member working for a shop) ----------
 function lvTeamOrderCard(o) {

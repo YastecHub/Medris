@@ -58,6 +58,33 @@ describe("shop team (rpc)", () => {
     expect((await rpc(memberT, "get_team_shop_orders", { p_vendor_id: shop.id })).status).toBeGreaterThanOrEqual(400);
   });
 
+  it("the owner promotes staff to manager and demotes back; the person is told; others cannot", async () => {
+    const owner = await seedUser(db, { role: "vendor" });
+    const shop = await seedVendor(db, owner.id, { name: "Role Shop" });
+    const member = await seedUser(db, { name: "Tolu" });
+    const outsider = await seedUser(db);
+    const ownerT = await accessToken(owner.id);
+    const memberT = await accessToken(member.id);
+    const outsiderT = await accessToken(outsider.id);
+    await rpc(ownerT, "add_shop_team_member", { p_identifier: member.email, p_role: "staff" });
+    await rpc(memberT, "respond_team_invite", { p_vendor_id: shop.id, p_accept: true });
+
+    expect((await rpc(memberT, "set_shop_team_role", { p_user_id: member.id, p_role: "manager" })).status).toBeGreaterThanOrEqual(400); // not the owner
+    expect((await rpc(outsiderT, "set_shop_team_role", { p_user_id: member.id, p_role: "manager" })).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc(ownerT, "set_shop_team_role", { p_user_id: member.id, p_role: "boss" })).status).toBe(400);
+    expect((await rpc(ownerT, "set_shop_team_role", { p_user_id: outsider.id, p_role: "manager" })).status).toBe(404); // not on the team
+
+    const up = await rpc(ownerT, "set_shop_team_role", { p_user_id: member.id, p_role: "manager" });
+    expect(up.json.data).toEqual({ role: "manager", changed: true });
+    expect(((await rpc(ownerT, "list_shop_team")).json.data as { role: string }[]).map((m) => m.role)).toEqual(["manager"]);
+    const told = await db.query<{ title: string }>(`select title from public.notifications where user_id = $1 and type = 'team_role_changed'`, [member.id]);
+    expect(told.map((r) => r.title)).toEqual(["You are now a manager at Role Shop"]);
+
+    expect((await rpc(ownerT, "set_shop_team_role", { p_user_id: member.id, p_role: "manager" })).json.data).toEqual({ role: "manager", changed: false });
+    expect((await rpc(ownerT, "set_shop_team_role", { p_user_id: member.id, p_role: "staff" })).json.data).toEqual({ role: "staff", changed: true });
+    expect(((await rpc(memberT, "get_my_shop_teams")).json.data as { role: string }[]).map((m) => m.role)).toEqual(["staff"]);
+  });
+
   it("refuses an unknown account, yourself and a bad role", async () => {
     const owner = await seedUser(db, { role: "vendor" });
     await seedVendor(db, owner.id);

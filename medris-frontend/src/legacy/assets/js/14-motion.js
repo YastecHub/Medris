@@ -2971,11 +2971,14 @@ window.lvAskCancel = async function (orderId) {
   function show() {
     if (document.getElementById("lvSetup")) return;
     var d = document.createElement("div"); d.id = "lvSetup"; d.className = "lvsu";
-    d.innerHTML = '<div class="lvsu-card"><h2>Set up your profile</h2><p>Add a photo and check your name so people know it\'s you. You can skip this and do it later.</p>' +
-      '<button type="button" class="lvsu-av" id="lvSetupAv" aria-label="Choose a profile photo"></button>' +
+    var biz = !!(window.lvBiz && window.lvBiz.isBusiness);
+    d.innerHTML = '<div class="lvsu-bg" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="lvsu-card"><span class="lvsu-step"><i class="fa-solid fa-wand-magic-sparkles"></i> ' + (biz ? "Your new business" : "Welcome to Levromart") + '</span>' +
+      '<h2>Set up your profile</h2><p class="lvsu-lead">Add a photo and check the name so people know it\'s you. You can skip this and do it later.</p>' +
+      '<button type="button" class="lvsu-av" id="lvSetupAv" aria-label="Choose a profile photo"></button><span class="lvsu-hint">Tap the picture to add a photo</span>' +
       '<input type="file" id="lvSetupFile" accept="image/*" hidden onchange="uploadAvatar(event)">' +
-      '<label class="lvsu-l" for="lvSetupName">Your name</label><input id="lvSetupName" class="lvsu-name" type="text" maxlength="60" autocomplete="name" value="">' +
-      '<button type="button" class="lvsu-go" id="lvSetupGo">Continue</button><button type="button" class="lvsu-skip" id="lvSetupSkip">Skip for now</button></div>';
+      '<div class="lvsu-field"><label class="lvsu-l" for="lvSetupName">' + (biz ? "Business name" : "Your name") + '</label><input id="lvSetupName" class="lvsu-name" type="text" maxlength="60" autocomplete="name" value=""></div>' +
+      '<div class="lvsu-actions"><button type="button" class="lvsu-go" id="lvSetupGo">Continue</button><button type="button" class="lvsu-skip" id="lvSetupSkip">Skip for now</button></div></div>';
     document.body.appendChild(d);
     document.documentElement.classList.add("lvsu-open");
     document.getElementById("lvSetupName").value = profile.name || "";
