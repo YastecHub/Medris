@@ -8434,3 +8434,47 @@ html:root:root:root:root:root[data-theme] body #app#app .lvo-empty,html:root:roo
 html:root:root:root:root:root[data-theme] body #app#app .lvo-empty .lvo-empty-ico{background:transparent!important}
 html:root:root:root:root:root body #app#app .lvo-empty,html:root:root:root:root:root body #app#app .orders-empty{background:transparent!important;border:0!important;box-shadow:none!important}
 html body .btn.pd-place-order .lv-mark-ico{width:3em;height:3em;margin:-.9em -.2em -.9em -.6em}
+/* --- the order countdown (hourglass): a warm, soft panel instead of a plain bordered box --- */
+html body .lv-hg{gap:1rem;padding:.8rem 1rem;border-radius:20px;border:1px solid color-mix(in srgb,#f59e0b 30%,transparent);background:linear-gradient(135deg,color-mix(in srgb,#f59e0b 16%,var(--card)),var(--card))}
+html body .lv-hg .hg-svg{flex:none;filter:drop-shadow(0 6px 8px rgba(184,107,6,.35))}
+html body .lv-hg .hg-left{font-size:1.5rem!important;font-weight:800;letter-spacing:-.02em;color:#d97706}
+:root[data-theme="dark"] .lv-hg .hg-left,:root[data-theme="black"] .lv-hg .hg-left{color:#fbbf24}
+html body .lv-hg small{font-size:.8rem;line-height:1.35}
+
+/* chat: the jump-to-latest arrow floats on the right just above the message box, like WhatsApp */
+html body .lm-chat-down{position:fixed!important;left:auto!important;right:1rem!important;transform:none!important;width:2.8rem;height:2.8rem;z-index:60;border:0;box-shadow:0 6px 18px rgba(0,0,0,.28);background:var(--card)!important;color:var(--primary,#16a34a)!important;font-size:1.05rem}
+
+/* --- admin: student / seller verification sheet --- */
+html body .req-lightbox{z-index:2147483647!important}
+#lvSvReview .lvsr{border-radius:28px 28px 0 0;padding:.7rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px))}
+#lvSvReview .lvsr-h{display:flex;align-items:center;justify-content:space-between;margin:.9rem 0 .8rem}
+#lvSvReview .lvsr-h strong{font-size:1.2rem;font-weight:800;letter-spacing:-.02em}
+#lvSvReview .lvsr-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin:0 0 .9rem}
+#lvSvReview .lvsr-grid>div{padding:.7rem .85rem;border-radius:16px;background:color-mix(in srgb,var(--text) 6%,transparent)}
+#lvSvReview .lvsr-grid small{display:block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted,#6b7280)}
+#lvSvReview .lvsr-grid b{display:block;margin-top:.15rem;font-size:.98rem}
+#lvSvReview .lvsr-ph{display:flex;gap:.6rem;margin:.2rem 0 1rem;overflow-x:auto;scrollbar-width:none}
+#lvSvReview .lvsr-ph .req-ph-thumb{flex:none;width:6.4rem;height:6.4rem;border-radius:16px;overflow:hidden;border:0;box-shadow:0 6px 16px -8px rgba(0,0,0,.4)}
+#lvSvReview .lvsr-msg{display:flex;align-items:flex-end;gap:.55rem;margin:.2rem 0 1rem}
+#lvSvReview .lvsr-msg textarea{flex:1;min-height:2.9rem;max-height:7rem;margin:0;padding:.75rem 1rem;border-radius:22px;border:1.5px solid color-mix(in srgb,var(--text) 14%,transparent);background:var(--card);color:var(--text);font:inherit;font-size:.95rem;resize:none}
+#lvSvReview .lvsr-msg textarea:focus{outline:none;border-color:var(--primary,#16a34a)}
+#lvSvReview .lvsr-send{flex:none;width:2.9rem;height:2.9rem;min-height:0;margin:0;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:var(--primary,#16a34a);color:#fff;font-size:1.05rem;box-shadow:0 8px 16px -8px rgba(22,163,74,.8)}
+#lvSvReview .lvsr-acts{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:.5rem}
+#lvSvReview .lvsr-acts button{height:3rem;border-radius:15px;font-weight:700;font-size:.92rem}
+
+/* --- admin: People page (clean segmented tabs, one tidy toolbar, search without overlap) --- */
+html body #app .admin-people-toolbar{display:flex;flex-direction:column;gap:.6rem;margin:0 0 .7rem}
+html body #app .admin-people-role-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;padding:.25rem;border-radius:16px;background:color-mix(in srgb,var(--text) 7%,transparent);border:0;box-shadow:none}
+html body #app .admin-people-role-tab{display:flex;align-items:center;justify-content:center;gap:.45rem;height:2.7rem;border:0;border-radius:12px;background:transparent;color:var(--text-muted,#6b7280);font-weight:700;box-shadow:none}
+html body #app .admin-people-role-tab.active{background:var(--card);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+html body #app .admin-people-role-tab strong{padding:.05rem .5rem;border-radius:999px;font-size:.78rem;background:color-mix(in srgb,var(--primary,#16a34a) 15%,transparent);color:var(--primary,#16a34a)}
+html body #app .admin-people-export-actions{display:flex;gap:.5rem}
+html body #app .admin-people-export-actions .btn{flex:1;height:2.6rem;border-radius:13px;font-weight:700;box-shadow:none}
+html body #app .admin-people-controls{display:flex;gap:.5rem;align-items:center;margin:0 0 .8rem}
+html body #app .admin-people-search-wrap{position:relative;flex:1;min-width:0}
+html body #app .admin-people-search-wrap>i{position:absolute;left:.95rem;top:50%;transform:translateY(-50%);color:var(--text-muted,#6b7280);pointer-events:none}
+html body #app .admin-people-search-wrap input{width:100%;height:2.9rem;box-sizing:border-box;padding:0 1rem 0 2.6rem;border-radius:15px;border:0;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
+html body #app .admin-people-sort{display:flex;align-items:center;gap:.3rem;flex:none}
+html body #app .admin-people-sort>span{display:none}
+html body #app .admin-people-sort select{height:2.9rem;padding:0 .8rem;border-radius:15px;border:0;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);font-weight:600;max-width:9rem}
+html body #app .ap-who{display:flex;align-items:center;gap:.6rem}

@@ -2,6 +2,8 @@
 // A plain directory of every registered account - separate from "Admins"
 // below, which is only for promoting/demoting admin access. This is just
 // for seeing who's actually on the platform and how many of each kind.
+// generated login addresses (business accounts, phone sign-ups) are not shown: say what they are instead
+function adminShownEmail(p) { const e = String(p.email || ""); if (/^biz\..+@accounts\.levromart\.app$/i.test(e)) return "Business account"; if (/^p\d+@accounts\.levromart\.app$/i.test(e)) return "Phone sign-up"; return e || "-"; }
 async function renderAdminPeople() {
   if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   const result = window.__adminPeopleLoadedData;
@@ -94,7 +96,7 @@ function renderAdminPeopleRows() {
   if (!tbody) return;
   const rows = getAdminPeopleFilteredRows();
   tbody.innerHTML = rows.map((p, idx) => `<tr>
-    <td>${idx + 1}</td><td><span class="ap-who"><span class="ap-av">${p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(initials(String(p.name || p.email || "U")))}</b></span><span class="ap-nm">${esc(p.name || "-")}</span></span></td><td>${esc(p.email || "-")}</td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
+    <td>${idx + 1}</td><td><span class="ap-who"><span class="ap-av">${p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(initials(String(p.name || p.email || "U")))}</b></span><span class="ap-nm">${esc(p.name || "-")}</span></span></td><td>${esc(adminShownEmail(p))}</td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
     <td>${p.created_at ? `<span class="admin-joined-cell">${new Date(p.created_at).toLocaleString("en-GB", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>${Date.now()-new Date(p.created_at).getTime() <= 48*60*60*1000 ? ` <span class="badge admin-new-tag">NEW</span>` : ""}` : "-"}</td>
     <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}</td>
     <td>${p.role === "admin" ? "" : p.suspended_at ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>` : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
@@ -434,7 +436,6 @@ async function renderAdminAuthLogs() {
   const groups = new Map();
   (rows||[]).forEach(r=>{ const key=new Date(r.occurred_at).toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"}); if(!groups.has(key))groups.set(key,[]); groups.get(key).push(r); });
   let html = `<h2><i class="fa-solid fa-right-to-bracket"></i> Login & logout logs</h2>${adminNavHtml("adminAuthLogs")}
-    <p class="muted" style="margin:.55rem 0 .75rem;">Every recorded sign-in/session start and voluntary logout. Historical session starts available in Supabase are included; browser closes and older events that were never recorded cannot be reconstructed.</p>
     <div class="admin-auth-log-filters">${[["today","Today"],["week","This week"],["month","This month"],["all","All time"]].map(([k,l])=>`<button class="range-tab ${adminAuthLogRange===k?'active':''}" onclick="adminAuthLogRange='${k}';navigate('adminAuthLogs',{},false)">${l}</button>`).join("")}</div>`;
   if (!rows?.length) return html + `<p class="muted">No login/logout activity recorded for this period.</p>`;
   groups.forEach((dayRows,day)=>{
@@ -521,7 +522,7 @@ async function renderAdminFinance() {
   ]);
   __adminFinanceData = { vendors: vendors || [], txns: txns || [] };
 
-  let html = `<h2><i class="fa-solid fa-sack-dollar"></i> Vendors &amp; Transactions</h2><p class="muted">${seesFinancials ? "Monitor payouts and every payment moving through Levromart." : "Vendor verification and payout setup status."}</p>`;
+  let html = `<h2><i class="fa-solid fa-sack-dollar"></i> Vendors &amp; Transactions</h2>`;
   html += adminNavHtml("adminFinance");
 
   if (seesFinancials) {

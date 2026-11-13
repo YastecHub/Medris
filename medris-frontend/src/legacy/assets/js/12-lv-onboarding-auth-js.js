@@ -422,7 +422,14 @@
     var b=document.createElement("button"); b.type="button"; b.className="lm-chat-down hidden"; b.setAttribute("aria-label","Scroll to latest message"); b.innerHTML='<i class="fa-solid fa-arrow-down"></i>';
     b.onclick=function(){ m.scrollTo({top:m.scrollHeight,behavior:"smooth"}); };
     host.appendChild(b);
-    function upd(){ b.classList.toggle("hidden", m.scrollHeight-m.scrollTop-m.clientHeight<140); }
+    function upd(){
+      b.classList.toggle("hidden", m.scrollHeight-m.scrollTop-m.clientHeight<140);
+      // sit just above the message box, on the right, like WhatsApp
+      var inp=document.getElementById("chatInput"), box=inp&&(inp.closest(".chat-input-row,.chat-composer,.chat-input-wrap,form")||inp.parentElement);
+      var top=box?box.getBoundingClientRect().top:(window.innerHeight-90);
+      b.style.bottom=Math.max(70,Math.round(window.innerHeight-top+12))+"px";
+    }
+    window.addEventListener("resize",upd);
     m.addEventListener("scroll",upd,{passive:true}); upd();
   }
   var tries=0;
