@@ -172,6 +172,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       }
     } catch (_) { /* the server-side order/RLS checks remain authoritative */ }
   }
+  // a manager or staff member working for the shop sees the same page the owner would
+  if (!isVendor && !isCustomer && typeof lvWorksForVendor === "function" && lvWorksForVendor(order.vendor_id)) isVendor = true;
   if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
   if(order.service_offer_id){

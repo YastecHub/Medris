@@ -7468,7 +7468,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     var who = s.person ? (s.person.name || "@" + s.person.handle) : s.bank ? (s.bank.bank_name || "your bank") : s.shop || "";
     var isFav = s.person && s.person.handle && favs().some(function (f) { return f.handle === s.person.handle; });
     p.innerHTML = '<div class="lv-tx-top"><button type="button" class="lv-tx-x" data-x aria-label="Close"><i class="fa-solid fa-' + (done ? "xmark" : "arrow-left") + '"></i></button><span>' + E(done ? "" : "Transaction details") + '</span></div>' +
-      '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' : '<div class="lv-tx-logo">' + LV_FLAT_LOGO + "</div>") +
+      '<div class="lv-tx-hero' + (done ? "" : " lv-tx-hero-d") + '">' + (done ? '<div class="lv-tx-check' + (ok ? "" : " bad") + '"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="currentColor"/><path d="M15 27l8 8 15-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="40"/></svg></div>' : '<div class="lv-tx-logo">' + LV_FLAT_LOGO + "</div><small class=\"lv-tx-brand\">Levromart Wallet</small>") +
       '<h2>' + E(done ? s.title : (s.title || "Transaction")) + '</h2><div class="lv-tx-amt">' + (done ? "" : inKind ? "+" : "−") + nair(s.amountKobo) + '</div>' + (who ? '<p class="lv-tx-sub">' + E((inKind && s.person ? "from " : s.kind === "topup" ? "" : "to ") + (s.kind === "topup" ? "your wallet" : who)) + '</p>' : "") + '<span class="lv-tx-pill' + (ok ? "" : " bad") + '">' + E(s.status || "Successful") + '</span></div>' +
       '<div class="lv-tx-card" id="lvTxRows">' + rowsOf(s).map(function (r) { return '<div><span>' + E(r[0]) + '</span><b>' + E(r[1]) + '</b></div>'; }).join("") + '</div>' +
       '<div class="lv-tx-acts"><button type="button" data-a="share">' + ic("moved-up", "fa-share-nodes") + '<span>Share receipt</span></button>' +
@@ -8259,18 +8259,48 @@ window.lvNoImageHtml = function (seed) {
   var SEEN = "lv-st-seen", cache = { at: 0, rows: [] };
   function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function seenMap() { try { return JSON.parse(localStorage.getItem(SEEN) || "{}"); } catch (_) { return {}; } }
-  function markSeen(id) { var m = seenMap(); m[id] = Date.now(); var keys = Object.keys(m); if (keys.length > 400) keys.sort(function (a, b) { return m[a] - m[b]; }).slice(0, 150).forEach(function (k) { delete m[k]; }); try { localStorage.setItem(SEEN, JSON.stringify(m)); } catch (_) {} }
+  function markSeen(id) { var m = seenMap(); m[id] = Date.now(); var keys = Object.keys(m); if (keys.length > 400) keys.sort(function (a, b) { return m[a] - m[b]; }).slice(0, 150).forEach(function (k) { delete m[k]; }); try { localStorage.setItem(SEEN, JSON.stringify(m)); } catch (_) {} try { window.lvStatusBadge && window.lvStatusBadge(); } catch (_) {} }
   function naira(n) { return "₦" + Number(n || 0).toLocaleString("en-NG"); }
   function myVendorId() { try { return typeof vendor !== "undefined" && vendor && vendor.id ? vendor.id : null; } catch (_) { return null; } }
   function avatar(url, name, cls) { return '<span class="' + (cls || "lvst-av") + '">' + (url ? '<img src="' + E(url) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + '<b>' + E(String(name || "?").trim().charAt(0).toUpperCase()) + "</b></span>"; }
+  var KEEP = "lv-st-cache";
+  try { var kept = JSON.parse(localStorage.getItem(KEEP) || "null"); if (kept && Array.isArray(kept.rows)) cache = { at: 0, rows: kept.rows.filter(function (r) { return r && new Date(r.expires_at) > new Date(); }) }; } catch (_) {}
+  var loading = null;
+  // Never throws away what we already know: if the request fails (slow network, session not ready yet) the last good list stays on screen
   async function load(force) {
-    if (!force && Date.now() - cache.at < 30000) return cache.rows;
-    try {
-      var r = await sb.from("vendor_statuses").select("id,vendor_id,product_id,caption,show_price,created_at,expires_at,vendor:vendors(id,business_name,logo_url),product:products(id,name,photos,sale_price,discount_price,is_service)").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: true }).limit(200);
-      cache = { at: Date.now(), rows: r && Array.isArray(r.data) ? r.data : [] };
-    } catch (_) { cache = { at: Date.now(), rows: [] }; }
-    return cache.rows;
+    if (!force && cache.at && Date.now() - cache.at < 30000) return cache.rows;
+    if (loading) return loading;
+    loading = (async function () {
+      for (var tries = 0; tries < 3; tries++) {
+        try {
+          var r = await sb.from("vendor_statuses").select("id,vendor_id,product_id,caption,show_price,created_at,expires_at,vendor:vendors(id,business_name,logo_url),product:products(id,name,photos,sale_price,discount_price,is_service)").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: true }).limit(200);
+          if (r && !r.error && Array.isArray(r.data)) { cache = { at: Date.now(), rows: r.data }; try { localStorage.setItem(KEEP, JSON.stringify({ rows: r.data })); } catch (_) {} return cache.rows; }
+        } catch (_) {}
+        await new Promise(function (ok) { setTimeout(ok, 700 * (tries + 1)); });
+      }
+      cache.at = Date.now() - 20000; // try again in about 10 seconds; keep showing the last good list
+      return cache.rows;
+    })();
+    try { return await loading; } finally { loading = null; }
   }
+  function unseenCount() { var seen = seenMap(), mine = myVendorId(); return cache.rows.filter(function (s) { return s.vendor && s.vendor_id !== mine && !seen[s.id] && new Date(s.expires_at) > new Date(); }).length; }
+  function paintNavBadge() {
+    var n = unseenCount();
+    document.querySelectorAll(".bottom-nav-item").forEach(function (b) {
+      if (!/navigate\('vendors'\)/.test(b.getAttribute("onclick") || "")) return;
+      var ic = b.querySelector(".bn-icon"); if (!ic) return; var old = ic.querySelector(".bn-badge.lv-st-badge");
+      if (!n) { if (old) old.remove(); return; }
+      if (!old) { old = document.createElement("span"); old.className = "bn-badge lv-st-badge"; ic.appendChild(old); }
+      old.textContent = n > 9 ? "9+" : String(n);
+    });
+  }
+  window.lvStatusBadge = paintNavBadge;
+  setTimeout(function () { load(false).then(paintNavBadge); }, 2500);
+  setInterval(function () { if (!document.hidden) load(true).then(function () { paintNavBadge(); paintStrip(); }); }, 90000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) load(true).then(function () { paintNavBadge(); paintStrip(); }); });
+  var nbT = 0;
+  new MutationObserver(function () { if (nbT) return; nbT = setTimeout(function () { nbT = 0; paintNavBadge(); }, 150); }).observe(document.body, { childList: true, subtree: true });
+  var NOSTATUS = '<svg class="lvst-noic" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/><circle cx="32" cy="32" r="17" fill="currentColor" fill-opacity=".1"/><path d="M26 32h12M32 26v12" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cx="50" cy="14" r="4" fill="#22c55e"/></svg>';
   function groups(rows) {
     var by = {}, seen = seenMap(), mine = myVendorId();
     rows.forEach(function (s) { if (!s.vendor) return; var g = by[s.vendor_id] || (by[s.vendor_id] = { id: s.vendor_id, vendor: s.vendor, items: [], unseen: 0, latest: 0, own: s.vendor_id === mine }); g.items.push(s); if (!seen[s.id]) g.unseen++; g.latest = Math.max(g.latest, +new Date(s.created_at)); });
@@ -8281,12 +8311,16 @@ window.lvNoImageHtml = function (seed) {
   /* ---- the strip on the Vendors page ---- */
   async function paintStrip() {
     var host = document.getElementById("lvStStrip"); if (!host) return;
-    var gs = groups(await load(false)), mine = myVendorId(), hasOwn = gs.some(function (g) { return g.own; });
+    if (cache.rows.length) drawStrip(host, groups(cache.rows));
+    drawStrip(host, groups(await load(false)));
+  }
+  function drawStrip(host, gs) {
+    var mine = myVendorId(), hasOwn = gs.some(function (g) { return g.own; });
     var h = "";
     if (mine) h += '<div class="lvst-item"><div class="lvst-ring own' + (hasOwn ? " live" : "") + '"><button type="button" class="lvst-hit" data-open="' + E(mine) + '" aria-label="Your status">' + avatar(vendor.logo_url, vendor.business_name) + '</button><button type="button" class="lvst-plus" data-add aria-label="Add to your status"><i class="fa-solid fa-plus"></i></button></div><span>Your status</span></div>';
     gs.filter(function (g) { return !g.own; }).forEach(function (g) { h += '<div class="lvst-item"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '"><button type="button" class="lvst-hit" data-open="' + E(g.id) + '" aria-label="' + E(g.vendor.business_name) + ' status">' + avatar(g.vendor.logo_url, g.vendor.business_name) + "</button></div><span>" + E(g.vendor.business_name) + "</span></div>"; });
-    host.hidden = false;
-    host.innerHTML = '<div class="lvst-head"><b>Status</b><button type="button" data-page>See all</button></div>' + (h ? '<div class="lvst-row">' + h + "</div>" : '<p class="lvst-none">No statuses right now. When a vendor posts a product it shows here for 24 hours.</p>');
+    host.hidden = false; try { paintNavBadge(); } catch (_) {}
+    host.innerHTML = '<div class="lvst-head"><b>Status</b><button type="button" data-page>See all</button></div>' + (h ? '<div class="lvst-row">' + h + "</div>" : '<div class="lvst-none">' + NOSTATUS + '<span><b>No statuses yet</b>When a vendor posts a product it shows here for 24 hours.</span></div>');
   }
   document.addEventListener("click", function (e) {
     var o = e.target.closest && e.target.closest("#lvStStrip [data-open]"), a = e.target.closest && e.target.closest("#lvStStrip [data-add], .lvst-addbtn"), pg = e.target.closest && e.target.closest("#lvStStrip [data-page], #vendorsViewStatusBtn");
@@ -8299,7 +8333,7 @@ window.lvNoImageHtml = function (seed) {
     if (t) return; t = setTimeout(function () {
       t = 0;
       var page = document.querySelector("#app .vd-page"); if (!page) return;
-      if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = false; s.innerHTML = '<div class="lvst-head"><b>Status</b></div><p class="lvst-none">Loading…</p>'; if (head) head.before(s); else page.prepend(s); paintStrip(); }
+      if (!document.getElementById("lvStStrip")) { var head = page.querySelector(".vd-head"), s = document.createElement("section"); s.id = "lvStStrip"; s.className = "lvst-strip"; s.hidden = false; s.innerHTML = '<div class="lvst-head"><b>Status</b></div><div class="lvst-row">' + [1, 2, 3, 4].map(function () { return '<div class="lvst-item"><div class="lvst-ring seen sk"><span class="lvst-av"></span></div><span class="lvst-skl"></span></div>'; }).join("") + "</div>"; if (head) head.before(s); else page.prepend(s); paintStrip(); }
       var vs = page.querySelector(".vd-views");
       if (vs && !document.getElementById("vendorsViewStatusBtn")) { var b = document.createElement("button"); b.type = "button"; b.className = "vd-view"; b.id = "vendorsViewStatusBtn"; b.title = "Status"; b.setAttribute("aria-label", "Status"); b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.6"/><circle cx="12" cy="12" r="3.2"/></svg>'; vs.appendChild(b); }
     }, 80);
@@ -8309,12 +8343,16 @@ window.lvNoImageHtml = function (seed) {
   async function openPage() {
     if (typeof lvTeamOverlay !== "function") return;
     var el = lvTeamOverlay("lvStPage", "Status", '<p class="muted">Loading…</p>', "Updates from vendors, for 24 hours");
-    var body = el.querySelector("[data-lv-body]"), gs = groups(await load(true)), mine = myVendorId();
+    var body = el.querySelector("[data-lv-body]"), mine = myVendorId();
     var row = function (g) { var last = g.items[g.items.length - 1]; var p = last.product, ph = p && p.photos && p.photos[0]; return '<button type="button" class="lvst-li" data-open="' + E(g.id) + '"><div class="lvst-ring' + (g.unseen ? " live" : " seen") + '">' + avatar(g.vendor.logo_url, g.vendor.business_name) + '</div><div class="lvst-lt"><b>' + E(g.vendor.business_name) + "</b><small>" + ago(last.created_at) + " · " + g.items.length + " update" + (g.items.length === 1 ? "" : "s") + "</small></div>" + (ph ? '<img class="lvst-th" src="' + E(ph) + '" alt="" loading="lazy">' : "") + "</button>"; };
+    var paintPage = function (gs) {
     var own = gs.filter(function (g) { return g.own; })[0], rest = gs.filter(function (g) { return !g.own; }), fresh = rest.filter(function (g) { return g.unseen; }), old = rest.filter(function (g) { return !g.unseen; });
     body.innerHTML = (mine ? '<div class="lvst-me"><div class="lvst-ring own' + (own ? " live" : "") + '" ' + (own ? 'data-open="' + E(mine) + '"' : "") + ">" + avatar(vendor.logo_url, vendor.business_name) + '</div><div class="lvst-lt"><b>My status</b><small>' + (own ? own.items.length + " live · tap to view" : "Add a product for 24 hours") + '</small></div><button type="button" class="lvst-addbtn" data-add><i class="fa-solid fa-plus"></i> Add</button></div>' : "") +
       (fresh.length ? '<p class="tm-label">Recent updates</p>' + fresh.map(row).join("") : "") + (old.length ? '<p class="tm-label">Viewed</p>' + old.map(row).join("") : "") +
-      (!rest.length ? '<div class="tm-empty"><i class="fa-solid fa-circle-notch"></i><b>No statuses right now</b>When vendors post a product it shows here for 24 hours.</div>' : "");
+      (!rest.length ? '<div class="lvst-empty">' + NOSTATUS + '<b>No statuses right now</b><span>When vendors you follow post a product, it shows here for 24 hours.</span></div>' : "");
+    };
+    if (cache.rows.length) paintPage(groups(cache.rows));
+    paintPage(groups(await load(true)));
     body.addEventListener("click", function (e) { var o = e.target.closest("[data-open]"); if (o) { el.remove(); openViewer(o.getAttribute("data-open")); } var a = e.target.closest("[data-add]"); if (a) { el.remove(); openAdd(); } });
   }
 
@@ -8430,11 +8468,14 @@ window.lvNoImageHtml = function (seed) {
   async function fetchPeeks(ids) {
     var need = ids.filter(function (i) { return !(i in peekCache); }); if (!need.length) return;
     need.forEach(function (i) { peekCache[i] = null; });
-    try {
-      var r = await sb.from("products").select("vendor_id,photos").in("vendor_id", need).eq("status", "active").order("created_at", { ascending: false }).limit(need.length * 8);
-      var by = {}; ((r && r.data) || []).forEach(function (p) { if (p.photos && p.photos[0]) (by[p.vendor_id] = by[p.vendor_id] || []).push(p.photos[0]); });
-      need.forEach(function (i) { peekCache[i] = by[i] || []; });
-    } catch (_) { need.forEach(function (i) { peekCache[i] = []; }); }
+    // one small request per shop, so a shop with hundreds of products cannot crowd the others out
+    await Promise.all(need.map(async function (id) {
+      try {
+        var r = await sb.from("products").select("photos").eq("vendor_id", id).eq("status", "active").order("created_at", { ascending: false }).limit(6);
+        if (r && r.error) { delete peekCache[id]; return; }
+        peekCache[id] = ((r && r.data) || []).map(function (p) { return p.photos && p.photos[0]; }).filter(Boolean);
+      } catch (_) { delete peekCache[id]; }
+    }));
   }
   async function dress() {
     var grid = document.getElementById("vendorsGrid"); if (!grid || grid.classList.contains("vendors-list-mode") && false) return;
@@ -8493,4 +8534,36 @@ window.lvNoImageHtml = function (seed) {
   });
   var t = 0;
   new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; try { build(); cleanup(); } catch (_) {} }, 200); }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+/* ===== Photo viewer for request photos and verification documents: one picture at a time, with names (ID card / Biodata / Selfie) ===== */
+(function () {
+  "use strict";
+  function E(s) { return typeof esc === "function" ? esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  window.reqPhotoOpen = function (k, i) {
+    var l = (window.__reqPhotoSets || [])[k] || []; if (!l.length) return;
+    var labels = l.labels || [], at = Math.max(0, Math.min(l.length - 1, Number(i) || 0));
+    var w = document.createElement("div"); w.className = "req-lightbox lvpv";
+    w.innerHTML = '<button type="button" class="x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+      (labels.length > 1 ? '<div class="lvpv-tabs">' + l.map(function (u, n) { return '<button type="button" data-n="' + n + '">' + E(labels[n] || "Photo " + (n + 1)) + "</button>"; }).join("") + "</div>" : "") +
+      '<div class="lvpv-stage"><button type="button" class="lvpv-nav prev" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button><img alt=""><button type="button" class="lvpv-nav next" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button></div><div class="n"></div>';
+    document.body.appendChild(w);
+    var img = w.querySelector("img");
+    function show(n) {
+      at = (n + l.length) % l.length; img.src = l[at];
+      w.querySelector(".n").textContent = (labels[at] ? labels[at] + " · " : "") + (at + 1) + " / " + l.length;
+      [].forEach.call(w.querySelectorAll(".lvpv-tabs button"), function (b) { b.classList.toggle("on", +b.getAttribute("data-n") === at); });
+      w.classList.toggle("single", l.length < 2);
+    }
+    show(at);
+    w.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-n]"); if (t) { show(+t.getAttribute("data-n")); return; }
+      if (e.target.closest(".prev")) { show(at - 1); return; }
+      if (e.target.closest(".next")) { show(at + 1); return; }
+      if (e.target === w || e.target.closest(".x") || e.target.classList.contains("lvpv-stage")) w.remove();
+    });
+    var x0 = null;
+    w.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    w.addEventListener("touchend", function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50 && l.length > 1) show(at + (dx < 0 ? 1 : -1)); }, { passive: true });
+  };
 })();

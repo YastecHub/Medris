@@ -269,7 +269,7 @@
       return;
     }
     var imgs=[["ID card",sv.id_card_url],["Biodata",sv.biodata_url],["Selfie",sv.selfie_url]].filter(function(x){return x[1];});
-    window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(imgs.filter(function(x){return !/\.pdf(\?|$)/i.test(x[1]);}).map(function(x){return x[1];}))-1;
+    window.__reqPhotoSets=window.__reqPhotoSets||[]; var __lst=imgs.filter(function(x){return !/\.pdf(\?|$)/i.test(x[1]);}), __urls=__lst.map(function(x){return x[1];}); __urls.labels=__lst.map(function(x){return x[0];}); var k=window.__reqPhotoSets.push(__urls)-1;
     var st={pending:"Pending review",approved:"Approved",rejected:"Rejected"}[sv.status]||sv.status;
     var ocr=sv.ocr_checked_at?('Matric '+(sv.ocr_matric_found===true?'✓ found':sv.ocr_matric_found===false?'✗ not found':'–')+' · Name '+(sv.ocr_name_found===true?'✓ found':sv.ocr_name_found===false?'✗ not found':'–')):'<span class="muted">not read yet</span>';
     var imgIdx=0;

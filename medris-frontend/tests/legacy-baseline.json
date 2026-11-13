@@ -1,13 +1,13 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "5d21e6e027848026b6b12bcb6550c8e3eb5e3d8d9588f6990ede4c7d0f41ff09",
+    "index.html": "b3304cfd68ebaa60d9fcbb6ec55b0d46f8d83765ffa3b1c75b7afd2a8a55d97b",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "105f2dff9e78540ad4fafd89c6450dcd539b1034c45cf5b6b867fec8db3fdf41",
     "assets/css/04-shell.css": "ee55c3fa57d56111b3e6e69997cadc9cbd9eea62b4dfb0f4917a7fc69917353f",
-    "assets/css/05-overrides.css": "7ad33a27e565b3ea4989bc3ae9830b677c77dfffb093f81af506ddbbcb62c0c4",
-    "assets/js/01-app.js": "f1e99177c3cfad0c05b519a166e023430842fca415c51bbfd01c28ddccb2ba50",
+    "assets/css/05-overrides.css": "6490871b062c64cb972f0aa0400a9f7db1793379a5a82c1ca246108360a2a0bb",
+    "assets/js/01-app.js": "20e412e8bf02d158dba67c7d30a620f88dd23c7cadc161bfe7c5b593cb053323",
     "assets/js/02-levromart-legal-consent-final-js.js": "720a8f4753d379bad17e3eb85950afb753a32720694ab79097a84d28f83cb76b",
     "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "ca8d8bb4f84e40818abf9eafffb8e72ec060df63786e30df121f15e4f980963a",
     "assets/js/04-levromart-vendor-location-auto-script.js": "8ad4c70934c78c99e5de9b9dbe3b0990c2ae79f4bb7f84bdf889ee5e042b5cdd",
@@ -19,9 +19,9 @@
     "assets/js/10-levromart-admin-reject-inventory-fix-js-.js": "3bf44b0cd6784a827f9e75953c70a13544afe0b727b38836a4c18bcacbb259a2",
     "assets/js/11-levromart-global-broken-image-fallback.js": "386a13d33fd705122356e8f733fc0f0605158322c36a458df64a5208daff538d",
     "assets/js/12-lv-onboarding-auth-js.js": "c1b15c03150dc42db175432dbbd04eb455e11cd570b24d322bcedf1ca8b569fd",
-    "assets/js/13-face-verify.js": "85e9b94e49c8a35026b5ee3d3feddec20c2c94025e35943551c2584c7288a340",
-    "assets/js/14-motion.js": "bd41f0286532fa9a09060f2d27948b5f7eccb216f7875f4855d7589c30dc1f8b",
+    "assets/js/13-face-verify.js": "dede31602fd1d55a492f74d83804abe1dfc2b50a8da18b1fc039080bbd98cc96",
+    "assets/js/14-motion.js": "fb38adf5eec2e47c119b68828a9cd5e20efb0bdd7d54366f0450e9dfd82a8f61",
     "assets/js/15-autosave.js": "8e2bfd6570edb21f584bfa2a2ff848f34c173beb09e5e7dd9b622555c69b5582",
-    "sw.js": "465e8c55b09b060b6d64d2d5fe15eb83529c86f036dc697b220d3fe62be3353d"
+    "sw.js": "364057471f6316729e10696dd231ae4205039542bb1b565d83aaf97c41a2385b"
   }
 }

@@ -1105,25 +1105,25 @@ async function lvOpenSwitchBusiness() {
 // ---------- Team workspace (a team member working for a shop) ----------
 function lvTeamOrderCard(o) {
   const st = o.status;
-  const label = { pending: "New order", confirmed: "Accepted", handed_over: "Handed over" }[st] || st;
-  const chipCls = st === "pending" ? "amber" : st === "handed_over" ? "blue" : "";
+  const label = { pending: "New order", confirmed: "Accepted", handed_over: "Handed over", completed: "Completed", cancelled: "Cancelled", disputed: "Dispute", payment_unresolved: "Payment issue", returned: "Returned" }[st] || st;
+  const chipCls = st === "pending" ? "amber" : st === "handed_over" ? "blue" : st === "cancelled" || st === "disputed" || st === "payment_unresolved" ? "red" : "";
   const who = o.buyer_name ? esc(o.buyer_name) : "A customer";
   const actions = st === "pending"
     ? `<button type="button" class="tm-btn" data-act="confirmed">Accept</button><button type="button" class="tm-btn ghost" data-act="decline">Decline</button>`
     : st === "confirmed"
       ? `<button type="button" class="tm-btn" data-act="handed_over">Mark handed over</button><button type="button" class="tm-btn danger" data-act="decline">Cancel</button>`
-      : `<div class="tm-sub">Waiting for the customer to confirm.</div>`;
+      : st === "handed_over" ? `<div class="tm-sub">Waiting for the customer to confirm.</div>` : "";
   return `<div class="tm-card" data-oid="${esc(o.id)}" data-st="${esc(st)}">
     <div class="tm-row"><span class="tm-chip ${chipCls}">${esc(label)}</span><span class="tm-grow"></span><span class="tm-money">₦${Number(o.total_amount || 0).toLocaleString()}</span></div>
     <div class="tm-meta"><span><i class="fa-regular fa-user"></i> ${who}</span><span><i class="fa-solid ${o.delivery_method === "delivery" ? "fa-truck" : "fa-shop"}"></i> ${o.delivery_method === "delivery" ? "Delivery" : "Pickup"}</span><span><i class="fa-regular fa-clock"></i> ${esc(timeAgo(o.created_at))}</span></div>
-    <div class="tm-items">${esc(o.items || "")}</div><div class="tm-actions">${actions}</div></div>`;
+    <div class="tm-items">${esc(o.items || "")}</div><div class="tm-actions">${actions}<button type="button" class="tm-btn ghost" data-open>Full details</button></div></div>`;
 }
 async function lvOpenTeamWorkspace(vendorId, shopName, role) {
   const team = (window.lvMyTeams || []).find((t) => t.vendor_id === vendorId);
   const myRole = role || (team && team.role) || "staff";
   const el = lvTeamOverlay("lvTeamWorkspace", shopName || "Shop", `<p class="muted">Loading…</p>`);
   const body = el.querySelector("[data-lv-body]");
-  let tab = "orders", timer = null;
+  let tab = "orders", timer = null, ordFilter = "active";
   const hero = () => `<div class="tm-card tm-hero"><div class="tm-av">${lvAvInner(team && team.logo_url, shopName)}</div><div><div class="tm-hero-name">${esc(shopName || "Shop")}</div><div class="tm-hero-sub">You work here as ${esc((LV_ROLE_LABEL[myRole] || "Staff").toLowerCase())}</div></div></div>`;
   const tabs = () => `<div class="tm-seg"><button type="button" class="${tab === "orders" ? "on" : ""}" data-tab="orders">Orders</button><button type="button" class="${tab === "chats" ? "on" : ""}" data-tab="chats">Chats</button></div>`;
   const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
@@ -1131,13 +1131,20 @@ async function lvOpenTeamWorkspace(vendorId, shopName, role) {
   new MutationObserver((_, ob) => { if (!document.body.contains(el)) { stop(); ob.disconnect(); } }).observe(document.body, { childList: true });
 
   const drawOrders = async () => {
-    const { data, error } = await sb.rpc("get_team_shop_orders", { p_vendor_id: vendorId, p_active_only: true });
+    const { data, error } = await sb.rpc("get_team_shop_orders", { p_vendor_id: vendorId, p_active_only: ordFilter === "active" });
     const rows = Array.isArray(data) ? data : [];
-    body.innerHTML = hero() + tabs() + (error ? `<div class="tm-err">${esc(error.message)}</div>` : "") +
-      (rows.length ? rows.map(lvTeamOrderCard).join("") : `<div class="tm-card tm-empty"><i class="fa-solid fa-bag-shopping"></i><b>No active orders</b>New orders will show up here.</div>`) +
+    const shown = ordFilter === "cancelled" ? rows.filter((r) => r.status === "cancelled") : rows;
+    body.innerHTML = hero() + tabs() + `<div class="tm-seg tm-seg-s"><button type="button" class="${ordFilter === "active" ? "on" : ""}" data-of="active">Active</button><button type="button" class="${ordFilter === "all" ? "on" : ""}" data-of="all">All</button><button type="button" class="${ordFilter === "cancelled" ? "on" : ""}" data-of="cancelled">Cancelled</button></div>` + (error ? `<div class="tm-err">${esc(error.message)}</div>` : "") +
+      (shown.length ? shown.map(lvTeamOrderCard).join("") : `<div class="tm-card tm-empty"><i class="fa-solid fa-bag-shopping"></i><b>${ordFilter === "cancelled" ? "No cancelled orders" : "No orders here"}</b>New orders will show up here.</div>`) +
       `<button type="button" class="tm-btn ghost block" id="lvTeamRefresh"><i class="fa-solid fa-rotate"></i> Refresh</button>`;
     bindTabs();
     byId("lvTeamRefresh").onclick = draw;
+    body.querySelectorAll("[data-of]").forEach((b) => (b.onclick = () => { ordFilter = b.getAttribute("data-of"); stop(); draw(); }));
+    body.querySelectorAll("[data-oid]").forEach((card) => (card.onclick = (ev) => {
+      if (ev.target.closest("[data-act]")) return;
+      const oid = card.getAttribute("data-oid"); stop(); el.remove();
+      try { navigate("orderDetail", { orderId: oid }); } catch (_) {}
+    }));
     body.querySelectorAll("[data-oid] [data-act]").forEach((b) => (b.onclick = async () => {
       const card = b.closest("[data-oid]"); const oid = card.getAttribute("data-oid"); const act = b.getAttribute("data-act");
       b.disabled = true;
