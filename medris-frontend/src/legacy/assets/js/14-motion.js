@@ -6712,7 +6712,7 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     }
     var eff = effective(R), ok = eff.filter(function (x) { return !x.blocked; }), bad = eff.filter(function (x) { return x.blocked; });
     if (bad.length && note) note.textContent = bad.map(function (x) { return x.name; }).join(", ") + (bad.length === 1 ? " is" : " are") + " not delivered to " + campusName(R.chosen) + ". Choose pickup, or check that out separately.";
-    var flat = ok.reduce(function (s, x) { return s + (x.mode === "flat" ? x.fee : 0); }, 0), dist = ok.find(function (x) { return x.mode === "distance" && x.perKm > 0; });
+    var flat = ok.reduce(function (s, x) { return Math.max(s, x.mode === "flat" ? x.fee : 0); }, 0), dist = ok.find(function (x) { return x.mode === "distance" && x.perKm > 0; });
     wrap.dataset.feeMode = dist ? "distance" : "flat"; wrap.dataset.fee = String(flat); wrap.dataset.perKm = String(dist ? dist.perKm : 0);
     if (wrap.dataset.feeLines !== undefined || R.lines.length > 1) wrap.dataset.feeLines = JSON.stringify(ok);
     if (line) {
