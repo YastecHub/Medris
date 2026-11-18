@@ -9400,3 +9400,14 @@ html body #lvStAdd .lve-search input{font-size:.88rem;line-height:1.2}
   html[data-levro-motion] body #aiChatFab.dragging .lv-fab-badge,html.lv-fab-dragging #aiChatFab .lv-fab-badge{animation:none!important}
 }
 @keyframes lvFabFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+/* ===== status: the details lie flat on the picture (no card), and the picture can be pinched to zoom ===== */
+html body .lvst-v .lvst-media{position:absolute;inset:0;will-change:transform}
+html body .lvst-v .lvst-shade{background:linear-gradient(180deg,rgba(0,0,0,.5),transparent 24%,transparent 46%,rgba(0,0,0,.72) 82%,rgba(0,0,0,.88))}
+html body .lvst-v .lvst-card{background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding:0 .1rem .1rem!important;border-radius:0!important}
+html body .lvst-v .lvst-card h4,html body .lvst-v .lvst-cap{text-shadow:0 1px 4px rgba(0,0,0,.7)}
+html body .lvst-v .lvst-pr{box-shadow:0 2px 8px rgba(0,0,0,.35)}
+html body .lvst-v .lvst-acts button{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff}
+html body .lvst-v .lvst-acts button.pri{background:var(--primary,#16a34a);border-color:transparent}
+html body .lvst-v .lvst-acts button.added{background:#15803d}
+html body .lvst-v.lvst-zooming .lvst-top,html body .lvst-v.lvst-zooming .lvst-bars,html body .lvst-v.lvst-zooming .lvst-bottom{opacity:0;pointer-events:none}
+html body .lvst-v.lvst-zooming .lvst-tap{pointer-events:none}
