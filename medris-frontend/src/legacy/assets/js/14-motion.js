@@ -8439,24 +8439,25 @@ window.lvNoImageHtml = function (seed) {
   }
   function barState(st) { try { V.el.querySelectorAll(".lvst-bars i.run b").forEach(function (b) { b.style.animationPlayState = st; }); } catch (_) {} }
   // a cube turn between two updates: the old picture and the new one are two faces of a box that rotates
-  function cubeSwap(markup, old, dir) {
-    var el = V.el, w = el.clientWidth || window.innerWidth, tmp = document.createElement("div"); tmp.innerHTML = markup; var nu = tmp.firstChild; V.stage = nu;
+  function cubeSwap(markup, old, dir, kind) {
+    var slide = kind === "slide", el = V.el, w = el.clientWidth || window.innerWidth, tmp = document.createElement("div"); tmp.innerHTML = markup; var nu = tmp.firstChild; V.stage = nu;
     [].slice.call(el.children).forEach(function (n) { if (n !== old) n.remove(); });
-    var wrap = document.createElement("div"); wrap.className = "lvst-cube";
-    old.style.transition = "none"; old.style.transformOrigin = "center"; old.style.transform = "rotateY(0deg) translateZ(" + w / 2 + "px)";
-    nu.style.transform = "rotateY(" + dir * 90 + "deg) translateZ(" + w / 2 + "px)";
-    wrap.style.transform = "translateZ(" + -w / 2 + "px)";
+    var wrap = document.createElement("div"); wrap.className = "lvst-cube" + (slide ? " lvst-slide" : "");
+    old.style.transition = "none"; old.style.transformOrigin = "center";
+    if (slide) { old.style.transform = "translateX(0)"; nu.style.transform = "translateX(" + dir * 100 + "%)"; wrap.style.transform = "translateX(0)"; }
+    else { old.style.transform = "rotateY(0deg) translateZ(" + w / 2 + "px)"; nu.style.transform = "rotateY(" + dir * 90 + "deg) translateZ(" + w / 2 + "px)"; wrap.style.transform = "translateZ(" + -w / 2 + "px)"; }
     el.appendChild(wrap); wrap.appendChild(old); wrap.appendChild(nu); void wrap.offsetWidth;
-    wrap.style.transition = "transform .42s cubic-bezier(.4,0,.2,1)"; wrap.style.transform = "translateZ(" + -w / 2 + "px) rotateY(" + -dir * 90 + "deg)";
+    wrap.style.transition = "transform " + (slide ? ".3s ease" : ".42s cubic-bezier(.4,0,.2,1)");
+    wrap.style.transform = slide ? "translateX(" + -dir * 100 + "%)" : "translateZ(" + -w / 2 + "px) rotateY(" + -dir * 90 + "deg)";
     var fin = function () { if (!V || V.stage !== nu) return; nu.style.transform = ""; el.innerHTML = ""; el.appendChild(nu); var b = V.begin; V.begin = null; if (b) b(); };
-    setTimeout(fin, 450);
+    setTimeout(fin, slide ? 330 : 450);
   }
   function closeLayers() { if (!V) return; V.el.querySelectorAll(".lvst-sheet,.lvst-sheet-bg,.lvst-menu,.lvst-menu-bg").forEach(function (n) { n.remove(); }); resume("menu"); resume("sheet"); }
   function step(d) {
-    if (!V) return; var g = V.gs[V.gi];
+    if (!V) return; var g = V.gs[V.gi], g0 = V.gi;
     if (d > 0) { if (V.i < g.items.length - 1) V.i++; else if (V.gi < V.gs.length - 1) { V.gi++; V.i = 0; } else return closeViewer(); }
     else { if (V.i > 0) V.i--; else if (V.gi > 0) { V.gi--; V.i = 0; } else return; }
-    V.cube = d > 0 ? 1 : -1;
+    V.cube = d > 0 ? 1 : -1; V.cubeKind = V.gi !== g0 ? "cube" : "slide";   // the cube turns only when going to another shop; within one shop it is a plain slide
     show();
   }
   function productUrl(s) { return location.origin + "/p/" + encodeURIComponent(String(s.product_id || "")); }
@@ -8525,7 +8526,7 @@ window.lvNoImageHtml = function (seed) {
         V.dragged = true; pause("drag"); el.style.transition = "none"; if (st) st.style.transition = "none";
       }
       if (dr.on === "y") { dy = Math.max(0, dy); el.style.transform = "translateY(" + dy + "px) scale(" + (1 - Math.min(dy, 400) / 2400) + ")"; el.style.opacity = String(1 - Math.min(dy, 400) / 700); el.style.borderRadius = Math.min(dy / 4, 28) + "px"; }
-      else if (st) { var first = V.gi === 0 && V.i === 0; if (dx > 0 && first) dx = dx / 4; st.style.transformOrigin = dx < 0 ? "right center" : "left center"; st.style.transform = "rotateY(" + (dx / (el.clientWidth || 390) * 38) + "deg)"; }
+      else if (st) { var first = V.gi === 0 && V.i === 0; if (dx > 0 && first) dx = dx / 4; var sameShop = dx < 0 ? V.i < V.gs[V.gi].items.length - 1 : V.i > 0; if (sameShop) { st.style.transform = "translateX(" + dx + "px)"; } else { st.style.transformOrigin = dx < 0 ? "right center" : "left center"; st.style.transform = "rotateY(" + (dx / (el.clientWidth || 390) * 38) + "deg)"; } }
     });
     function endDrag(e) {
       if (!dr || (e && e.pointerId !== dr.id)) return; var d = dr; dr = null; if (!d.on || !V) return;
@@ -8580,13 +8581,13 @@ window.lvNoImageHtml = function (seed) {
     var like = own
       ? '<div class="lvst-likes"><button type="button" id="lvStViews" data-views aria-label="See who viewed"><i class="fa-regular fa-eye"></i> <span>…</span><i class="fa-solid fa-chevron-up lvst-up" aria-hidden="true"></i></button></div>'
       : '<button type="button" class="lvst-lk" id="lvStLike" data-like aria-pressed="false"><i class="fa-regular fa-heart"></i><span>Like</span></button>';
-    var oldStage = V.cube ? V.el.querySelector(".lvst-stage") : null, cubeDir = V.cube; V.cube = 0;
+    var oldStage = V.cube ? V.el.querySelector(".lvst-stage") : null, cubeDir = V.cube, cubeKind = V.cubeKind; V.cube = 0;
     var markup = '<div class="lvst-stage">' + '<div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div><div class="lvst-shade"></div>' +
       '<div class="lvst-bars">' + g.items.map(function (_, k) { return '<i class="' + (k < V.i ? "d" : k === V.i ? "run" : "") + '">' + (k === V.i ? "<b></b>" : "") + "</i>"; }).join("") + "</div>" +
       '<div class="lvst-top">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + '<div class="lvst-who"><b>' + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(s.created_at) + '</small></div><button type="button" class="lvst-ib" data-dots aria-label="More options" aria-haspopup="menu"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>' +
       '<button type="button" class="lvst-tap l" data-p aria-label="Previous"></button><button type="button" class="lvst-tap r" data-n aria-label="Next"></button>' +
       '<div class="lvst-bottom"><div class="lvst-card' + (anim === "advert" ? " lvst-adv" : "") + '">' + (s.caption ? '<p class="lvst-cap">' + E(s.caption) + "</p>" : "") + '<div class="lvst-line"><h4>' + E(gone ? "This product is no longer available" : p.name) + "</h4>" + (price && !gone ? '<div class="lvst-pr">' + price + "</div>" : "") + "</div>" + acts + "</div>" + like + "</div></div>";
-    if (oldStage) cubeSwap(markup, oldStage, cubeDir); else { V.el.innerHTML = markup; V.stage = V.el.firstChild; }
+    if (oldStage) cubeSwap(markup, oldStage, cubeDir, cubeKind); else { V.el.innerHTML = markup; V.stage = V.el.firstChild; }
     V.ready = false;
     var begin = function () { if (!V) return; V.ready = true; runTimer(); barLoop(); };
     if (oldStage) { V.begin = begin; } else { begin(); }

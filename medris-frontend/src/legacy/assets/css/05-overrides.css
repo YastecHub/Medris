@@ -9376,3 +9376,27 @@ html body .lvst-v .lvst-bars i b{will-change:transform;animation:none!important}
 /* status page search: slimmer and less round */
 html body #lvStAdd .lve-search{border-radius:12px;padding:.3rem .75rem;min-height:0;height:2.3rem;gap:.45rem}
 html body #lvStAdd .lve-search input{font-size:.88rem;line-height:1.2}
+/* ===== Calm mode switches every animation off; these are things people chose or asked for, so they still move ===== */
+@media (prefers-reduced-motion:no-preference){
+  /* status: the style a shop picked (zoom / drift / advert) */
+  html[data-levro-motion] body .lvst-v .lvst-bg.lvst-a-zoom,html[data-levro-motion] body .lvst-v .lvst-bg.lvst-a-advert{animation:lvstZoom 6.5s ease-out forwards!important}
+  html[data-levro-motion] body .lvst-v .lvst-bg.lvst-a-pan{animation:lvstPan 6.5s ease-in-out forwards!important}
+  html[data-levro-motion] body .lvst-v.lvst-paused .lvst-bg{animation-play-state:paused!important}
+  html[data-levro-motion] body .lvst-v .lvst-adv .lvst-cap{animation:lvstRise .6s cubic-bezier(.2,1.2,.4,1) .2s both!important}
+  html[data-levro-motion] body .lvst-v .lvst-adv h4{animation:lvstRise .6s cubic-bezier(.2,1.2,.4,1) .55s both!important}
+  html[data-levro-motion] body .lvst-v .lvst-adv .lvst-pr{animation:lvstPop .55s cubic-bezier(.2,1.6,.4,1) 1s both!important}
+  html[data-levro-motion] body .lvst-v .lvst-adv .lvst-acts{animation:lvstRise .6s ease 1.4s both!important}
+  /* the same styles in the preview on the add-status page */
+  html[data-levro-motion] body #lvStAdd .lve-a-zoom,html[data-levro-motion] body #lvStAdd .lve-a-advert{animation:lvstZoom 4.5s ease-in-out infinite alternate!important}
+  html[data-levro-motion] body #lvStAdd .lve-a-pan{animation:lvstPan 5s ease-in-out infinite alternate!important}
+  html[data-levro-motion] body #lvStAdd .lve-adv .lve-cap{animation:lvstRise .6s cubic-bezier(.2,1.2,.4,1) both!important}
+  html[data-levro-motion] body #lvStAdd .lve-adv .lve-line{animation:lvstRise .6s cubic-bezier(.2,1.2,.4,1) .3s both!important}
+  html[data-levro-motion] body #lvStAdd .lve-adv .lve-pr{animation:lvstPop .55s cubic-bezier(.2,1.6,.4,1) .8s both!important}
+  /* a plain slide between updates of the same shop */
+  html[data-levro-motion] body .lvst-v .lvst-cube.lvst-slide{transition:transform .3s ease!important}
+  /* Levi's chat button floats gently */
+  html[data-levro-motion] body #aiChatFab .lv-fab-badge{animation:lvFabFloat 3.4s ease-in-out infinite!important}
+  html[data-levro-motion] body #aiChatFab:not(:has(.lv-fab-badge))::before{animation:lvFabFloat 3.4s ease-in-out infinite!important}
+  html[data-levro-motion] body #aiChatFab.dragging .lv-fab-badge,html.lv-fab-dragging #aiChatFab .lv-fab-badge{animation:none!important}
+}
+@keyframes lvFabFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
