@@ -9263,3 +9263,13 @@ html body .lvst-v .lvst-up{font-size:.7rem;opacity:.75;margin-left:.1rem}
 html body .lvst-v .lvst-vr{cursor:default;user-select:none;-webkit-user-select:none}
 html body .lvst-v .lvst-ordtag{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,#16a34a 16%,transparent);color:#16a34a;font-size:.74rem;font-weight:700}
 html body .lvst-v .lvst-sl{padding-top:.3rem}
+/* status picker: a plain search pill (no box inside it), a clear Post button, live products stay selectable */
+html body .lvpk-search{background:color-mix(in srgb,var(--text) 7%,transparent)!important;border:0!important;box-shadow:none!important}
+html body .lvpk-search input[type="search"]{all:unset;box-sizing:border-box;flex:1;min-width:0;height:100%;color:var(--text);font:inherit;font-size:1rem;-webkit-appearance:none;appearance:none}
+html body .lvpk-search input[type="search"]::placeholder{color:var(--text-muted,#6b7280);opacity:1}
+html body .lvpk-search input[type="search"]::-webkit-search-cancel-button,html body .lvpk-search input[type="search"]::-webkit-search-decoration{-webkit-appearance:none;display:none}
+html body .lvpk-t.live{opacity:1}
+html body .lvpk-bar span{flex:1;min-width:0;white-space:nowrap;font-size:.95rem}
+html body .lvpk-go{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:7.5rem;height:2.9rem;padding:0 1.6rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-size:1rem;font-weight:700;text-align:center;cursor:pointer}
+html body .lvpk-go:disabled{background:color-mix(in srgb,var(--text) 14%,transparent);color:var(--text-muted,#6b7280);opacity:1;cursor:default}
+html body .lvst-v button{touch-action:manipulation}

@@ -8516,9 +8516,9 @@ window.lvNoImageHtml = function (seed) {
       if (t.closest("[data-dots]")) { openMenu(s, V.gs[V.gi].own); return; }
       if (t.closest("[data-n]")) { if (Date.now() - V.downAt > 350 && V.downAt) return; return step(1); }
       if (t.closest("[data-p]")) { if (Date.now() - V.downAt > 350 && V.downAt) return; return step(-1); }
-      if (t.closest("[data-view]")) return goProduct(s, false);
-      if (t.closest("[data-order]")) return goProduct(s, true);
-      if (t.closest("[data-views]")) return openViewers(s);
+      var vb = t.closest("button[data-views]"); if (vb) { e.stopPropagation(); return openViewers(s); }
+      var pb = t.closest("button[data-view]"); if (pb) { e.stopPropagation(); return goProduct(s, false); }
+      var ob = t.closest("button[data-order]"); if (ob) { e.stopPropagation(); return goProduct(s, true); }
       if (t.closest("[data-like]")) return toggleLike(s);
     });
   }
@@ -8589,14 +8589,14 @@ window.lvNoImageHtml = function (seed) {
     try { await load(true); } catch (_) {}
     var live = {}, liveN = 0; cache.rows.forEach(function (x) { if (x.vendor_id === vid && new Date(x.expires_at) > new Date()) { liveN++; if (x.product_id) live[x.product_id] = 1; } });
     var room = Math.max(0, 10 - liveN), picks = [], q = "";
-    body.innerHTML = '<div class="lvpk"><label class="lvpk-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="lvPkQ" placeholder="Search your products" aria-label="Search your products" autocomplete="off"></label><div class="lvpk-grid" id="lvPkGrid"></div></div><div class="lvpk-bar"><span id="lvPkN" aria-live="polite"></span><button type="button" class="btn lvpk-go" id="lvPkGo" disabled>Post</button></div>';
+    body.innerHTML = '<div class="lvpk"><label class="lvpk-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="lvPkQ" placeholder="Search your products" aria-label="Search your products" autocomplete="off"></label><div class="lvpk-grid" id="lvPkGrid"></div></div><div class="lvpk-bar"><span id="lvPkN" aria-live="polite"></span><button type="button" class="lvpk-go" id="lvPkGo" disabled>Post</button></div>';
     var grid = document.getElementById("lvPkGrid"), cnt = document.getElementById("lvPkN"), go = document.getElementById("lvPkGo"), inp = document.getElementById("lvPkQ");
-    function bar() { cnt.innerHTML = picks.length ? "<b>" + picks.length + "</b> selected" : "Tap products to select" + (room < 10 ? " · " + room + " left today" : ""); go.disabled = !picks.length; go.textContent = picks.length > 1 ? "Post " + picks.length : "Post"; }
+    function bar() { cnt.innerHTML = picks.length ? "<b>" + picks.length + "</b> selected" : "Select products"; go.disabled = !picks.length; go.textContent = picks.length > 1 ? "Post " + picks.length : "Post"; }
     function tiles() {
       var f = list.filter(function (x) { return !q || String(x.name || "").toLowerCase().indexOf(q) >= 0; });
       grid.innerHTML = f.length ? f.map(function (x) {
         var ph = x.photos && x.photos[0], on = picks.indexOf(x.id) >= 0, isLive = !!live[x.id];
-        return '<button type="button" class="lvpk-t' + (on ? " sel" : "") + (isLive ? " live" : "") + '" data-p="' + E(x.id) + '"' + (isLive ? " disabled" : "") + ' aria-pressed="' + on + '" aria-label="' + E(x.name) + '"><span class="lvpk-ti">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<i class="fa-solid fa-image"></i>') + '<em aria-hidden="true"><i class="fa-solid fa-check"></i></em>' + (isLive ? "<u>Live</u>" : "") + "</span><b>" + E(x.name) + "</b><small>" + (x.sale_price ? naira(x.sale_price) : "") + "</small></button>";
+        return '<button type="button" class="lvpk-t' + (on ? " sel" : "") + (isLive ? " live" : "") + '" data-p="' + E(x.id) + '"' + ' aria-pressed="' + on + '" aria-label="' + E(x.name) + '"><span class="lvpk-ti">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<i class="fa-solid fa-image"></i>') + '<em aria-hidden="true"><i class="fa-solid fa-check"></i></em>' + (isLive ? "<u>Live</u>" : "") + "</span><b>" + E(x.name) + "</b><small>" + (x.sale_price ? naira(x.sale_price) : "") + "</small></button>";
       }).join("") : '<p class="lvpk-none">No products match “' + E(q) + "”.</p>";
     }
     grid.onclick = function (e) {
