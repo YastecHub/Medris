@@ -9247,3 +9247,4 @@ html body .lvpk-bar span{font-size:.92rem;color:var(--text-muted,#6b7280)}html b
 html body .lvpk-go{min-width:7rem;height:2.9rem;border-radius:999px;margin:0}
 html body .lvpk-go:disabled{opacity:.45}
 @media (prefers-reduced-motion:reduce){html body .lvst-v .lvst-sheet,html body .lvst-v .lvst-bg{animation:none!important}}
+html body .lvst-v{touch-action:none}html body .lvst-v .lvst-sheet{touch-action:pan-y}

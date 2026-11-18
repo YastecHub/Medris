@@ -8463,8 +8463,23 @@ window.lvNoImageHtml = function (seed) {
     var holdOn = ".lvst-tap, .lvst-bottom";
     el.addEventListener("pointerdown", function (e) { if (!V || !e.target.closest(holdOn)) return; V.downAt = Date.now(); pause("press"); });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { el.addEventListener(ev, function () { if (V) resume("press"); }); });
+    // drag down to close, like WhatsApp: the status follows the finger and goes away when pulled far enough
+    var dr = null;
+    el.addEventListener("pointerdown", function (e) { if (!V || e.target.closest(".lvst-sheet,.lvst-menu") || (e.pointerType === "mouse" && e.button !== 0)) return; dr = { x: e.clientX, y: e.clientY, on: false, id: e.pointerId }; });
+    el.addEventListener("pointermove", function (e) {
+      if (!dr || !V || e.pointerId !== dr.id) return; var dy = e.clientY - dr.y, dx = e.clientX - dr.x;
+      if (!dr.on) { if (dy > 12 && dy > Math.abs(dx) * 1.2) { dr.on = true; V.dragged = true; pause("drag"); el.style.transition = "none"; } else return; }
+      dy = Math.max(0, dy); el.style.transform = "translateY(" + dy + "px) scale(" + (1 - Math.min(dy, 400) / 2400) + ")"; el.style.opacity = String(1 - Math.min(dy, 400) / 700); el.style.borderRadius = Math.min(dy / 4, 28) + "px";
+    });
+    function endDrag(e) {
+      if (!dr || (e && e.pointerId !== dr.id)) return; var d = dr; dr = null; if (!d.on || !V) return;
+      var dy = (e && e.clientY != null ? e.clientY : d.y) - d.y; setTimeout(function () { if (V) V.dragged = false; }, 60);
+      if (dy > 110) { el.style.transition = "transform .18s ease,opacity .18s ease"; el.style.transform = "translateY(100%)"; el.style.opacity = "0"; setTimeout(function () { if (V && V.el === el) closeViewer(); }, 170); }
+      else { el.style.transition = "transform .2s ease,opacity .2s ease"; el.style.transform = ""; el.style.opacity = ""; el.style.borderRadius = ""; resume("drag"); }
+    }
+    el.addEventListener("pointerup", endDrag); el.addEventListener("pointercancel", endDrag);
     el.addEventListener("click", async function (e) {
-      if (!V) return; var s = V.s; if (!s) return; var t = e.target;
+      if (!V) return; if (V.dragged) return; var s = V.s; if (!s) return; var t = e.target;
       if (t.closest("[data-bg]")) { closeLayers(); return; }
       var m = t.closest("[data-m]");
       if (m) {
