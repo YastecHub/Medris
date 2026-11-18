@@ -9411,3 +9411,7 @@ html body .lvst-v .lvst-acts button.pri{background:var(--primary,#16a34a);border
 html body .lvst-v .lvst-acts button.added{background:#15803d}
 html body .lvst-v.lvst-zooming .lvst-top,html body .lvst-v.lvst-zooming .lvst-bars,html body .lvst-v.lvst-zooming .lvst-bottom{opacity:0;pointer-events:none}
 html body .lvst-v.lvst-zooming .lvst-tap{pointer-events:none}
+/* storefront on phones: a shorter banner (120px instead of 172px) so more of the shop shows without scrolling */
+@media (max-width:720px){
+  html:root:root body #app#app .storefront-profile.sf-snap .storefront-cover{height:120px!important;min-height:120px!important}
+}
