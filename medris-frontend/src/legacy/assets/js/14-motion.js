@@ -4904,16 +4904,20 @@ window.lvAskCancel = async function (orderId) {
   async function loadHistoryPage() {
     var host = document.getElementById("lvAwHist"); if (!host) return;
     try { await loadHistoryPageInner(host); }
-    catch (err) { host.innerHTML = '<p class="aw-note" style="text-align:center;padding:1.2rem 0">Could not load the transaction history.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem" onclick="navigate(\'adminWalletHistory\')">Try again</button></p>'; try { console.error("wallet history", err); } catch (_) {} }
+    catch (err) { host.innerHTML = '<p class="aw-note" style="text-align:center;padding:1.2rem 0">Could not load the transaction history.<br><small style="opacity:.7">' + esc(String((err && err.message) || err || "").slice(0, 160)) + '</small><br><button type="button" class="btn btn-sm" style="margin-top:.7rem" onclick="navigate(\'adminWalletHistory\')">Try again</button></p>'; try { console.error("wallet history", err); } catch (_) {} }
   }
   async function loadHistoryPageInner(host) {
     var r = await sb.rpc("get_levromart_wallet");
     if (r.error || !r.data) { host.innerHTML = '<p class="aw-note">Levromart\'s wallet is not switched on yet.</p>'; return; }
-    var all = (r.data.entries || []).slice();
-    for (var pg = 0; pg < 40 && all.length >= 50 * (pg + 1); pg++) {
+    var all = (r.data.entries || []).slice(), lastBatch = all.length;
+    // the server answers {entries:[...]} (older versions answered a bare list): accept both
+    var asList = function (d) { return Array.isArray(d) ? d : ((d && Array.isArray(d.entries)) ? d.entries : []); };
+    for (var pg = 0; pg < 40 && lastBatch >= 50; pg++) {
       var more = await sb.rpc("get_levromart_wallet_history", { p_before: all[all.length - 1].created_at });
+      if (more && more.error) break;   // show what we have rather than nothing
       var have = {}; all.forEach(function (e) { have[e.id] = 1; });
-      var next = ((more && more.data) || []).filter(function (e) { return !have[e.id]; });
+      var next = asList(more && more.data).filter(function (e) { return !have[e.id]; });
+      lastBatch = next.length;
       if (!next.length) break; all = all.concat(next);
     }
     var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() }, month = { y: cur.y, m: cur.m }, kind = (window.__lvAwKind && LW_KINDS[window.__lvAwKind]) ? window.__lvAwKind : "all", day = null; window.__lvAwKind = null;
