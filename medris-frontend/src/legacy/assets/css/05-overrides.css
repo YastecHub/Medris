@@ -9362,8 +9362,6 @@ html body #lvStAdd .lve-done{border:0;border-radius:999px;padding:.5rem 1.2rem;b
 html body #lvStAdd .lve-drawer .lvpk-search{height:2.4rem;margin:0 0 .7rem;padding:0 .9rem}
 html body #lvStAdd .lve-grid{flex:1;overflow-y:auto;align-content:start;padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}
 /* Calm mode (the default) switches every animation off. These few are functional or asked for, so they still move. */
-html[data-levro-motion] body .lvst-v .lvst-bars i b{animation:lvstbar 6s linear forwards!important}
-html[data-levro-motion] body .lvst-v.lvst-paused .lvst-bars i b{animation-play-state:paused!important}
 @media (prefers-reduced-motion:no-preference){
   html[data-levro-motion] body .lvst-v .lvst-cube{transition:transform .42s cubic-bezier(.4,0,.2,1)!important}
   html[data-levro-motion] body .lv-mapfab .mf-3d{animation:mf3dBob 3.2s ease-in-out infinite!important}
@@ -9371,3 +9369,10 @@ html[data-levro-motion] body .lvst-v.lvst-paused .lvst-bars i b{animation-play-s
 /* Orders page tabs: spread evenly across the row, equal widths */
 html:root:root:root:root:root body #app#app .order-status-pills-rail{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:0!important;overflow:visible!important}
 html:root:root:root:root:root body #app#app .order-status-pill{display:flex!important;align-items:center;justify-content:center;text-align:center;padding:.45rem .1rem .7rem!important;font-size:.8rem!important;min-width:0}
+/* status: a clearer progress bar (filled by script) */
+html body .lvst-v .lvst-bars{gap:.3rem;z-index:6;pointer-events:none}
+html body .lvst-v .lvst-bars i{height:4px;border-radius:4px;background:rgba(255,255,255,.4);box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
+html body .lvst-v .lvst-bars i b{will-change:transform;animation:none!important}
+/* status page search: slimmer and less round */
+html body #lvStAdd .lve-search{border-radius:12px;padding:.3rem .75rem;min-height:0;height:2.3rem;gap:.45rem}
+html body #lvStAdd .lve-search input{font-size:.88rem;line-height:1.2}
