@@ -134,7 +134,8 @@ async function fetchBuyerOrderStatusCounts() {
 function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, perspective = "", counts = null) {
   // Handed over / Returned aren't separate filters any more (still reachable
   // from the dropdown); they only show here if one is the active filter.
-  const pillTabs = ORDER_TABS.filter((t) => !["handed_over", "returned"].includes(t) || t === status);
+  // Completed and Cancelled live in Order history now, so they are not tabs here (still shown if one is the active filter).
+  const pillTabs = ORDER_TABS.filter((t) => !["handed_over", "returned", "completed", "cancelled"].includes(t) || t === status);
   const badge = (t) => { const n = Number(counts?.[t] || 0); return n > 0 ? `<span class="order-tab-badge" aria-label="${n} ${t.replace(/_/g, " ")}">${n > 99 ? "99+" : n}</span>` : ""; };
   return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="window.__ordersRailPending=true;window.__ordersRailAt=Date.now();navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}${badge(t)}</button>`).join("")}</div>`;
 }

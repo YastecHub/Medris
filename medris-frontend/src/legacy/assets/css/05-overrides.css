@@ -9346,3 +9346,28 @@ html body #lvStAdd .lve-bar{position:fixed;left:0;right:0;bottom:0;z-index:5;dis
 html body #lvStAdd .lve-bar span{font-size:.95rem;color:var(--text-muted,#6b7280)}html body #lvStAdd .lve-bar span b{color:var(--text)}
 html body #lvStAdd .lve-go{flex:none;min-width:7.5rem;height:2.9rem;padding:0 1.6rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-size:1rem;font-weight:800;cursor:pointer}
 html body #lvStAdd .lve-go:disabled{background:color-mix(in srgb,var(--text) 14%,transparent);color:var(--text-muted,#6b7280);cursor:default}
+html body #lvStAdd .lve-bar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;gap:.7rem;padding:.8rem 1rem calc(.8rem + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--bg,#fff) 35%);transition:transform .25s ease}
+html body #lvStAdd .lve-bar.away{transform:translateY(120%)}
+html body #lvStAdd .lve-add{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:3rem;border-radius:999px;border:1.5px solid color-mix(in srgb,var(--text) 18%,transparent);background:var(--card,#fff);color:var(--text);font:inherit;font-weight:700}
+html body #lvStAdd .lve-go{flex:none;min-width:7rem;height:3rem;padding:0 1.5rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-size:1rem;font-weight:800}
+html body #lvStAdd .lve-go:disabled{background:color-mix(in srgb,var(--text) 14%,transparent);color:var(--text-muted,#6b7280)}
+html body #lvStAdd .lve-dbg{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s}
+html body #lvStAdd .lve-dbg.open{opacity:1;pointer-events:auto}
+html body #lvStAdd .lve-drawer{position:fixed;left:0;right:0;bottom:0;z-index:9;height:min(74vh,36rem);display:flex;flex-direction:column;padding:.5rem 1rem 0;border-radius:24px 24px 0 0;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 -12px 40px rgba(0,0,0,.35);transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);max-width:40rem;margin:0 auto}
+html body #lvStAdd .lve-drawer.open{transform:none}
+html body #lvStAdd .lve-handle{display:block;width:2.6rem;height:4px;margin:.1rem auto .6rem;border-radius:4px;background:color-mix(in srgb,var(--text) 22%,transparent)}
+html body #lvStAdd .lve-dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+html body #lvStAdd .lve-dh b{font-size:1.1rem}
+html body #lvStAdd .lve-done{border:0;border-radius:999px;padding:.5rem 1.2rem;background:var(--primary,#16a34a);color:#fff;font:inherit;font-weight:700}
+html body #lvStAdd .lve-drawer .lvpk-search{height:2.4rem;margin:0 0 .7rem;padding:0 .9rem}
+html body #lvStAdd .lve-grid{flex:1;overflow-y:auto;align-content:start;padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}
+/* Calm mode (the default) switches every animation off. These few are functional or asked for, so they still move. */
+html[data-levro-motion] body .lvst-v .lvst-bars i b{animation:lvstbar 6s linear forwards!important}
+html[data-levro-motion] body .lvst-v.lvst-paused .lvst-bars i b{animation-play-state:paused!important}
+@media (prefers-reduced-motion:no-preference){
+  html[data-levro-motion] body .lvst-v .lvst-cube{transition:transform .42s cubic-bezier(.4,0,.2,1)!important}
+  html[data-levro-motion] body .lv-mapfab .mf-3d{animation:mf3dBob 3.2s ease-in-out infinite!important}
+}
+/* Orders page tabs: spread evenly across the row, equal widths */
+html:root:root:root:root:root body #app#app .order-status-pills-rail{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:0!important;overflow:visible!important}
+html:root:root:root:root:root body #app#app .order-status-pill{display:flex!important;align-items:center;justify-content:center;text-align:center;padding:.45rem .1rem .7rem!important;font-size:.8rem!important;min-width:0}
