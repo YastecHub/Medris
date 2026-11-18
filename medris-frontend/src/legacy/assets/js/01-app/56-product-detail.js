@@ -328,20 +328,22 @@ function deliveryFeeCalcHtml(prefix) {
   let lines = [];
   if (wrap.dataset.feeLines) { try { lines = JSON.parse(wrap.dataset.feeLines); } catch (_) { lines = []; } }
   else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Math.min(1000, Number(wrap.dataset.perKm) || 0) }];
-  const rows = [];
   let km = null;
   if (buyerLocation && vLat != null && vLng != null) km = haversineKm(buyerLocation.lat, buyerLocation.lng, vLat, vLng);
   let usedDistance = false;
+  // One delivery per shop: show the working for the one fee that is charged (the highest), not one block per item.
+  let best = null;
   lines.forEach((l) => {
-    const label = l.name ? ` <small>(${esc(l.name)})</small>` : "";
     if (l.mode === "distance" && l.perKm > 0 && km != null) {
       usedDistance = true;
       const billedKm = Math.max(1, km), raw = l.perKm * billedKm, fee = Math.round(raw / 50) * 50;
-      rows.push(`<div class="fee-calc-row"><span>${billedKm.toFixed(2)} km × ${naira(l.perKm)} per km${label}${km < 1 ? " <small>(1 km minimum)</small>" : ""}</span><strong>${naira(Math.round(raw))}</strong></div>` + (Math.round(raw) !== fee ? `<div class="fee-calc-row fee-calc-sub"><span>Rounded to the nearest ₦50</span><strong>${naira(fee)}</strong></div>` : ""));
+      if (!best || fee > best.fee) best = { fee, html: `<div class="fee-calc-row"><span>${billedKm.toFixed(2)} km × ${naira(l.perKm)} per km${km < 1 ? " <small>(1 km minimum)</small>" : ""}</span><strong>${naira(Math.round(raw))}</strong></div>` + (Math.round(raw) !== fee ? `<div class="fee-calc-row fee-calc-sub"><span>Rounded to the nearest ₦50</span><strong>${naira(fee)}</strong></div>` : "") };
     } else if (l.mode === "flat" && l.fee > 0) {
-      rows.push(`<div class="fee-calc-row"><span>Flat delivery fee${label}</span><strong>${naira(l.fee)}</strong></div>`);
+      if (!best || l.fee > best.fee) best = { fee: l.fee, html: `<div class="fee-calc-row"><span>Flat delivery fee</span><strong>${naira(l.fee)}</strong></div>` };
     }
   });
+  const rows = best ? [best.html] : [];
+  if (best && lines.length > 1) rows.push(`<div class="fee-calc-row fee-calc-sub"><span>The same delivery covers all ${lines.length} items from this shop</span><strong>${naira(best.fee)}</strong></div>`);
   if (!usedDistance || !rows.length) return "";
   const perKmShown = lines.find((l) => l.mode === "distance" && l.perKm > 0)?.perKm;
   return `<details class="fee-calc"><summary><span><i class="fa-solid fa-route"></i> How is this fee worked out?</span><i class="fa-solid fa-chevron-down fee-calc-chev"></i></summary>
