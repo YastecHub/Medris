@@ -9248,3 +9248,18 @@ html body .lvpk-go{min-width:7rem;height:2.9rem;border-radius:999px;margin:0}
 html body .lvpk-go:disabled{opacity:.45}
 @media (prefers-reduced-motion:reduce){html body .lvst-v .lvst-sheet,html body .lvst-v .lvst-bg{animation:none!important}}
 html body .lvst-v{touch-action:none}html body .lvst-v .lvst-sheet{touch-action:pan-y}
+/* status: swipe between updates, drawer menu, viewers rows */
+html body .lvst-v .lvst-stage{position:absolute;inset:0;overflow:hidden;background:#000}
+html body .lvst-v .lvst-stage.in-r{animation:lvstInR .22s ease-out both}
+html body .lvst-v .lvst-stage.in-l{animation:lvstInL .22s ease-out both}
+@keyframes lvstInR{from{transform:translateX(45%);opacity:.4}to{transform:none;opacity:1}}
+@keyframes lvstInL{from{transform:translateX(-45%);opacity:.4}to{transform:none;opacity:1}}
+html body .lvst-v .lvst-ml{display:flex;flex-direction:column;gap:.15rem;padding-bottom:.2rem}
+html body .lvst-v .lvst-ml button{display:flex;align-items:center;gap:.9rem;width:100%;padding:.9rem .6rem;border:0;border-radius:14px;background:none;color:inherit;font:inherit;font-size:1rem;text-align:left}
+html body .lvst-v .lvst-ml button i{width:1.3rem;text-align:center;color:var(--text-muted,#6b7280)}
+html body .lvst-v .lvst-ml button:active{background:color-mix(in srgb,var(--text,#111) 8%,transparent)}
+html body .lvst-v .lvst-ml button.danger,html body .lvst-v .lvst-ml button.danger i{color:#e5484d}
+html body .lvst-v .lvst-up{font-size:.7rem;opacity:.75;margin-left:.1rem}
+html body .lvst-v .lvst-vr{cursor:default;user-select:none;-webkit-user-select:none}
+html body .lvst-v .lvst-ordtag{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,#16a34a 16%,transparent);color:#16a34a;font-size:.74rem;font-weight:700}
+html body .lvst-v .lvst-sl{padding-top:.3rem}
