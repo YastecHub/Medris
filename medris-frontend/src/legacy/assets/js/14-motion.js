@@ -4895,11 +4895,16 @@ window.lvAskCancel = async function (orderId) {
   // Levromart's transaction history: a page of its own, by month, with a tab for each kind of money
   window.renderAdminWalletHistory = async function () {
     var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
-    setTimeout(loadHistoryPage, 30);
+    // wait until the page is really on screen before filling it (a fixed 30 ms wait sometimes ran too early and left "Loading…" forever)
+    var tries = 0; (function wait() { if (document.getElementById("lvAwHist")) { loadHistoryPage(); return; } if (++tries < 60) setTimeout(wait, 50); })();
     return nav + '<div class="lvw-page"><div class="lvw-page-head"><button type="button" class="lvw-back" onclick="navigate(\'adminPayments\')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2>Transaction history</h2></div><div id="lvAwHist"><p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p></div></div>';
   };
   async function loadHistoryPage() {
     var host = document.getElementById("lvAwHist"); if (!host) return;
+    try { await loadHistoryPageInner(host); }
+    catch (err) { host.innerHTML = '<p class="aw-note" style="text-align:center;padding:1.2rem 0">Could not load the transaction history.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem" onclick="navigate(\'adminWalletHistory\')">Try again</button></p>'; try { console.error("wallet history", err); } catch (_) {} }
+  }
+  async function loadHistoryPageInner(host) {
     var r = await sb.rpc("get_levromart_wallet");
     if (r.error || !r.data) { host.innerHTML = '<p class="aw-note">Levromart\'s wallet is not switched on yet.</p>'; return; }
     var all = (r.data.entries || []).slice();
