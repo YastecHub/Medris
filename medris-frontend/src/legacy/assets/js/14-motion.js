@@ -8457,7 +8457,8 @@ window.lvNoImageHtml = function (seed) {
     if (!V) return; var g = V.gs[V.gi], g0 = V.gi;
     if (d > 0) { if (V.i < g.items.length - 1) V.i++; else if (V.gi < V.gs.length - 1) { V.gi++; V.i = 0; } else return closeViewer(); }
     else { if (V.i > 0) V.i--; else if (V.gi > 0) { V.gi--; V.i = 0; } else return; }
-    V.cube = d > 0 ? 1 : -1; V.cubeKind = V.gi !== g0 ? "cube" : "slide";   // the cube turns only when going to another shop; within one shop it is a plain slide
+    // the cube turns only when going to another shop; within one shop the picture just changes, like WhatsApp
+    V.cube = V.gi !== g0 ? (d > 0 ? 1 : -1) : 0; V.cubeKind = "cube";
     show();
   }
   function productUrl(s) { return location.origin + "/p/" + encodeURIComponent(String(s.product_id || "")); }
@@ -8516,17 +8517,37 @@ window.lvNoImageHtml = function (seed) {
     el.addEventListener("pointerdown", function (e) { if (!V || !e.target.closest(holdOn)) return; V.downAt = Date.now(); pause("press"); });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { el.addEventListener(ev, function () { if (V) resume("press"); }); });
     // WhatsApp-style gestures: drag down to close; swipe left / right to move between updates
-    var dr = null;
+    var dr = null, ptrs = {}, pz = null;
     function stage() { return el.querySelector(".lvst-stage"); }
-    el.addEventListener("pointerdown", function (e) { if (!V || e.target.closest(".lvst-sheet,.lvst-menu") || (e.pointerType === "mouse" && e.button !== 0)) return; dr = { x: e.clientX, y: e.clientY, on: "", id: e.pointerId }; });
+    // pinch with two fingers to zoom into the picture (the text fades away while you look); let go and it settles back
+    function startPinch() {
+      var ids = Object.keys(ptrs), a = ptrs[ids[0]], b = ptrs[ids[1]], media = el.querySelector(".lvst-media"); if (!media || !a || !b) return;
+      dr = null; V.dragged = true; el.style.transform = ""; el.style.opacity = ""; var st0 = stage(); if (st0) st0.style.transform = "";
+      var r = media.getBoundingClientRect(); pz = { media: media, d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx0: (a.x + b.x) / 2, cy0: (a.y + b.y) / 2, s: 1, tx: 0, ty: 0 };
+      media.style.transformOrigin = (pz.cx0 - r.left) + "px " + (pz.cy0 - r.top) + "px"; pause("zoom"); el.classList.add("lvst-zooming");
+    }
+    function movePinch() {
+      var ids = Object.keys(ptrs); if (!pz || ids.length < 2) return; var a = ptrs[ids[0]], b = ptrs[ids[1]];
+      pz.s = Math.max(1, Math.min(4, Math.hypot(a.x - b.x, a.y - b.y) / pz.d0)); pz.tx = (a.x + b.x) / 2 - pz.cx0; pz.ty = (a.y + b.y) / 2 - pz.cy0;
+      pz.media.style.transform = "translate(" + pz.tx + "px," + pz.ty + "px) scale(" + pz.s + ")";
+    }
+    function endPinch() {
+      var z = pz; pz = null; if (!z) return; var t0 = performance.now();
+      (function f(now) { var k = Math.min(1, (now - t0) / 220), e2 = 1 - Math.pow(1 - k, 3); z.media.style.transform = "translate(" + z.tx * (1 - e2) + "px," + z.ty * (1 - e2) + "px) scale(" + (z.s + (1 - z.s) * e2) + ")"; if (k < 1) requestAnimationFrame(f); else z.media.style.transform = ""; })(t0);
+      el.classList.remove("lvst-zooming"); resume("zoom"); setTimeout(function () { if (V) V.dragged = false; }, 260);
+    }
+    el.addEventListener("pointerdown", function (e) { if (!V || e.target.closest(".lvst-sheet,.lvst-menu")) return; ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; if (Object.keys(ptrs).length === 2) startPinch(); });
+    el.addEventListener("pointermove", function (e) { if (!ptrs[e.pointerId]) return; ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; if (pz) movePinch(); });
+    ["pointerup", "pointercancel"].forEach(function (ev) { el.addEventListener(ev, function (e) { if (!ptrs[e.pointerId]) return; delete ptrs[e.pointerId]; if (pz && Object.keys(ptrs).length < 2) endPinch(); }); });
+    el.addEventListener("pointerdown", function (e) { if (!V || pz || Object.keys(ptrs).length > 1 || e.target.closest(".lvst-sheet,.lvst-menu") || (e.pointerType === "mouse" && e.button !== 0)) return; dr = { x: e.clientX, y: e.clientY, on: "", id: e.pointerId }; });
     el.addEventListener("pointermove", function (e) {
-      if (!dr || !V || e.pointerId !== dr.id) return; var dy = e.clientY - dr.y, dx = e.clientX - dr.x, st = stage();
+      if (pz || !dr || !V || e.pointerId !== dr.id) return; var dy = e.clientY - dr.y, dx = e.clientX - dr.x, st = stage();
       if (!dr.on) {
         if (dy > 12 && dy > Math.abs(dx) * 1.2) dr.on = "y"; else if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.2) dr.on = "x"; else return;
         V.dragged = true; pause("drag"); el.style.transition = "none"; if (st) st.style.transition = "none";
       }
       if (dr.on === "y") { dy = Math.max(0, dy); el.style.transform = "translateY(" + dy + "px) scale(" + (1 - Math.min(dy, 400) / 2400) + ")"; el.style.opacity = String(1 - Math.min(dy, 400) / 700); el.style.borderRadius = Math.min(dy / 4, 28) + "px"; }
-      else if (st) { var first = V.gi === 0 && V.i === 0; if (dx > 0 && first) dx = dx / 4; var sameShop = dx < 0 ? V.i < V.gs[V.gi].items.length - 1 : V.i > 0; if (sameShop) { st.style.transform = "translateX(" + dx + "px)"; } else { st.style.transformOrigin = dx < 0 ? "right center" : "left center"; st.style.transform = "rotateY(" + (dx / (el.clientWidth || 390) * 38) + "deg)"; } }
+      else if (st) { var first = V.gi === 0 && V.i === 0; if (dx > 0 && first) dx = dx / 4; var sameShop = dx < 0 ? V.i < V.gs[V.gi].items.length - 1 : V.i > 0; if (sameShop) { /* no movement inside one shop */ } else { st.style.transformOrigin = dx < 0 ? "right center" : "left center"; st.style.transform = "rotateY(" + (dx / (el.clientWidth || 390) * 38) + "deg)"; } }
     });
     function endDrag(e) {
       if (!dr || (e && e.pointerId !== dr.id)) return; var d = dr; dr = null; if (!d.on || !V) return;
@@ -8582,7 +8603,7 @@ window.lvNoImageHtml = function (seed) {
       ? '<div class="lvst-likes"><button type="button" id="lvStViews" data-views aria-label="See who viewed"><i class="fa-regular fa-eye"></i> <span>…</span><i class="fa-solid fa-chevron-up lvst-up" aria-hidden="true"></i></button></div>'
       : '<button type="button" class="lvst-lk" id="lvStLike" data-like aria-pressed="false"><i class="fa-regular fa-heart"></i><span>Like</span></button>';
     var oldStage = V.cube ? V.el.querySelector(".lvst-stage") : null, cubeDir = V.cube, cubeKind = V.cubeKind; V.cube = 0;
-    var markup = '<div class="lvst-stage">' + '<div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div><div class="lvst-shade"></div>' +
+    var markup = '<div class="lvst-stage">' + '<div class="lvst-media"><div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div></div><div class="lvst-shade"></div>' +
       '<div class="lvst-bars">' + g.items.map(function (_, k) { return '<i class="' + (k < V.i ? "d" : k === V.i ? "run" : "") + '">' + (k === V.i ? "<b></b>" : "") + "</i>"; }).join("") + "</div>" +
       '<div class="lvst-top">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + '<div class="lvst-who"><b>' + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(s.created_at) + '</small></div><button type="button" class="lvst-ib" data-dots aria-label="More options" aria-haspopup="menu"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>' +
       '<button type="button" class="lvst-tap l" data-p aria-label="Previous"></button><button type="button" class="lvst-tap r" data-n aria-label="Next"></button>' +
