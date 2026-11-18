@@ -3721,7 +3721,9 @@ window.lvAskCancel = async function (orderId) {
     document.querySelectorAll(".adp-tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); b.setAttribute("aria-selected", String(b.dataset.t === t)); });
     document.querySelectorAll(".adp-panel").forEach(function (p) { p.classList.toggle("hidden", p.dataset.t !== t); });
   };
-  window.lvAdpFold = function (e, card) { if (e.target.closest("button,a,textarea,input")) return; card.classList.toggle("open"); };
+  // which resolved cards are open is remembered, so a live refresh of the page does not fold them again
+  window.__adpOpen = window.__adpOpen || {};
+  window.lvAdpFold = function (e, card) { if (e.target.closest("button,a,textarea,input")) return; card.classList.toggle("open"); var id = card.getAttribute("data-id"); if (id) { if (card.classList.contains("open")) window.__adpOpen[id] = 1; else delete window.__adpOpen[id]; } };
   window.lvAdpOutcome = function (id, v, btn) {
     var inp = document.getElementById("newstatus-" + id); if (inp) inp.value = v;
     var wrap = btn && btn.parentElement; if (wrap) wrap.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); b.setAttribute("aria-checked", String(b === btn)); });
@@ -3750,7 +3752,7 @@ window.lvAskCancel = async function (orderId) {
   }
   function doneCard(d, refunded) {
     var o = d.order || {}, back = refunded[o.id] || 0, st = String(o.status || "");
-    return '<article class="adp-card adp-done" onclick="lvAdpFold(event,this)"><header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div>' +
+    return '<article class="adp-card adp-done' + (window.__adpOpen && window.__adpOpen[d.id] ? " open" : "") + '" data-id="' + esc(d.id) + '" onclick="lvAdpFold(event,this)"><header class="adp-top"><div class="adp-who"><strong>' + esc((o.vendor && o.vendor.business_name) || "Shop") + '</strong><small>' + esc(nice(o.order_type || "order")) + ' · ' + esc(ref(o.id)) + (o.total_amount != null ? ' · ' + money(o.total_amount) : "") + '</small></div>' +
       '<span class="adp-pill adp-st-' + esc(st) + '">' + esc(nice(st)) + '</span></header>' +
       '<div class="adp-block"><label>Reason</label><p>' + esc(d.reason || "") + '</p></div>' +
       (d.admin_notes ? '<div class="adp-block"><label>Your notes</label><p>' + esc(d.admin_notes) + '</p></div>' : "") +

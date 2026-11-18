@@ -89,7 +89,10 @@ function refreshVisibleRequestView(tries) {
   requestsLiveTimer = setTimeout(async () => {
     if (currentView !== v) return;
     if (userIsTypingInApp() && (tries || 0) < 20) { refreshVisibleRequestView((tries || 0) + 1); return; }
+    // keep the reader's place: a live repaint must not throw the page back to the top
+    const keepY = window.scrollY;
     try { await navigate(v, params, false); } catch (err) { console.warn("[Levromart] Live request refresh failed:", err); }
+    if (keepY > 0 && currentView === v) { try { window.scrollTo(0, keepY); requestAnimationFrame(() => window.scrollTo(0, keepY)); } catch (_) {} }
   }, tries ? 2500 : 300);
 }
 function refreshAllLiveViews() { refreshVisibleOrderView(); refreshVisibleRequestView(0); }
