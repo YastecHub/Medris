@@ -1499,8 +1499,13 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   function mountHomeBar(){
     var grid=document.getElementById("productGrid"); if(!grid) return;
     var bar=document.getElementById("lvCampusBar");
-    if(bar){ if(!bar.dataset.painted) {bar.innerHTML=barHtml();bar.dataset.painted="1";} return; }
     var anchor=document.getElementById("homePromotionalViewport"); anchor=anchor&&(anchor.closest("section")||anchor.parentElement);
+    if(bar){
+      if(!bar.dataset.painted) {bar.innerHTML=barHtml();bar.dataset.painted="1";}
+      // the bar may have been placed early, before the banner section existed: put it where it belongs (just above the banners) once they are there
+      if(anchor&&anchor.parentNode&&bar.parentNode===anchor.parentNode&&bar.nextElementSibling!==anchor) anchor.parentNode.insertBefore(bar,anchor);
+      return;
+    }
     anchor=anchor||document.getElementById("browseSection"); if(!anchor||!anchor.parentNode) return;
     var kept=window.__lvBarStash;
     if(kept&&!kept.isConnected&&kept.dataset.painted){   // reuse the bar from the last Home visit: its logo is already decoded, so nothing blinks
