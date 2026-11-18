@@ -8427,6 +8427,16 @@ window.lvNoImageHtml = function (seed) {
   function runTimer() { if (!V) return; clearTimeout(V.timer); V.t0 = Date.now(); V.timer = setTimeout(function () { step(1); }, Math.max(50, V.left)); }
   function pause(why) { if (!V) return; if (!Object.keys(V.holds).length) { clearTimeout(V.timer); V.left = Math.max(50, V.left - (Date.now() - V.t0)); V.el.classList.add("lvst-paused"); barState("paused"); } V.holds[why] = 1; }
   function resume(why) { if (!V || !V.holds[why]) return; delete V.holds[why]; if (!Object.keys(V.holds).length) { V.el.classList.remove("lvst-paused"); barState("running"); runTimer(); } }
+  // the progress bar is drawn by script on every frame (not by a CSS animation), so nothing in the page can switch it off
+  function barLoop() {
+    if (!V) return; var v = V; cancelAnimationFrame(v.raf);
+    (function frame() {
+      if (!V || V !== v) return;
+      var fill = v.stage && v.stage.querySelector(".lvst-bars i.run b");
+      if (fill) { var p = 0; if (v.ready) { var running = Object.keys(v.holds).length ? 0 : Date.now() - v.t0; p = Math.max(0, Math.min(1, (DUR - v.left + running) / DUR)); } fill.style.transform = "scaleX(" + p.toFixed(4) + ")"; }
+      v.raf = requestAnimationFrame(frame);
+    })();
+  }
   function barState(st) { try { V.el.querySelectorAll(".lvst-bars i.run b").forEach(function (b) { b.style.animationPlayState = st; }); } catch (_) {} }
   // a cube turn between two updates: the old picture and the new one are two faces of a box that rotates
   function cubeSwap(markup, old, dir) {
@@ -8566,7 +8576,7 @@ window.lvNoImageHtml = function (seed) {
     var kind = p.is_service ? "service" : "product", gone = !p.id;
     // shoppers add straight to the cart without leaving the status; the shop (and services / rentals, which have no cart) just view it
     var cartable = !own && !p.is_service && p.sale_price != null;
-    var acts = gone ? "" : '<div class="lvst-acts one">' + (cartable ? '<button type="button" class="pri" data-cart><i class="fa-solid fa-cart-plus"></i> Add to cart</button>' : '<button type="button" data-view>View ' + kind + "</button>") + "</div>";
+    var acts = gone ? "" : '<div class="lvst-acts' + (cartable ? "" : " one") + '"><button type="button" data-view>View ' + kind + "</button>" + (cartable ? '<button type="button" class="pri" data-cart><i class="fa-solid fa-cart-plus"></i> Add to cart</button>' : "") + "</div>";
     var like = own
       ? '<div class="lvst-likes"><button type="button" id="lvStViews" data-views aria-label="See who viewed"><i class="fa-regular fa-eye"></i> <span>…</span><i class="fa-solid fa-chevron-up lvst-up" aria-hidden="true"></i></button></div>'
       : '<button type="button" class="lvst-lk" id="lvStLike" data-like aria-pressed="false"><i class="fa-regular fa-heart"></i><span>Like</span></button>';
@@ -8577,7 +8587,8 @@ window.lvNoImageHtml = function (seed) {
       '<button type="button" class="lvst-tap l" data-p aria-label="Previous"></button><button type="button" class="lvst-tap r" data-n aria-label="Next"></button>' +
       '<div class="lvst-bottom"><div class="lvst-card' + (anim === "advert" ? " lvst-adv" : "") + '">' + (s.caption ? '<p class="lvst-cap">' + E(s.caption) + "</p>" : "") + '<div class="lvst-line"><h4>' + E(gone ? "This product is no longer available" : p.name) + "</h4>" + (price && !gone ? '<div class="lvst-pr">' + price + "</div>" : "") + "</div>" + acts + "</div>" + like + "</div></div>";
     if (oldStage) cubeSwap(markup, oldStage, cubeDir); else { V.el.innerHTML = markup; V.stage = V.el.firstChild; }
-    var begin = function () { if (!V) return; var fill = (V.stage || V.el).querySelector(".lvst-bars i.run b"); if (fill) fill.style.animation = "lvstbar " + DUR + "ms linear forwards"; runTimer(); };
+    V.ready = false;
+    var begin = function () { if (!V) return; V.ready = true; runTimer(); barLoop(); };
     if (oldStage) { V.begin = begin; } else { begin(); }
     var mine = V.s;
     if (!own && typeof session !== "undefined" && session && session.user) { try { var lk = await sb.from("vendor_status_likes").select("user_id").eq("status_id", s.id).eq("user_id", session.user.id); var btn = document.getElementById("lvStLike"); if (V && V.s === mine && btn && lk && lk.data && lk.data.length) setLiked(btn, true); } catch (_) {} }
