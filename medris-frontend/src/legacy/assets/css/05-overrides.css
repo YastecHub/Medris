@@ -9176,3 +9176,75 @@ html:root body .lvrw-later{display:block;width:100%;margin-top:.5rem;padding:.7r
 /* My listings: the delete button shows its bin icon */
 html:root body #app .vl-page .vl-actions .vl-btn-delete i{display:inline-block!important;font-size:1rem;line-height:1;color:#dc2626}
 html:root body #app .vl-page .vl-actions .vl-btn-delete{display:inline-flex!important;align-items:center;justify-content:center}
+
+/* ===== Status, WhatsApp-style: viewer (bars + header, picture, compact card, slim like row), menu, viewers sheet, picker ===== */
+html body .lvst-v .lvst-tap{top:calc(max(.8rem,env(safe-area-inset-top)) + 4.2rem);bottom:calc(11.5rem + env(safe-area-inset-bottom,0px));z-index:2;-webkit-tap-highlight-color:transparent}
+html body .lvst-v .lvst-top{z-index:5;gap:.6rem}
+html body .lvst-v .lvst-who{flex:1;min-width:0}
+html body .lvst-v .lvst-who b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+html body .lvst-v .lvst-ib{flex:none;width:2.5rem;height:2.5rem;border:0;border-radius:50%;background:rgba(0,0,0,.38);color:#fff;font-size:1.05rem;display:grid;place-items:center;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html body .lvst-v .lvst-ib:focus-visible,html body .lvst-v button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+html body .lvst-v .lvst-bars i.run:after{animation:lvstbar 6s linear forwards}
+html body .lvst-v.lvst-paused .lvst-bars i.run:after,html body .lvst-v.lvst-paused .lvst-bg{animation-play-state:paused}
+html body .lvst-v .lvst-bottom{position:absolute;left:.9rem;right:.9rem;bottom:calc(.9rem + env(safe-area-inset-bottom,0px));z-index:5;display:flex;flex-direction:column;gap:.55rem;max-width:34rem;margin:0 auto}
+html body .lvst-v .lvst-card{position:relative;left:auto;right:auto;bottom:auto;padding:.85rem .9rem .9rem;border-radius:22px;background:rgba(18,22,28,.78)}
+html body .lvst-v .lvst-line{display:flex;align-items:center;justify-content:space-between;gap:.7rem;margin-bottom:.7rem}
+html body .lvst-v .lvst-card h4{margin:0;font-size:1.02rem;font-weight:700;line-height:1.25;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#fff}
+html body .lvst-v .lvst-pr{flex:none;margin:0;padding:.2rem .65rem;border-radius:999px;background:#facc15;color:#111;font-size:.95rem;font-weight:800;white-space:nowrap}
+html body .lvst-v .lvst-pr s{opacity:.55;font-size:.78rem;font-weight:600;margin-right:.15rem}
+html body .lvst-v .lvst-cap{margin:0 0 .5rem;font-size:.86rem;opacity:.9}
+html body .lvst-v .lvst-acts{gap:.5rem}
+html body .lvst-v .lvst-acts.one{grid-template-columns:1fr}
+html body .lvst-v .lvst-acts button{height:2.75rem;border-radius:14px;font-size:.92rem;cursor:pointer}
+html body .lvst-v .lvst-adv .lvst-pr{display:block}
+html body .lvst-v .lvst-lk{align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-width:8.5rem;height:2.4rem;padding:0 1.1rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(18,22,28,.6);color:#fff;font:inherit;font-weight:600;font-size:.88rem;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html body .lvst-v .lvst-lk.on{color:#ff6b86;border-color:rgba(255,107,134,.5)}
+html body .lvst-v .lvst-lk.pop i{animation:lvstPop .45s cubic-bezier(.2,1.8,.4,1)}
+html body .lvst-v .lvst-likes{display:flex;justify-content:center;gap:.5rem}
+html body .lvst-v .lvst-likes button{display:inline-flex;align-items:center;gap:.4rem;height:2.4rem;padding:0 1rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(18,22,28,.6);color:#fff;font:inherit;font-weight:600;font-size:.86rem;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html body .lvst-v .lvst-menu-bg,html body .lvst-v .lvst-sheet-bg{position:absolute;inset:0;z-index:8;background:transparent}
+html body .lvst-v .lvst-sheet-bg{background:rgba(0,0,0,.5)}
+html body .lvst-v .lvst-menu{position:absolute;z-index:9;right:.9rem;top:calc(max(.8rem,env(safe-area-inset-top)) + 3.9rem);min-width:12.5rem;padding:.35rem;border-radius:16px;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+html body .lvst-v .lvst-menu button{display:flex;align-items:center;gap:.7rem;width:100%;padding:.75rem .8rem;border:0;border-radius:11px;background:none;color:inherit;font:inherit;font-size:.93rem;text-align:left}
+html body .lvst-v .lvst-menu button i{width:1.1rem;text-align:center;color:var(--text-muted,#6b7280)}
+html body .lvst-v .lvst-menu button:hover,html body .lvst-v .lvst-menu button:focus-visible{background:color-mix(in srgb,var(--text,#111) 7%,transparent)}
+html body .lvst-v .lvst-menu button.danger,html body .lvst-v .lvst-menu button.danger i{color:#e5484d}
+html body .lvst-v .lvst-sheet{position:absolute;z-index:9;left:0;right:0;bottom:0;max-height:70%;overflow-y:auto;padding:.6rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom,0px));border-radius:24px 24px 0 0;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 -10px 40px rgba(0,0,0,.35);max-width:36rem;margin:0 auto;animation:lvstRise .25s ease both}
+html body .lvst-v .lvst-handle{display:block;width:2.6rem;height:4px;margin:0 auto .8rem;border-radius:4px;background:color-mix(in srgb,var(--text,#111) 22%,transparent)}
+html body .lvst-v .lvst-sheet h3{margin:0;font-size:1.1rem}
+html body .lvst-v .lvst-sub,html body .lvst-v .lvst-muted{margin:.2rem 0 .8rem;font-size:.88rem;color:var(--text-muted,#6b7280)}
+html body .lvst-v .lvst-sum{display:flex;gap:1.3rem;padding:.2rem .1rem .8rem;font-size:1rem;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)}
+html body .lvst-v .lvst-sum i{margin-right:.3rem;color:var(--text-muted,#6b7280)}html body .lvst-v .lvst-sum .fa-heart{color:#ff3b5c}
+html body .lvst-v .lvst-vr{display:flex;align-items:center;gap:.8rem;padding:.6rem .1rem}
+html body .lvst-v .lvst-vr .lvst-lt{flex:1;min-width:0}
+html body .lvst-v .lvst-vr .lvst-lt b{display:block;font-size:.95rem}html body .lvst-v .lvst-vr .lvst-lt small{color:var(--text-muted,#6b7280)}
+html body .lvst-v .lvst-vh{color:#ff3b5c}
+html body .lvst-v .lvst-two{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.4rem}
+html body .lvst-v .lvst-two button{height:2.8rem;border:0;border-radius:14px;font:inherit;font-weight:700;background:color-mix(in srgb,var(--text,#111) 9%,transparent);color:var(--text,#111)}
+html body .lvst-v .lvst-two button.danger{background:#e5484d;color:#fff}
+/* "My status" row on the Updates page: a + on the picture, like WhatsApp */
+html body .lvst-ring.own{position:relative;overflow:visible}
+html body .lvst-plusb{position:absolute;right:-.2rem;bottom:-.2rem;width:1.5rem;height:1.5rem;padding:0;border-radius:50%;border:2px solid var(--bg,#fff);background:var(--primary,#16a34a);color:#fff;font-size:.65rem;display:grid;place-items:center}
+/* the product picker */
+html body .lvpk{padding-bottom:5.5rem}
+html body .lvpk-search{display:flex;align-items:center;gap:.6rem;height:2.9rem;padding:0 1rem;margin:.2rem 0 .9rem;border-radius:999px;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text-muted,#6b7280)}
+html body .lvpk-search input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--text);font:inherit;font-size:1rem;padding:0;box-shadow:none}
+html body .lvpk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem .55rem}
+@media (min-width:600px){html body .lvpk-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+html body .lvpk-t{display:flex;flex-direction:column;gap:.25rem;min-width:0;padding:0;border:0;background:none;color:var(--text);font:inherit;text-align:left}
+html body .lvpk-ti{position:relative;display:grid;place-items:center;aspect-ratio:1;border-radius:16px;overflow:hidden;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text-muted,#6b7280)}
+html body .lvpk-ti img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+html body .lvpk-ti em{position:absolute;right:.4rem;top:.4rem;width:1.5rem;height:1.5rem;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.28);color:transparent;display:grid;place-items:center;font-size:.7rem;font-style:normal}
+html body .lvpk-t.sel .lvpk-ti{outline:3px solid var(--primary,#16a34a);outline-offset:-3px}
+html body .lvpk-t.sel .lvpk-ti em{background:var(--primary,#16a34a);border-color:var(--primary,#16a34a);color:#fff}
+html body .lvpk-t.live{opacity:.55}
+html body .lvpk-ti u{position:absolute;left:.4rem;bottom:.4rem;padding:.1rem .45rem;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;font-size:.68rem;text-decoration:none;font-weight:700}
+html body .lvpk-t b{font-size:.8rem;font-weight:600;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+html body .lvpk-t small{font-size:.75rem;color:var(--text-muted,#6b7280)}
+html body .lvpk-none{grid-column:1/-1;text-align:center;color:var(--text-muted,#6b7280);padding:2rem 0}
+html body .lvpk-bar{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:0 -.2rem;padding:.8rem .6rem calc(.8rem + env(safe-area-inset-bottom,0px));background:var(--bg,#fff);border-top:1px solid color-mix(in srgb,var(--text) 9%,transparent)}
+html body .lvpk-bar span{font-size:.92rem;color:var(--text-muted,#6b7280)}html body .lvpk-bar span b{color:var(--text)}
+html body .lvpk-go{min-width:7rem;height:2.9rem;border-radius:999px;margin:0}
+html body .lvpk-go:disabled{opacity:.45}
+@media (prefers-reduced-motion:reduce){html body .lvst-v .lvst-sheet,html body .lvst-v .lvst-bg{animation:none!important}}
+html body .lvst-v{touch-action:none}html body .lvst-v .lvst-sheet{touch-action:pan-y}
