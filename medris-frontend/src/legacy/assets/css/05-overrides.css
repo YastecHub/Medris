@@ -9273,3 +9273,66 @@ html body .lvpk-bar span{flex:1;min-width:0;white-space:nowrap;font-size:.95rem}
 html body .lvpk-go{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:7.5rem;height:2.9rem;padding:0 1.6rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-size:1rem;font-weight:700;text-align:center;cursor:pointer}
 html body .lvpk-go:disabled{background:color-mix(in srgb,var(--text) 14%,transparent);color:var(--text-muted,#6b7280);opacity:1;cursor:default}
 html body .lvst-v button{touch-action:manipulation}
+/* status viewer: progress fill is a real element, and a cube turn between updates */
+html body .lvst-v{perspective:1400px}
+html body .lvst-v .lvst-cube{position:absolute;inset:0;transform-style:preserve-3d}
+html body .lvst-v .lvst-cube .lvst-stage{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+html body .lvst-v .lvst-stage.in-r,html body .lvst-v .lvst-stage.in-l{animation:none}
+html body .lvst-v .lvst-bars i.run:after{display:none!important}
+html body .lvst-v .lvst-bars i b{position:absolute;inset:0;display:block;background:#fff;transform-origin:left center;transform:scaleX(0)}
+/* shoppers see the cart beside the search bar on the Vendors page */
+body.lv-vd-bar.lv-vd-cust .header-right #headerCartWrap:not(.hidden){display:block!important}
+/* ===== Add a status: preview, edit, products drawer (lve-) ===== */
+html body #lvStAdd .lve{display:flex;flex-direction:column;gap:.9rem;padding-bottom:7rem}
+html body #lvStAdd .lve-prev{position:relative;width:min(100%,19rem);height:min(46vh,24rem);margin:.2rem auto 0;border-radius:26px;overflow:hidden;background:linear-gradient(160deg,color-mix(in srgb,#16a34a 18%,var(--card,#fff)),color-mix(in srgb,#8b5cf6 14%,var(--card,#fff)));box-shadow:0 22px 40px -22px rgba(0,0,0,.55)}
+html body #lvStAdd .lve-bg{position:absolute;inset:0;background-size:cover;background-position:center;background-color:#10151a}
+html body #lvStAdd .lve-a-zoom,html body #lvStAdd .lve-a-advert{animation:lvstZoom 4.5s ease-in-out infinite alternate}
+html body #lvStAdd .lve-a-pan{transform:scale(1.18);animation:lvstPan 5s ease-in-out infinite alternate}
+html body #lvStAdd .lve-sh{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 30%,transparent 50%,rgba(0,0,0,.8))}
+html body #lvStAdd .lve-who{position:absolute;top:.8rem;left:.8rem;right:.8rem;display:flex;align-items:center;gap:.5rem;color:#fff;font-size:.85rem}
+html body #lvStAdd .lve-who .lvu-av{width:2.2rem;height:2.2rem;flex:none;border:2px solid #fff}
+html body #lvStAdd .lve-who b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #lvStAdd .lve-tx{position:absolute;left:.9rem;right:.9rem;bottom:.9rem;color:#fff}
+html body #lvStAdd .lve-cap{margin:0 0 .35rem;font-size:.9rem;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+html body #lvStAdd .lve-line{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+html body #lvStAdd .lve-line b{font-size:1rem;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+html body #lvStAdd .lve-pr{flex:none;font-style:normal;font-weight:800;font-size:.9rem;padding:.15rem .6rem;border-radius:999px;background:#facc15;color:#111}
+html body #lvStAdd .lve-adv .lve-cap{animation:lvstRise .6s cubic-bezier(.2,1.2,.4,1) both}
+html body #lvStAdd .lve-adv .lve-line{animation:lvstRise .6s cubic-bezier(.2,1.2,.4,1) .3s both}
+html body #lvStAdd .lve-adv .lve-pr{animation:lvstPop .55s cubic-bezier(.2,1.6,.4,1) .8s both}
+html body #lvStAdd .lve-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:1.4rem;text-align:center;color:var(--text,#111)}
+html body #lvStAdd .lve-empty i{width:3.6rem;height:3.6rem;border-radius:50%;display:grid;place-items:center;background:rgba(22,163,74,.16);color:#16a34a;font-size:1.5rem}
+html body #lvStAdd .lve-empty span{font-size:.82rem;color:var(--text-muted,#6b7280)}
+html body #lvStAdd .lve-edit{display:flex;flex-direction:column;gap:.55rem}
+html body #lvStAdd .lve-ths{display:flex;gap:.6rem;overflow-x:auto;padding:.3rem .1rem;scrollbar-width:none}
+html body #lvStAdd .lve-th{position:relative;flex:none}
+html body #lvStAdd .lve-thb{display:grid;place-items:center;width:3.4rem;height:3.4rem;padding:0;border:0;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text-muted,#6b7280)}
+html body #lvStAdd .lve-thb img{width:100%;height:100%;object-fit:cover}
+html body #lvStAdd .lve-th.on .lve-thb{outline:3px solid #16a34a;outline-offset:1px}
+html body #lvStAdd .lve-rm{position:absolute;top:-.3rem;right:-.3rem;width:1.3rem;height:1.3rem;padding:0;border:0;border-radius:50%;background:#333;color:#fff;font-size:.6rem;display:grid;place-items:center}
+html body #lvStAdd .lve-l{margin:.2rem 0 0;font-size:.8rem;font-weight:700;color:var(--text-muted,#6b7280)}html body #lvStAdd .lve-l b{color:var(--text)}
+html body #lvStAdd .lve-in{all:unset;box-sizing:border-box;width:100%;height:2.8rem;padding:0 1rem;border-radius:14px;background:color-mix(in srgb,var(--text) 6%,var(--card,#fff));border:1px solid color-mix(in srgb,var(--text) 12%,transparent);color:var(--text);font:inherit;font-size:.95rem}
+html body #lvStAdd .lve-in:focus{border-color:#16a34a}
+html body #lvStAdd .lve-sw{display:flex;align-items:center;justify-content:space-between;padding:.2rem .1rem;font-weight:700;font-size:.9rem}
+html body #lvStAdd .lve-sw button{width:3rem;height:1.8rem;border-radius:999px;border:0;background:color-mix(in srgb,var(--text) 18%,transparent);position:relative;padding:0}
+html body #lvStAdd .lve-sw button i{position:absolute;top:.2rem;left:.2rem;width:1.4rem;height:1.4rem;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+html body #lvStAdd .lve-sw button.on{background:#16a34a}html body #lvStAdd .lve-sw button.on i{transform:translateX(1.2rem)}
+html body #lvStAdd .lve-anims{display:flex;flex-wrap:wrap;gap:.45rem}
+html body #lvStAdd .lve-anims button{display:inline-flex;align-items:center;gap:.4rem;border:0;border-radius:999px;padding:.5rem .85rem;font:inherit;font-weight:700;font-size:.82rem;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text)}
+html body #lvStAdd .lve-anims button.on{background:#16a34a;color:#fff}
+html body #lvStAdd .lve-note{margin:.1rem 0 0;font-size:.76rem;color:var(--text-muted,#6b7280);text-align:center}
+html body #lvStAdd .lve-bar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;gap:.7rem;padding:.8rem 1rem calc(.8rem + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--bg,#fff) 35%);transition:transform .25s ease}
+html body #lvStAdd .lve-bar.away{transform:translateY(120%)}
+html body #lvStAdd .lve-add{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:3rem;border-radius:999px;border:1.5px solid color-mix(in srgb,var(--text) 18%,transparent);background:var(--card,#fff);color:var(--text);font:inherit;font-weight:700}
+html body #lvStAdd .lve-go{flex:none;min-width:7rem;height:3rem;padding:0 1.5rem;border:0;border-radius:999px;background:var(--primary,#16a34a);color:#fff;font:inherit;font-size:1rem;font-weight:800}
+html body #lvStAdd .lve-go:disabled{background:color-mix(in srgb,var(--text) 14%,transparent);color:var(--text-muted,#6b7280)}
+html body #lvStAdd .lve-dbg{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s}
+html body #lvStAdd .lve-dbg.open{opacity:1;pointer-events:auto}
+html body #lvStAdd .lve-drawer{position:fixed;left:0;right:0;bottom:0;z-index:9;height:min(74vh,36rem);display:flex;flex-direction:column;padding:.5rem 1rem 0;border-radius:24px 24px 0 0;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 -12px 40px rgba(0,0,0,.35);transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);max-width:40rem;margin:0 auto}
+html body #lvStAdd .lve-drawer.open{transform:none}
+html body #lvStAdd .lve-handle{display:block;width:2.6rem;height:4px;margin:.1rem auto .6rem;border-radius:4px;background:color-mix(in srgb,var(--text) 22%,transparent)}
+html body #lvStAdd .lve-dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+html body #lvStAdd .lve-dh b{font-size:1.1rem}
+html body #lvStAdd .lve-done{border:0;border-radius:999px;padding:.5rem 1.2rem;background:var(--primary,#16a34a);color:#fff;font:inherit;font-weight:700}
+html body #lvStAdd .lve-drawer .lvpk-search{height:2.4rem;margin:0 0 .7rem;padding:0 .9rem}
+html body #lvStAdd .lve-grid{flex:1;overflow-y:auto;align-content:start;padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}

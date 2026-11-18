@@ -8425,13 +8425,28 @@ window.lvNoImageHtml = function (seed) {
   }
   // the 6-second timer can be paused by several things at once (finger held, menu open, sheet open, button pressed)
   function runTimer() { if (!V) return; clearTimeout(V.timer); V.t0 = Date.now(); V.timer = setTimeout(function () { step(1); }, Math.max(50, V.left)); }
-  function pause(why) { if (!V) return; if (!Object.keys(V.holds).length) { clearTimeout(V.timer); V.left = Math.max(50, V.left - (Date.now() - V.t0)); V.el.classList.add("lvst-paused"); } V.holds[why] = 1; }
-  function resume(why) { if (!V || !V.holds[why]) return; delete V.holds[why]; if (!Object.keys(V.holds).length) { V.el.classList.remove("lvst-paused"); runTimer(); } }
+  function pause(why) { if (!V) return; if (!Object.keys(V.holds).length) { clearTimeout(V.timer); V.left = Math.max(50, V.left - (Date.now() - V.t0)); V.el.classList.add("lvst-paused"); barState("paused"); } V.holds[why] = 1; }
+  function resume(why) { if (!V || !V.holds[why]) return; delete V.holds[why]; if (!Object.keys(V.holds).length) { V.el.classList.remove("lvst-paused"); barState("running"); runTimer(); } }
+  function barState(st) { try { V.el.querySelectorAll(".lvst-bars i.run b").forEach(function (b) { b.style.animationPlayState = st; }); } catch (_) {} }
+  // a cube turn between two updates: the old picture and the new one are two faces of a box that rotates
+  function cubeSwap(markup, old, dir) {
+    var el = V.el, w = el.clientWidth || window.innerWidth, tmp = document.createElement("div"); tmp.innerHTML = markup; var nu = tmp.firstChild; V.stage = nu;
+    [].slice.call(el.children).forEach(function (n) { if (n !== old) n.remove(); });
+    var wrap = document.createElement("div"); wrap.className = "lvst-cube";
+    old.style.transition = "none"; old.style.transformOrigin = "center"; old.style.transform = "rotateY(0deg) translateZ(" + w / 2 + "px)";
+    nu.style.transform = "rotateY(" + dir * 90 + "deg) translateZ(" + w / 2 + "px)";
+    wrap.style.transform = "translateZ(" + -w / 2 + "px)";
+    el.appendChild(wrap); wrap.appendChild(old); wrap.appendChild(nu); void wrap.offsetWidth;
+    wrap.style.transition = "transform .42s cubic-bezier(.4,0,.2,1)"; wrap.style.transform = "translateZ(" + -w / 2 + "px) rotateY(" + -dir * 90 + "deg)";
+    var fin = function () { if (!V || V.stage !== nu) return; nu.style.transform = ""; el.innerHTML = ""; el.appendChild(nu); var b = V.begin; V.begin = null; if (b) b(); };
+    setTimeout(fin, 450);
+  }
   function closeLayers() { if (!V) return; V.el.querySelectorAll(".lvst-sheet,.lvst-sheet-bg,.lvst-menu,.lvst-menu-bg").forEach(function (n) { n.remove(); }); resume("menu"); resume("sheet"); }
   function step(d) {
     if (!V) return; var g = V.gs[V.gi];
     if (d > 0) { if (V.i < g.items.length - 1) V.i++; else if (V.gi < V.gs.length - 1) { V.gi++; V.i = 0; } else return closeViewer(); }
-    else { if (V.i > 0) V.i--; else if (V.gi > 0) { V.gi--; V.i = 0; } }
+    else { if (V.i > 0) V.i--; else if (V.gi > 0) { V.gi--; V.i = 0; } else return; }
+    V.cube = d > 0 ? 1 : -1;
     show();
   }
   function productUrl(s) { return location.origin + "/p/" + encodeURIComponent(String(s.product_id || "")); }
@@ -8485,7 +8500,7 @@ window.lvNoImageHtml = function (seed) {
         V.dragged = true; pause("drag"); el.style.transition = "none"; if (st) st.style.transition = "none";
       }
       if (dr.on === "y") { dy = Math.max(0, dy); el.style.transform = "translateY(" + dy + "px) scale(" + (1 - Math.min(dy, 400) / 2400) + ")"; el.style.opacity = String(1 - Math.min(dy, 400) / 700); el.style.borderRadius = Math.min(dy / 4, 28) + "px"; }
-      else if (st) { var g = V.gs[V.gi], first = V.gi === 0 && V.i === 0; if (dx > 0 && first) dx = dx / 4; st.style.transform = "translateX(" + dx + "px)"; }
+      else if (st) { var first = V.gi === 0 && V.i === 0; if (dx > 0 && first) dx = dx / 4; st.style.transformOrigin = dx < 0 ? "right center" : "left center"; st.style.transform = "rotateY(" + (dx / (el.clientWidth || 390) * 38) + "deg)"; }
     });
     function endDrag(e) {
       if (!dr || (e && e.pointerId !== dr.id)) return; var d = dr; dr = null; if (!d.on || !V) return;
@@ -8497,8 +8512,7 @@ window.lvNoImageHtml = function (seed) {
       }
       var first = V.gi === 0 && V.i === 0;
       if (st && Math.abs(dx) > 70 && !(dx > 0 && first)) {
-        var next = dx < 0; st.style.transition = "transform .16s ease"; st.style.transform = "translateX(" + (next ? "-100%" : "100%") + ")";
-        setTimeout(function () { if (!V) return; V.slide = next ? "r" : "l"; step(next ? 1 : -1); }, 150);
+        st.style.transition = "none"; st.style.transform = ""; step(dx < 0 ? 1 : -1);
       } else if (st) { st.style.transition = "transform .2s ease"; st.style.transform = ""; resume("drag"); }
     }
     el.addEventListener("pointerup", endDrag); el.addEventListener("pointercancel", endDrag);
@@ -8539,14 +8553,15 @@ window.lvNoImageHtml = function (seed) {
     var like = own
       ? '<div class="lvst-likes"><button type="button" id="lvStViews" data-views aria-label="See who viewed"><i class="fa-regular fa-eye"></i> <span>…</span><i class="fa-solid fa-chevron-up lvst-up" aria-hidden="true"></i></button></div>'
       : '<button type="button" class="lvst-lk" id="lvStLike" data-like aria-pressed="false"><i class="fa-regular fa-heart"></i><span>Like</span></button>';
-    V.el.innerHTML = '<div class="lvst-stage">' + '<div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div><div class="lvst-shade"></div>' +
-      '<div class="lvst-bars">' + g.items.map(function (_, k) { return '<i class="' + (k < V.i ? "d" : k === V.i ? "run" : "") + '"></i>'; }).join("") + "</div>" +
+    var oldStage = V.cube ? V.el.querySelector(".lvst-stage") : null, cubeDir = V.cube; V.cube = 0;
+    var markup = '<div class="lvst-stage">' + '<div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div><div class="lvst-shade"></div>' +
+      '<div class="lvst-bars">' + g.items.map(function (_, k) { return '<i class="' + (k < V.i ? "d" : k === V.i ? "run" : "") + '">' + (k === V.i ? "<b></b>" : "") + "</i>"; }).join("") + "</div>" +
       '<div class="lvst-top">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + '<div class="lvst-who"><b>' + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(s.created_at) + '</small></div><button type="button" class="lvst-ib" data-dots aria-label="More options" aria-haspopup="menu"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>' +
       '<button type="button" class="lvst-tap l" data-p aria-label="Previous"></button><button type="button" class="lvst-tap r" data-n aria-label="Next"></button>' +
       '<div class="lvst-bottom"><div class="lvst-card' + (anim === "advert" ? " lvst-adv" : "") + '">' + (s.caption ? '<p class="lvst-cap">' + E(s.caption) + "</p>" : "") + '<div class="lvst-line"><h4>' + E(gone ? "This product is no longer available" : p.name) + "</h4>" + (price && !gone ? '<div class="lvst-pr">' + price + "</div>" : "") + "</div>" + acts + "</div>" + like + "</div></div>";
-    if (V.slide) { V.el.firstChild.classList.add("in-" + V.slide); V.slide = ""; }
-    var bar = V.el.querySelector(".lvst-bars i.run"); if (bar) bar.style.animation = "none";
-    runTimer();
+    if (oldStage) cubeSwap(markup, oldStage, cubeDir); else { V.el.innerHTML = markup; V.stage = V.el.firstChild; }
+    var begin = function () { if (!V) return; var fill = (V.stage || V.el).querySelector(".lvst-bars i.run b"); if (fill) fill.style.animation = "lvstbar " + DUR + "ms linear forwards"; runTimer(); };
+    if (oldStage) { V.begin = begin; } else { begin(); }
     var mine = V.s;
     if (!own && typeof session !== "undefined" && session && session.user) { try { var lk = await sb.from("vendor_status_likes").select("user_id").eq("status_id", s.id).eq("user_id", session.user.id); var btn = document.getElementById("lvStLike"); if (V && V.s === mine && btn && lk && lk.data && lk.data.length) setLiked(btn, true); } catch (_) {} }
     if (own) {
@@ -8582,40 +8597,80 @@ window.lvNoImageHtml = function (seed) {
       '<div class="lvst-sl">' + (rows.length ? rows.map(function (r) { return '<div class="lvst-vr">' + avatar(r.viewer_avatar, r.viewer_name || "Someone", "lvst-av sm") + '<div class="lvst-lt"><b>' + E(r.viewer_name || "Someone") + "</b><small>" + ago(r.seen_at) + "</small></div>" + (ordered[r.viewer_id] ? '<span class="lvst-ordtag"><i class="fa-solid fa-bag-shopping"></i> Ordered</span>' : "") + (liked[r.viewer_id] ? '<i class="fa-solid fa-heart lvst-vh" aria-label="Liked"></i>' : "") + "</div>"; }).join("") : '<p class="lvst-muted">No views yet. People who open your update will show here.</p>') + "</div>";
   }
 
-  /* ---- Add a status (the shop's owner): pick products, then Post. No text to type: everything comes from the products themselves ---- */
+  /* ---- Add a status (the shop's owner): choose products from a drawer, then edit (caption, price, style) and Post ---- */
+  var STYLES = [["none", "Standard", "fa-image"], ["zoom", "Zoom", "fa-magnifying-glass-plus"], ["pan", "Drift", "fa-arrows-left-right"], ["advert", "Advert", "fa-bullhorn"], ["random", "Surprise me", "fa-shuffle"]];
   async function openAdd() {
     var vid = myVendorId(); if (!vid) { showToast("Only shops can add a status.", "info"); return; }
-    var el = lvTeamOverlay("lvStAdd", "New status", '<p class="muted">Loading your products…</p>', "Pick the products to show for 24 hours");
+    var el = lvTeamOverlay("lvStAdd", "New status", '<p class="muted">Loading your products…</p>', "Choose products, then make it yours");
     var body = el.querySelector("[data-lv-body]");
     var r = await sb.from("products").select("id,name,photos,sale_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(200);
     var list = (r && r.data) || [];
     if (!list.length) { body.innerHTML = '<div class="tm-empty"><i class="fa-solid fa-box-open"></i><b>No products yet</b>Add a product first, then share it as a status.</div>'; return; }
     try { await load(true); } catch (_) {}
     var live = {}, liveN = 0; cache.rows.forEach(function (x) { if (x.vendor_id === vid && new Date(x.expires_at) > new Date()) { liveN++; if (x.product_id) live[x.product_id] = 1; } });
-    var room = Math.max(0, 10 - liveN), picks = [], q = "";
-    body.innerHTML = '<div class="lvpk"><label class="lvpk-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="lvPkQ" placeholder="Search your products" aria-label="Search your products" autocomplete="off"></label><div class="lvpk-grid" id="lvPkGrid"></div></div><div class="lvpk-bar"><span id="lvPkN" aria-live="polite"></span><button type="button" class="lvpk-go" id="lvPkGo" disabled>Post</button></div>';
-    var grid = document.getElementById("lvPkGrid"), cnt = document.getElementById("lvPkN"), go = document.getElementById("lvPkGo"), inp = document.getElementById("lvPkQ");
-    function bar() { cnt.innerHTML = picks.length ? "<b>" + picks.length + "</b> selected" : "Select products"; go.disabled = !picks.length; go.textContent = picks.length > 1 ? "Post " + picks.length : "Post"; }
-    function tiles() {
+    var room = Math.max(0, 10 - liveN), picks = [], caps = {}, active = null, showPrice = true, anim = "none", q = "";
+    var byId = function (id) { return list.find(function (x) { return x.id === id; }); };
+    body.innerHTML = '<div class="lve"><div class="lve-prev" id="lvePrev"></div><div class="lve-edit" id="lveEdit"></div></div>' +
+      '<div class="lve-bar" id="lveBar"><button type="button" class="lve-add" id="lveAdd"><i class="fa-solid fa-plus"></i><span></span></button><button type="button" class="lve-go" id="lveGo" disabled>Post</button></div>' +
+      '<div class="lve-dbg" id="lveDbg"></div>' +
+      '<div class="lve-drawer" id="lveDr" role="dialog" aria-label="Choose products"><span class="lve-handle"></span><div class="lve-dh"><b>Choose products</b><button type="button" class="lve-done" id="lveDone">Done</button></div>' +
+      '<label class="lvpk-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="lvPkQ" placeholder="Search your products" aria-label="Search your products" autocomplete="off"></label><div class="lvpk-grid lve-grid" id="lvPkGrid"></div></div>';
+    var $ = function (id) { return document.getElementById(id); };
+    var prev = $("lvePrev"), edit = $("lveEdit"), grid = $("lvPkGrid"), dr = $("lveDr"), dbg = $("lveDbg"), add = $("lveAdd"), go = $("lveGo"), inp = $("lvPkQ"), bar = $("lveBar");
+    function setDrawer(on) { dr.classList.toggle("open", on); dbg.classList.toggle("open", on); bar.classList.toggle("away", on); if (on) { try { inp.blur(); } catch (_) {} } }
+    function drawPrev() {
+      var p = byId(active);
+      if (!p) { prev.className = "lve-prev"; prev.innerHTML = '<div class="lve-empty"><i class="fa-regular fa-image"></i><b>Your status preview</b><span>Tap “Add products” to choose what to show</span></div>'; return; }
+      var ph = p.photos && p.photos[0], an = anim === "random" ? "zoom" : anim;
+      prev.className = "lve-prev on";
+      prev.innerHTML = '<div class="lve-bg lve-a-' + an + '"' + (ph ? ' style="background-image:url(' + E(ph) + ')"' : "") + '></div><span class="lve-sh"></span><span class="lve-who">' + avatar(vendor.logo_url, vendor.business_name, "lvu-av") + "<b>" + E(vendor.business_name) + '</b></span>' +
+        '<div class="lve-tx' + (anim === "advert" ? " lve-adv" : "") + '"><p class="lve-cap"' + (caps[active] ? "" : " hidden") + ">" + E(caps[active] || "") + '</p><div class="lve-line"><b>' + E(p.name) + "</b>" + (showPrice && p.sale_price ? '<em class="lve-pr">' + naira(p.sale_price) + "</em>" : "") + "</div></div>";
+    }
+    function drawEdit() {
+      if (!picks.length) { edit.innerHTML = ""; return; }
+      var thumbs = picks.map(function (id) { var x = byId(id), ph = x && x.photos && x.photos[0]; return '<span class="lve-th' + (id === active ? " on" : "") + '"><button type="button" class="lve-thb" data-a="' + E(id) + '" aria-label="Edit ' + E(x ? x.name : "") + '">' + (ph ? '<img src="' + E(ph) + '" alt="">' : '<i class="fa-solid fa-image"></i>') + '</button><button type="button" class="lve-rm" data-rm="' + E(id) + '" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></span>'; }).join("");
+      var cur = byId(active);
+      edit.innerHTML = '<div class="lve-ths">' + thumbs + "</div>" +
+        '<label class="lve-l" for="lveCap">Caption' + (cur ? " for <b>" + E(cur.name) + "</b>" : "") + '</label><input id="lveCap" class="lve-in" maxlength="140" placeholder="Add a caption (optional)" value="' + E(caps[active] || "") + '">' +
+        '<label class="lve-sw"><span>Show the price</span><button type="button" data-price class="' + (showPrice ? "on" : "") + '" role="switch" aria-checked="' + showPrice + '"><i></i></button></label>' +
+        '<p class="lve-l">Style</p><div class="lve-anims">' + STYLES.map(function (a) { return '<button type="button" data-anim="' + a[0] + '" class="' + (anim === a[0] ? "on" : "") + '"><i class="fa-solid ' + a[2] + '"></i>' + a[1] + "</button>"; }).join("") + "</div>" +
+        '<p class="lve-note"><i class="fa-regular fa-clock"></i> Stays up for 24 hours. Followers who allow it get an alert.</p>';
+    }
+    function drawBar() { add.querySelector("span").textContent = picks.length ? picks.length + " selected · change" : "Add products"; go.disabled = !picks.length; go.textContent = picks.length > 1 ? "Post " + picks.length : "Post"; }
+    function drawGrid() {
       var f = list.filter(function (x) { return !q || String(x.name || "").toLowerCase().indexOf(q) >= 0; });
       grid.innerHTML = f.length ? f.map(function (x) {
-        var ph = x.photos && x.photos[0], on = picks.indexOf(x.id) >= 0, isLive = !!live[x.id];
-        return '<button type="button" class="lvpk-t' + (on ? " sel" : "") + (isLive ? " live" : "") + '" data-p="' + E(x.id) + '"' + ' aria-pressed="' + on + '" aria-label="' + E(x.name) + '"><span class="lvpk-ti">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<i class="fa-solid fa-image"></i>') + '<em aria-hidden="true"><i class="fa-solid fa-check"></i></em>' + (isLive ? "<u>Live</u>" : "") + "</span><b>" + E(x.name) + "</b><small>" + (x.sale_price ? naira(x.sale_price) : "") + "</small></button>";
+        var ph = x.photos && x.photos[0], on = picks.indexOf(x.id) >= 0;
+        return '<button type="button" class="lvpk-t' + (on ? " sel" : "") + '" data-p="' + E(x.id) + '" aria-pressed="' + on + '" aria-label="' + E(x.name) + '"><span class="lvpk-ti">' + (ph ? '<img src="' + E(ph) + '" alt="" loading="lazy">' : '<i class="fa-solid fa-image"></i>') + '<em aria-hidden="true"><i class="fa-solid fa-check"></i></em>' + (live[x.id] ? "<u>Live</u>" : "") + "</span><b>" + E(x.name) + "</b><small>" + (x.sale_price ? naira(x.sale_price) : "") + "</small></button>";
       }).join("") : '<p class="lvpk-none">No products match “' + E(q) + "”.</p>";
     }
+    function all() { drawPrev(); drawEdit(); drawBar(); }
     grid.onclick = function (e) {
       var b = e.target.closest("[data-p]"); if (!b) return; var id = b.getAttribute("data-p"), at = picks.indexOf(id);
-      if (at >= 0) picks.splice(at, 1); else { if (picks.length >= room) { showToast(room ? "You can add " + room + " more right now." : "You have 10 live statuses. Delete one or wait for it to expire.", "info"); return; } picks.push(id); }
-      b.classList.toggle("sel", at < 0); b.setAttribute("aria-pressed", at < 0 ? "true" : "false"); bar();
+      if (at >= 0) { picks.splice(at, 1); if (active === id) active = picks[picks.length - 1] || null; }
+      else { if (picks.length >= room) { showToast(room ? "You can add " + room + " more right now." : "You have 10 live statuses. Delete one or wait for it to expire.", "info"); return; } picks.push(id); active = id; }
+      b.classList.toggle("sel", at < 0); b.setAttribute("aria-pressed", at < 0 ? "true" : "false"); all();
     };
-    inp.oninput = function () { q = inp.value.trim().toLowerCase(); tiles(); };
+    inp.oninput = function () { q = inp.value.trim().toLowerCase(); drawGrid(); };
+    edit.onclick = function (e) {
+      var rm = e.target.closest("[data-rm]"); if (rm) { var id = rm.getAttribute("data-rm"); picks.splice(picks.indexOf(id), 1); if (active === id) active = picks[picks.length - 1] || null; drawGrid(); all(); return; }
+      var th = e.target.closest("[data-a]"); if (th) { active = th.getAttribute("data-a"); drawPrev(); drawEdit(); return; }
+      var an = e.target.closest("[data-anim]"); if (an) { anim = an.getAttribute("data-anim"); drawPrev(); drawEdit(); return; }
+      if (e.target.closest("[data-price]")) { showPrice = !showPrice; drawPrev(); drawEdit(); }
+    };
+    edit.oninput = function (e) { if (e.target.id !== "lveCap") return; caps[active] = e.target.value; var c = prev.querySelector(".lve-cap"); if (c) { c.textContent = e.target.value; c.hidden = !e.target.value; } };
+    add.onclick = function () { setDrawer(true); };
+    $("lveDone").onclick = function () { setDrawer(false); };
+    dbg.onclick = function () { setDrawer(false); };
     go.onclick = async function () {
       if (!picks.length) return; go.disabled = true; go.textContent = "Posting…";
-      var ins = await sb.from("vendor_statuses").insert(picks.map(function (id) { return { vendor_id: vid, product_id: id, show_price: true }; }));
-      if (ins.error) { go.disabled = false; bar(); showToast(/not valid|does not exist|relation/i.test(ins.error.message || "") ? "Status is not switched on yet. Please try again shortly." : (ins.error.message || "Could not post it."), "error"); return; }
+      var rowsA = picks.map(function (id) { return { vendor_id: vid, product_id: id, caption: (caps[id] || "").trim() || null, show_price: showPrice, animation: anim }; });
+      var ins = await sb.from("vendor_statuses").insert(rowsA);
+      if (ins.error && /animation|column/i.test(ins.error.message || "")) ins = await sb.from("vendor_statuses").insert(rowsA.map(function (x) { return { vendor_id: x.vendor_id, product_id: x.product_id, caption: x.caption, show_price: x.show_price }; }));
+      if (ins.error) { drawBar(); showToast(/not valid|does not exist|relation/i.test(ins.error.message || "") ? "Status is not switched on yet. Please try again shortly." : (ins.error.message || "Could not post it."), "error"); return; }
       cache.at = 0; showToast(picks.length > 1 ? picks.length + " statuses are live for 24 hours." : "Your status is live for 24 hours.", "success"); try { history.back(); } catch (_) { el.remove(); } setTimeout(paintStrip, 300);
     };
-    tiles(); bar();
+    drawGrid(); all(); setTimeout(function () { setDrawer(true); }, 60);
   }
   window.lvStatusOpen = openPage; window.lvStatusAdd = openAdd;
   /* ---- the same ring on a shop's picture on its storefront and in chats: tap it to see the status ---- */
@@ -9047,6 +9102,7 @@ window.lvNoImageHtml = function (seed) {
     pen.hidden = !isVendor;
     var on = onVendors();
     document.body.classList.toggle("lv-vd-bar", on);
+    document.body.classList.toggle("lv-vd-cust", on && !isVendor);   // shoppers get the cart beside the search bar; shops get "add a status"
     if (!on && inp.value) { inp.value = ""; }
   }
   new MutationObserver(function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; try { ensure(); } catch (_) {} }); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-view"] });
