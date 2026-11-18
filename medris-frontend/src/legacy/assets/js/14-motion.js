@@ -8471,8 +8471,23 @@ window.lvNoImageHtml = function (seed) {
     var box = document.createElement("div"); box.className = "lvst-" + kind; box.innerHTML = html; if (kind === "menu") box.setAttribute("role", "menu"); else { box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); }
     V.el.appendChild(bg); V.el.appendChild(box); pause(kind); return box;
   }
+  // "Add to cart" on a status: adds one and stays on the status (the cart fills up while you scroll through updates)
+  async function addStatusToCart(s, btn) {
+    if (!(typeof session !== "undefined" && session && session.user)) { closeViewer(false, function () { try { showLogin(); } catch (_) {} }); return; }
+    try { if (typeof blockOwnVendorPurchase === "function" && blockOwnVendorPurchase(s.vendor_id, "buy")) return; } catch (_) {}
+    if (btn.__busy) return; btn.__busy = 1;
+    var label = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Added'; btn.classList.add("added");
+    var back = function () { setTimeout(function () { try { btn.innerHTML = label; btn.classList.remove("added"); } catch (_) {} btn.__busy = 0; }, 1600); };
+    try {
+      var r = await levroData.cart.add(s.product_id, 1, null);
+      if (r && r.error) { btn.innerHTML = label; btn.classList.remove("added"); btn.__busy = 0; showToast(r.error.message || "Could not add it.", "error"); return; }
+      showToast("Added to cart.", "success");
+      try { buyerCartCount += 1; updateCartFab(); window.lmSyncCartCount && window.lmSyncCartCount(); } catch (_) {}
+      back();
+    } catch (_) { btn.innerHTML = label; btn.classList.remove("added"); btn.__busy = 0; showToast("Could not add it. Try again.", "error"); }
+  }
   function openMenu(s, own) {
-    var it = function (a, ic, t, cls) { return '<button type="button" role="menuitem" data-m="' + a + '" class="' + (cls || "") + '"><i class="' + ic + '"></i><span>' + t + "</span></button>"; };
+    var it = function (a, ic, t, cls) { return '<button type="button" role="menuitem" data-m="' + a + '" class="' + (cls || "") + '"><b class="lvst-mi"><i class="' + ic + '"></i></b><span>' + t + "</span></button>"; };
     var h = (own ? it("views", "fa-regular fa-eye", "Viewers") : it("shop", "fa-solid fa-store", "Visit shop")) + it("share", "fa-solid fa-share-nodes", "Share") + it("copy", "fa-regular fa-copy", "Copy link") + (own ? it("del", "fa-regular fa-trash-can", "Delete status", "danger") : "");
     layer("sheet", '<span class="lvst-handle"></span><div class="lvst-ml" role="menu">' + h + "</div>");
   }
@@ -8536,7 +8551,7 @@ window.lvNoImageHtml = function (seed) {
       if (t.closest("[data-p]")) { if (Date.now() - V.downAt > 350 && V.downAt) return; return step(-1); }
       var vb = t.closest("button[data-views]"); if (vb) { e.stopPropagation(); return openViewers(s); }
       var pb = t.closest("button[data-view]"); if (pb) { e.stopPropagation(); return goProduct(s, false); }
-      var ob = t.closest("button[data-order]"); if (ob) { e.stopPropagation(); return goProduct(s, true); }
+      var cb = t.closest("button[data-cart]"); if (cb) { e.stopPropagation(); return addStatusToCart(s, cb); }
       if (t.closest("[data-like]")) return toggleLike(s);
     });
   }
@@ -8549,7 +8564,9 @@ window.lvNoImageHtml = function (seed) {
     var price = s.show_price !== false && p.sale_price ? (p.discount_price && Number(p.discount_price) < Number(p.sale_price) ? "<s>" + naira(p.sale_price) + "</s> " + naira(p.discount_price) : naira(p.sale_price)) : "";
     var ANIMS = ["zoom", "pan", "advert"], anim = s.animation && s.animation !== "none" ? (s.animation === "random" ? ANIMS[Math.floor(Math.random() * ANIMS.length)] : s.animation) : "none";
     var kind = p.is_service ? "service" : "product", gone = !p.id;
-    var acts = gone ? "" : '<div class="lvst-acts' + (own ? " one" : "") + '"><button type="button" data-view>View ' + kind + "</button>" + (own ? "" : '<button type="button" class="pri" data-order>' + (p.is_service ? "Book now" : "Place order") + "</button>") + "</div>";
+    // shoppers add straight to the cart without leaving the status; the shop (and services / rentals, which have no cart) just view it
+    var cartable = !own && !p.is_service && p.sale_price != null;
+    var acts = gone ? "" : '<div class="lvst-acts one">' + (cartable ? '<button type="button" class="pri" data-cart><i class="fa-solid fa-cart-plus"></i> Add to cart</button>' : '<button type="button" data-view>View ' + kind + "</button>") + "</div>";
     var like = own
       ? '<div class="lvst-likes"><button type="button" id="lvStViews" data-views aria-label="See who viewed"><i class="fa-regular fa-eye"></i> <span>…</span><i class="fa-solid fa-chevron-up lvst-up" aria-hidden="true"></i></button></div>'
       : '<button type="button" class="lvst-lk" id="lvStLike" data-like aria-pressed="false"><i class="fa-regular fa-heart"></i><span>Like</span></button>';
@@ -8597,11 +8614,11 @@ window.lvNoImageHtml = function (seed) {
       '<div class="lvst-sl">' + (rows.length ? rows.map(function (r) { return '<div class="lvst-vr">' + avatar(r.viewer_avatar, r.viewer_name || "Someone", "lvst-av sm") + '<div class="lvst-lt"><b>' + E(r.viewer_name || "Someone") + "</b><small>" + ago(r.seen_at) + "</small></div>" + (ordered[r.viewer_id] ? '<span class="lvst-ordtag"><i class="fa-solid fa-bag-shopping"></i> Ordered</span>' : "") + (liked[r.viewer_id] ? '<i class="fa-solid fa-heart lvst-vh" aria-label="Liked"></i>' : "") + "</div>"; }).join("") : '<p class="lvst-muted">No views yet. People who open your update will show here.</p>') + "</div>";
   }
 
-  /* ---- Add a status (the shop's owner): choose products from a drawer, then edit (caption, price, style) and Post ---- */
+  /* ---- Add a status (the shop's owner): one flat page. Preview and edits on top, your products in a grid underneath ---- */
   var STYLES = [["none", "Standard", "fa-image"], ["zoom", "Zoom", "fa-magnifying-glass-plus"], ["pan", "Drift", "fa-arrows-left-right"], ["advert", "Advert", "fa-bullhorn"], ["random", "Surprise me", "fa-shuffle"]];
   async function openAdd() {
     var vid = myVendorId(); if (!vid) { showToast("Only shops can add a status.", "info"); return; }
-    var el = lvTeamOverlay("lvStAdd", "New status", '<p class="muted">Loading your products…</p>', "Choose products, then make it yours");
+    var el = lvTeamOverlay("lvStAdd", "New status", '<p class="muted">Loading your products…</p>', "Pick products, then make it yours");
     var body = el.querySelector("[data-lv-body]");
     var r = await sb.from("products").select("id,name,photos,sale_price,is_service").eq("vendor_id", vid).eq("status", "active").order("created_at", { ascending: false }).limit(200);
     var list = (r && r.data) || [];
@@ -8610,17 +8627,15 @@ window.lvNoImageHtml = function (seed) {
     var live = {}, liveN = 0; cache.rows.forEach(function (x) { if (x.vendor_id === vid && new Date(x.expires_at) > new Date()) { liveN++; if (x.product_id) live[x.product_id] = 1; } });
     var room = Math.max(0, 10 - liveN), picks = [], caps = {}, active = null, showPrice = true, anim = "none", q = "";
     var byId = function (id) { return list.find(function (x) { return x.id === id; }); };
-    body.innerHTML = '<div class="lve"><div class="lve-prev" id="lvePrev"></div><div class="lve-edit" id="lveEdit"></div></div>' +
-      '<div class="lve-bar" id="lveBar"><button type="button" class="lve-add" id="lveAdd"><i class="fa-solid fa-plus"></i><span></span></button><button type="button" class="lve-go" id="lveGo" disabled>Post</button></div>' +
-      '<div class="lve-dbg" id="lveDbg"></div>' +
-      '<div class="lve-drawer" id="lveDr" role="dialog" aria-label="Choose products"><span class="lve-handle"></span><div class="lve-dh"><b>Choose products</b><button type="button" class="lve-done" id="lveDone">Done</button></div>' +
-      '<label class="lvpk-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="lvPkQ" placeholder="Search your products" aria-label="Search your products" autocomplete="off"></label><div class="lvpk-grid lve-grid" id="lvPkGrid"></div></div>';
+    body.innerHTML = '<div class="lve"><div class="lve-prev" id="lvePrev"></div><div class="lve-edit" id="lveEdit"></div>' +
+      '<h3 class="lve-h">Your products</h3><div class="lve-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="text" id="lvPkQ" inputmode="search" enterkeyhint="search" placeholder="Search your products" aria-label="Search your products" autocomplete="off" autocapitalize="off" spellcheck="false"></div>' +
+      '<div class="lvpk-grid" id="lvPkGrid"></div></div>' +
+      '<div class="lve-bar"><span id="lveN"></span><button type="button" class="lve-go" id="lveGo" disabled>Post</button></div>';
     var $ = function (id) { return document.getElementById(id); };
-    var prev = $("lvePrev"), edit = $("lveEdit"), grid = $("lvPkGrid"), dr = $("lveDr"), dbg = $("lveDbg"), add = $("lveAdd"), go = $("lveGo"), inp = $("lvPkQ"), bar = $("lveBar");
-    function setDrawer(on) { dr.classList.toggle("open", on); dbg.classList.toggle("open", on); bar.classList.toggle("away", on); if (on) { try { inp.blur(); } catch (_) {} } }
+    var prev = $("lvePrev"), edit = $("lveEdit"), grid = $("lvPkGrid"), cnt = $("lveN"), go = $("lveGo"), inp = $("lvPkQ");
     function drawPrev() {
       var p = byId(active);
-      if (!p) { prev.className = "lve-prev"; prev.innerHTML = '<div class="lve-empty"><i class="fa-regular fa-image"></i><b>Your status preview</b><span>Tap “Add products” to choose what to show</span></div>'; return; }
+      if (!p) { prev.className = "lve-prev"; prev.innerHTML = '<div class="lve-empty"><i class="fa-regular fa-image"></i><b>Your status preview</b><span>Pick a product below to start</span></div>'; return; }
       var ph = p.photos && p.photos[0], an = anim === "random" ? "zoom" : anim;
       prev.className = "lve-prev on";
       prev.innerHTML = '<div class="lve-bg lve-a-' + an + '"' + (ph ? ' style="background-image:url(' + E(ph) + ')"' : "") + '></div><span class="lve-sh"></span><span class="lve-who">' + avatar(vendor.logo_url, vendor.business_name, "lvu-av") + "<b>" + E(vendor.business_name) + '</b></span>' +
@@ -8628,15 +8643,16 @@ window.lvNoImageHtml = function (seed) {
     }
     function drawEdit() {
       if (!picks.length) { edit.innerHTML = ""; return; }
-      var thumbs = picks.map(function (id) { var x = byId(id), ph = x && x.photos && x.photos[0]; return '<span class="lve-th' + (id === active ? " on" : "") + '"><button type="button" class="lve-thb" data-a="' + E(id) + '" aria-label="Edit ' + E(x ? x.name : "") + '">' + (ph ? '<img src="' + E(ph) + '" alt="">' : '<i class="fa-solid fa-image"></i>') + '</button><button type="button" class="lve-rm" data-rm="' + E(id) + '" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></span>'; }).join("");
-      var cur = byId(active);
-      edit.innerHTML = '<div class="lve-ths">' + thumbs + "</div>" +
-        '<label class="lve-l" for="lveCap">Caption' + (cur ? " for <b>" + E(cur.name) + "</b>" : "") + '</label><input id="lveCap" class="lve-in" maxlength="140" placeholder="Add a caption (optional)" value="' + E(caps[active] || "") + '">' +
+      var rows = picks.map(function (id) {
+        var x = byId(id), ph = x && x.photos && x.photos[0];
+        return '<div class="lve-row' + (id === active ? " on" : "") + '" data-row="' + E(id) + '"><span class="lve-rt">' + (ph ? '<img src="' + E(ph) + '" alt="">' : '<i class="fa-solid fa-image"></i>') + '</span><span class="lve-rc"><b>' + E(x ? x.name : "") + '</b><input class="lve-in" data-cap="' + E(id) + '" maxlength="140" placeholder="Add a caption (optional)" value="' + E(caps[id] || "") + '"></span><button type="button" class="lve-rm" data-rm="' + E(id) + '" aria-label="Remove ' + E(x ? x.name : "") + '"><i class="fa-solid fa-xmark"></i></button></div>';
+      }).join("");
+      edit.innerHTML = '<div class="lve-rows">' + rows + "</div>" +
         '<label class="lve-sw"><span>Show the price</span><button type="button" data-price class="' + (showPrice ? "on" : "") + '" role="switch" aria-checked="' + showPrice + '"><i></i></button></label>' +
         '<p class="lve-l">Style</p><div class="lve-anims">' + STYLES.map(function (a) { return '<button type="button" data-anim="' + a[0] + '" class="' + (anim === a[0] ? "on" : "") + '"><i class="fa-solid ' + a[2] + '"></i>' + a[1] + "</button>"; }).join("") + "</div>" +
         '<p class="lve-note"><i class="fa-regular fa-clock"></i> Stays up for 24 hours. Followers who allow it get an alert.</p>';
     }
-    function drawBar() { add.querySelector("span").textContent = picks.length ? picks.length + " selected · change" : "Add products"; go.disabled = !picks.length; go.textContent = picks.length > 1 ? "Post " + picks.length : "Post"; }
+    function drawBar() { cnt.innerHTML = picks.length ? "<b>" + picks.length + "</b> selected" : "Select products"; go.disabled = !picks.length; go.textContent = picks.length > 1 ? "Post " + picks.length : "Post"; }
     function drawGrid() {
       var f = list.filter(function (x) { return !q || String(x.name || "").toLowerCase().indexOf(q) >= 0; });
       grid.innerHTML = f.length ? f.map(function (x) {
@@ -8654,14 +8670,12 @@ window.lvNoImageHtml = function (seed) {
     inp.oninput = function () { q = inp.value.trim().toLowerCase(); drawGrid(); };
     edit.onclick = function (e) {
       var rm = e.target.closest("[data-rm]"); if (rm) { var id = rm.getAttribute("data-rm"); picks.splice(picks.indexOf(id), 1); if (active === id) active = picks[picks.length - 1] || null; drawGrid(); all(); return; }
-      var th = e.target.closest("[data-a]"); if (th) { active = th.getAttribute("data-a"); drawPrev(); drawEdit(); return; }
       var an = e.target.closest("[data-anim]"); if (an) { anim = an.getAttribute("data-anim"); drawPrev(); drawEdit(); return; }
-      if (e.target.closest("[data-price]")) { showPrice = !showPrice; drawPrev(); drawEdit(); }
+      if (e.target.closest("[data-price]")) { showPrice = !showPrice; drawPrev(); drawEdit(); return; }
+      var row = e.target.closest("[data-row]"); if (row && row.getAttribute("data-row") !== active && !e.target.closest("input")) { active = row.getAttribute("data-row"); drawPrev(); edit.querySelectorAll(".lve-row").forEach(function (n) { n.classList.toggle("on", n === row); }); }
     };
-    edit.oninput = function (e) { if (e.target.id !== "lveCap") return; caps[active] = e.target.value; var c = prev.querySelector(".lve-cap"); if (c) { c.textContent = e.target.value; c.hidden = !e.target.value; } };
-    add.onclick = function () { setDrawer(true); };
-    $("lveDone").onclick = function () { setDrawer(false); };
-    dbg.onclick = function () { setDrawer(false); };
+    edit.addEventListener("focusin", function (e) { var c = e.target.closest && e.target.closest("[data-cap]"); if (!c) return; var id = c.getAttribute("data-cap"); if (id === active) return; active = id; drawPrev(); edit.querySelectorAll(".lve-row").forEach(function (n) { n.classList.toggle("on", n.getAttribute("data-row") === id); }); });
+    edit.oninput = function (e) { var c = e.target.closest && e.target.closest("[data-cap]"); if (!c) return; var id = c.getAttribute("data-cap"); caps[id] = c.value; if (id !== active) return; var cp = prev.querySelector(".lve-cap"); if (cp) { cp.textContent = c.value; cp.hidden = !c.value; } };
     go.onclick = async function () {
       if (!picks.length) return; go.disabled = true; go.textContent = "Posting…";
       var rowsA = picks.map(function (id) { return { vendor_id: vid, product_id: id, caption: (caps[id] || "").trim() || null, show_price: showPrice, animation: anim }; });
@@ -8670,7 +8684,7 @@ window.lvNoImageHtml = function (seed) {
       if (ins.error) { drawBar(); showToast(/not valid|does not exist|relation/i.test(ins.error.message || "") ? "Status is not switched on yet. Please try again shortly." : (ins.error.message || "Could not post it."), "error"); return; }
       cache.at = 0; showToast(picks.length > 1 ? picks.length + " statuses are live for 24 hours." : "Your status is live for 24 hours.", "success"); try { history.back(); } catch (_) { el.remove(); } setTimeout(paintStrip, 300);
     };
-    drawGrid(); all(); setTimeout(function () { setDrawer(true); }, 60);
+    drawGrid(); all();
   }
   window.lvStatusOpen = openPage; window.lvStatusAdd = openAdd;
   /* ---- the same ring on a shop's picture on its storefront and in chats: tap it to see the status ---- */
