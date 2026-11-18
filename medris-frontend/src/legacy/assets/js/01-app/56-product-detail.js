@@ -510,13 +510,14 @@ function computeDeliveryFeeForPrefix(prefix, method) {
   if (wrap.dataset.feeLines) {
     try {
       const lines = JSON.parse(wrap.dataset.feeLines);
+      // one delivery for the whole shop: the highest fee among the items, not the sum
       let total = 0;
       for (const l of lines) {
-        if (l.mode === "flat") total += Number(l.fee) || 0;
+        if (l.mode === "flat") total = Math.max(total, Number(l.fee) || 0);
         else if (l.mode === "distance" && l.perKm > 0) {
-          if (vendorLat == null || vendorLng == null) total += Number(l.fee) || 0;
+          if (vendorLat == null || vendorLng == null) total = Math.max(total, Number(l.fee) || 0);
           else if (!buyerLocation) return { fee: 0, known: false };
-          else total += distanceDeliveryFee(l.perKm, haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng));
+          else total = Math.max(total, distanceDeliveryFee(l.perKm, haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng)));
         }
       }
       return { fee: total, known: true };

@@ -151,7 +151,7 @@ export class CheckoutService {
 
   /**
    * Replaces: public.create_cart_order(uuid, jsonb, delivery_method, text, text, double precision, double precision, text)
-   * Every cart line of one shop in one order. For delivery, the lines must share a payment plan.
+   * Every cart line of one shop in one order. For delivery, the lines must share a payment plan, and the shop's delivery is charged once (the highest fee among the lines).
    */
   async cart(me: Identity | null, input: { vendorId: string; items: unknown[]; delivery: Delivery; buyerNote?: string | null }): Promise<{ id: string }> {
     if (!me) throw unauthenticated("must be signed in");
@@ -209,7 +209,11 @@ export class CheckoutService {
         await checkout.takeStock(line.product_id, line.quantity);
         await checkout.addItem(id, { productId: line.product_id, quantity: line.quantity, unitPrice: unit, variantId: line.variant_id });
         itemsTotal = await checkout.times(unit, line.quantity, itemsTotal);
-        if (delivery) fees = await checkout.add(fees, await checkout.deliveryFee(line.product_id, input.delivery.lat ?? null, input.delivery.lng ?? null, input.delivery.campusId ?? null));
+        // one delivery for the whole shop: the buyer pays one fee (the highest of the items), not one per product
+        if (delivery) {
+          const lineFee = await checkout.deliveryFee(line.product_id, input.delivery.lat ?? null, input.delivery.lng ?? null, input.delivery.campusId ?? null);
+          if (Number(lineFee) > Number(fees)) fees = lineFee;
+        }
       }
       await checkout.finishCartOrder(id, itemsTotal, fees, input.delivery.method, timing, percent);
       return { id };
