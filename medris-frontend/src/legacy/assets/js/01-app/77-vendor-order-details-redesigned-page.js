@@ -865,7 +865,8 @@ const LV_AUTO_CANCEL_MIN = 30; // default; each shop can choose its own (vendors
 function lvHourglassHtml(order, isVendor) {
   if (!order?.created_at) return "";
   const mins = Number(order.vendor?.order_expiry_minutes ?? LV_AUTO_CANCEL_MIN);
-  if (!(mins > 0)) return `<div class="lv-hg"><div class="hg-text"><strong class="hg-left">No time limit</strong><small>${isVendor ? "this order waits for you" : "this order waits for the shop to confirm"}</small></div></div>`;
+  // the hourglass is only for shops that choose a time in hours; "never" and days get no hourglass
+  if (!(mins > 0) || mins >= 1440) return "";
   return `<div class="lv-hg" data-vendor="${esc(order.vendor_id || order.vendor?.id || "")}" data-created="${esc(order.created_at)}" data-min="${mins}" role="timer" aria-live="off">
     <svg viewBox="0 0 60 84" width="44" height="62" aria-hidden="true" class="hg-svg">
       <defs><clipPath id="hgIn${esc(String(order.id).slice(0,6))}"><path d="M12 6H48V19C48 30 40 36 36 42C40 48 48 54 48 65V78H12V65C12 54 20 48 24 42C20 36 12 30 12 19Z"/></clipPath></defs>
@@ -887,7 +888,7 @@ async function lvHourglassLoadShopTime() {
       const r = await sb.from("vendors").select("order_expiry_minutes").eq("id", el.dataset.vendor).maybeSingle();
       const m = r?.data?.order_expiry_minutes;
       if (typeof m === "number" && m !== Number(el.dataset.min)) {
-        if (m === 0) { el.innerHTML = `<div class="hg-text"><strong class="hg-left">No time limit</strong><small>this order waits for the shop to confirm</small></div>`; el.removeAttribute("data-created"); }
+        if (m === 0 || m >= 1440) el.remove();   // never / days: no hourglass
         else el.dataset.min = String(m);
       }
     } catch (_) {}
