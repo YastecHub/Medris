@@ -64,7 +64,7 @@ export const DEFAULT_APP_ORIGIN = "https://levromart.vercel.app";
 /** Where the app itself is served; allowed to call the backend from the browser in production. */
 export const PRODUCTION_APP_ORIGINS = ["https://levromart.vercel.app", "https://levromart.com", "https://www.levromart.com"];
 export const DEFAULT_VAPID_PUBLIC_KEY =
-  "BJ7h-JVsXaOpYXY5st5L7esSDOPjhRROincFPTT013a1ZY3U62WIKPAoFEDzBgFB8g3H2DBNX1iRw8GzdPWR88k";
+  "BCfvxYgwU6NRT9TtInaGpIgY8wzYWmnezuwOIJznEdBuN4QFb-AvjzY11CEFMYscEHkFWkJzzVxS47Ju6zmscMA";
 
 /** Origin used in links inside emails and push notifications. */
 /**

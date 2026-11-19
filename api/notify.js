@@ -17,7 +17,7 @@ function callToken(secret, callId, calleeId) {
   return crypto.createHmac("sha256", secret).update(`call:${callId}:${calleeId}`).digest("hex");
 }
 
-const VAPID_PUBLIC_KEY = "BJ7h-JVsXaOpYXY5st5L7esSDOPjhRROincFPTT013a1ZY3U62WIKPAoFEDzBgFB8g3H2DBNX1iRw8GzdPWR88k";
+const VAPID_PUBLIC_KEY = "BCfvxYgwU6NRT9TtInaGpIgY8wzYWmnezuwOIJznEdBuN4QFb-AvjzY11CEFMYscEHkFWkJzzVxS47Ju6zmscMA";
 
 // A sticker comment is stored as ::s:still/2b50::; in a notification it reads as the emoji itself.
 const cleanBody = (b) => String(b == null ? "" : b).replace(/::s:(?:still\/|3d\/)?([0-9a-f-]+)::/gi, (_m, hex) => { try { return String.fromCodePoint(...hex.split("-").map((h) => parseInt(h, 16))); } catch (_) { return "sticker"; } });
