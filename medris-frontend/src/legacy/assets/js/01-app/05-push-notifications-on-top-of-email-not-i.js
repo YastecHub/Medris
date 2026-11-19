@@ -59,6 +59,13 @@ async function refreshPushSubscription() {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    // A subscription made with an older server key (the keys were replaced in Nov 2026) can no longer receive
+    // pushes: drop it so a fresh one is made with the current key just below.
+    try {
+      const had = sub && sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+      const want = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      if (had && (had.length !== want.length || had.some((b, i) => b !== want[i]))) { await sub.unsubscribe(); sub = null; }
+    } catch (_) { /* keep what we have */ }
     // Permission is on but the browser dropped the subscription (Android does this after
     // updates, cleared data or long idle): quietly subscribe again so pushes keep arriving.
     if (!sub && !(isIos() && !isStandalone())) {
