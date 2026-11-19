@@ -344,7 +344,7 @@ self.addEventListener('notificationclick', event => {
   // "Decline" on an incoming call: reject it without opening the app.
   if (event.action === 'decline' && notifData.call && notifData.call.id) {
     event.waitUntil(
-      fetch('/api/notify', {
+      fetch('{{api-base}}/api/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'decline-call', callId: notifData.call.id, token: notifData.call.token })

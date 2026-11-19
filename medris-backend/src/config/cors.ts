@@ -22,6 +22,8 @@ export function corsMiddleware(config: AppConfig): RequestHandler | null {
     allowedHeaders: [
       ...["Content-Type", "Authorization", "x-cron-secret", "X-Request-Id", "X-Requested-With"],
       ...["apikey", "x-client-info", "Prefer", "Range", "Range-Unit", "Accept-Profile", "Content-Profile", "x-supabase-api-version", "Accept"],
+      // ...and to Storage (/storage/v1) and to an upload link
+      ...["x-upsert", "Cache-Control", "x-metadata"],
     ],
     exposedHeaders: ["X-Request-Id", "Retry-After", "Content-Range", "Range", "Preference-Applied", "Content-Profile", "Content-Location", "Location"],
     credentials: true,

@@ -51,6 +51,76 @@ export interface PreviewQuery {
   storefront?: string;
   product?: string;
   package?: string;
+  /** A Levi chat (or one reply) shared from the app: /l/<token>. */
+  levi?: string;
+}
+
+/**
+ * The title, description and picture of a shared storefront, product, package or Levi chat, for a site hosted apart
+ * from this server (Cloudflare Pages): its share-link function asks here and writes them into the app's page.
+ * `appOrigin` is the site the link was opened on (page addresses); picture cards are drawn by this server.
+ * `query` is what the opened page should switch its address to (e.g. "storefront=<id>"), so the app opens that screen.
+ */
+export async function sharePreviewMeta(query: PreviewQuery, appOrigin: string, apiOrigin: string): Promise<(PreviewMeta & { query: string }) | null> {
+  const vendorId = String(query.storefront || "").trim();
+  const productId = String(query.product || "").trim();
+  const packageId = String(query.package || "").trim();
+  const leviToken = String(query.levi || "").trim();
+  const data = getDataContext();
+  if (leviToken) {
+    if (!/^[0-9a-f-]{36}$/i.test(leviToken)) return null;
+    let chatTitle = "A chat with Levi";
+    try {
+      const title = await data.asService((tx) => new SharingRepository(tx).sharedLeviTitle(leviToken));
+      if (title) chatTitle = String(title).slice(0, 80);
+    } catch {
+      /* the generic title */
+    }
+    return {
+      title: `${chatTitle} | Levi on Levromart`,
+      description: "A conversation with Levi, Levromart's assistant. Tap to read it.",
+      image: `${appOrigin}/og-levi.jpg`,
+      pageUrl: `${appOrigin}/l/${encodeURIComponent(leviToken)}`,
+      query: `share=${encodeURIComponent(leviToken)}`,
+    };
+  }
+  if (vendorId) {
+    const v = await data.asService((tx) => new SharingRepository(tx).storefront(vendorId));
+    return v
+      ? {
+          title: `${v.business_name || "Levromart storefront"} | Levromart`,
+          description: v.bio || `Check out ${v.business_name || "this store"} on Levromart.`,
+          image: `${apiOrigin}/api/delete-account?ogstore=${encodeURIComponent(v.id)}`,
+          pageUrl: `${appOrigin}/?storefront=${encodeURIComponent(v.id)}`,
+          query: `storefront=${encodeURIComponent(v.id)}`,
+        }
+      : null;
+  }
+  if (packageId) {
+    const k = await data.asService((tx) => new SharingRepository(tx).package(packageId));
+    return k
+      ? {
+          title: `${k.name || "Levromart package"} | Levromart`,
+          description: String(k.description || `${k.name || "This package"} on Levromart${k.vendor?.business_name ? ` from ${k.vendor.business_name}` : ""}.`).slice(0, 200),
+          image: `${apiOrigin}/api/delete-account?ogpkg=${encodeURIComponent(k.id)}`,
+          pageUrl: `${appOrigin}/?package=${encodeURIComponent(k.id)}`,
+          query: `package=${encodeURIComponent(k.id)}`,
+        }
+      : null;
+  }
+  if (productId) {
+    const p = await data.asService((tx) => new SharingRepository(tx).product(productId));
+    return p
+      ? {
+          title: `${p.name || "Levromart listing"} | Levromart`,
+          description: String(p.description || `${p.name || "This listing"} on Levromart${p.vendor?.business_name ? ` from ${p.vendor.business_name}` : ""}.`).slice(0, 200),
+          image: `${apiOrigin}/api/delete-account?ogprod=${encodeURIComponent(p.id)}`,
+          pageUrl: `${appOrigin}/?product=${encodeURIComponent(p.id)}`,
+          query: `product=${encodeURIComponent(p.id)}`,
+        }
+      : null;
+  }
+  return null;
 }
 
 /**

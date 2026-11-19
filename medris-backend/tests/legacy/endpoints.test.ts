@@ -136,14 +136,16 @@ describe("/api/notify", () => {
     expect(row?.ended_at).not.toBeNull();
   });
 
-  it("e-mails and skips push for a user who has the app open", async () => {
+  it("e-mails and still pushes when the app looked open (the phone hides it while the app is on screen)", async () => {
     const user = await seedUser(db, { email: "notify-me@example.com" });
     const id = await seedNotification(db, user.id, { type: "new_order" });
     await db.query(`insert into public.app_presence (user_id, seen_at) values ($1, now())`, [user.id]);
     vi.stubEnv("RESEND_API_KEY", "re_test");
     const { calls } = stubFetch([{ method: "POST", match: "api.resend.com/emails", json: { id: "email_1" } }]);
     const res = await app.fetch(jsonRequest("/api/notify", { notificationId: id }, { headers: { "x-webhook-secret": TEST_ENV.EMAIL_WEBHOOK_SECRET } }));
-    expect(await res.json()).toMatchObject({ email: { sent: true }, push: { sent: 0, reason: "user is in the app" } });
+    const out = (await res.json()) as { email: { sent: boolean }; push: { reason?: string } };
+    expect(out).toMatchObject({ email: { sent: true } });
+    expect(out.push.reason).not.toBe("user is in the app");
     expect(JSON.parse(calls[0]!.body!).to).toBe("notify-me@example.com");
   });
 

@@ -112,16 +112,9 @@ function callTokenSecret(): string {
 }
 
 export async function sendPush(data: DataContext, n: NotificationRow): Promise<PushOutcome> {
-  // While the app is open on screen everything shows in-app, so no system
-  // push (calls still ring). The page heartbeats every ~20 s.
-  if (n.type !== "incoming_call") {
-    try {
-      const since = new Date(Date.now() - 45000).toISOString();
-      if (await data.asService((tx) => new NotifyRepository(tx).appOpenSince(n.user_id, since))) return { sent: 0, reason: "user is in the app" };
-    } catch {
-      /* fall through and push */
-    }
-  }
+  // Always send the push. Whether to show it is decided on the phone: the service worker shows nothing while the app is
+  // open and on screen. Skipping it here because the app "looked open" in the last 45 seconds dropped alerts that arrived
+  // just after the app was closed or swiped away (no "closed" signal reaches the server then). Same as api/notify.js.
 
   let subs: (PushTarget & { id: string; created_at?: string })[] | null = await data.asService((tx) => new NotifyRepository(tx).pushSubscriptions(n.user_id));
   if (n.reminder && Array.isArray(subs) && subs.length > 1) {

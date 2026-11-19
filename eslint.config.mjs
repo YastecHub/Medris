@@ -31,6 +31,11 @@ export default tseslint.config(
     languageOptions: { globals: globals.node },
   },
   {
+    // Cloudflare Pages Functions (share-link previews): Workers runtime, web-standard globals.
+    files: ["functions/**/*.js"],
+    languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },
+  },
+  {
     files: ["medris-frontend/src/**/*.{ts,tsx}", "medris-frontend/tests/**/*.ts"],
     languageOptions: { globals: globals.browser },
     plugins: { "react-hooks": reactHooks },
