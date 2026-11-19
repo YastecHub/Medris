@@ -3,7 +3,8 @@ import sharp from "sharp";
 import { getDataContext } from "../../database/index.js";
 import { UsersRepository } from "../../database/repositories/users.repository.js";
 import { R2_ALLOWED_FOLDERS, R2_IMAGE_CACHE_CONTROL, getR2Client, r2BucketName, r2PublicUrl } from "../../integrations/r2.js";
-import { R2Storage, SupabaseStorage } from "../../integrations/storage/index.js";
+import { loadConfig } from "../../config/app-config.js";
+import { R2Storage, SupabaseStorage, publicImageStorage } from "../../integrations/storage/index.js";
 import { identityFromAccessToken } from "../auth/caller.js";
 import type { ServiceResult } from "../../shared/types/service.js";
 
@@ -35,6 +36,12 @@ export async function presignUpload(body: Record<string, unknown>): Promise<Serv
   const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
 
+  // IMAGE_STORAGE=cloudinary: a signed Cloudinary upload (the browser POSTs the file with these fields); otherwise R2.
+  const config = loadConfig();
+  if (config.imageStorage === "cloudinary" && config.cloudinary) {
+    const upload = await publicImageStorage(config).createDirectUpload(key, contentType);
+    return { status: 200, body: { uploadUrl: upload.uploadUrl, method: "POST", fields: upload.fields, publicUrl: upload.publicUrl } };
+  }
   const upload = await new R2Storage().createDirectUpload(key, contentType);
   return { status: 200, body: { uploadUrl: upload.uploadUrl, publicUrl: upload.publicUrl, cacheControl: R2_IMAGE_CACHE_CONTROL } };
 }

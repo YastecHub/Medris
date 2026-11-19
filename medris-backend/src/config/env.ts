@@ -67,12 +67,22 @@ export const DEFAULT_VAPID_PUBLIC_KEY =
   "BJ7h-JVsXaOpYXY5st5L7esSDOPjhRROincFPTT013a1ZY3U62WIKPAoFEDzBgFB8g3H2DBNX1iRw8GzdPWR88k";
 
 /** Origin used in links inside emails and push notifications. */
+/**
+ * Where the database's web calls reach /api/notify (pushes and e-mails for new notifications, a call's second ring,
+ * background reminders): this backend on Heroku, as migration 0074 set in the database's own functions. The site
+ * (APP_ORIGIN) is static files on Cloudflare and has no /api.
+ */
+export const DEFAULT_NOTIFY_WEBHOOK_URL = "https://levromart-5212f03a7e44.herokuapp.com/api/notify";
+export function notifyWebhookUrl(): string {
+  return (process.env.NOTIFY_WEBHOOK_URL || DEFAULT_NOTIFY_WEBHOOK_URL).trim();
+}
+
 export function appOrigin(): string {
   return (optionalEnv("APP_ORIGIN") || DEFAULT_APP_ORIGIN).replace(/\/$/, "");
 }
 
 /** Origin that serves /api/notif-icon, used in push-notification picture URLs. */
-export const DEFAULT_ICON_ORIGIN = "https://levromart.com";
+export const DEFAULT_ICON_ORIGIN = "https://levromart-5212f03a7e44.herokuapp.com"; // the backend: the site (Cloudflare) has no /api
 export function iconOrigin(): string {
   return (optionalEnv("ICON_ORIGIN") || DEFAULT_ICON_ORIGIN).replace(/\/$/, "");
 }

@@ -37,9 +37,9 @@ describe("link previews", () => {
 
 describe("notifications", () => {
   it("picks the event icon by notification type, composed by /api/notif-icon", () => {
-    expect(iconForType("payment_received")).toBe("https://levromart.com/api/notif-icon?k=payment");
-    expect(iconForType("new_order")).toBe("https://levromart.com/api/notif-icon?k=order");
-    expect(iconForType("new_message")).toBe("https://levromart.com/api/notif-icon?k=message");
+    expect(iconForType("payment_received")).toBe("https://levromart-5212f03a7e44.herokuapp.com/api/notif-icon?k=payment");
+    expect(iconForType("new_order")).toBe("https://levromart-5212f03a7e44.herokuapp.com/api/notif-icon?k=order");
+    expect(iconForType("new_message")).toBe("https://levromart-5212f03a7e44.herokuapp.com/api/notif-icon?k=message");
     expect(iconForType("something")).toBe("/levromart-notification-icon.png");
   });
 

@@ -263,12 +263,21 @@ async function uploadToR2(blob, key, contentType) {
     });
     const presignJson = await presignRes.json().catch(() => ({}));
     if (!presignRes.ok) throw new Error(presignJson.error || "Could not start the upload.");
-    // The presigned URL was signed with this exact Cache-Control included, so the
-    // PUT must send the same header back or the signature won't validate.
-    const putHeaders = { "Content-Type": type };
-    if (presignJson.cacheControl) putHeaders["Cache-Control"] = presignJson.cacheControl;
     const putMs = Math.max(25000, Math.round((blob.size || 0) / 25) );
-    const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob, signal: tmo(putMs) });
+    let putRes;
+    if (presignJson.method === "POST") {
+      // Cloudinary: a signed form upload (the server's signature covers these fields).
+      const form = new FormData();
+      Object.entries(presignJson.fields || {}).forEach(([k, v]) => form.append(k, v));
+      form.append("file", blob);
+      putRes = await fetch(presignJson.uploadUrl, { method: "POST", body: form, signal: tmo(putMs) });
+    } else {
+      // The presigned URL was signed with this exact Cache-Control included, so the
+      // PUT must send the same header back or the signature won't validate.
+      const putHeaders = { "Content-Type": type };
+      if (presignJson.cacheControl) putHeaders["Cache-Control"] = presignJson.cacheControl;
+      putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob, signal: tmo(putMs) });
+    }
     if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
     try { sessionStorage.removeItem("lv-r2-bad"); } catch (_) {}
     return presignJson.publicUrl;

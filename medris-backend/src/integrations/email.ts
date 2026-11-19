@@ -5,7 +5,7 @@ import { escapeHtml } from "../lib/format.js";
  * because most e-mail clients strip <style> blocks.
  */
 
-const LOGO_URL = "https://levromart.vercel.app/icon-512.png";
+const LOGO_URL = "https://levromart.com/icon-512.png";
 
 export interface EmailShellInput {
   preheader?: string;

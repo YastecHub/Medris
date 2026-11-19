@@ -6,7 +6,7 @@ import { accessToken, legacyRoute } from "../../shared/openapi/legacy-docs.js";
 const AccountActionBody = z
   .looseObject({
     action: z
-      .enum(["account-exists", "check-email", "register", "ensure-profile", "delete", "delete-account", ""])
+      .enum(["account-exists", "check-email", "register", "ensure-profile", "create-business", "list-businesses", "switch-business", "pause-business", "delete-business", "delete", "delete-account", ""])
       .optional()
       .openapi({ description: "No action (or `delete`) deletes the caller's account; an unknown action is refused." }),
     email: z.string().optional(),

@@ -41,20 +41,26 @@ export class CloudinaryStorage implements ObjectStorage {
     return key.replace(/\.[A-Za-z0-9]{1,5}$/, "");
   }
 
-  async createDirectUpload(key: string): Promise<DirectUpload> {
+  /** Videos (shop statuses) go to Cloudinary's video storage, everything else to its image storage. */
+  private resourceType(contentType = ""): "image" | "video" {
+    return contentType.startsWith("video/") ? "video" : "image";
+  }
+
+  async createDirectUpload(key: string, contentType = "image/jpeg"): Promise<DirectUpload> {
     const timestamp = Math.floor(this.now() / 1000);
     const params = { folder: this.config.folder, public_id: this.publicId(key), timestamp };
+    const type = this.resourceType(contentType);
     return {
-      uploadUrl: `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`,
+      uploadUrl: `https://api.cloudinary.com/v1_1/${this.config.cloudName}/${type}/upload`,
       method: "POST",
       fields: { ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])), api_key: this.config.apiKey, signature: this.sign(params) },
-      publicUrl: this.publicUrl(key),
+      publicUrl: this.publicUrl(key, contentType),
       expiresInSeconds: 3600,
     };
   }
 
   async put(key: string, body: Uint8Array, contentType: string): Promise<void> {
-    const upload = await this.createDirectUpload(key);
+    const upload = await this.createDirectUpload(key, contentType);
     const form = new FormData();
     for (const [k, v] of Object.entries(upload.fields ?? {})) form.set(k, v);
     form.set("file", new Blob([body], { type: contentType }));
@@ -62,8 +68,10 @@ export class CloudinaryStorage implements ObjectStorage {
     if (!res.ok) throw new Error("Cloudinary upload failed.");
   }
 
-  publicUrl(key: string): string {
-    return `https://res.cloudinary.com/${this.config.cloudName}/image/upload/f_auto,q_auto/${this.config.folder}/${this.publicId(key)}`;
+  publicUrl(key: string, contentType = "image/jpeg"): string {
+    const type = this.resourceType(contentType);
+    // f_auto,q_auto: each phone gets the smallest format and quality it can show well (WebP/AVIF, MP4...).
+    return `https://res.cloudinary.com/${this.config.cloudName}/${type}/upload/f_auto,q_auto/${this.config.folder}/${this.publicId(key)}`;
   }
 
   async remove(keys: string[]): Promise<void> {

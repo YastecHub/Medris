@@ -9,6 +9,7 @@ import { loadConfig } from "./config/app-config.js";
 import { closeDatabase, getDataContext } from "./database/index.js";
 import { createLogger } from "./lib/logger.js";
 import { DOCS_PATH, OPENAPI_PATH } from "./routes/docs.js";
+import { runDailyCron } from "./modules/cron/cron.service.js";
 
 /**
  * Long-running server: local development (`npm run dev -w medris-backend`) or
@@ -114,6 +115,21 @@ if (config.paystack.checkoutEnabled && config.env !== "test" && process.env.PAYS
   };
   every("vendor payouts", 60_000, () => services.vendorPayouts.run());
   every("refunds", 120_000, () => services.refunds.run());
+}
+// The daily job Vercel used to start at 03:00 UTC (vercel.json "crons": /api/daily-cron): listing billing reminders,
+// commission deadline reminders, old read notifications. It now runs here, once a day at that time, unless
+// DAILY_CRON_IN_SERVER=false (e.g. when Heroku Scheduler calls /api/daily-cron instead).
+if (config.env === "production" && process.env.DAILY_CRON_IN_SERVER !== "false") {
+  let lastRun = "";
+  setInterval(() => {
+    const now = new Date();
+    const day = now.toISOString().slice(0, 10);
+    if (now.getUTCHours() !== 3 || lastRun === day) return;
+    lastRun = day;
+    runDailyCron(now)
+      .then((r) => logger.info("daily job: ran", { status: r.status }))
+      .catch((err: unknown) => logger.warn("daily job: failed", { err }));
+  }, 60_000).unref();
 }
 server.listen(port, () => {
   const url = `http://localhost:${port}`;

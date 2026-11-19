@@ -46,4 +46,11 @@ export class SharingRepository {
         (select json_build_object('business_name', v.business_name, 'logo_url', v.logo_url) from public.vendors v where v.id = k.vendor_id) as vendor
       from public.vendor_packages k where k.id = ${packageId}`);
   }
+
+  /** The title of a Levi chat shared from the app (its share token), or null. */
+  async sharedLeviTitle(token: string): Promise<string | null> {
+    if (!isUuid(token)) return null;
+    const row = await jsonRow<{ title: string | null }>(this.db, sql`select title from public.get_shared_ai_conversation(${token}::uuid) limit 1`);
+    return row?.title ?? null;
+  }
 }

@@ -91,6 +91,33 @@ export class SupabaseAuthAdmin {
     return response.ok ? { ok: true } : { ok: false, message: body.msg || body.error_description || body.message };
   }
 
+  /** A login account by id, or null. */
+  async getUser(userId: string): Promise<AuthUser | null> {
+    const response = await this.request(`users/${encodeURIComponent(userId)}`, { method: "GET" });
+    if (!response.ok) return null;
+    const body = (await response.json().catch(() => null)) as AuthUser | null;
+    return body?.id ? body : null;
+  }
+
+  /**
+   * A fresh session for another login (switching between a person's businesses), without their password: a one-time
+   * sign-in link is generated and used at once. Only call after checking the caller may open that account.
+   */
+  async sessionFor(email: string, anonKey: string): Promise<{ access_token: string; refresh_token: string }> {
+    const link = await this.request("generate_link", { method: "POST", body: JSON.stringify({ type: "magiclink", email }) });
+    const linkBody = (await link.json().catch(() => ({}))) as { hashed_token?: string; properties?: { hashed_token?: string } };
+    const tokenHash = linkBody.hashed_token || linkBody.properties?.hashed_token;
+    if (!link.ok || !tokenHash) throw new SupabaseAuthError("Could not open that business account.", 502);
+    const verified = await this.doFetch(`${this.url}/auth/v1/verify`, {
+      method: "POST",
+      headers: { apikey: anonKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "magiclink", token_hash: tokenHash }),
+    });
+    const session = (await verified.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string };
+    if (!verified.ok || !session.access_token || !session.refresh_token) throw new SupabaseAuthError("Could not open that business account.", 502);
+    return { access_token: session.access_token, refresh_token: session.refresh_token };
+  }
+
   /** Locks a login for good (about 100 years) without erasing it, so a deleted account can be put back. */
   async banUser(userId: string): Promise<{ ok: boolean; detail: string }> {
     const response = await this.request(`users/${encodeURIComponent(userId)}`, { method: "PUT", body: JSON.stringify({ ban_duration: "876000h" }) });

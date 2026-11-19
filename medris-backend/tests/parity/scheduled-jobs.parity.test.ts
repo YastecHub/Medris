@@ -139,7 +139,7 @@ describe("parity: scheduled jobs", () => {
   it("send_background_reminders posts one reminder per subscribed person, with the counts in words (no push subscription, no reminder)", async () => {
     const outcome = await runIsolated(db, (ctx) => port(ctx).sendBackgroundReminders());
     const [request] = outcome.changes["net.http_requests"]!.inserted as { url: string; body: { reminders: { title: string; body: string; view: string }[] } }[];
-    expect(request!.url).toBe("https://levromart.vercel.app/api/notify");
+    expect(request!.url).toBe("https://levromart-5212f03a7e44.herokuapp.com/api/notify");
     // the shop's owner has the buyer's two unread messages; the buyer only open orders
     expect(request!.body.reminders.map((r) => [r.title, r.view, r.body]).sort()).toEqual([
       ["Orders need your attention", "buyerOrders", expect.stringMatching(/^\d+ orders not yet completed$/)],
