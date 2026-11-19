@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { exposeMedrisRuntime } from "@/app/runtime";
 
 /**
@@ -12,5 +13,9 @@ import { exposeMedrisRuntime } from "@/app/runtime";
  */
 export function App() {
   useEffect(() => exposeMedrisRuntime(), []);
-  return null;
+  return (
+    <>
+      <Analytics />
+    </>
+  );
 }
