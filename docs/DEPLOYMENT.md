@@ -1,5 +1,8 @@
 # Deploying
 
+> **Out of date since 19 Nov 2026:** Vercel is no longer used. The current set-up (Cloudflare Pages + Heroku) is in
+> [HOSTING.md](HOSTING.md); the Heroku sections below still apply.
+
 ## Production today: Vercel deploys the frontend only
 
 Vercel serves the web app and the **original** 12 functions in `api/`, exactly as before the frontend/backend

@@ -88,7 +88,7 @@ class Resolver {
     private readonly root: string,
     private readonly env: Record<string, string>,
     private readonly assetVersion: number,
-  ) {}
+  ) { }
 
   resolve(source: string): string {
     const { inlineAssetsDir } = legacyPaths(this.root);
@@ -100,8 +100,6 @@ class Resolver {
         return JSON.stringify(value).slice(1, -1);
       })
       .replace(/\{\{asset-version\}\}/g, () => String(this.assetVersion))
-      // Where the original /api endpoints live when the site is hosted apart from the backend (VITE_API_BASE_URL).
-      .replace(/\{\{api-base\}\}/g, () => JSON.stringify(String(this.env.VITE_API_BASE_URL || "").replace(/\/$/, "")).slice(1, -1))
       .replace(/\{\{inline-asset:([A-Za-z0-9._-]+)\}\}/g, (_m, file: string) => {
         let uri = this.cache.get(file);
         if (!uri) {

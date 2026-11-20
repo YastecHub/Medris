@@ -6,9 +6,13 @@ name: CI
 # "PostgreSQL 17"; the latter is skipped - counted as passed - when no backend
 # or database file changed).
 #
-# Nothing here talks to Supabase, Vercel, Paystack or any production system:
-# tests use an in-process PostgreSQL (PGlite) or the throwaway PostgreSQL
+# Nothing here talks to Supabase, Heroku, Cloudflare, Paystack or any production
+# system: tests use an in-process PostgreSQL (PGlite) or the throwaway PostgreSQL
 # service below, and no secrets are used.
+#
+# Pushes to main run the jobs only in this repository (kenniskalu18-prog/Medris).
+# The copy in YastecHub/Medris receives the same commits every few minutes (it is
+# what Heroku and Cloudflare deploy from) and would only test them a second time.
 on:
   pull_request:
   push:
@@ -29,6 +33,7 @@ jobs:
   # passed, so it never blocks a merge. Manual runs always run everything.
   changes:
     name: What changed
+    if: github.event_name != 'push' || github.repository == 'kenniskalu18-prog/Medris'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -65,6 +70,7 @@ jobs:
 
   checks:
     name: Checks
+    if: github.event_name != 'push' || github.repository == 'kenniskalu18-prog/Medris'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -90,7 +96,8 @@ jobs:
       - name: Legacy script syntax
         run: npm run legacy:check -w medris-frontend
 
-      - name: Vercel function syntax (api/)
+      # Levi's brain (api/chat.js) runs on Heroku straight from api/; the other files there are kept for reference.
+      - name: api/ syntax
         run: npm run api:check
 
       - name: Migration files
@@ -107,13 +114,10 @@ jobs:
       - name: Tests (PGlite)
         run: npm test
 
-      # The whole repository (backend included), then the frontend-only build
-      # exactly as Vercel runs it (vercel.json buildCommand).
+      # The whole repository: the backend as Heroku builds it, then the frontend as
+      # Cloudflare Pages builds it (npm run build -w medris-frontend).
       - name: Build
         run: npm run build
-
-      - name: Vercel build (frontend only)
-        run: npm run build -w medris-frontend
 
   # Browser tests of the built frontend for the React migration (docs/REACT_MIGRATION.md,
   # section 6). Every request to Supabase and /api is answered by local fixtures and the app
@@ -121,6 +125,7 @@ jobs:
   # Only the browser download (Playwright's own CDN) and `npm ci` use the network.
   e2e:
     name: Frontend browser tests
+    if: github.event_name != 'push' || github.repository == 'kenniskalu18-prog/Medris'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -157,6 +162,7 @@ jobs:
   # PostgreSQL 17, Payments end-to-end (PostgreSQL 17).
   payments:
     name: Payments end-to-end
+    if: github.event_name != 'push' || github.repository == 'kenniskalu18-prog/Medris'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -171,6 +177,7 @@ jobs:
 
   payments-postgres:
     name: Payments end-to-end (PostgreSQL 17)
+    if: github.event_name != 'push' || github.repository == 'kenniskalu18-prog/Medris'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:

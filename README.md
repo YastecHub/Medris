@@ -68,17 +68,11 @@ document. The backend is layered controller → service → repository ([docs/BA
 
 **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request and every push to `main`:
 typecheck, lint, the legacy syntax check, migration checks, the tests (PGlite, and the backend suite again on
-PostgreSQL 17) and the build. It needs no secrets and never touches Supabase or Vercel.
+PostgreSQL 17) and the build. It needs no secrets and never touches Supabase, Heroku or Cloudflare.
 
 ## Deploying
 
-**Vercel deploys the frontend only** - the app and its direct Supabase calls, exactly as before the restructure:
-
-- `vercel.json`: `npm ci`, then `npm run build -w medris-frontend`, static output `medris-frontend/dist`.
-- `api/*.js` are the original 12 functions (payments, notifications, sign-up, admin codes, Levi, uploads, link
-  previews, daily cron), restored as they were and using the same Vercel environment variables as before
-  (Supabase URL + service-role key, Paystack, Resend, VAPID, Gemini, R2, cron/webhook secrets). They have to sit in
-  `api/` at the repository root: that is where Vercel deploys functions from.
-- `medris-backend` is **not** built or deployed by Vercel and needs no `DATABASE_URL` there.
-
-Details, checks and roll-back: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+The web app is on **Cloudflare Pages** (with the share-link previews in `functions/`), the backend on **Heroku**,
+images on **Cloudinary**; Vercel is no longer used. Both deploy by themselves from `main` of `YastecHub/Medris`, which
+follows `main` of this repository automatically (within about 10 minutes). Settings and checks:
+[`docs/HOSTING.md`](docs/HOSTING.md).

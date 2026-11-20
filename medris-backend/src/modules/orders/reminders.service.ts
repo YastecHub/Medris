@@ -4,8 +4,8 @@ import { NotifyRepository } from "../../database/repositories/messaging.reposito
 import { OrdersRepository } from "../../database/repositories/orders.repository.js";
 
 /**
- * 30-minute order reminder sweep (triggered by GitHub Actions, see
- * .github/workflows/order-reminders.yml). Nudges whoever needs to act on an
+ * 30-minute order reminder sweep, run by calling /api/order-reminders with CRON_SECRET (nothing calls it on a
+ * schedule at the moment: the old GitHub Actions job never had a real address). Nudges whoever needs to act on an
  * order stuck in confirmed / handed_over / returned for more than 2 hours.
  * Pending orders are handled by the database job remind_unattended_orders().
  */
