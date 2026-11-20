@@ -350,20 +350,34 @@ async function renderAdminPanel(status) {
   let vendorError = null;
   if (status === "recycle") {
     const { data, error } = await sb.from("vendors")
-      .select("id,business_name,address,city,phone,whatsapp_number,cac_number,bio,verification_docs,verification_status,avg_rating,review_count,created_at,deleted_at,deleted_previous_verification_status,deleted_previous_is_active,applicant:users(name,email)")
+      .select("id,user_id,business_name,address,city,phone,whatsapp_number,cac_number,bio,verification_docs,verification_status,avg_rating,review_count,created_at,deleted_at,deleted_previous_verification_status,deleted_previous_is_active")
       .not("deleted_at", "is", null)
       .order("deleted_at", { ascending: false });
     vendors = data || [];
     vendorError = error;
   } else {
     let q = sb.from("vendors")
-      .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, applicant:users(name, email)")
+      .select("id, user_id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (status !== "all") q = q.eq("verification_status", status);
     const result = await q;
     vendors = result.data || [];
     vendorError = result.error;
+  }
+
+  // The applicants' names and e-mails are read in a second step (not joined into the vendor query): the join is what failed
+  // through the new backend and left this page on "Something went wrong". If this step fails the vendors still show.
+  if (!vendorError && vendors.length) {
+    try {
+      const ids = [...new Set(vendors.map((v) => v.user_id).filter(Boolean))];
+      const people = new Map();
+      for (let i = 0; i < ids.length; i += 150) {
+        const { data: us } = await sb.from("users").select("id,name,email").in("id", ids.slice(i, i + 150));
+        (us || []).forEach((u) => people.set(u.id, u));
+      }
+      vendors.forEach((v) => { const u = people.get(v.user_id); v.applicant = u ? { name: u.name, email: u.email } : null; });
+    } catch (_) {}
   }
 
   let html = `<h2><i class='fa-solid fa-gear'></i> Admin: Vendors</h2>`;
