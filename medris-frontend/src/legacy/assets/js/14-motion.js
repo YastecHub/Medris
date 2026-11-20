@@ -3793,13 +3793,15 @@ window.lvAskCancel = async function (orderId) {
       if (bids.length) { var ur = await sb.from("users").select("id,name").in("id", bids); var nm = {}; ((ur && ur.data) || []).forEach(function (u) { nm[u.id] = u.name; }); open.forEach(function (d) { d.__buyer = d.order && nm[d.order.buyer_id]; }); }
     } catch (_) {}
     var tab = "open";
-    var tabs = '<div class="adp-tabs" role="tablist"><button role="tab" class="adp-tab on" data-t="open" aria-selected="true" onclick="lvAdpTab(\'open\')">Open' + (open.length ? '<i>' + open.length + '</i>' : "") + '</button><button role="tab" class="adp-tab" data-t="resolved" aria-selected="false" onclick="lvAdpTab(\'resolved\')"><span class="fa-solid fa-clock-rotate-left"></span> History' + (resolved.length ? '<i class="ok">' + resolved.length + '</i>' : "") + '</button>' + (checks ? '<button role="tab" class="adp-tab" data-t="checks" aria-selected="false" onclick="lvAdpTab(\'checks\')">Payment checks<i>' + checks + '</i></button>' : "") + '</div>';
-    setTimeout(function () { var want = window.__adpTab; if (want === "checks" && !checks) want = "open"; if (want && want !== "open") window.lvAdpTab(want); }, 0);
+    // the tab the admin was on is drawn as the open one straight away (switching after drawing made the page twitch on every refresh)
+    var want = window.__adpTab || "open"; if ((want === "checks" && !checks) || ["open", "resolved", "checks"].indexOf(want) < 0) want = "open";
+    var tOn = function (t) { return t === want ? ' on" aria-selected="true"' : '" aria-selected="false"'; }, pHide = function (t) { return t === want ? "" : " hidden"; };
+    var tabs = '<div class="adp-tabs" role="tablist"><button role="tab" data-t="open" class="adp-tab' + tOn("open") + ' onclick="lvAdpTab(\'open\')">Open' + (open.length ? '<i>' + open.length + '</i>' : "") + '</button><button role="tab" data-t="resolved" class="adp-tab' + tOn("resolved") + ' onclick="lvAdpTab(\'resolved\')"><span class="fa-solid fa-clock-rotate-left"></span> History' + (resolved.length ? '<i class="ok">' + resolved.length + '</i>' : "") + '</button>' + (checks ? '<button role="tab" data-t="checks" class="adp-tab' + tOn("checks") + ' onclick="lvAdpTab(\'checks\')">Payment checks<i>' + checks + '</i></button>' : "") + '</div>';
     var empty = function (t, ic) { return '<div class="adp-empty"><i class="fa-solid ' + ic + '"></i><strong>' + t + '</strong></div>'; };
     return head + '<div class="adp">' + tabs +
-      '<section class="adp-panel" data-t="open">' + (open.length ? open.map(function (d) { return card(d, refunded); }).join("") : empty("No open disputes", "fa-circle-check")) + '</section>' +
-      '<section class="adp-panel hidden" data-t="resolved">' + (resolved.length ? resolved.map(function (d) { return doneCard(d, refunded); }).join("") : empty("No resolved disputes yet", "fa-box-archive")) + '</section>' +
-      (checks ? '<section class="adp-panel hidden" data-t="checks">' + unresolved.map(function (o) { return checkCard(o, "unresolved"); }).concat(confirmed.map(function (o) { return checkCard(o, "confirmed"); })).join("") + '</section>' : "") + '</div>';
+      '<section class="adp-panel' + pHide("open") + '" data-t="open">' + (open.length ? open.map(function (d) { return card(d, refunded); }).join("") : empty("No open disputes", "fa-circle-check")) + '</section>' +
+      '<section class="adp-panel' + pHide("resolved") + '" data-t="resolved">' + (resolved.length ? resolved.map(function (d) { return doneCard(d, refunded); }).join("") : empty("No resolved disputes yet", "fa-box-archive")) + '</section>' +
+      (checks ? '<section class="adp-panel' + pHide("checks") + '" data-t="checks">' + unresolved.map(function (o) { return checkCard(o, "unresolved"); }).concat(confirmed.map(function (o) { return checkCard(o, "confirmed"); })).join("") + '</section>' : "") + '</div>';
   };
   // an outcome never undoes a refund: cancelling a paid order no longer refuses; the admin is reminded that a refund is its own step
   async function setOutcome(disputeId, orderId, status, notes, paidNote) {
