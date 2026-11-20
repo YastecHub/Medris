@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { appOrigin } from "../../config/env.js";
 import { json, readJsonBody, requestOrigin } from "../../lib/http.js";
 import { respond } from "../../shared/legacy.js";
 import { listingPaymentReturn, runVendorPaymentAction } from "./vendor-payments.service.js";
@@ -9,7 +10,8 @@ function vendorPaymentsEntry(req: Request, res: Response): Promise<void> | void 
   if (req.method === "GET") {
     const reference = String(req.query.reference || "").trim();
     const purpose = String(req.query.purpose || "").trim();
-    return respond(res, () => listingPaymentReturn(reference, purpose, requestOrigin(req)), errors);
+    // Paystack's return to this server: afterwards the person goes to the app (APP_ORIGIN), not to this server's address.
+    return respond(res, () => listingPaymentReturn(reference, purpose, appOrigin()), errors);
   }
   if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
   return respond(res, async () => runVendorPaymentAction(await readJsonBody(req), requestOrigin(req)), errors);

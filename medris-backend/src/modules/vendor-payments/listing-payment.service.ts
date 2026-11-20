@@ -1,3 +1,4 @@
+import { backendOrigin } from "../../config/env.js";
 import type { DataContext } from "../../database/context.js";
 type Executor = Parameters<Parameters<DataContext["asService"]>[0]>[0]; // a service-role transaction
 import { getDataContext } from "../../database/index.js";
@@ -198,7 +199,7 @@ export async function settleListingPaymentFromWebhook(reference: string, metadat
 
 /* ------------------------------------------------------------- start payment */
 
-export async function startListingPayment(body: Record<string, unknown>, origin: string): Promise<ServiceResult> {
+export async function startListingPayment(body: Record<string, unknown>, _origin: string): Promise<ServiceResult> {
   requireEnv("PAYSTACK_SECRET_KEY");
 
   if (!body?.accessToken || !body?.kind || !body?.id) return { status: 400, body: { error: "A listing and signed-in session are required." } };
@@ -273,7 +274,8 @@ export async function startListingPayment(body: Record<string, unknown>, origin:
       amount: MONTHLY_LISTING_KOBO,
       currency: "NGN",
       reference,
-      callback_url: `${origin}/api/vendor-payments?purpose=listing&reference=${encodeURIComponent(reference)}`,
+      // Paystack sends the person back through this server (the site itself has no /api), which then opens the app.
+      callback_url: `${backendOrigin()}/api/vendor-payments?purpose=listing&reference=${encodeURIComponent(reference)}`,
       metadata: {
         purpose: "levromart_listing_monthly",
         kind,
