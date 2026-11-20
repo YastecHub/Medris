@@ -1499,21 +1499,27 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   function mountHomeBar(){
     var grid=document.getElementById("productGrid"); if(!grid) return;
     var bar=document.getElementById("lvCampusBar");
-    var anchor=document.getElementById("homePromotionalViewport"); anchor=anchor&&(anchor.closest("section")||anchor.parentElement);
+    // where the bar belongs: just above the banners. Before the banners exist (the quick start-up page, or banners that
+    // failed to load) that is the top of the (empty) banner box, never further down under "Trending products", so the
+    // bar no longer shows up in the middle of the page and then jumps back to the top.
+    var vp=document.getElementById("homePromotionalViewport"), car=vp&&(vp.closest("section")||vp.parentElement);
+    var hero=car?null:document.querySelector("#app .levro-home-hero");
+    var browse=(car||hero)?null:document.getElementById("browseSection");
+    if(!car&&!hero&&(!browse||!browse.parentNode)) return;
+    function placed(b){ return car?(b.parentNode===car.parentNode&&b.nextElementSibling===car):hero?(b.parentNode===hero&&hero.firstElementChild===b):(b.nextElementSibling===browse); }
+    function put(b){ if(placed(b)) return; if(car) car.parentNode.insertBefore(b,car); else if(hero) hero.insertBefore(b,hero.firstChild); else browse.parentNode.insertBefore(b,browse); }
     if(bar){
       if(!bar.dataset.painted) {bar.innerHTML=barHtml();bar.dataset.painted="1";}
-      // the bar may have been placed early, before the banner section existed: put it where it belongs (just above the banners) once they are there
-      if(anchor&&anchor.parentNode&&bar.parentNode===anchor.parentNode&&bar.nextElementSibling!==anchor) anchor.parentNode.insertBefore(bar,anchor);
+      put(bar);
       return;
     }
-    anchor=anchor||document.getElementById("browseSection"); if(!anchor||!anchor.parentNode) return;
     var kept=window.__lvBarStash;
     if(kept&&!kept.isConnected&&kept.dataset.painted){   // reuse the bar from the last Home visit: its logo is already decoded, so nothing blinks
-      window.__lvBarStash=null; bar=kept; anchor.parentNode.insertBefore(bar,anchor);
+      window.__lvBarStash=null; bar=kept; put(bar);
       var h=barHtml(); if(bar.__lvH!==h){ bar.innerHTML=h; bar.__lvH=h; spotIcon(bar); }
       return;
     }
-    bar=document.createElement("div"); bar.id="lvCampusBar"; anchor.parentNode.insertBefore(bar,anchor);
+    bar=document.createElement("div"); bar.id="lvCampusBar"; put(bar);
     load().then(function(){var h=barHtml();bar.innerHTML=h;bar.__lvH=h;bar.dataset.painted="1"; spotIcon(bar);});
   }
 
