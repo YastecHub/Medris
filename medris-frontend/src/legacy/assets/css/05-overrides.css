@@ -9434,3 +9434,7 @@ html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lv
 html:root:root:root:root:root body #app#app .order-status-pill.lvo-hist-tab::before{display:none!important}
 html:root:root:root:root:root body #app#app .order-status-pill.lvo-hist-tab i{margin-right:.3rem;font-size:.75rem}
 html:root:root:root body #app#app .orders-title-row [aria-label="Order history"]{display:none!important}
+/* Order history: each order lies flat on the page (no boxed card), separated by a thin line, in light and dark mode */
+html:root:root:root:root body #app#app .lvo-hist-day{gap:0!important}
+html:root:root:root:root body #app#app .lvo-hist-day .order-list-card.lvo-card,html:root:root:root:root[data-theme] body #app#app .lvo-hist-day .order-list-card.lvo-card{background:transparent!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)!important;border-radius:0!important;box-shadow:none!important;padding:12px 2px!important}
+html:root:root:root:root body #app#app .lvo-hist-day .order-list-card.lvo-card:last-child{border-bottom:0!important}
