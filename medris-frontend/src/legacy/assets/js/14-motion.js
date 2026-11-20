@@ -8349,12 +8349,15 @@ window.lvNoImageHtml = function (seed) {
   function drawStrip(host, gs) {
     var mine = myVendorId(), own = gs.filter(function (g) { return g.own; })[0], h = "";
     function card(g, isOwn) {
-      var ph = g ? cardPhoto(g) : "", name = isOwn ? "Your update" : g.vendor.business_name, logo = g ? g.vendor.logo_url : vendor.logo_url, bname = g ? g.vendor.business_name : vendor.business_name;
-      var attr = g ? 'data-open="' + E(g.id) + '"' : "data-add";
-      return '<div class="lvu-card' + (g && !isOwn && !g.unseen ? " seen" : "") + (isOwn ? " own" : "") + '"><button type="button" class="lvu-hit" ' + attr + ' aria-label="' + E(name) + '">' +
+      // your own card, like WhatsApp: with no status yet, your picture sits in the middle with a + on it and the whole card adds
+      // one; with a status, the card shows it and the + on your picture adds another
+      var ownLogo = (typeof vendor !== "undefined" && vendor && vendor.logo_url) || (typeof profile !== "undefined" && profile && profile.avatar_url) || "";
+      var ph = g ? cardPhoto(g) : "", name = isOwn ? (g ? "My status" : "Add status") : g.vendor.business_name, logo = isOwn ? (g && g.vendor.logo_url) || ownLogo : g.vendor.logo_url, bname = g ? g.vendor.business_name : vendor.business_name;
+      var attr = g ? 'data-open="' + E(g.id) + '"' : "data-add", empty = isOwn && !g;
+      return '<div class="lvu-card' + (g && !isOwn && !g.unseen ? " seen" : "") + (isOwn ? " own" : "") + (empty ? " lvu-empty" : "") + '"><button type="button" class="lvu-hit" ' + attr + ' aria-label="' + E(empty ? "Add a status" : name) + '">' +
         (ph ? '<img class="lvu-ph" src="' + E(ph) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="lvu-ph lvu-none"></span>') + '<span class="lvu-shade"></span>' +
-        '<span class="lvu-ring">' + avatar(logo, bname, "lvu-av") + "</span>" + '<b class="lvu-name">' + E(name) + (isOwn ? "" : vtick(g && g.vendor)) + "</b></button>" +
-        (isOwn ? '<button type="button" class="lvu-plus" data-add aria-label="Add an update"><i class="fa-solid fa-plus"></i></button>' : "") + "</div>";
+        '<span class="lvu-ring">' + avatar(logo, bname, "lvu-av") + (empty ? '<span class="lvu-badge" aria-hidden="true"><i class="fa-solid fa-plus"></i></span>' : "") + "</span>" + '<b class="lvu-name">' + E(name) + (isOwn ? "" : vtick(g && g.vendor)) + "</b></button>" +
+        (isOwn && !empty ? '<button type="button" class="lvu-plus" data-add aria-label="Add a status"><i class="fa-solid fa-plus"></i></button>' : "") + "</div>";
     }
     if (mine) h += card(own || null, true);
     gs.filter(function (g) { return !g.own; }).forEach(function (g) { h += card(g, false); });
