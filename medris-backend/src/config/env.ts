@@ -72,7 +72,12 @@ export const DEFAULT_VAPID_PUBLIC_KEY =
  * background reminders): this backend on Heroku, as migration 0074 set in the database's own functions. The site
  * (APP_ORIGIN) is static files on Cloudflare and has no /api.
  */
-export const DEFAULT_NOTIFY_WEBHOOK_URL = "https://levromart-5212f03a7e44.herokuapp.com/api/notify";
+export const DEFAULT_BACKEND_ORIGIN = "https://levromart-5212f03a7e44.herokuapp.com";
+/** This backend's public address (BACKEND_PUBLIC_URL), for links that must reach /api - the site on Cloudflare has none. */
+export function backendOrigin(): string {
+  return (process.env.BACKEND_PUBLIC_URL || DEFAULT_BACKEND_ORIGIN).trim().replace(/\/$/, "");
+}
+export const DEFAULT_NOTIFY_WEBHOOK_URL = `${DEFAULT_BACKEND_ORIGIN}/api/notify`;
 export function notifyWebhookUrl(): string {
   return (process.env.NOTIFY_WEBHOOK_URL || DEFAULT_NOTIFY_WEBHOOK_URL).trim();
 }
