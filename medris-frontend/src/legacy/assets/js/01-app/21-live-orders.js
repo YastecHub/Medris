@@ -89,6 +89,16 @@ function refreshVisibleRequestView(tries) {
   requestsLiveTimer = setTimeout(async () => {
     if (currentView !== v) return;
     if (userIsTypingInApp() && (tries || 0) < 20) { refreshVisibleRequestView((tries || 0) + 1); return; }
+    // Disputes: a live event (or the live connection coming back) only redraws the page when the disputes really changed,
+    // otherwise the page twitched again and again for nothing.
+    if (v === "adminDisputes") {
+      try {
+        const { data: sig, error: sigErr } = await sb.from("disputes").select("id,status,admin_notes,vendor_response").order("id");
+        const key = sigErr ? null : JSON.stringify(sig || []);
+        if (key && key === window.__adpSig) return;
+        if (key) window.__adpSig = key;
+      } catch (_) {}
+    }
     // keep the reader's place: a live repaint must not throw the page back to the top
     const keepY = window.scrollY;
     try { await navigate(v, params, false); } catch (err) { console.warn("[Levromart] Live request refresh failed:", err); }

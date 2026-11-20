@@ -350,14 +350,14 @@ async function renderAdminPanel(status) {
   let vendorError = null;
   if (status === "recycle") {
     const { data, error } = await sb.from("vendors")
-      .select("id,user_id,business_name,address,city,phone,whatsapp_number,cac_number,bio,verification_docs,verification_status,avg_rating,review_count,created_at,deleted_at,deleted_previous_verification_status,deleted_previous_is_active")
+      .select("id,user_id,logo_url,business_name,address,city,phone,whatsapp_number,cac_number,bio,verification_docs,verification_status,avg_rating,review_count,created_at,deleted_at,deleted_previous_verification_status,deleted_previous_is_active")
       .not("deleted_at", "is", null)
       .order("deleted_at", { ascending: false });
     vendors = data || [];
     vendorError = error;
   } else {
     let q = sb.from("vendors")
-      .select("id, user_id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at")
+      .select("id, user_id, logo_url, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (status !== "all") q = q.eq("verification_status", status);
@@ -373,10 +373,10 @@ async function renderAdminPanel(status) {
       const ids = [...new Set(vendors.map((v) => v.user_id).filter(Boolean))];
       const people = new Map();
       for (let i = 0; i < ids.length; i += 150) {
-        const { data: us } = await sb.from("users").select("id,name,email").in("id", ids.slice(i, i + 150));
+        const { data: us } = await sb.from("users").select("id,name,email,avatar_url").in("id", ids.slice(i, i + 150));
         (us || []).forEach((u) => people.set(u.id, u));
       }
-      vendors.forEach((v) => { const u = people.get(v.user_id); v.applicant = u ? { name: u.name, email: u.email } : null; });
+      vendors.forEach((v) => { const u = people.get(v.user_id); v.applicant = u ? { name: u.name, email: u.email } : null; v.__pic = v.logo_url || (u && u.avatar_url) || ""; });
     } catch (_) {}
   }
 
@@ -406,7 +406,7 @@ async function renderAdminPanel(status) {
     const searchable = [v.business_name, applicantName, applicantEmail, v.phone, v.id].filter(Boolean).join(' ').toLowerCase();
     html += `<details id="adminVendor-${esc(v.id)}" class="ad-row admin-vendor-card" data-name="${esc(v.business_name || "Deleted vendor")}" data-created="${esc(v.deleted_at || v.created_at)}" data-search="${esc(searchable)}">
       <summary class="flex" style="justify-content:space-between;">
-        <span class="ad-sum-main"><span class="ad-ini">${esc(String(v.business_name || "V").trim().charAt(0).toUpperCase())}</span><span class="ad-sum-text"><strong>${esc(v.business_name || "Deleted vendor")}</strong><small>${esc(applicantName || applicantEmail || "")}</small></span></span>
+        <span class="ad-sum-main"><span class="ad-ini">${(v.__pic || v.logo_url) ? `<img src="${esc(typeof lvThumb === "function" ? lvThumb(v.__pic || v.logo_url, 96) : (v.__pic || v.logo_url))}" alt="" loading="lazy" onerror="this.remove()">` : ""}${esc(String(v.business_name || "V").trim().charAt(0).toUpperCase())}</span><span class="ad-sum-text"><strong>${esc(v.business_name || "Deleted vendor")}</strong><small>${esc(applicantName || applicantEmail || "")}</small></span></span>
         <span class="badge ${deleted ? "warning" : (v.verification_status === "verified" ? "success" : v.verification_status === "pending" ? "warning" : v.verification_status === "rejected" ? "danger" : "")}">${deleted ? "Deleted" : esc(v.verification_status)}</span>
       </summary>
       <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(applicantName)} ${applicantEmail ? `(${esc(applicantEmail)})` : ""}</p>

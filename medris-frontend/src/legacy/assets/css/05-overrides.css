@@ -9447,3 +9447,8 @@ html:root:root body #app .lvu-card.lvu-empty .lvu-av{border:0;font-size:1.2rem}
 html:root:root body #app .lvu-card .lvu-badge{position:absolute;right:-.2rem;bottom:-.2rem;width:1.55rem;height:1.55rem;border-radius:50%;background:#16a34a;color:#fff;display:grid;place-items:center;font-size:.72rem;border:2.5px solid var(--card,#fff);z-index:2}
 html:root:root body #app .lvu-card.lvu-empty .lvu-name{left:.4rem;right:.4rem;bottom:.75rem;text-align:center;white-space:normal;color:var(--text,#111);text-shadow:none;font-size:.82rem}
 html:root:root body #app .lvu-card.own:not(.lvu-empty) .lvu-plus{top:2.15rem;left:2.15rem;right:auto;width:1.35rem;height:1.35rem;font-size:.6rem;border-width:2px;z-index:3}
+/* admin vendor list: the shop's picture (or the owner's) fills the round badge; the letter shows only when there is none */
+body[data-view^="admin"] #app .ad-ini{position:relative;overflow:hidden}
+body[data-view^="admin"] #app .ad-ini img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;background:var(--card,#fff)}
+/* admin pages: the big title above the "Admin section" picker repeated the same name; the picker alone is enough */
+html body #app h2:has(+ .admin-nav-pick){display:none!important}
