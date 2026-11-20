@@ -114,6 +114,12 @@ export function installTables(client: SupabaseClient, enabled: () => boolean): v
         return original(input, init);
       }
     }
+    // A read the data API could not run because of its own view of the tables (PGRST1xx request / PGRST2xx schema cache, e.g.
+    // "could not find a relationship" for a join): Supabase answers the same query from its own, up-to-date view.
+    if (isRead && response.status >= 400 && response.status < 500) {
+      const body = (await response.clone().json().catch(() => null)) as { code?: string } | null;
+      if (/^PGRST[12]\d\d$/.test(body?.code ?? "") && body?.code !== "PGRST116") return original(input, init);
+    }
     // A write answered 503 by PostgREST itself (PGRST0xx: no database connection, or starting) did not run.
     // (Heroku's own 503 - a timeout - is HTML, and the write may have run: it is not repeated.)
     if (response.status === 503) {

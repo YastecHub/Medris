@@ -110,6 +110,15 @@ describe("sb.from through the backend's data API", () => {
     expect(supabaseCalls).toEqual(["GET /vendors?select=id"]);
   });
 
+  it("a read the data API cannot run from its own schema cache (400 PGRST200, e.g. a join) goes to Supabase; a write does not", async () => {
+    const backend = vi.fn(async () => new Response('{"code":"PGRST200","message":"Could not find a relationship"}', { status: 400 }));
+    const { query } = await setup(true, backend);
+    expect((await query("/vendors?select=id,applicant:users(name)")).status).toBe(200);
+    expect(supabaseCalls).toEqual(["GET /vendors?select=id,applicant:users(name)"]);
+    expect((await query("/orders", { method: "POST", body: "{}" })).status).toBe(400);
+    expect(supabaseCalls.length).toBe(1);
+  });
+
   it("a read refused by row-level security (401 without a token error) is not repeated on Supabase", async () => {
     const backend = vi.fn(async () => new Response('{"code":"42501","message":"permission denied"}', { status: 401 }));
     const { query } = await setup(true, backend);
