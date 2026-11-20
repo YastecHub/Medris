@@ -400,11 +400,12 @@ async function lvOpenProfileShare(kind, targetId) {
     lvDrawQr(qrC, link, colours, centreImg ? "" : initials, centreImg);
     const prodImgs = isProduct ? [] : (await Promise.all(products.map((u) => lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(u, 300) : u)))).filter(Boolean);
     const heroImg = isProduct && cover ? await lvLoadReadableImage(typeof lvThumb === "function" ? lvThumb(cover, 900) : cover) : null;
-    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1160 : isMap ? 1580 : prodImgs.length ? 1500 : 1360;
+    const out = document.createElement("canvas"); out.width = 1080; out.height = isProduct ? 1160 : isMap ? 1580 : 1080;   // a shop's card is square
     const x = out.getContext("2d");
     const bg = x.createLinearGradient(0, 0, 1080, out.height); bg.addColorStop(0, colours[0]); bg.addColorStop(0.55, colours[1]); bg.addColorStop(1, colours[2]);
     x.fillStyle = bg; x.fillRect(0, 0, 1080, out.height);
-    const mt = isProduct ? 60 : 130;
+    const isShopCard = !isProduct && !isMap;
+    const mt = isProduct || isShopCard ? 60 : 130;
     x.fillStyle = "#fff"; rrect(x, 90, mt, 900, out.height - 2 * mt, 56); x.fill();
     // a light watermark on the white card: the Levromart mark, map pins on a map card, tags and bags on a product card
     if (typeof lvQrWatermark === "function") await lvQrWatermark(x, isProduct ? "product" : isMap ? "map" : "shop", 90, mt, 900, out.height - 2 * mt, 56, colours[1]);
@@ -447,6 +448,19 @@ async function lvOpenProfileShare(kind, targetId) {
         x.fillStyle = colours[1]; x.beginPath(); x.arc(540, 232, 52, Math.PI * 0.85, Math.PI * 2.15); x.lineTo(540, 330); x.closePath(); x.fill();
         x.fillStyle = "#fff"; x.beginPath(); x.arc(540, 232, 20, 0, Math.PI * 2); x.fill();
       }
+      if (isShopCard) {
+        // square: the name on top, the code on the left, up to three products stacked on the right, then the hint and logo
+        x.fillStyle = "#14201a"; x.font = "800 56px system-ui,sans-serif"; x.fillText(String(name).slice(0, 26), 540, 170);
+        const QS = 520, QY = 220, QX = prodImgs.length ? 120 : 280;
+        x.drawImage(qrC, QX, QY, QS, QS);
+        if (prodImgs.length) {
+          const sz = 160, gap = 20, n = Math.min(3, prodImgs.length), colH = n * sz + (n - 1) * gap; let py = QY + (QS - colH) / 2;
+          prodImgs.slice(0, 3).forEach((im) => { cover2(x, im, 760, py, sz, sz, 28); py += sz + gap; });
+        }
+        x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(hint.replace(" on Levromart", ""), 540, 836);
+        const slogo = await lvLoadImage("/icon-192.png"); if (slogo) x.drawImage(slogo, 395, 878, 56, 56);
+        x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 465, 920);
+      } else {
       x.fillStyle = "#14201a"; x.font = "800 58px system-ui,sans-serif"; x.fillText(String(name).slice(0, 28), 540, 240 + mo);
       x.fillStyle = "#5b6b63"; x.font = "500 32px system-ui,sans-serif"; if (isMap) x.fillText("Find me on the map", 540, 295 + mo);
       x.drawImage(qrC, 240, 340 + mo, 600, 600); y = 940 + mo;
@@ -454,13 +468,21 @@ async function lvOpenProfileShare(kind, targetId) {
         const sz = 150, gap = 26, total = prodImgs.length * sz + (prodImgs.length - 1) * gap; let px = 540 - total / 2;
         prodImgs.forEach((im) => { cover2(x, im, px, y + 30, sz, sz, 28); px += sz + gap; }); y += 30 + sz;
       }
+      }
     }
-    if (!isProduct) {
+    if (!isProduct && !isShopCard) {
       x.fillStyle = "#5b6b63"; x.font = "600 34px system-ui,sans-serif"; x.fillText(hint.replace("Scan to ", "Scan to ").replace(" on Levromart", ""), 540, y + 70);
       const logo = await lvLoadImage("/icon-192.png"); if (logo) x.drawImage(logo, 395, y + 105, 56, 56);
       x.fillStyle = "#0f9d6b"; x.font = "800 40px system-ui,sans-serif"; x.textAlign = "left"; x.fillText("Levromart", 465, y + 147);
     }
-    return new Promise((r, j) => { try { out.toBlob((bl) => (bl ? r(bl) : j(new Error("empty"))), "image/png"); } catch (err) { j(err); } });
+    // every card is shared as a square picture: a card that is taller than wide sits in the middle of a square of its colours
+    let fin = out;
+    if (out.height !== out.width) {
+      const S = Math.max(out.width, out.height); fin = document.createElement("canvas"); fin.width = fin.height = S;
+      const fx = fin.getContext("2d"), g2 = fx.createLinearGradient(0, 0, S, S); g2.addColorStop(0, colours[0]); g2.addColorStop(0.55, colours[1]); g2.addColorStop(1, colours[2]);
+      fx.fillStyle = g2; fx.fillRect(0, 0, S, S); fx.drawImage(out, (S - out.width) / 2, (S - out.height) / 2);
+    }
+    return new Promise((r, j) => { try { fin.toBlob((bl) => (bl ? r(bl) : j(new Error("empty"))), "image/png"); } catch (err) { j(err); } });
   };
   // The share picture is made as soon as the sheet opens (and again when the colour changes), so tapping Share opens the
   // phone's share sheet at once. iPhone only allows the share sheet straight after a tap: waiting for the picture made it

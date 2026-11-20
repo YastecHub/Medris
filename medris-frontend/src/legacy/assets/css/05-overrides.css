@@ -9415,3 +9415,35 @@ html body .lvst-v.lvst-zooming .lvst-tap{pointer-events:none}
 @media (max-width:720px){
   html:root:root body #app#app .storefront-profile.sf-snap .storefront-cover{height:120px!important;min-height:120px!important}
 }
+/* status: the shop's picture and name at the top are one button that opens the shop */
+html body .lvst-v .lvst-shop{flex:1;min-width:0;display:flex;align-items:center;gap:.6rem;padding:0;border:0;background:none;color:#fff;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+html body .lvst-v .lvst-shop .lvst-who{flex:1;min-width:0;display:block}
+html body .lvst-v .lvst-shop .lvst-who b{display:block}
+html body .lvst-v .lvst-shop .lvst-who small{display:block}
+/* wallet transaction history: lies flat on the page (no boxed card with its own background) */
+html:root body .lvwh-page .lwh-card,:root[data-theme="dark"] body .lvwh-page .lwh-card,:root[data-theme="black"] body .lvwh-page .lwh-card{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:4px 0 0!important}
+/* shop QR card on screen: compact and square like the picture it shares (code on the left, products stacked on the right) */
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-cover{display:none!important}
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-body{display:grid!important;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;align-items:center;padding-top:18px!important}
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-body>h3,html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-body>.lvqr-hint,html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-body>.lvqr-brand{grid-column:1/-1}
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-code{grid-column:1;width:100%!important;max-width:15rem;margin:0 auto!important}
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-products{grid-column:2;display:flex!important;flex-direction:column;gap:8px;margin:0!important}
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-products img:nth-child(n+4){display:none}
+html:root:root:root body #lvqrSheet .lvqr-card:not(.is-product):not(.is-map) .lvqr-products img{width:4.4rem!important;height:4.4rem!important;border-radius:14px;object-fit:cover}
+/* Orders: History is the last tab of the status row instead of a separate button between the sections */
+html:root:root:root:root:root body #app#app .order-status-pill.lvo-hist-tab::before{display:none!important}
+html:root:root:root:root:root body #app#app .order-status-pill.lvo-hist-tab i{margin-right:.3rem;font-size:.75rem}
+html:root:root:root body #app#app .orders-title-row [aria-label="Order history"]{display:none!important}
+/* Order history: each order lies flat on the page (no boxed card), separated by a thin line, in light and dark mode */
+html:root:root:root:root body #app#app .lvo-hist-day{gap:0!important}
+html:root:root:root:root body #app#app .lvo-hist-day .order-list-card.lvo-card,html:root:root:root:root[data-theme] body #app#app .lvo-hist-day .order-list-card.lvo-card{background:transparent!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--text,#111) 9%,transparent)!important;border-radius:0!important;box-shadow:none!important;padding:12px 2px!important}
+html:root:root:root:root body #app#app .lvo-hist-day .order-list-card.lvo-card:last-child{border-bottom:0!important}
+/* "My status" card in the strip, like WhatsApp: no status yet = your picture in the middle with a + on it (the whole card adds one);
+   with a status = the + sits on your picture at the top */
+html:root:root body #app .lvu-card.own.lvu-empty{background:color-mix(in srgb,var(--text) 6%,var(--card,#fff))!important;border:1.5px solid color-mix(in srgb,var(--text) 12%,transparent)!important}
+html:root:root body #app .lvu-card.lvu-empty .lvu-none,html:root:root body #app .lvu-card.lvu-empty .lvu-shade{display:none}
+html:root:root body #app .lvu-card.lvu-empty .lvu-ring{top:32%;left:50%;width:4rem;height:4rem;transform:translate(-50%,-50%);padding:0;background:transparent}
+html:root:root body #app .lvu-card.lvu-empty .lvu-av{border:0;font-size:1.2rem}
+html:root:root body #app .lvu-card .lvu-badge{position:absolute;right:-.2rem;bottom:-.2rem;width:1.55rem;height:1.55rem;border-radius:50%;background:#16a34a;color:#fff;display:grid;place-items:center;font-size:.72rem;border:2.5px solid var(--card,#fff);z-index:2}
+html:root:root body #app .lvu-card.lvu-empty .lvu-name{left:.4rem;right:.4rem;bottom:.75rem;text-align:center;white-space:normal;color:var(--text,#111);text-shadow:none;font-size:.82rem}
+html:root:root body #app .lvu-card.own:not(.lvu-empty) .lvu-plus{top:2.15rem;left:2.15rem;right:auto;width:1.35rem;height:1.35rem;font-size:.6rem;border-width:2px;z-index:3}
