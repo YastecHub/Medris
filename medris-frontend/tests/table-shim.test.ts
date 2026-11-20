@@ -101,6 +101,22 @@ describe("sb.from through the backend's data API", () => {
     expect(supabaseCalls).toEqual(["GET /products?select=id", "GET /orders?select=id"]);
   });
 
+  it("a read the data API refused for the sign-in token (401 PGRST3xx) goes to Supabase; a write with the same answer does not", async () => {
+    const backend = vi.fn(async () => new Response('{"code":"PGRST301","message":"JWSError"}', { status: 401 }));
+    const { query } = await setup(true, backend);
+    expect((await query("/vendors?select=id")).status).toBe(200);
+    expect(supabaseCalls).toEqual(["GET /vendors?select=id"]);
+    expect((await query("/orders", { method: "POST", body: "{}" })).status).toBe(401);
+    expect(supabaseCalls).toEqual(["GET /vendors?select=id"]);
+  });
+
+  it("a read refused by row-level security (401 without a token error) is not repeated on Supabase", async () => {
+    const backend = vi.fn(async () => new Response('{"code":"42501","message":"permission denied"}', { status: 401 }));
+    const { query } = await setup(true, backend);
+    expect((await query("/vendors?select=id")).status).toBe(401);
+    expect(supabaseCalls).toEqual([]);
+  });
+
   it("a write the data API refused before running (PGRST0xx) goes to Supabase", async () => {
     const { query } = await setup(true, async () => new Response('{"code":"PGRST001","message":"no connection"}', { status: 503 }));
     await query("/favorites", { method: "POST", body: "{}" });

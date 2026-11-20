@@ -4564,7 +4564,8 @@ window.lvAskCancel = async function (orderId) {
   // the full history: grouped by day, a new-bank header when withdrawals start going to a different account
   // the history is a page of its own (not a drawer): the strip on the wallet card opens it
   window.renderWalletHistoryPage = function () {
-    setTimeout(function () { var t = document.getElementById("lvwhPage"); if (t) window.lvW3History(t); }, 30);
+    // wait until the page is on screen (a fixed 30 ms wait could run too early and leave it loading)
+    var tries = 0; (function wait() { var t = document.getElementById("lvwhPage"); if (t) { window.lvW3History(t); return; } if (++tries < 60) setTimeout(wait, 50); })();
     return '<div class="lvw-page"><div class="lvw-page-head"><button type="button" class="lvw-back" onclick="history.back()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2>Transaction history</h2></div><div id="lvwhPage" class="lvwh-page"><p class="muted" style="text-align:center;padding:1.5rem 0">Loading…</p></div></div>';
   };
   window.lvW3History = async function (target) {
@@ -4874,15 +4875,22 @@ window.lvAskCancel = async function (orderId) {
     };
   };
 
-  async function paint() {
-    var box = document.getElementById("lvAwBox"); if (!box) return;
+  // The last good wallet card is kept and shown at once, so the page never blanks while it reloads, and a failed
+  // reload (slow server, one bad answer) keeps showing it instead of making the wallet disappear.
+  var LAST_OWN = "", LAST_WL = "", LAST_WT = "", retryT = 0;
+  async function paint(tries) {
+    var box = document.getElementById("lvAwBox");
+    if (!box) { if ((tries || 0) < 60) setTimeout(function () { paint((tries || 0) + 1); }, 50); return; }   // wait for the page to be on screen
     var res = await Promise.all([levromartWalletHtml().catch(function () { return null; }), loadWallets().catch(function () { return null; })]);
     var own = res[0];
     var earn = document.getElementById("lvAwBox"), wl = document.getElementById("lvAwWallets"), wt = document.getElementById("lvAwWaiting");
-    if (earn) earn.innerHTML = own || "";
-    if (earn && !own) commissionHtml().then(function (h) { var e = document.getElementById("lvAwBox"); if (e) e.innerHTML = h; }).catch(function () {});
-    if (wl) wl.innerHTML = walletsHtml();
-    if (wt) wt.innerHTML = waitingHtml();
+    if (own) LAST_OWN = own;
+    if (earn) earn.innerHTML = own || LAST_OWN || "";
+    if (earn && !own && !LAST_OWN) commissionHtml().then(function (h) { var e = document.getElementById("lvAwBox"); if (e && !LAST_OWN) e.innerHTML = h; }).catch(function () {});
+    if (!own) { clearTimeout(retryT); retryT = setTimeout(function () { if (document.getElementById("lvAwBox")) paint(); }, 4000); }
+    if (res[1] !== null || !LAST_WL) { LAST_WL = walletsHtml(); LAST_WT = waitingHtml(); }
+    if (wl) wl.innerHTML = LAST_WL;
+    if (wt) wt.innerHTML = LAST_WT;
     var n = AWD ? (AWD.withdrawals || []).filter(function (x) { return x.status === "requested"; }).length : 0;
     var nMain = n + Number(window.__lvPayPending || 0), nHold = AWD ? (AWD.wallets || []).filter(function (x) { return x.frozen; }).length : 0;
     var b1 = document.getElementById("lvApxBadgeMain"); if (b1) { b1.textContent = nMain > 9 ? "9+" : String(nMain); b1.hidden = !nMain; }
@@ -4975,12 +4983,12 @@ window.lvAskCancel = async function (orderId) {
   if (typeof orig === "function" && !orig.__aw) {
     // Levromart's own wallet comes first, then the payment lists
     var w = async function () {
-      var html = String(await orig.apply(this, arguments)); setTimeout(function () { paint(); window.lvApxTab(apxTab); }, 60);
+      var html = String(await orig.apply(this, arguments)); setTimeout(function () { paint(); window.lvApxTab(apxTab); }, 0);
       var nav = typeof adminNavHtml === "function" ? adminNavHtml("adminPayments") : "";
       var rest = nav && html.indexOf(nav) === 0 ? html.slice(nav.length) : html;
       var tabs = '<div class="apx-tabs" id="lvApxTabs"><button type="button" data-t="main" class="on" onclick="lvApxTab(\'main\')">Levromart <i class="apx-badge" id="lvApxBadgeMain" hidden></i></button><button type="button" data-t="wallets" onclick="lvApxTab(\'wallets\')">People\'s wallets <i class="apx-badge" id="lvApxBadgeWallets" hidden></i></button></div>';
-      var panels = '<div class="apx-panel" data-p="main"><div id="lvAwBox" class="aw-box"></div><div id="lvAwWaiting" class="aw-box"></div>' + rest + '</div>' +
-        '<div class="apx-panel" data-p="wallets" hidden><div id="lvAwWallets" class="aw-box"></div></div>';
+      var panels = '<div class="apx-panel" data-p="main"><div id="lvAwBox" class="aw-box">' + LAST_OWN + '</div><div id="lvAwWaiting" class="aw-box">' + LAST_WT + '</div>' + rest + '</div>' +
+        '<div class="apx-panel" data-p="wallets" hidden><div id="lvAwWallets" class="aw-box">' + LAST_WL + '</div></div>';
       return nav + tabs + panels;
     };
     w.__aw = true; window.renderAdminPayments = w;
@@ -8579,6 +8587,8 @@ window.lvNoImageHtml = function (seed) {
       }
       if (t.closest("[data-x]")) return closeViewer();
       if (t.closest("[data-dots]")) { openMenu(s, V.gs[V.gi].own); return; }
+      // the shop's picture or name at the top opens its shop, like WhatsApp
+      if (t.closest("[data-shop]")) { var sv = s.vendor_id; closeViewer(false, function () { try { navigate("storefront", { vendorId: sv }); } catch (_) {} }); return; }
       if (t.closest("[data-n]")) { if (Date.now() - V.downAt > 350 && V.downAt) return; return step(1); }
       if (t.closest("[data-p]")) { if (Date.now() - V.downAt > 350 && V.downAt) return; return step(-1); }
       var vb = t.closest("button[data-views]"); if (vb) { e.stopPropagation(); return openViewers(s); }
@@ -8605,7 +8615,7 @@ window.lvNoImageHtml = function (seed) {
     var oldStage = V.cube ? V.el.querySelector(".lvst-stage") : null, cubeDir = V.cube, cubeKind = V.cubeKind; V.cube = 0;
     var markup = '<div class="lvst-stage">' + '<div class="lvst-media"><div class="lvst-bg lvst-a-' + anim + '" style="background-image:url(' + E(ph || "") + ')"></div></div><div class="lvst-shade"></div>' +
       '<div class="lvst-bars">' + g.items.map(function (_, k) { return '<i class="' + (k < V.i ? "d" : k === V.i ? "run" : "") + '">' + (k === V.i ? "<b></b>" : "") + "</i>"; }).join("") + "</div>" +
-      '<div class="lvst-top">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + '<div class="lvst-who"><b>' + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(s.created_at) + '</small></div><button type="button" class="lvst-ib" data-dots aria-label="More options" aria-haspopup="menu"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>' +
+      '<div class="lvst-top"><button type="button" class="lvst-shop" data-shop aria-label="Open ' + E(g.vendor.business_name) + '\'s shop">' + avatar(g.vendor.logo_url, g.vendor.business_name, "lvst-av sm") + '<span class="lvst-who"><b>' + E(g.vendor.business_name) + vtick(g.vendor) + "</b><small>" + ago(s.created_at) + '</small></span></button><button type="button" class="lvst-ib" data-dots aria-label="More options" aria-haspopup="menu"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>' +
       '<button type="button" class="lvst-tap l" data-p aria-label="Previous"></button><button type="button" class="lvst-tap r" data-n aria-label="Next"></button>' +
       '<div class="lvst-bottom"><div class="lvst-card' + (anim === "advert" ? " lvst-adv" : "") + '">' + (s.caption ? '<p class="lvst-cap">' + E(s.caption) + "</p>" : "") + '<div class="lvst-line"><h4>' + E(gone ? "This product is no longer available" : p.name) + "</h4>" + (price && !gone ? '<div class="lvst-pr">' + price + "</div>" : "") + "</div>" + acts + "</div>" + like + "</div></div>";
     if (oldStage) cubeSwap(markup, oldStage, cubeDir, cubeKind); else { V.el.innerHTML = markup; V.stage = V.el.firstChild; }

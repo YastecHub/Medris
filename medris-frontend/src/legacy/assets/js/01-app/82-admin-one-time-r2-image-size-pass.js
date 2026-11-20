@@ -378,7 +378,8 @@ async function renderAdminPanel(status) {
       <a class="${status === "recycle" ? "active" : ""}" onclick="navigate('adminPanel',{status:'recycle'})"><i class="fa-solid fa-trash-can"></i> Recycle Bin</a>
     </div>`;
 
-  if(vendorError)return html+errorStateHtml(vendorError);
+  // admins see the real reason (and a way to try again) instead of a page that just looks empty
+  if(vendorError)return html+errorStateHtml(vendorError)+`<p class="muted" style="text-align:center;font-size:.8rem;margin:.4rem 1rem;">${esc(String(vendorError.message||vendorError.code||""))}</p><p style="text-align:center"><button type="button" class="btn btn-sm" onclick="navigate('adminPanel',{status:'${esc(status)}'},false)">Try again</button></p>`;
   const emptyLabel = status === "recycle" ? "recycle bin" : (status === "all" ? "vendors" : status + " vendors");
   html += `<div class="admin-vendor-filters"><input type="search" id="adminVendorSearch" placeholder="Search name, email or phone" oninput="filterAdminVendorCards()"><select id="adminVendorSort" onchange="filterAdminVendorCards()"><option value="latest">Last listed</option><option value="alpha">Alphabetical</option></select></div><div id="adminVendorCards">`;
   if (!vendors.length) html += `<div class="empty-state"><i class="fa-solid ${status === "recycle" ? "fa-trash-can" : "fa-store"}"></i><p>No ${emptyLabel}.</p></div>`;

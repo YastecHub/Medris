@@ -103,6 +103,17 @@ export function installTables(client: SupabaseClient, enabled: () => boolean): v
       pauseReads(PAUSE_MS);
       return original(input, init);
     }
+    // A read the data API refused because it could not check the person's sign-in token (PostgREST PGRST3xx: bad or
+    // unknown JWT, e.g. a signing key the backend does not know yet) would leave a signed-in person with empty pages.
+    // Supabase checks the same token itself: read from there, and keep reading from there for a while.
+    if (isRead && response.status === 401) {
+      const body = (await response.clone().json().catch(() => null)) as { code?: string } | null;
+      if (body?.code?.startsWith("PGRST3")) {
+        readsPausedUntil = Date.now() + PAUSE_MS;
+        pauseReads(PAUSE_MS);
+        return original(input, init);
+      }
+    }
     // A write answered 503 by PostgREST itself (PGRST0xx: no database connection, or starting) did not run.
     // (Heroku's own 503 - a timeout - is HTML, and the write may have run: it is not repeated.)
     if (response.status === 503) {
