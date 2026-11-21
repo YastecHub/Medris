@@ -2585,8 +2585,11 @@ window.lvAskCancel = async function (orderId) {
       if (str.indexOf("data-lv-wallet") >= 0 && window.lvWalletCardHtml && window.lvWalletCardHtml("me", null)) return html;   // the one Levromart wallet is already on this page
       setTimeout(function () { refresh(false); }, 30);
       var rw = '<div class="lvw lvrw" data-lv-rwallet>' + card(cache && cache.data) + "</div>";
-      var end = name === "renderBuyerProfile" ? str.indexOf("</section>") : -1;   // on the profile: under the profile header
-      return end > 0 ? str.slice(0, end + 10) + rw + str.slice(end + 10) : rw + str;
+      // on the profile: the wallet sits just above "Activity" (My orders, Wishlist), so money and orders are together and
+      // the shops you follow and the map stay right under the profile header
+      var end = name === "renderBuyerProfile" ? str.indexOf('<div class="lv-group">') : -1;
+      if (name === "renderBuyerProfile" && end < 0) { end = str.indexOf("</section>"); end = end > 0 ? end + 10 : -1; }
+      return end > 0 ? str.slice(0, end) + rw + str.slice(end) : rw + str;
     };
     w.__lvrw = true; w.__lvw = f.__lvw; window[name] = w;   // keep the other wallet's mark so it is never wrapped again on top of this one
   }
