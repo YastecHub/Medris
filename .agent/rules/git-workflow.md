@@ -13,6 +13,12 @@ The commands below call it `origin`. Check with `git remote -v`: in a fork, the 
 and your fork `origin` - then pull `main` from `upstream`, push your branch to `origin`, and open the pull request
 from the fork into `kenniskalu18-prog/Medris:main`.
 
+## Exception: front-end-only fixes
+
+The founder has told us (21 Nov 2026) that front-end fixes are pushed straight to `main` with no pull request and no
+manual merge: follow `.agent/skills/ship-frontend-fix`. Everything below still applies to all other changes
+(`api/`, backend, database, payments, CI, packages).
+
 ## Never
 
 - commit or push to `main`; merge any pull request (yours included); approve your own work;

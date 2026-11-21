@@ -98,7 +98,8 @@ After any change in `src/legacy/`: `legacy:check` -> `bump-version` -> `legacy:r
 
 ## Hard limits (no task overrides these)
 
-- Never push to `main`, never merge a pull request, never force-push to someone else's branch. Follow
+- Never push to `main` except a front-end-only fix shipped with `.agent/skills/ship-frontend-fix` (founder's standing
+  instruction, 21 Nov 2026); never merge a pull request, never force-push to `main` or to someone else's branch. Follow
   `.agent/rules/git-workflow.md`.
 - Never run SQL against the live database, never use the Supabase dashboard/SQL editor or an "apply migration" tool on
   production. Write a migration file instead.
