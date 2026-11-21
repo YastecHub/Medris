@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   backup:
+    # Only in Kennis's repository: the copy in YastecHub/Medris has no secrets and would just fail.
+    if: github.repository == 'kenniskalu18-prog/Medris'
     runs-on: ubuntu-latest
     steps:
       - name: Install PostgreSQL 17 client

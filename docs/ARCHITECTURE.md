@@ -220,7 +220,7 @@ Listed so they are not mistaken for regressions; each needs its own change:
 - The browser still sends `list-banks`, `list-listing-drafts`, `save-listing-draft` and `delete-listing-draft` to
   `/api/vendor-payments`, which never implemented them (400 "Unknown payment action"); `/api/order-notify` ends in a
   500 because order e-mails were never built.
-- `.github/workflows/order-reminders.yml` still calls `https://YOUR-DEPLOYED-DOMAIN/...`.
+- Nothing calls `/api/order-reminders` on a schedule (the old GitHub Actions job only ever had a placeholder address and was removed).
 - supabase-js is loaded from unpkg as `@supabase/supabase-js@2` (unpinned minor/patch).
 - Push-notification pictures use `https://levromart.com` (`ICON_ORIGIN`) while e-mail links use
   `https://levromart.vercel.app` (`APP_ORIGIN`).

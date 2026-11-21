@@ -26,6 +26,8 @@ permissions:
 
 jobs:
   health:
+    # Only in Kennis's repository: the copy in YastecHub/Medris would run the same check a second time.
+    if: github.repository == 'kenniskalu18-prog/Medris'
     name: Payments health
     runs-on: ubuntu-latest
     timeout-minutes: 5
