@@ -11,14 +11,12 @@ async function renderBuyerProfile() {
   const wishlistCount = (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0);
   const memberSince = profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
 
-  // A customer profile uses a branded cover too, keeping the avatar fully
-  // visible below the wallet/header area instead of letting the wallet overlap it.
+  // A customer profile uses a branded cover too. The picture sits half on the banner and half below it, like a storefront:
+  // it hangs from a zero-height strip right under the banner, so it follows the banner's bottom edge whatever the banner's height.
   let html = `<section class="vendor-profile-header-card buyer-profile-card lv-profile-hero">
     <div class="storefront-cover lv-profile-cover lv-gen-cover" ${lvGenCoverAttrs(profile.name || profile.email, profile.avatar_url || null)}><span class="lv-profile-cover-glow" aria-hidden="true"></span>${lvCoverActionsHtml("navigate('editProfile')", "lvOpenProfileShare('customer')")}</div>
-    <div class="vendor-profile-header-body">
-      <div class="vendor-profile-header-avatar-row">
-        ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "5.2rem", "vendor-profile-header-avatar", profile.name || profile.email)}
-      </div>
+    <div class="lvme-pic-wrap"><span class="lvme-pic">${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle lvme-pic-img" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "100%", "lvme-pic-img", profile.name || profile.email)}</span></div>
+    <div class="lvme-body">
       <div class="lv-profile-title-row"><div><span class="lv-profile-eyebrow">MY ACCOUNT</span><h2 class="vendor-profile-header-name">${esc(profile.name || "Your profile")}</h2></div></div>
       ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}
       ${profile.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(profile.city)}</p>` : ""}

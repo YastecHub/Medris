@@ -9452,3 +9452,12 @@ body[data-view^="admin"] #app .ad-ini{position:relative;overflow:hidden}
 body[data-view^="admin"] #app .ad-ini img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;background:var(--card,#fff)}
 /* admin pages: the big title above the "Admin section" picker repeated the same name; the picker alone is enough */
 html body #app h2:has(+ .admin-nav-pick){display:none!important}
+
+/* ===== My account (buyer profile): the picture sits half on the banner and half below it, exactly like a storefront (96px picture, 48px on the banner).
+   It hangs from a zero-height strip right under the banner, so it follows the banner's bottom edge. ===== */
+html:root:root:root body #app .buyer-profile-card.lv-profile-hero{overflow:visible!important}
+html:root:root:root body #app .buyer-profile-card.lv-profile-hero .lv-profile-cover{height:120px!important;min-height:120px!important}
+html:root:root:root body #app .buyer-profile-card.lv-profile-hero .lvme-pic-wrap{position:relative;height:0;z-index:6}
+html:root:root:root body #app .buyer-profile-card.lv-profile-hero .lvme-pic{position:absolute;left:1rem;top:-48px;display:block;width:96px;height:96px;border-radius:50%;border:4px solid var(--card,#fff);background:var(--card,#fff);box-shadow:0 6px 18px rgba(0,0,0,.16);overflow:hidden}
+html:root:root:root body #app .buyer-profile-card.lv-profile-hero .lvme-pic .lvme-pic-img{display:grid;place-items:center;width:100%!important;height:100%!important;object-fit:cover;border-radius:50%;margin:0;font-size:2rem;line-height:1}
+html:root:root:root body #app .buyer-profile-card.lv-profile-hero .lvme-body{padding:56px 1rem .95rem;position:relative;z-index:1}
