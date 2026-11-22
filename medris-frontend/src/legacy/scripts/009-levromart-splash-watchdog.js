@@ -58,20 +58,39 @@
     // once a day at most, and never on top of a pop-up (the pop-up wins)
     try { var seenAt = Number(localStorage.getItem("lv-levi-hi-at") || 0); if (seenAt && Date.now() - seenAt < 20 * 3600 * 1000) return; localStorage.setItem("lv-levi-hi-at", String(Date.now())); } catch (_) {}
     if (document.getElementById("lvPromo")) return;
-    var r = fab.getBoundingClientRect(), right = r.left + r.width / 2 > window.innerWidth / 2;
-    var b = document.createElement("div"); b.className = "lvs-hi" + (right ? " r" : " l"); b.setAttribute("role", "status");
-    b.innerHTML = '<button type="button" class="lvs-hi-x" aria-label="Close">×</button><b>Hi, I’m Levi 👋</b><span>Welcome to Levromart! Ask me anything: products, shops near you, prices or your orders.</span><em>Tap me to chat</em>';
-    var top = Math.max(12, r.top - 12);
-    b.style.bottom = (window.innerHeight - top) + "px";
-    if (right) b.style.right = Math.max(12, window.innerWidth - r.right) + "px"; else b.style.left = Math.max(12, r.left) + "px";
+    var b = document.createElement("div"); b.className = "lvs-hi"; b.setAttribute("role", "status");
+    b.innerHTML = '<b>Hi, I’m Levi 👋</b><span>Ask me about products, shops near you or your orders.</span><em>Tap to chat</em>';
+    b.style.visibility = "hidden";
     document.body.appendChild(b);
-    requestAnimationFrame(function(){ b.classList.add("on"); });
-    var gone = false, close = function(){ if (gone) return; gone = true; b.classList.remove("on"); setTimeout(function(){ b.remove(); }, 300); };
-    // touching Levi himself (to move or open him) takes the bubble away at once; a pop-up opening does too
-    ["pointerdown", "touchstart", "mousedown"].forEach(function(t){ fab.addEventListener(t, function(){ close(); }, { once: true, capture: true, passive: true }); });
-    var watch = setInterval(function(){ if (gone) return clearInterval(watch); if (document.getElementById("lvPromo")) { clearInterval(watch); close(); } }, 300);
-    b.addEventListener("click", function(e){ if (e.target.closest(".lvs-hi-x")) return close(); close(); try { fab.click(); } catch (_) {} });
-    setTimeout(close, 7000);
+    var gone = false, raf = 0;
+    // The bubble hangs on Levi's button and follows it (he can be dragged or slide in), so it is never somewhere else.
+    function place(){
+      var r = fab.getBoundingClientRect(), vw = window.innerWidth, bw = b.offsetWidth, bh = b.offsetHeight, gap = 12;
+      var cx = r.left + r.width / 2, onRight = cx > vw / 2;
+      var left = Math.min(Math.max(12, onRight ? cx - bw + 34 : cx - 34), Math.max(12, vw - bw - 12));
+      var above = r.top - gap - bh >= 12;
+      b.classList.toggle("below", !above);
+      b.style.setProperty("--tail", Math.min(Math.max(22, cx - left), Math.max(22, bw - 22)) + "px");
+      b.style.left = left + "px"; b.style.top = (above ? r.top - gap - bh : r.bottom + gap) + "px";
+    }
+    var away = function(e){ if (e && e.target && b.contains(e.target)) return; close(); };
+    var EVENTS = ["pointerdown", "touchstart", "mousedown", "keydown", "wheel"];
+    function close(){
+      if (gone) return; gone = true; cancelAnimationFrame(raf);
+      EVENTS.forEach(function(t){ document.removeEventListener(t, away, true); });
+      b.classList.remove("on"); setTimeout(function(){ b.remove(); }, 220);
+    }
+    function frame(){
+      if (gone) return;
+      if (!visible(fab) || document.getElementById("lvPromo")) return close();
+      place(); raf = requestAnimationFrame(frame);
+    }
+    place(); b.style.visibility = ""; requestAnimationFrame(function(){ b.classList.add("on"); });
+    raf = requestAnimationFrame(frame);
+    // a tap (or scroll or key) anywhere takes it away at once, without waiting; tapping the bubble itself opens Levi
+    EVENTS.forEach(function(t){ document.addEventListener(t, away, { capture: true, passive: true }); });
+    b.addEventListener("click", function(){ close(); try { fab.click(); } catch (_) {} });
+    setTimeout(close, 4500);   // and it goes by itself after a moment
   }
   // As the splash fades, Levi warps out where he stands: a little lift, then he spins away into a point with a burst of
   // sparkles (the same warp as the map and search buttons). His floating button simply stays where it always is.
