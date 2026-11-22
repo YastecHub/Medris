@@ -317,6 +317,16 @@ async function attachVendorFollowerCounts(vendors) {
   }
 }
 
+// The owner's picture and the follower count, both asked for at the same time (they used to wait for each other).
+async function lvAttachVendorExtras(vendors) {
+  const rows = Array.isArray(vendors) ? vendors : [];
+  const [withPics, withCounts] = await Promise.all([lvAttachOwnerAvatars(rows), attachVendorFollowerCounts(rows)]);
+  return withPics.map((v, i) => {
+    const c = withCounts[i];
+    return v && c && "follower_count" in c ? { ...v, follower_count: c.follower_count } : v;
+  });
+}
+
 async function loadVendorsDirectory() {
   // Vendor discovery must remain usable even when an optional enrichment
   // query (products, packages, sectors, follower counts) is temporarily slow

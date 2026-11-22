@@ -14,8 +14,9 @@ import { loadConfig, type AppConfig } from "./config/app-config.js";
 import type { DataContext } from "./database/context.js";
 import { getDataContext } from "./database/index.js";
 import { createLogger, type Logger } from "./lib/logger.js";
-import { RateLimiter } from "./lib/rate-limit.js";
-import { ResponseCache } from "./lib/response-cache.js";
+import { RateLimiter, RedisRateLimitStore } from "./lib/rate-limit.js";
+import { ResponseCache, TieredCache, type CacheStore } from "./lib/response-cache.js";
+import { RedisLink, type RedisLike } from "./integrations/redis.js";
 import { SupabaseAccessTokenVerifier, type AccessTokenVerifier } from "./modules/auth/access-token.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { createGoogleSignIn, type GoogleSignIn } from "./modules/auth/google-oidc.js";
@@ -77,8 +78,10 @@ export interface AppServices {
   sessions: SessionService;
   google: GoogleSignIn | null;
   rateLimiter: RateLimiter;
-  /** Public answers kept in memory for a few seconds (RESPONSE_CACHE_ENABLED); null when off. */
-  responseCache: ResponseCache | null;
+  /** Public answers kept for a few seconds (RESPONSE_CACHE_ENABLED): memory, then Redis when configured; null when off. */
+  responseCache: CacheStore | null;
+  /** Redis (REDIS_URL / REDISCLOUD_URL), or null when not configured. Never required: everything falls back to memory. */
+  redis: RedisLike | null;
 
   // Feature services (/api/v1)
   health: HealthService;
@@ -152,8 +155,11 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     });
   const sessions = overrides.sessions ?? createSessionService(config, data);
   const google = overrides.google !== undefined ? overrides.google : createGoogleSignIn(config);
-  const rateLimiter = overrides.rateLimiter ?? new RateLimiter();
-  const responseCache = overrides.responseCache !== undefined ? overrides.responseCache : config.responseCache.enabled ? new ResponseCache() : null;
+  // Not in tests: they must not depend on (or fill) a Redis that happens to be configured on the machine.
+  const redis = overrides.redis !== undefined ? overrides.redis : config.redis.url && config.env !== "test" ? new RedisLink(config.redis.url, logger) : null;
+  const rateLimiter = overrides.rateLimiter ?? new RateLimiter(redis ? new RedisRateLimitStore(redis) : undefined);
+  const responseCache =
+    overrides.responseCache !== undefined ? overrides.responseCache : config.responseCache.enabled ? (redis ? new TieredCache(redis) : new ResponseCache()) : null;
 
   const walletPin = overrides.walletPin ?? new WalletPinService(data);
 
@@ -166,7 +172,8 @@ export function createServices(overrides: Partial<AppServices> = {}): AppService
     google,
     rateLimiter,
     responseCache,
-    health: overrides.health ?? new HealthService(config, data),
+    redis,
+    health: overrides.health ?? new HealthService(config, data, redis),
     auth: overrides.auth ?? new AuthService({ config, data, sessions, google, rateLimiter }),
     users: overrides.users ?? new UsersService(data),
     catalogue: overrides.catalogue ?? new CatalogueService(data),

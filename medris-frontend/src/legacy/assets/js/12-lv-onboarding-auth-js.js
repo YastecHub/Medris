@@ -1206,10 +1206,13 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   function load(){
     if(DATA) return Promise.resolve(DATA);
     if(loading) return loading;
+    /* the school list and the schools people added are fetched at the same time, not one after the other
+       (Home waits for both, so this saves a whole round trip on every first load) */
+    var names=Promise.resolve().then(function(){return sb.rpc("campus_school_names");}).catch(function(){return null;});
     loading=fetch("/campuses.json").then(function(r){return r.json();}).then(function(rows){
       DATA=rows.map(function(r){var o={id:r[0],name:r[1],kind:r[2],fund:r[3],state:r[4],city:r[5],abbr:r[6],logo:!!r[7]};
         o.hay=(o.name+" "+o.abbr+" "+o.city+" "+o.state+" "+(KIND[o.kind]||"")).toLowerCase().replace(/[^a-z0-9 ]+/g," ");return o;});
-      return Promise.resolve().then(function(){return sb.rpc("campus_school_names");}).then(function(x){
+      return names.then(function(x){
         SUBS=(x&&x.data)||[];
         SUBS.forEach(function(n){ if(n.status!=="approved") return; var id="custom:"+n.name;
           DATA.push({id:id,name:n.name,kind:"U",fund:"",state:"",city:"",abbr:"",logo:false,custom:true,hay:n.name.toLowerCase().replace(/[^a-z0-9 ]+/g," ")}); });

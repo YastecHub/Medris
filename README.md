@@ -74,5 +74,5 @@ PostgreSQL 17) and the build. It needs no secrets and never touches Supabase, He
 
 The web app is on **Cloudflare Pages** (with the share-link previews in `functions/`), the backend on **Heroku**,
 images on **Cloudinary**; Vercel is no longer used. Both deploy by themselves from `main` of `YastecHub/Medris`, which
-follows `main` of this repository automatically (within about 10 minutes). Settings and checks:
+follows `main` of this repository automatically (usually within 5-10 minutes). Settings and checks:
 [`docs/HOSTING.md`](docs/HOSTING.md).

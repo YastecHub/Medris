@@ -198,6 +198,7 @@ async function shutdown(signal: string): Promise<void> {
   await dataApi?.stop().catch(() => {});
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await closeDatabase().catch((err: unknown) => logger.error("closing the database pool failed", { err }));
+  await services.redis?.close();
   logger.info("stopped");
   process.exit(0);
 }

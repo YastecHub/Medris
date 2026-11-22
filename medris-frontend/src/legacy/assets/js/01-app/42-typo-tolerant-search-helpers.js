@@ -151,7 +151,7 @@ async function runSearchPageQuery(term, saveToHistory) {
   const results = byId("searchPageResults");
   if (!results) return;
   // Follower counts for the vendors shown (memoised for 3 minutes, one RPC at most).
-  const vendListHydrated = vendList.length ? await attachVendorFollowerCounts(await lvAttachOwnerAvatars(vendList)) : [];
+  const vendListHydrated = vendList.length ? await lvAttachVendorExtras(vendList) : [];
   if (mySeq !== searchPageSeq) return;
   document.querySelectorAll(".search-page-section, .search-page-empty, .search-page-error").forEach((el) => el.remove());
 

@@ -116,6 +116,10 @@ const envSchema = z.object({
   RATE_LIMIT_ENABLED: bool(true),
   // Keep public answers (the same for every signed-out visitor) in memory for a few seconds. false turns it off.
   RESPONSE_CACHE_ENABLED: bool(true),
+  // Redis behind the memory cache and for the rate-limit counters. Heroku's Redis add-ons set one of these.
+  REDIS_URL: optionalString,
+  REDISCLOUD_URL: optionalString,
+  REDIS_ENABLED: bool(true),
 
   // Swagger UI (/api/v1/docs) and the OpenAPI document (/api/v1/openapi.json).
   // Unset: on everywhere except NODE_ENV=production.
@@ -183,6 +187,8 @@ export interface AppConfig {
   rateLimit: { enabled: boolean };
   /** In-memory cache of public answers (lib/response-cache.ts). */
   responseCache: { enabled: boolean };
+  /** Redis (REDIS_URL or REDISCLOUD_URL): the shared layer behind the cache, and the rate-limit counters. */
+  redis: { url?: string };
   docs: { enabled: boolean };
   cloudinary?: { cloudName: string; apiKey: string; apiSecret: string; folder: string };
   imageStorage: "r2" | "cloudinary";
@@ -267,6 +273,7 @@ export function loadConfig(env: RawEnv = process.env): AppConfig {
     postgrestBin: e.POSTGREST_BIN ?? "bin/postgrest",
     rateLimit: { enabled: e.RATE_LIMIT_ENABLED },
     responseCache: { enabled: e.RESPONSE_CACHE_ENABLED },
+    redis: { url: e.REDIS_ENABLED ? (e.REDIS_URL ?? e.REDISCLOUD_URL) : undefined },
     docs: { enabled: e.API_DOCS_ENABLED ?? e.NODE_ENV !== "production" },
     cloudinary: e.CLOUDINARY_CLOUD_NAME
       ? { cloudName: e.CLOUDINARY_CLOUD_NAME, apiKey: e.CLOUDINARY_API_KEY!, apiSecret: e.CLOUDINARY_API_SECRET!, folder: e.CLOUDINARY_FOLDER }
