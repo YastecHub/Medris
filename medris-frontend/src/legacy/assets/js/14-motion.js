@@ -9,16 +9,17 @@
   var last={html:null,gen:-1,view:null}, goingBack=false, animTimer=null;
   // Small pictures are shown at 50-170 px, but profile pictures and shop logos are stored as 800 px originals (about 40 million
   // pixels on Home alone, which is what makes scrolling and dragging heavy on a phone). Cards, rows and lists get right-sized copies;
-  // the full photo is still used on the product page and the profile picture viewer.
+  // the full photo is still used on the product page and the profile picture viewer. Every stored picture, small or full size,
+  // comes through Cloudinary (scripts/004-levromart-thumbs.js).
   var FULLSIZE = { productDetail: 1, packageDetail: 1, orderDetail: 1, adminPanel: 1, adminPeople: 1 };
   window.lvSlimImgs = function (html, vw) {
     try {
       if (typeof lvThumb !== "function" || html.indexOf("<img") < 0) return html;
       return html.replace(/(<img\b[^>]*?\ssrc=")(https?:\/\/[^"]+)(")/g, function (m, a, u, z) {
-        if (u.indexOf("wsrv.nl") >= 0) return m;
-        var w = u.indexOf("/avatars/") >= 0 ? 160 : u.indexOf("/vendor-logos/") >= 0 ? 240 : (u.indexOf("/product-photos/") >= 0 && !FULLSIZE[vw]) ? 360 : 0;
-        if (!w) return m;
-        var t = lvThumb(u.replace(/&amp;/g, "&"), w);
+        var raw = u.replace(/&amp;/g, "&");
+        if (window.lvOriginalImg && window.lvOriginalImg(raw) !== raw) return m;
+        var w = FULLSIZE[vw] ? 0 : u.indexOf("/avatars/") >= 0 ? 160 : u.indexOf("/vendor-logos/") >= 0 ? 240 : u.indexOf("/product-photos/") >= 0 ? 360 : 0;
+        var t = lvThumb(raw, w);
         return t === u ? m : a + t.replace(/&/g, "&amp;") + z;
       });
     } catch (_) { return html; }
@@ -3364,8 +3365,7 @@ window.lvAskCancel = async function (orderId) {
 
   function rawOf(src) {
     if (!src) return "";
-    if (src.indexOf("wsrv.nl") >= 0) { var m = /[?&]url=([^&]+)/.exec(src); try { return m ? "https://" + decodeURIComponent(m[1]) : src; } catch (_) { return src; } }
-    return src;
+    return window.lvOriginalImg ? window.lvOriginalImg(src) : src;
   }
   // every small picture of this account (top right, side panel, My account, vendor cards) is swapped for the new one in place
   function refreshEverywhere() {
