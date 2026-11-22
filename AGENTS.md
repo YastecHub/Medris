@@ -8,8 +8,8 @@ every change.
 
 1. `.agent/rules/project-context.md` - what lives where, how the app talks to the database, the legacy-runtime rules,
    the commands to run, and the hard limits.
-2. `.agent/rules/git-workflow.md` - every change goes branch -> commits -> pull request -> review. You never push to
-   `main` and never merge.
+2. `.agent/rules/git-workflow.md` - every change goes branch -> commits -> pull request -> review. You never merge. You
+   never push to `main`, except front-end-only fixes (see "Always" below and `.agent/skills/ship-frontend-fix`).
 3. The role(s) in `.agent/rules/` that match the task:
 
 | Task | Read |
@@ -33,6 +33,9 @@ Step-by-step procedures: `.agent/skills/start-task`, `finish-task`, `address-rev
 
 ## Always
 
+- **Front-end-only fixes go straight to `main`** (founder's standing instruction, 21 Nov 2026): follow
+  `.agent/skills/ship-frontend-fix`. Everything else (api/, backend, database, payments, CI, packages) still uses the
+  branch -> pull request -> review route below.
 - Start from a fresh branch off the latest `main`; finish with a pull request that a non-technical person can check
   on the Vercel preview (steps + screenshots).
 - Run the checks before saying something works, and report exactly what you ran and what you could not check.
