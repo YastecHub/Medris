@@ -28,6 +28,12 @@ async function renderHome() {
     if (cachedHome) return renderOfflineHomeFromCache(cachedHome);
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
   }
+  // The carousel at the top of Home is asked for straight away, alongside everything else (it used to wait for all the
+  // listings first, so the first thing on screen was the last thing to load).
+  const carouselPromise = loadHomepageCarouselSlides().catch((err) => {
+    console.warn("[Levromart startup] Carousel failed; using bundled slides.", err);
+    return INITIAL_HOME_CAROUSEL_SLIDES.slice();
+  });
   const cachedCats = levroCacheGet("categories", 10 * 60 * 1000);
   const [categoryResult, sectorResult] = await Promise.allSettled([
     cachedCats ? Promise.resolve({ data: cachedCats }) : levroData.catalogue.categories(),
@@ -126,7 +132,7 @@ async function renderHome() {
     }
     const uniqueRows = [...new Map(rows.map(v => [String(v.id), v])).values()];
     // the owner's account picture, the same one shown on notifications
-    const result = await attachVendorFollowerCounts(await lvAttachOwnerAvatars(uniqueRows));
+    const result = await lvAttachVendorExtras(uniqueRows);
     setCachedCatalog(cacheKey, result);
     return { data: result };
   };
@@ -232,10 +238,7 @@ async function renderHome() {
   // The Category filter lists only categories vendors have really listed products under.
   const usedCatIds = new Set((railCategories || []).map((c) => String(c.id)));
   const browseCats = subCats.filter((c) => usedCatIds.has(String(c.id)) || String(c.id) === String(currentHomeCategoryId));
-  const homepageCarouselSlides = await loadHomepageCarouselSlides().catch((err) => {
-    console.warn("[Levromart startup] Carousel failed; using bundled slides.", err);
-    return INITIAL_HOME_CAROUSEL_SLIDES.slice();
-  });
+  const homepageCarouselSlides = await carouselPromise;
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
   // must not be overwritten with only the currently selected category.

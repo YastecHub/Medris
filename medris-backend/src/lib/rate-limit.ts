@@ -1,12 +1,10 @@
 /**
  * Fixed-window rate limiting.
  *
- * The default store keeps counters in memory, which on Vercel means per
- * function instance: it stops bursts from one client hitting one instance
- * (brute-force password attempts, scripted cart spam) but is not a global
- * quota. For a hard global limit, implement `RateLimitStore` on Redis/Upstash
- * or a database table and pass it to createServices().
+ * The default store keeps counters in memory, per process. RedisRateLimitStore keeps them in Redis, so they are
+ * shared between dynos and a restart does not reset them; it falls back to memory while Redis is not connected.
  */
+import type { RedisLike } from "../integrations/redis.js";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -46,6 +44,25 @@ export class MemoryRateLimitStore implements RateLimitStore {
       if (oldest === undefined) break;
       this.buckets.delete(oldest);
     }
+  }
+}
+
+export class RedisRateLimitStore implements RateLimitStore {
+  constructor(
+    private readonly redis: RedisLike,
+    private readonly fallback: RateLimitStore = new MemoryRateLimitStore(),
+  ) {}
+
+  async hit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {
+    if (this.redis.isUp()) {
+      try {
+        const { count, ttlMs } = await this.redis.incrWindow(`rl:${key}`, windowMs);
+        return { count, resetAt: now + (ttlMs > 0 ? ttlMs : windowMs) };
+      } catch {
+        /* Redis slow or gone: count in memory for now */
+      }
+    }
+    return this.fallback.hit(key, windowMs, now);
   }
 }
 

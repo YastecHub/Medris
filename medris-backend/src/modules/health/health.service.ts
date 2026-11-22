@@ -1,6 +1,7 @@
 import type { AppConfig } from "../../config/app-config.js";
 import type { DataContext } from "../../database/context.js";
 import type { Logger } from "../../lib/logger.js";
+import type { RedisLike } from "../../integrations/redis.js";
 
 export interface Readiness {
   status: "ok" | "degraded" | "unavailable";
@@ -9,6 +10,8 @@ export interface Readiness {
     supabaseAuthConfigured: boolean;
     backendSessions: "enabled" | "disabled";
     database?: { reachable: true; latencyMs: number; roles: { anon: boolean; authenticated: boolean; service_role: boolean } } | { reachable: false };
+    /** Optional: when it is down the app still works (from memory), so it never makes the status worse. */
+    redis: { configured: false } | { configured: true; reachable: true; latencyMs: number } | { configured: true; reachable: false };
   };
 }
 
@@ -17,7 +20,18 @@ export class HealthService {
   constructor(
     private readonly config: AppConfig,
     private readonly db: () => DataContext,
+    private readonly redis: RedisLike | null = null,
   ) {}
+
+  private async redisCheck(): Promise<Readiness["checks"]["redis"]> {
+    if (!this.redis) return { configured: false };
+    if (!this.redis.isUp()) return { configured: true, reachable: false };
+    try {
+      return { configured: true, reachable: true, latencyMs: await this.redis.ping() };
+    } catch {
+      return { configured: true, reachable: false };
+    }
+  }
 
   live(): { status: "ok" } {
     return { status: "ok" };
@@ -29,6 +43,7 @@ export class HealthService {
       databaseConfigured: Boolean(config.database.url),
       supabaseAuthConfigured: Boolean(config.supabase.url && config.supabase.anonKey),
       backendSessions: config.auth.backendSessions ? "enabled" : "disabled",
+      redis: await this.redisCheck(),
     };
     if (!config.database.url) return { status: "unavailable", checks };
     try {

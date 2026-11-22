@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { RequestHandler, Response } from "express";
-import type { ResponseCache } from "../../lib/response-cache.js";
+import type { CacheStore } from "../../lib/response-cache.js";
 
 /** What the proxy needs from the running PostgREST (integrations/data-api/postgrest.ts). */
 export interface DataApiUpstream {
@@ -30,7 +30,7 @@ interface Cached {
  * there for signed-out visitors) is dropped, so the request runs as the anonymous role, as on Supabase.
  * Cookies are not forwarded.
  */
-export function dataApiProxy(upstream: () => DataApiUpstream | null, cache: () => ResponseCache | null = () => null): RequestHandler {
+export function dataApiProxy(upstream: () => DataApiUpstream | null, cache: () => CacheStore | null = () => null): RequestHandler {
   return (req, res) => {
     const up = upstream();
     if (!up) {

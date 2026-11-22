@@ -3,6 +3,8 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestDatabase, type TestDatabase } from "../support/test-db.js";
 import { accessToken, buildTestApp, call, seedUser, seedVendor } from "../support/fixtures.js";
+import { FakeRedis } from "../support/fake-redis.js";
+import { TieredCache } from "../../src/lib/response-cache.js";
 
 /**
  * Public answers kept in memory for a few seconds (lib/response-cache.ts): signed-out table reads through the data
@@ -46,6 +48,19 @@ describe("public answers cache", () => {
     expect(await second.json()).toEqual([{ n: 1 }]);
     expect(second.headers.get("x-levro-cache")).toBe("hit");
     expect(second.headers.get("content-range")).toBe("0-0/1");
+    expect(hits).toHaveLength(1);
+  });
+
+  it("with Redis, a restarted backend answers from Redis instead of the database", async () => {
+    const redis = new FakeRedis();
+    const withRedis = () =>
+      buildTestApp(db, { services: { responseCache: new TieredCache(redis), dataApi: { port: (upstream.address() as AddressInfo).port, ready: async () => true } } });
+    const first = await call(withRedis(), "GET", "/rest/v1/products?select=id");
+    const afterRestart = await call(withRedis(), "GET", "/rest/v1/products?select=id");
+    expect(first.headers.get("x-levro-cache")).toBe("miss");
+    expect(afterRestart.headers.get("x-levro-cache")).toBe("hit");
+    expect(await afterRestart.json()).toEqual([{ n: 1 }]);
+    expect(afterRestart.headers.get("content-range")).toBe("0-0/1");
     expect(hits).toHaveLength(1);
   });
 

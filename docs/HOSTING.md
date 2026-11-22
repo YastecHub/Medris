@@ -4,7 +4,8 @@
 |---|---|---|
 | The web app (static files) | **Cloudflare Pages** | `https://levromart.com` |
 | Share-link previews (`/s/`, `/p/`, `/k/`, `/l/`, `/?product=`) | Cloudflare Pages Functions (`functions/`) | same |
-| The backend: `/api/*`, `/api/v1/*`, `/rest/v1` | **Heroku** | `https://api.levromart.com` |
+| The backend: `/api/*`, `/api/v1/*`, `/rest/v1` | **Heroku**, reached through Cloudflare | `https://api.levromart.com` |
+| Shared cache and rate-limit counters | **Redis** (Heroku add-on Redis Cloud) | `REDISCLOUD_URL` |
 | Database, sign-in, private files | Supabase (for now) | |
 | Images (photos, avatars, logos, carousel, statuses) | **Cloudinary** | `res.cloudinary.com` |
 
@@ -42,9 +43,32 @@ records itself when the domain's DNS is on Cloudflare).
 
 ## Heroku
 
-**Domain.** *Settings → Domains → Add domain* `api.levromart.com`. Heroku shows a DNS target
-(`xxxx.herokudns.com`). In Cloudflare DNS add `CNAME api → <that target>` with the proxy **off** (grey cloud), so Heroku
-can issue the certificate (*Settings → SSL Certificates → Automatic*).
+**Domain, through Cloudflare.** The app calls the backend at `api.levromart.com`, proxied by Cloudflare (orange
+cloud): the secure connection is made at Cloudflare's server nearest the visitor (Lagos for most of them) and the
+request crosses Cloudflare's network to Heroku. Cloudflare caches nothing from the API: by default it caches only files
+such as `.js` or `.png`, the API's paths have no such endings, and there is no cache rule for `api.levromart.com`
+(keep it that way: answers for signed-in people must never be shared).
+
+1. Heroku: *Settings → Domains → Add domain* `api.levromart.com`; copy the DNS target (`xxxx.herokudns.com`).
+2. Cloudflare DNS: `CNAME api → <that target>`, proxy **off** (grey cloud) for now.
+3. Heroku: *Settings → SSL Certificates → Configure SSL → Automatic Certificate Management*; wait until
+   `api.levromart.com` shows **OK** (a few minutes).
+4. Cloudflare: *SSL/TLS → Overview* → **Full (strict)**.
+5. Cloudflare DNS: switch the `api` record to **Proxied** (orange cloud).
+6. Check `https://api.levromart.com/api/v1/health/ready` answers `"status":"ok"`.
+
+If Heroku ever reports that the certificate could not be renewed, set the `api` record back to grey for ten minutes,
+let it renew, then orange again.
+
+Behind Cloudflare the visitor's address comes from `CF-Connecting-IP`, trusted only when the request really came from
+one of Cloudflare's addresses (`src/shared/responses.ts`), so rate limits stay per visitor. Paystack's webhook and the
+database's notification calls keep using the Heroku address directly.
+
+**Redis.** The Redis Cloud add-on sets `REDISCLOUD_URL` (Heroku Redis would set `REDIS_URL`; either works). The backend
+then keeps public answers in memory first and in Redis behind it (still there after a restart or deploy, shared if
+there are ever several dynos), and counts rate limits in Redis. Redis is never required: while it is unreachable
+everything runs from memory, and `/api/v1/health/ready` shows `"redis": {"reachable": false}`. `REDIS_ENABLED=false`
+switches it off.
 
 **Config vars** (add or change):
 
