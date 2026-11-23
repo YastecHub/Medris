@@ -1898,3 +1898,95 @@ async function deleteSelectedDiscardedItems(){
   updateDiscardedSelection();
 }
 
+
+/* ---- Add / Edit product and service: a flat page of rows; each row opens its own page ----
+   Only the layout changed. Every field keeps its id, so saving, drafts and validation work exactly as before: the sections are
+   the same elements, they are just shown one at a time as a page of their own (data-lm-view on #productModal). */
+(function () {
+  const TITLES = { desc: "Description", category: "Category", price: "Price and type", variants: "Varieties", stock: "Stock", delivery: "Delivery and orders", more: "Likes and comments" };
+  const $ = (id) => document.getElementById(id);
+  const modal = () => $("productModal");
+  let savedScroll = 0, tick = 0;
+  const money = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? "₦" + n.toLocaleString("en-NG", { maximumFractionDigits: 2 }) : ""; };
+  function optText(sel, other) {
+    if (!sel) return "";
+    if (sel.value === "__other__") return (other && other.value || "").trim();
+    const o = sel.selectedOptions && sel.selectedOptions[0];
+    return o && sel.value ? o.textContent.trim() : "";
+  }
+  function summaries() {
+    const svc = !!$("prodIsService")?.checked, s = {};
+    const desc = ($("prodDesc")?.value || "").trim().replace(/\s+/g, " ");
+    s.desc = desc.length > 46 ? desc.slice(0, 45) + "…" : desc;
+    s.category = [optText($("prodSector"), $("prodSectorOther")), optText($("prodCategory"), $("prodCategoryOther"))].filter(Boolean).join(" · ") || "Choose a sector and category";
+    const type = svc ? "sale" : ($("prodListingType")?.value || "sale"), unit = $("prodServiceUnit")?.value, parts = [];
+    if (type !== "rent") { const p = money($("prodSalePrice")?.value); if (p) parts.push(svc && unit && unit !== "flat" ? p + " per " + unit : p); }
+    if (!svc && type !== "sale") { const r = money($("prodRentalRate")?.value); if (r) parts.push(r + " per " + ($("prodRateUnit")?.value || "day")); }
+    s.price = parts.join(" · ");
+    if (s.price && !svc) s.price += " · " + (type === "rent" ? "For rent" : type === "both" ? "Sale and rent" : "For sale");
+    const n = (window.__productVariants || []).length;
+    s.variants = n ? n + (n === 1 ? " variety" : " varieties") : "None yet (optional)";
+    s.stock = $("prodTrackQuantity")?.checked ? (Number($("prodQtyTotal")?.value) || 0) + " available" : "Always available";
+    const mode = $("prodDeliveryMode")?.value || "free";
+    const dl = mode === "flat" ? (money($("prodDeliveryFee")?.value) || "Flat fee") + " delivery" : mode === "distance" ? (money($("prodDeliveryPerKm")?.value) ? money($("prodDeliveryPerKm").value) + " per km" : "Distance-based") : "Free delivery";
+    s.delivery = svc ? "Order settings" : dl;
+    const lv = $("prodLikeVisibility"); const lt = lv && lv.selectedOptions[0] ? lv.selectedOptions[0].textContent.trim() : "";
+    s.more = ($("prodAllowComments")?.checked ? "Comments on" : "Comments off") + (lt ? " · Likes: " + lt : "");
+    return s;
+  }
+  function refresh() {
+    const m = modal(); if (!m || m.classList.contains("hidden")) return;
+    const s = summaries(), svc = !!$("prodIsService")?.checked;
+    m.querySelectorAll("[data-lm-sum]").forEach((b) => {
+      const k = b.dataset.lmSum, need = k === "desc" || k === "price", v = s[k];
+      const t = v || (need ? "Required" : "");
+      if (b.textContent !== t) b.textContent = t;
+      b.closest(".lm-row")?.classList.toggle("lm-req", !v && need);
+    });
+    const stockRow = m.querySelector('[data-lm-open="stock"]'); if (stockRow) stockRow.hidden = svc;
+  }
+  function open(key) {
+    const m = modal(); if (!m || !TITLES[key]) return;
+    if (m.dataset.lmView === "main") savedScroll = m.scrollTop || 0;
+    m.dataset.lmView = key;
+    const t = $("lmSubTitle"); if (t) t.textContent = key === "price" && $("prodIsService")?.checked ? "Price" : TITLES[key];
+    m.scrollTop = 0; try { m.querySelector(".modal-content").scrollTop = 0; } catch (_) {}
+  }
+  function close() {
+    const m = modal(); if (!m) return;
+    m.dataset.lmView = "main"; refresh(); m.scrollTop = savedScroll;
+  }
+  function toggleMore() {
+    const g = $("lmMoreGroup"), b = $("lmShowMore"); if (!g || !b) return;
+    const show = g.hidden; g.hidden = !show;
+    b.setAttribute("aria-expanded", String(show));
+    const sp = b.querySelector("span"); if (sp) sp.textContent = show ? "Show less" : "Show more";
+    const ic = b.querySelector("i"); if (ic) ic.className = "fa-solid " + (show ? "fa-chevron-up" : "fa-chevron-down");
+  }
+  window.lmOpen = open; window.lmClose = close; window.lmToggleMore = toggleMore; window.lmRefresh = refresh;
+  // A check that fails on a field inside a closed page (for example a missing price) focuses that field: open its page first, so the message is seen.
+  const nativeFocus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function () {
+    try {
+      const m = modal(), sec = m && this.closest && this.closest(".lm-sec[data-lm]");
+      if (sec && m.contains(this) && m.dataset.lmView !== sec.dataset.lm) open(sec.dataset.lm);
+    } catch (_) {}
+    return nativeFocus.apply(this, arguments);
+  };
+  function init() {
+    const m = modal(); if (!m || m.__lm) return !!m;
+    m.__lm = true;
+    const onOpen = () => {
+      if (m.classList.contains("hidden")) return;
+      if (m.dataset.lmView !== "main") m.dataset.lmView = "main";
+      const g = $("lmMoreGroup"); if (g && !g.hidden) toggleMore();
+      savedScroll = 0; refresh();
+    };
+    new MutationObserver(onOpen).observe(m, { attributes: true, attributeFilter: ["class"] });
+    const soon = () => { cancelAnimationFrame(tick); tick = requestAnimationFrame(refresh); };
+    m.addEventListener("input", soon, true); m.addEventListener("change", soon, true); m.addEventListener("click", soon, true);
+    setInterval(() => { if (!m.classList.contains("hidden") && !document.hidden) refresh(); }, 700);   // catches values filled in by code (editing, restored drafts, varieties)
+    return true;
+  }
+  if (!init()) { const w = setInterval(() => { if (init()) clearInterval(w); }, 500); }
+})();

@@ -9472,3 +9472,54 @@ html:root body .lvs-hi em{font-size:.74rem;margin-top:.1rem}
 html:root body .lvs-hi::after{right:auto;left:calc(var(--tail,40px) - 7px);bottom:-6px;top:auto;width:12px;height:12px;border-radius:0 0 3px 0;box-shadow:2px 2px 4px rgba(15,23,42,.05)}
 html:root body .lvs-hi.below::after{bottom:auto;top:-6px;border-radius:3px 0 0 0;box-shadow:-2px -2px 4px rgba(15,23,42,.04);transform:rotate(45deg)}
 html:root[data-theme="dark"] body .lvs-hi{box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)}
+
+
+/* ===== Add / Edit product and service: a flat page. Photo on top, one tidy list of rows, each row opens its own page. Green Save. ===== */
+html:root:root:root body #productModal.lf-page{--lf-acc:#12a06a;--lf-acc2:#12a06a}
+html:root:root:root body #productModal.lf-page .lf-top{background:var(--bg)!important;margin:0 -1rem!important;padding:.8rem 1rem!important;border-bottom:1px solid var(--border)!important}
+html:root:root:root body #productModal.lf-page .lf-top .lf-art,html:root:root:root body #productModal.lf-page .lf-top .lf-sub{display:none!important}
+html:root:root:root body #productModal.lf-page .lf-back{background:transparent!important;color:var(--text)!important;width:2.4rem;height:2.4rem}
+html:root:root:root body #productModal.lf-page .lf-top-copy h3{color:var(--text)!important;font-size:1.2rem;font-weight:700;letter-spacing:-.01em}
+html:root:root:root body #productModal.lf-page .lf-saved{font-size:.74rem;color:var(--text-muted)!important}
+html:root:root:root body #productModal.lf-page .lm-subtop{display:none;align-items:center;gap:.6rem;position:sticky;top:0;z-index:7;background:var(--bg);margin:0 -1rem;padding:.8rem 1rem;border-bottom:1px solid var(--border)}
+html:root:root:root body #productModal.lf-page .lm-subtop h3{flex:1;margin:0;font-size:1.2rem;font-weight:700;letter-spacing:-.01em}
+html:root:root:root body #productModal.lf-page .lm-subback{width:2.4rem;height:2.4rem;border:0;background:transparent;color:var(--text);font-size:1.05rem;border-radius:50%;cursor:pointer}
+html:root:root:root body #productModal.lf-page .lm-subdone{border:0;background:transparent;color:var(--lf-acc);font-weight:800;font-size:.98rem;padding:.4rem .2rem;cursor:pointer}
+html:root:root:root body #productModal.lf-page:not([data-lm-view="main"]) .lm-subtop{display:flex}
+html:root:root:root body #productModal.lf-page:not([data-lm-view="main"]) .lf-top,html:root:root:root body #productModal.lf-page:not([data-lm-view="main"]) .lm-main,html:root:root:root body #productModal.lf-page:not([data-lm-view="main"]) .lm-actions{display:none!important}
+html:root:root:root body #productModal.lf-page .lm-sec[data-lm]{display:none!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="desc"] .lm-sec[data-lm="desc"]{display:block!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="category"] .lm-sec[data-lm="category"]{display:block!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="price"] .lm-sec[data-lm="price"]{display:block!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="variants"] .lm-sec[data-lm="variants"]{display:block!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="stock"] .lm-sec[data-lm="stock"]{display:block!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="delivery"] .lm-sec[data-lm="delivery"]{display:block!important}
+html:root:root:root body #productModal.lf-page[data-lm-view="more"] .lm-sec[data-lm="more"]{display:block!important}
+html:root:root:root body #productModal.lf-page .lm-sec,html:root:root:root body #productModal.lf-page .lm-name{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;margin:0!important}
+html:root:root:root body #productModal.lf-page .lm-sec{padding:1rem 0 1.2rem!important}
+html:root:root:root body #productModal.lf-page .lm-sec-head{display:none!important}
+html:root:root:root body #productModal.lf-page .lm-hero{padding:.9rem 0 .2rem!important}
+html:root:root:root body #productModal.lf-page .lm-hero>label:not(.photo-dropzone){display:none!important}
+html:root:root:root body #productModal.lf-page #prodDisplayPicture{border:0!important;border-radius:14px!important;background:color-mix(in srgb,var(--text) 5%,transparent)!important;min-height:0!important;height:15rem!important;margin:0 0 .6rem!important}
+html:root:root:root body #productModal.lf-page #prodDisplayPicture img{width:100%!important;height:100%!important;max-height:none!important;object-fit:contain!important}
+html:root:root:root body #productModal.lf-page .photo-dropzone{border:1.5px dashed var(--border)!important;border-radius:14px!important;background:transparent!important;box-shadow:none!important}
+html:root:root:root body #productModal.lf-page .lm-name{padding:.35rem 0 .2rem!important}
+html:root:root:root body #productModal.lf-page .lm-name>label:not(#prodIsServiceRow){display:block;font-size:.78rem!important;font-weight:500!important;color:var(--text-muted);margin:.5rem 0 0!important}
+html:root:root:root body #productModal.lf-page .lm-name #prodName{border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:.3rem 0 .75rem!important;font-size:1.1rem!important;font-weight:600!important}
+html:root:root:root body #productModal.lf-page .lm-rows{display:block}
+html:root:root:root body #productModal.lf-page .lm-row{display:flex;align-items:center;gap:1rem;width:100%;min-height:3.6rem;padding:.75rem .15rem;background:transparent;border:0;border-bottom:1px solid var(--border);color:var(--text);text-align:left;cursor:pointer;font:inherit}
+html:root:root:root body #productModal.lf-page .lm-row[hidden]{display:none}
+html:root:root:root body #productModal.lf-page .lm-ri{flex:none;width:1.6rem;text-align:center;font-size:1.15rem;color:var(--text)}
+html:root:root:root body #productModal.lf-page .lm-rt{flex:1;min-width:0}
+html:root:root:root body #productModal.lf-page .lm-rt small{display:block;font-size:.78rem;font-weight:500;color:var(--text-muted)}
+html:root:root:root body #productModal.lf-page .lm-rt b{display:block;font-size:1rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.05rem}
+html:root:root:root body #productModal.lf-page .lm-row.lm-req .lm-rt b{color:#d93f45;font-weight:600}
+html:root:root:root body #productModal.lf-page .lm-chev{flex:none;color:var(--text-muted);font-size:.85rem}
+html:root:root:root body #productModal.lf-page .lm-showmore{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;height:3rem;margin:1rem 0 .3rem;border:0;border-radius:999px;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
+html:root:root:root body #productModal.lf-page .lm-moregroup[hidden]{display:none}
+html:root:root:root body #productModal.lf-page .prod-delivery-settings,html:root:root:root body #productModal.lf-page .listing-billing-choice,html:root:root:root body #productModal.lf-page .listing-payment-timing-settings{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+html:root:root:root body #productModal.lf-page .payment-timing-option.pay-before,html:root:root:root body #productModal.lf-page .payment-timing-option.pay-after{background:transparent!important;border-color:var(--border)!important}
+html:root:root:root body #productModal.lf-page .payment-timing-option.selected{border-color:var(--lf-acc)!important;box-shadow:0 0 0 1.5px var(--lf-acc) inset!important}
+html:root:root:root body #productModal.lf-page .lm-actions{background:var(--bg)!important;border-top:1px solid var(--border)!important}
+html:root:root:root body #productModal.lf-page .lm-actions #saveProductBtn,html:root:root:root body #productModal.lf-page .lm-actions .btn:not(.lf-cancel):not(.btn-outline){background:#12a06a!important;color:#fff!important;border:0!important;box-shadow:none!important}
+html:root:root:root body #productModal.lf-page .lf-top{border-radius:0!important}
