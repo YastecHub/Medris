@@ -83,14 +83,14 @@ async function renderVendorDashboard() {
   const monthlyPending = Number(window.__monthlyPendingCount || 0);
 
   // ---------- 1. Profile header ----------
+  // The picture sits half on the banner and half below it, like a storefront: it hangs from a zero-height strip under the banner.
+  // It keeps its own class (vendor-profile-header-avatar): the live-update ring is added to that element.
   let html = `<div class="vendor-profile-header-card">
     <div class="storefront-cover vendor-profile-header-cover ${v.cover_url ? "has-custom-cover" : "lv-gen-cover"}" ${v.cover_url ? `style="background-image:url('${esc(v.cover_url)}');"` : lvGenCoverAttrs(profile?.name || v.business_name || "Vendor", profile?.avatar_url || null)}>
       ${lvCoverActionsHtml("navigate('vendorEditProfile')", `lvOpenProfileShare('vendor','${v.id}')`)}
     </div>
-    <div class="vendor-profile-header-body">
-      <div class="vendor-profile-header-avatar-row">
-        ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}
-      </div>
+    <div class="lvme-pic-wrap"><span class="lvme-pic-v">${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}</span></div>
+    <div class="lvme-body lvme-body-v">
       <h2 class="vendor-profile-header-name">${esc(v.business_name)} ${verifiedTick}</h2>
       ${profile?.name ? `<p class="vendor-profile-header-personal">${esc(profile.name)}</p>` : ""}
       ${v.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(v.city)}</p>` : ""}

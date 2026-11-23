@@ -9523,3 +9523,12 @@ html:root:root:root body #productModal.lf-page .payment-timing-option.selected{b
 html:root:root:root body #productModal.lf-page .lm-actions{background:var(--bg)!important;border-top:1px solid var(--border)!important}
 html:root:root:root body #productModal.lf-page .lm-actions #saveProductBtn,html:root:root:root body #productModal.lf-page .lm-actions .btn:not(.lf-cancel):not(.btn-outline){background:#12a06a!important;color:#fff!important;border:0!important;box-shadow:none!important}
 html:root:root:root body #productModal.lf-page .lf-top{border-radius:0!important}
+
+
+/* ===== Shop owner's own profile: the picture sits half on the banner and half below it, like a storefront and the customer profile ===== */
+html:root:root:root body #app .vendor-profile-header-card{overflow:visible!important}
+html:root:root:root body #app .vendor-profile-header-card .vendor-profile-header-cover{height:120px!important;min-height:120px!important}
+html:root:root:root body #app .vendor-profile-header-card .lvme-pic-wrap{position:relative;height:0;z-index:6}
+html:root:root:root body #app .vendor-profile-header-card .lvme-pic-v{position:absolute;left:1rem;top:-48px;display:block;line-height:0}
+html:root:root:root body #app .vendor-profile-header-card .lvme-pic-v .vendor-profile-header-avatar{position:static!important;margin:0!important;transform:none!important}
+html:root:root:root body #app .vendor-profile-header-card .lvme-body{padding:56px 1.1rem 1.15rem!important;position:relative;z-index:1;margin:0!important;background:transparent!important}
