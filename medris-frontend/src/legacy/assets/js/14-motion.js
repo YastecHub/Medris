@@ -4396,7 +4396,7 @@ window.lvAskCancel = async function (orderId) {
       err(m, "");
       var fee = window.lvWalletFee(amt);
       if (amt + fee > Number(d.balance_kobo)) return err(m, "This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
-      var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt)], ["Total from your wallet", short(amt + fee), 1]].concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
+      var pin = await window.lvPinGate({ title: "Confirm transfer", person: pick, rows: [["To", (pick.name || "") + " (@" + pick.handle + ")"], ["Amount", short(amt), 1]].concat(fee > 0 ? [["Transfer fee", short(fee) + " · charged separately after sending"]] : []).concat(note ? [["Note", note]] : []), cta: "Send " + short(amt), note: "Transfers cannot be undone. Check the name first." });
       if (!pin) return;
       if (!(await window.lvRepeatCheck("send:" + pick.handle + ":" + amt, { title: "Repeat transaction detected", text: "You sent " + short(amt) + " to " + (pick.name || "@" + pick.handle) + " a moment ago. Do you want to send it again?", okLabel: "Send again", cancelLabel: "No, cancel" }))) return;
       if (!(await showConfirmDialog("Send " + short(amt) + " to " + (pick.name || "@" + pick.handle) + " (@" + pick.handle + ")? You cannot get it back once it is sent.", { title: "Send money", okLabel: "Yes, send it", cancelLabel: "No, go back" }))) return;
@@ -4439,7 +4439,7 @@ window.lvAskCancel = async function (orderId) {
       var fee = window.lvWalletFee(amt);
       // like a bank app: never say "the most you can take is…"; explain that the transfer has a small fee and invite a slightly smaller amount
       if (amt + fee > Number(d.balance_kobo) || amt > most) return err(m, "This amount exceeds what can be transferred after transfer charges. Please enter a lower amount.");
-      var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt)], ["Total from your wallet", short(amt + fee), 1]], cta: "Withdraw " + short(amt) });
+      var pin = await window.lvPinGate({ title: "Confirm withdrawal", rows: [["To", (a.bank_name || "Your bank") + " ···" + (a.last4 || "")], ["Account name", a.account_name || ""], ["Amount to your bank", short(amt), 1]].concat(fee > 0 ? [["Withdrawal fee", short(fee) + " · charged separately after sending"]] : []), cta: "Withdraw " + short(amt) });
       if (!pin) return;
       if (!(await window.lvRepeatCheck("wd:" + amt, { title: "Repeat transaction detected", text: "You withdrew " + short(amt) + " a moment ago. Do you want to withdraw the same amount again?", okLabel: "Withdraw again", cancelLabel: "No, cancel" }))) return;
       if (!(await showConfirmDialog("Withdraw " + short(amt) + " to " + (a.bank_name || "your bank") + " ···" + (a.last4 || "") + (a.account_name ? " (" + a.account_name + ")" : "") + "? This is final.", { title: "Withdraw money", okLabel: "Yes, withdraw", cancelLabel: "No, go back" }))) return;
@@ -4682,7 +4682,7 @@ window.lvAskCancel = async function (orderId) {
       if (wb.disabled) return;
       var fee = (typeof d.free_order_payments_left === "number" && d.free_order_payments_left > 0) ? 0 : (need ? window.lvWalletFee(need) : 0);   // the first 3 orders paid from the wallet are free
       if (need && need + fee > bal) return err(m, "Your wallet balance does not cover this order and its transfer charges. Please add money or pay another way.");
-      var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 0], ["Total from your wallet", short(need + fee), 1]], cta: "Pay " + short(need + fee) });
+      var pin = await window.lvPinGate({ title: "Pay with wallet", rows: [["Order", short(need), 1]].concat(fee > 0 ? [["Transfer fee", short(fee) + " · charged separately after paying"]] : []), cta: "Pay " + short(need) });
       if (!pin) return;
       if (!(await showConfirmDialog("Pay " + short(need) + " for this order from your Levromart wallet?", { title: "Pay for this order", okLabel: "Yes, pay", cancelLabel: "No, go back" }))) return;
       wb.disabled = true;
@@ -7363,7 +7363,6 @@ window.adminUnverifyVendor = async function (id, filterStatus, name) {
     if (s.shop) r.push(["Shop", s.shop]);
     if (s.amountKobo) r.push(["Amount", nair(s.amountKobo)]);
     if (s.feeKobo) r.push(["Fee", nair(s.feeKobo)]);
-    if (s.feeKobo) r.push(["Total", nair(Number(s.amountKobo) + Number(s.feeKobo))]);
     if (s.note) r.push([s.kind === "order_payment" ? "Order" : "Note", s.note]);
     r.push(["Status", s.status || "Successful"]);
     r.push(["Date", when(s.when)]);
