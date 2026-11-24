@@ -2,7 +2,7 @@
 function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
-    <p class="muted">Last updated: 18 November 2026</p>
+    <p class="muted">Last updated: 24 November 2026</p>
     <p>Levromart is an online marketplace that connects buyers with independent vendors, mostly students and small businesses around university campuses and cities across Nigeria. Listings include products, services, rentals, packages/bundles, healthcare equipment, food, electronics and more, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
@@ -43,6 +43,7 @@ function renderTerms() {
       <li>Comments, replies and reviews must be honest and respectful. Do not post abuse, hate, spam, other people's private details, or anything unlawful. Levromart may hide or remove content and restrict accounts that break these rules.</li>
       <li>Following a vendor lets them reach you with updates; you control the kinds of notifications you receive in Settings.</li>
       <li>Vendors earn leaderboard points from genuine activity on Levromart. The vendor with the most points for a week is named Vendor of the Week and is promoted on the home page for the whole of the following week, including their name, logo and products, until the next winner is named. Genuine comments left on a vendor's products by other customers also earn points (any comment counts, emojis included); a vendor commenting on their own product earns no points, and only a person's first 3 comments each day earn points, on up to 3 days a week. Points that come from fake, self-dealt or manipulated activity can be removed, and Levromart may disqualify a vendor. Promotions and rewards may change or end at any time.</li>
+      <li>Every member has a personal referral code. When someone joins Levromart with your code, you earn points (and more points when a vendor you referred joins, lists or sells), and the person who invited you can see your first name and when you joined. Points are for use inside Levromart only: they have no cash value and cannot be sold or transferred, and Levromart may later offer rewards for them and will update these terms first. Codes must be added within 7 days of creating an account, you cannot use your own code, and points from fake or self-referred accounts can be removed.</li>
     </ul>
 
     <h3>4B. Levi, our AI assistant</h3>
@@ -74,7 +75,7 @@ function renderTerms() {
 function renderPrivacy() {
   return `<div class="legal-page">
     <h2>Privacy Policy</h2>
-    <p class="muted">Last updated: 13 November 2026</p>
+    <p class="muted">Last updated: 24 November 2026</p>
     <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
     <h3>1. What we collect</h3>
@@ -88,7 +89,7 @@ function renderPrivacy() {
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
       <li><strong>Comments, likes and follows:</strong> comments and replies you post, what you like or follow, and your notification preferences for the vendors you follow. Comments and likes are visible to other users.</li>
-      <li><strong>Leaderboard activity:</strong> for vendors, activity points that decide the weekly leaderboard and Vendor of the Week. The winner's business name, logo and products can be shown on the home page.</li>
+      <li><strong>Leaderboard and referral activity:</strong> activity points (for vendors, the points that decide the weekly leaderboard and Vendor of the Week), your personal referral code, and who referred whom. A person who referred you can see your first name and when you joined. The winner's business name, logo and products can be shown on the home page.</li>
       <li><strong>Photos:</strong> profile pictures, vendor product photos, and package/gallery photos you choose to upload.</li>
       <li><strong>Messages and call records:</strong> the messages you send in order conversations, and basic call records (who called whom, when, and whether it was answered, declined or missed). Call audio travels directly between the two devices and is not recorded or stored by Levromart.</li>
       <li><strong>Online status:</strong> while you are using the app we note when you were last active so the person you are chatting with can see that you are online or when you were last seen.</li>

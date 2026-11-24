@@ -763,7 +763,7 @@ function hideLeviFromPanel() {
   } catch (_) {}
 
   const ALL_TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn", "fa-bolt"], ["refer", "Refer", "fa-gift"], ["winners", "Winners", "fa-award"]];
-  const tabsNow = () => { let isV = false; try { isV = !!(vendor && vendor.id) || profile?.role === "admin"; } catch (_) {} return isV ? ALL_TABS : ALL_TABS.filter((t) => t[0] !== "mine"); };
+  const tabsNow = () => { let isV = false; try { isV = !!(vendor && vendor.id) || profile?.role === "admin"; } catch (_) {} return isV || signedIn() ? ALL_TABS : ALL_TABS.filter((t) => t[0] !== "mine"); };
   const PERIODS = [["week", "This week"], ["last_week", "Last week"]];
   const WA_NUMBER = "2348063227669", WA_DISPLAY = "0806 322 7669";
   const waLink = (platform) => {
@@ -1171,12 +1171,12 @@ function hideLeviFromPanel() {
     const P = (k, d) => rules[k] ?? d;
     const refs = s.referrals || {};
     let html = "";
-    if (s.is_vendor && s.referral_code) {
+    if (s.referral_code) {
       html += `<div class="lb-code"><small>Your referral code</small><div class="lb-code-val" onclick="lbCopy('${esc(s.referral_code)}','Referral code copied')">${esc(s.referral_code)}</div><p>Share it with customers and other vendors. You earn every time it is used.</p>
         <div class="lb-code-actions"><button type="button" onclick="lbCopy('${esc(referLink(s.referral_code))}','Referral link copied')"><i class="fa-regular fa-copy"></i> Copy link</button><button type="button" class="alt" onclick="lbShareCode()"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button><button type="button" onclick="lbShareMore()"><i class="fa-solid fa-share-nodes"></i> More</button></div></div>
         <div class="lb-stats"><div class="lb-stat"><small><i class="fa-solid fa-user-plus"></i>Customers</small><b data-count="${refs.referred_customers || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-store"></i>Vendors</small><b data-count="${refs.referred_vendors || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-sitemap"></i>Second level</small><b data-count="${refs.second_level || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-star"></i>Points earned</small><b data-count="${refs.points_earned || 0}">0</b></div></div>`;
     } else {
-      html += `<div class="lb-card"><h3>Refer and earn</h3><p class="lb-sub" style="margin:0">Referral codes belong to vendors. Open your own shop on Levromart to get a code, earn points every time it is used and compete for Vendor of the Week.</p><button type="button" class="btn" style="margin-top:.75rem" onclick="navigate('vendorApply')">Become a vendor</button></div>`;
+      html += `<div class="lb-card"><h3>Refer and earn</h3><p class="lb-sub" style="margin:0">Your referral code is getting ready. Open your own shop on Levromart to get a code, earn points every time it is used and compete for Vendor of the Week.</p><button type="button" class="btn" style="margin-top:.75rem" onclick="navigate('vendorApply')">Become a vendor</button></div>`;
     }
     html += `<div class="lb-card"><h3>How referral points work</h3><p class="lb-sub">Points arrive on their own, nothing to claim.</p><div class="lb-flow">
       <div class="lb-flow-step"><i class="ic fa-solid fa-store"></i><div><strong>A vendor joins with your code</strong><span>Paid once they are verified</span></div><em>+${P("ref_vendor", 50)}</em></div>
@@ -1185,13 +1185,13 @@ function hideLeviFromPanel() {
       <div class="lb-flow-step"><i class="ic fa-solid fa-sitemap"></i><div><strong>Your vendor refers a vendor</strong><span>Second level, paid when verified</span></div><em>+${P("ref2_vendor", 25)}</em></div>
       <div class="lb-flow-step"><i class="ic fa-solid fa-people-arrows"></i><div><strong>Your vendor refers a customer</strong><span>Second level</span></div><em>+${P("ref2_customer", 10)}</em></div>
       <div class="lb-flow-step"><i class="ic fa-solid fa-hashtag"></i><div><strong>Your referral follows our socials</strong><span>Once per platform, after they send their screenshot</span></div><em>+${P("ref_social", 5)}</em></div></div></div>`;
-    if (s.is_vendor && (refs.recent || []).length) {
+    if ((refs.recent || []).length) {
       html += `<div class="lb-card"><h3>Recently joined with your code</h3><div class="lb-mini-list" style="margin-top:.4rem">${refs.recent.map((r) => `<div class="lb-mini"><i class="fa-solid ${r.role === "vendor" ? "fa-store" : "fa-user"}"></i><span>${esc(r.name)} <span class="muted">· ${r.role}</span></span><small>${timeAgo(r.at)}</small></div>`).join("")}</div></div>`;
     }
     if (refs.referred_by) {
       html += `<div class="lb-card"><h3>You joined with a referral</h3><p class="lb-sub" style="margin:0">Referred by <strong>${esc(refs.referred_by)}</strong>.</p></div>`;
     } else {
-      html += `<div class="lb-card"><h3>Have a referral code?</h3><p class="lb-sub">Add it within 7 days of creating your account so the vendor who invited you gets credit.</p><div class="lb-apply"><input id="lbApplyInput" placeholder="Enter code" maxlength="16" autocomplete="off" value="${esc(localStorage.getItem("levro-ref-code") || "")}"><button type="button" class="btn" onclick="lbApplyCode()">Apply</button></div></div>`;
+      html += `<div class="lb-card"><h3>Have a referral code?</h3><p class="lb-sub">Add it within 7 days of creating your account so the person who invited you gets credit.</p><div class="lb-apply"><input id="lbApplyInput" placeholder="Enter code" maxlength="16" autocomplete="off" value="${esc(localStorage.getItem("levro-ref-code") || "")}"><button type="button" class="btn" onclick="lbApplyCode()">Apply</button></div></div>`;
     }
     return html;
   }

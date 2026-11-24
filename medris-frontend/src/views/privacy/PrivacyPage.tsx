@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <div className="legal-page">
       <h2>Privacy Policy</h2>
-      <p className="muted">Last updated: 13 November 2026</p>
+      <p className="muted">Last updated: 24 November 2026</p>
       <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
       <h3>1. What we collect</h3>
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
       <li><strong>Comments, likes and follows:</strong> comments and replies you post, what you like or follow, and your notification preferences for the vendors you follow. Comments and likes are visible to other users.</li>
-      <li><strong>Leaderboard activity:</strong> for vendors, activity points that decide the weekly leaderboard and Vendor of the Week. The winner's business name, logo and products can be shown on the home page.</li>
+      <li><strong>Leaderboard and referral activity:</strong> activity points (for vendors, the points that decide the weekly leaderboard and Vendor of the Week), your personal referral code, and who referred whom. A person who referred you can see your first name and when you joined. The winner's business name, logo and products can be shown on the home page.</li>
       <li><strong>Photos:</strong> profile pictures, vendor product photos, and package/gallery photos you choose to upload.</li>
       <li><strong>Messages and call records:</strong> the messages you send in order conversations, and basic call records (who called whom, when, and whether it was answered, declined or missed). Call audio travels directly between the two devices and is not recorded or stored by Levromart.</li>
       <li><strong>Online status:</strong> while you are using the app we note when you were last active so the person you are chatting with can see that you are online or when you were last seen.</li>
