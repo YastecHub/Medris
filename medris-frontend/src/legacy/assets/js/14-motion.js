@@ -8766,9 +8766,30 @@ window.lvNoImageHtml = function (seed) {
       if (g) host.setAttribute("data-lvst", c.vendor_id); else host.removeAttribute("data-lvst");
     });
   }
+  // A shop's own picture on its storefront does two things (like WhatsApp): a small sheet asks "view updates" or "view profile picture".
+  function chooseStatusOrPicture(el) {
+    var vid = el.getAttribute("data-lvst"), old = document.getElementById("lvspSheet"); if (old) old.remove();
+    var w = document.createElement("div"); w.id = "lvspSheet"; w.className = "lvsp";
+    w.innerHTML = '<div class="lvsp-bd"></div><div class="lvsp-card" role="dialog" aria-label="Profile picture"><span class="lvsp-handle"></span>' +
+      '<button type="button" data-a="updates"><i class="fa-solid fa-circle-play"></i><span>View updates</span></button>' +
+      '<button type="button" data-a="picture"><i class="fa-regular fa-image"></i><span>View profile picture</span></button></div>';
+    document.body.appendChild(w);
+    var close = function () { w.remove(); document.removeEventListener("keydown", key); };
+    var key = function (ev) { if (ev.key === "Escape") close(); };
+    document.addEventListener("keydown", key);
+    w.addEventListener("click", function (ev) {
+      var b = ev.target.closest("button[data-a]");
+      if (!b) { if (ev.target.classList.contains("lvsp-bd")) close(); return; }
+      var a = b.getAttribute("data-a"); close();
+      if (a === "updates") openViewer(vid);
+      else { window.__lvstBypass = true; try { el.click(); } finally { window.__lvstBypass = false; } }
+    });
+  }
   document.addEventListener("click", function (e) {
+    if (window.__lvstBypass) return;
     var el = e.target.closest && e.target.closest("[data-lvst]"); if (!el) return;
-    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); openViewer(el.getAttribute("data-lvst"));
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if (el.classList.contains("storefront-avatar-button")) chooseStatusOrPicture(el); else openViewer(el.getAttribute("data-lvst"));
   }, true);
   // search results: shop rows/cards get the ring too
   function decorateSearch() {

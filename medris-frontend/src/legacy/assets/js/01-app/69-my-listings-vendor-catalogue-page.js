@@ -1944,6 +1944,7 @@ async function deleteSelectedDiscardedItems(){
       b.closest(".lm-row")?.classList.toggle("lm-req", !v && need);
     });
     const stockRow = m.querySelector('[data-lm-open="stock"]'); if (stockRow) stockRow.hidden = svc;
+    syncTrash();
   }
   function open(key) {
     const m = modal(); if (!m || !TITLES[key]) return;
@@ -1951,10 +1952,24 @@ async function deleteSelectedDiscardedItems(){
     m.dataset.lmView = key;
     const t = $("lmSubTitle"); if (t) t.textContent = key === "price" && $("prodIsService")?.checked ? "Price" : TITLES[key];
     m.scrollTop = 0; try { m.querySelector(".modal-content").scrollTop = 0; } catch (_) {}
+    syncTrash();
   }
+  // "Delete all" (trash, top right) shows only on the Varieties page, and only when there is something to delete.
+  function syncTrash() {
+    const m = modal(), b = $("lmSubTrash"); if (!m || !b) return;
+    b.hidden = !(m.dataset.lmView === "variants" && (window.__productVariants || []).length > 0);
+  }
+  window.lmClearVariants = async function () {
+    const n = (window.__productVariants || []).length; if (!n) return;
+    const ok = await showConfirmDialog("Delete all " + n + " variet" + (n === 1 ? "y" : "ies") + "? You can add them again, but their prices and photos will be lost once you save.", { title: "Delete all varieties?", okLabel: "Delete all", danger: true });
+    if (!ok) return;
+    window.__productVariants = [];
+    try { window.__collapsedProductVariants?.clear(); } catch (_) {}
+    renderProductVariantPricing(); syncTrash(); refresh();
+  };
   function close() {
     const m = modal(); if (!m) return;
-    m.dataset.lmView = "main"; refresh(); m.scrollTop = savedScroll;
+    m.dataset.lmView = "main"; refresh(); m.scrollTop = savedScroll; syncTrash();
   }
   function toggleMore() {
     const g = $("lmMoreGroup"), b = $("lmShowMore"); if (!g || !b) return;

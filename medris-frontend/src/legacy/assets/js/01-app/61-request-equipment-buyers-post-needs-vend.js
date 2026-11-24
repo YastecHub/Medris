@@ -149,7 +149,7 @@ async function renderRequestEquipment() {
 
   // One flat page: photos on top, the title, buy or rent, then a short list of rows; each row opens its own page. Every field keeps its id.
   let html = `<div class="rqf" data-rq-view="main">
-    <div class="rqf-top"><h2>Request an item</h2><button type="button" class="rqf-mine" onclick="navigate('myEquipmentRequests')" aria-label="Your requests" title="Your requests">My requests</button></div>
+    <div class="rqf-top"><div class="rqf-ttl"><span class="rq-ic"><svg viewBox='0 0 24 24' width='26' height='26' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 22V12'/><path d='M20.27 18.27 22 20'/><path d='M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559'/><path d='M3.29 7 12 12l8.71-5'/><path d='m7.5 4.27 8.997 5.148'/><circle cx='18.5' cy='16.5' r='2.5'/></svg></span><h2>Request an item</h2></div><button type="button" class="rqf-mine" onclick="navigate('myEquipmentRequests')" aria-label="Your requests" title="Your requests">My requests</button></div>
     <div class="rqf-subtop"><button type="button" class="rqf-subback" onclick="rqClose()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h3 id="rqSubTitle"></h3><button type="button" class="rqf-subdone" onclick="rqClose()">Done</button></div>
     <div id="reqError" class="error-text hidden"></div>
     <div class="rqf-main">

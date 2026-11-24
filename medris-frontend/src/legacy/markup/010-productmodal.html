@@ -1,7 +1,7 @@
 <div id="productModal" class="modal hidden lf-page" data-lm-view="main">
   <div class="modal-content" style="max-width:640px;">
     <div class="lf-top"><button type="button" class="lf-back" onclick="closeProductModal()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="lf-top-copy"><h3 id="productModalTitle">Add New Product</h3><p class="lf-sub">Fill in the basics, add clear photos, then save. Fields marked <b class="lf-req">*</b> are required.</p><p class="lf-saved" aria-live="polite"><i class="fa-solid fa-cloud-arrow-up"></i> <span>Auto-saves as you type</span></p></div><img class="lf-art" alt="" /></div>
-    <div class="lm-subtop"><button type="button" class="lm-subback" onclick="lmClose()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h3 id="lmSubTitle"></h3><button type="button" class="lm-subdone" onclick="lmClose()">Done</button></div>
+    <div class="lm-subtop"><button type="button" class="lm-subback" onclick="lmClose()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h3 id="lmSubTitle"></h3><button type="button" class="lm-subtrash" id="lmSubTrash" hidden onclick="lmClearVariants()" aria-label="Delete all varieties" title="Delete all varieties"><i class="fa-regular fa-trash-can"></i></button><button type="button" class="lm-subdone" onclick="lmClose()">Done</button></div>
     <div id="productDuplicateNotice" class="product-duplicate-notice hidden" role="status" aria-live="polite"></div>
     <div id="productError" class="error-text hidden"></div>
     <div class="lm-main">

@@ -9636,3 +9636,34 @@ html:root:root:root body #app .rqf .rqf-row.rqf-req .rqf-rt b{color:#d93f45}
 html:root:root:root body #app .rqf .rqf-chev{flex:none;color:var(--text-muted);font-size:.85rem}
 html:root:root:root body #app .rqf #postEquipmentRequestBtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:3.1rem;margin:1.4rem 0 0!important;border:0!important;border-radius:999px!important;background:#12a06a!important;color:#fff!important;font-weight:800;font-size:1rem;box-shadow:none!important}
 html:root:root:root body #app .rqf .rqf-seg .theme-option{display:flex!important;align-items:center;justify-content:center}
+
+/* Request page: purple request icon box; photo cloud icons coloured by what is being added (product green, service orange, package blue, request purple) */
+html:root:root:root body #app .rqf .rqf-ttl{display:flex;align-items:center;gap:.7rem;min-width:0}
+html:root:root:root body #app .rqf .rqf-ttl h2{margin:0}
+html:root:root:root body #app .rqf .rqf-ttl .rq-ic{background:#8438e8;color:#fff}
+html:root:root:root body #productModal .photo-dropzone>i{color:#16a34a}
+html:root:root:root body #productModal[data-lf-mode="service"] .photo-dropzone>i{color:#ea580c}
+html:root:root:root body #packageModal .photo-dropzone>i{color:#2563eb}
+html:root:root:root body #app .rqf .rqf-photos .req-drop .rd-ico{background:transparent!important;box-shadow:none!important;color:#8438e8!important;width:auto;height:auto;font-size:2rem}
+html:root:root:root body #app .rqf .rqf-photos .req-drop{border-color:color-mix(in srgb,#8438e8 45%,var(--border))!important}
+/* Varieties page: delete-all trash, top right */
+html:root:root:root body #productModal.lf-page .lm-subtrash{width:2.4rem;height:2.4rem;border:0;background:transparent;color:#dc2626;font-size:1.05rem;border-radius:50%;cursor:pointer}
+html:root:root:root body #productModal.lf-page .lm-subtrash[hidden]{display:none}
+html:root:root:root body #productModal.lf-page .lm-subtrash:active{background:color-mix(in srgb,#dc2626 12%,transparent)}
+
+/* Update ring: purple-to-orange gradient (Instagram style) instead of green; the sheet on a storefront picture asks updates or picture */
+html:root:root:root body .lvst-ring.live{background:linear-gradient(135deg,#8438e8 0%,#c026d3 45%,#f97316 100%)!important}
+html:root:root:root body .lvst-sf-live,html:root:root:root body .lvst-chat-live{position:relative;border-radius:50%;box-shadow:0 0 0 3px var(--bg,#fff),0 0 0 6px #b02fc0!important}
+html:root:root:root body .lvst-sf-live:not(img)::after,html:root:root:root body .lvst-chat-live:not(img)::after{content:"";position:absolute;inset:-6px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#8438e8 0%,#c026d3 45%,#f97316 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);pointer-events:none}
+html:root:root:root body .lvst-sf-live:not(img),html:root:root:root body .lvst-chat-live:not(img){box-shadow:0 0 0 3px var(--bg,#fff)!important}
+html:root:root:root body .lvst-sf-live.lvst-sf-seen,html:root:root:root body .lvst-chat-live.lvst-sf-seen{box-shadow:0 0 0 3px var(--bg,#fff),0 0 0 6px color-mix(in srgb,var(--text) 22%,transparent)!important}
+html:root:root:root body .lvst-sf-live.lvst-sf-seen:not(img)::after,html:root:root:root body .lvst-chat-live.lvst-sf-seen:not(img)::after{background:color-mix(in srgb,var(--text) 22%,transparent)}
+html:root:root:root body .lvst-sf-live.lvst-sf-seen:not(img),html:root:root:root body .lvst-chat-live.lvst-sf-seen:not(img){box-shadow:0 0 0 3px var(--bg,#fff)!important}
+.lvsp{position:fixed;inset:0;z-index:100000;display:flex;align-items:flex-end;justify-content:center}
+.lvsp-bd{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.lvsp-card{position:relative;width:100%;max-width:30rem;background:var(--card,#fff);color:var(--text,#111);border-radius:20px 20px 0 0;padding:.5rem .5rem calc(.8rem + env(safe-area-inset-bottom));animation:lvspUp .22s ease-out}
+.lvsp-handle{display:block;width:2.4rem;height:4px;border-radius:4px;background:color-mix(in srgb,var(--text) 22%,transparent);margin:.2rem auto .5rem}
+.lvsp-card button{display:flex;align-items:center;gap:.9rem;width:100%;padding:.95rem 1rem;border:0;background:transparent;color:inherit;font-size:1rem;font-weight:600;border-radius:12px;cursor:pointer;text-align:left}
+.lvsp-card button:active{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.lvsp-card button i{width:1.6rem;text-align:center;font-size:1.2rem;color:#8438e8}
+@keyframes lvspUp{from{transform:translateY(100%)}to{transform:none}}
