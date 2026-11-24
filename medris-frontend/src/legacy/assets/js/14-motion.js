@@ -104,8 +104,9 @@
     set:function(v){
       var g=gen(), vw=view(), html=window.lvSlimImgs(String(v), vw); v=html;
       var sameNav=(g===last.gen&&vw===last.view);
-      // the cached page and the freshly loaded page are identical: leave the screen exactly as it is
-      if(sameNav&&html===last.html) return;
+      // the cached page and the freshly loaded page are identical: leave the screen exactly as it is. The same goes for a live refresh of the
+      // page already open (new data arrived, or the live connection came back): nothing changed, so nothing moves.
+      if((sameNav||(vw===last.view&&window.__lvNavPush===false&&!goingBack))&&html===last.html&&!window.__lvForceSlide) return;
       if(last.forced&&html===last.html&&vw==="search"){ last.forced=false; return; }
       var prevView=last.view, self=this;
       KEEP.forEach(function(k){ if(html.indexOf(k.sel.slice(1))<0) { delete stash[k.sel]; return; } var n=self.querySelector(k.sel); if(n) stash[k.sel]={node:n,sig:k.sig(n),scroll:k.scroll(n)}; });   // only read the old page (which forces it to be laid out) when the new one will reuse that part
@@ -119,7 +120,9 @@
       installSmart(this);
       if(reduce||!this.animate||window.__lvSwipeNav) return;
       if(window.__lvForceSlide){ window.__lvForceSlide=false; last.forced=true; animate(this,[{opacity:.2,transform:"translateX(32%)"},{opacity:1,transform:"none"}],230); goingBack=false; return; }
-      if(sameNav){ animate(this,[{opacity:.6},{opacity:1}],150); return; }
+      // a refresh of the page already open (live data, same page, not a tap or a back move): the content just updates in place.
+      // It used to fade or slide in again every time, which read as the page twitching and flying away and back.
+      if(sameNav||(vw===prevView&&window.__lvNavPush===false&&!goingBack)) return;
       var chat=document.body&&document.body.classList.contains("chat-full-page");
       var tabSwitch=!!(TABS[prevView]&&TABS[vw]);
       if(chat) animate(this,[{opacity:0},{opacity:1}],180);
@@ -8759,6 +8762,7 @@ window.lvNoImageHtml = function (seed) {
       var av = row.querySelector(".avatar-circle, img, .avatar-fallback, [class*='avatar']");
       if (!c || !c.vendor_id || !av) return;
       var g = liveFor(c.vendor_id), host = av.closest("button,span,div") || av;
+      if (host === row || host.querySelector("strong,b,h3,h4,small,p")) host = av;
       host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
       if (g) host.setAttribute("data-lvst", c.vendor_id); else host.removeAttribute("data-lvst");
     });
@@ -8775,6 +8779,9 @@ window.lvNoImageHtml = function (seed) {
       if (!vid) return;
       var av = row.querySelector(".avatar-circle, img, [class*='avatar'], [class*='logo'], .vd-initials"); if (!av) return;
       var host = av.closest("span,div,button") || av, g = liveFor(vid);
+      // the ring belongs on the little picture only: when the picture sits straight in the row (like the Hall of fame), the nearest box is the
+      // whole row, and the ring was drawn as a big oval around the shop's name and points
+      if (host === row || host.querySelector("strong,b,h3,h4,small,p,button")) host = av;
       host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
     });
   }
@@ -9158,6 +9165,8 @@ window.lvNoImageHtml = function (seed) {
     }
     var pen = document.getElementById("lvVdPen");
     var isVendor = false; try { isVendor = !!(typeof vendor !== "undefined" && vendor && vendor.id); } catch (_) {}
+    // signed in but the account is still loading: leave the pen and the layout as they are, never flip a shop into a customer for a moment
+    try { if (!isVendor && typeof session !== "undefined" && session && typeof profile !== "undefined" && !profile && pen) return; } catch (_) {}
     if (!pen) {
       var right = document.querySelector(".header-right"); if (!right) return;
       pen = document.createElement("button"); pen.type = "button"; pen.id = "lvVdPen"; pen.className = "icon-btn lv-vd-pen"; pen.setAttribute("aria-label", "My updates"); pen.title = "My updates"; pen.innerHTML = '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H7.5A3.5 3.5 0 0 0 4 7.5v9A3.5 3.5 0 0 0 7.5 20h9a3.5 3.5 0 0 0 3.5-3.5V13"/><path d="M18.4 3.6a1.9 1.9 0 0 1 2.7 2.7l-8.1 8.1-3.6.9.9-3.6z" fill="currentColor" fill-opacity=".14"/></svg>';

@@ -108,10 +108,16 @@ async function refreshAuthState() {
     }
   }
 
-  profile = null;
-  vendor = null;
-  favoriteIds = new Set();
-  packageFavoriteIds = new Set();
+  // While the same account reloads, keep what this phone already knows about it. Clearing it first made a shop look like a
+  // customer for a moment (the pen and the "add a status" plus vanished and the page flipped to the customer version).
+  const prevProfile = profile, prevVendor = vendor;
+  const sameAccount = !!(session && prevProfile && prevProfile.id === session.user.id);
+  if (!sameAccount) {
+    profile = null;
+    vendor = null;
+    favoriteIds = new Set();
+    packageFavoriteIds = new Set();
+  }
   if (session) {
     const userId = session.user.id;
 
@@ -135,12 +141,12 @@ async function refreshAuthState() {
       [profileRes, vendorRes, favsRes, pkgFavsRes] = await loadAccount();
     }
     // A slow or failed read must never flip a shop into a customer (or back): keep what this phone already knew about the same account.
-    profile = profileRes.data || (profileRes.error && profile && profile.id === userId ? profile : null);
+    profile = profileRes.data || (profileRes.error && prevProfile && prevProfile.id === userId ? prevProfile : null);
     if (freshSignIn && resolvedRole && profile) { profile.role = resolvedRole; }
     let vendorRow = vendorRes.data;
     if (!vendorRow && vendorRes.error && profile && profile.role !== "admin") {
       try { const again = await sb.from("vendors").select("*").eq("user_id", userId).is("deleted_at", null).maybeSingle(); if (!again.error) vendorRow = again.data; } catch (_) {}
-      if (!vendorRow && vendor && vendor.user_id === userId) vendorRow = vendor;
+      if (!vendorRow && prevVendor && prevVendor.user_id === userId) vendorRow = prevVendor;
     }
     vendor = profile?.role === "admin" ? null : vendorRow;
     // profile.role comes straight from the users row, which

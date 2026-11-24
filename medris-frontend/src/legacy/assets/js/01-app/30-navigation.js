@@ -244,6 +244,7 @@ function showCommissionPaywall(owedAmount) {
 
 async function navigate(view, params = {}, pushHistory = true) {
   if (await levroCommissionGate(view)) return;
+  window.__lvNavPush = pushHistory;   // false = a refresh or a back move; the page-change animation reads this
   // every change of page slides: forwards (from the right) to go on, backwards (from the left) to go back; between the bottom
   // tabs it follows their order (Home, Vendors, Request, Notifications, Orders)
   const __TAB = { home: 0, vendors: 1, vendorsMap: 1, requestEquipment: 2, vendorRequests: 2, notifications: 3, buyerOrders: 4, vendorOrders: 4 };
