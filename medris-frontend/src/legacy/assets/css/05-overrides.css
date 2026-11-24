@@ -9532,3 +9532,8 @@ html:root:root:root body #app .vendor-profile-header-card .lvme-pic-wrap{positio
 html:root:root:root body #app .vendor-profile-header-card .lvme-pic-v{position:absolute;left:1rem;top:-48px;display:block;line-height:0}
 html:root:root:root body #app .vendor-profile-header-card .lvme-pic-v .vendor-profile-header-avatar{position:static!important;margin:0!important;transform:none!important}
 html:root:root:root body #app .vendor-profile-header-card .lvme-body{padding:56px 1.1rem 1.15rem!important;position:relative;z-index:1;margin:0!important;background:transparent!important}
+
+/* ===== Transaction history: refunds get a blue 3D check (money received stays green); no grey frame behind the two filters ===== */
+html:root:root:root body .lw-ico:has(.fa-rotate-left){background-image:url(/icons3d/lv/tx-refund.webp)!important}
+html:root:root:root body .lvwh-page .lwh-sel{background:transparent!important;box-shadow:none!important}
+.lv-hg[hidden]{display:none!important}

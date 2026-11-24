@@ -145,7 +145,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status), items:order_items(*,variant:product_variants(name),product:products(name,photos,is_service)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by, attachments), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status, order_expiry_minutes), items:order_items(*,variant:product_variants(name),product:products(name,photos,is_service)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by, attachments), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -862,12 +862,22 @@ async function updateOrderStatus(orderId, newStatus) {
 // Hourglass for a pending order: the sand runs from the top to the bottom over the 30 minutes the shop has to confirm,
 // with the minutes left underneath. When it is empty the order is cancelled by the server.
 const LV_AUTO_CANCEL_MIN = 30; // default; each shop can choose its own (vendors.order_expiry_minutes, 0 = never)
+// What each shop chose is remembered, so a redraw of the page never shows the hourglass again after it was removed (and never guesses).
+window.__lvExpiryCache = window.__lvExpiryCache || {};
 function lvHourglassHtml(order, isVendor) {
   if (!order?.created_at) return "";
-  const mins = Number(order.vendor?.order_expiry_minutes ?? LV_AUTO_CANCEL_MIN);
-  // the hourglass is only for shops that choose a time in hours; "never" and days get no hourglass
-  if (!(mins > 0) || mins >= 1440) return "";
-  return `<div class="lv-hg" data-vendor="${esc(order.vendor_id || order.vendor?.id || "")}" data-created="${esc(order.created_at)}" data-min="${mins}" role="timer" aria-live="off">
+  const vid = String(order.vendor_id || order.vendor?.id || "");
+  let mins = null;
+  if (order.vendor && Object.prototype.hasOwnProperty.call(order.vendor, "order_expiry_minutes")) {
+    mins = Number(order.vendor.order_expiry_minutes ?? LV_AUTO_CANCEL_MIN);
+    if (vid) window.__lvExpiryCache[vid] = mins;
+  } else if (vid && typeof window.__lvExpiryCache[vid] === "number") mins = window.__lvExpiryCache[vid];
+  const known = typeof mins === "number" && !Number.isNaN(mins);
+  // the hourglass is only for shops that choose a time in hours; "never" and days get no hourglass at all
+  if (known && (!(mins > 0) || mins >= 1440)) return "";
+  const startMin = known ? mins : LV_AUTO_CANCEL_MIN;
+  // when the shop's choice is not known yet the hourglass waits out of sight until it is, instead of showing and then vanishing
+  return `<div class="lv-hg"${known ? ' data-loaded="1"' : " hidden"} data-vendor="${esc(vid)}" data-created="${esc(order.created_at)}" data-min="${startMin}" role="timer" aria-live="off">
     <svg viewBox="0 0 60 84" width="44" height="62" aria-hidden="true" class="hg-svg">
       <defs><clipPath id="hgIn${esc(String(order.id).slice(0,6))}"><path d="M12 6H48V19C48 30 40 36 36 42C40 48 48 54 48 65V78H12V65C12 54 20 48 24 42C20 36 12 30 12 19Z"/></clipPath></defs>
       <g class="hg-body">
@@ -886,11 +896,11 @@ async function lvHourglassLoadShopTime() {
     el.dataset.loaded = "1";
     try {
       const r = await sb.from("vendors").select("order_expiry_minutes").eq("id", el.dataset.vendor).maybeSingle();
-      const m = r?.data?.order_expiry_minutes;
-      if (typeof m === "number" && m !== Number(el.dataset.min)) {
-        if (m === 0 || m >= 1440) el.remove();   // never / days: no hourglass
-        else el.dataset.min = String(m);
-      }
+      const row = r?.data; if (!row) { el.remove(); continue; }
+      const m = typeof row.order_expiry_minutes === "number" ? row.order_expiry_minutes : LV_AUTO_CANCEL_MIN;
+      window.__lvExpiryCache[el.dataset.vendor] = m;
+      if (m === 0 || m >= 1440) el.remove();   // never / days: no hourglass
+      else { el.dataset.min = String(m); el.hidden = false; }
     } catch (_) {}
   }
 }

@@ -1507,7 +1507,8 @@
   const DRAFT_PREFIX='levromart-listing-form-draft-v5';
   const draftTimers=new Map();
   const draftRevisions=new Map();
-  function draftKey(kind='product', id){return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${kind}:${id||'new'}`}
+  // A service uses the same form as a product, but keeps its own draft: what is typed for a product never shows up in a service (and the other way round).
+  function draftKey(kind='product', id){const svc=kind==='product'&&!!byId('prodIsService')?.checked;return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${svc?'service':kind}:${id||'new'}`}
   function listingModalKind(root){return root?.id==='packageModal'?'package':'product'}
   function listingModalIdentity(root){if(!root)return 'new'; const kind=listingModalKind(root); return kind==='product'?(editingProductId||'new'):(editingPackageId||'new')}
   function isListingForm(el){return !!el?.closest?.('#productModal,#packageModal') && !!document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)')}
@@ -1548,6 +1549,8 @@
     if(!raw)return;
     let d;try{d=JSON.parse(raw)}catch(_){return}
     if(!d?.values||d.kind!==kind||String(d.id||'new')!==String(id||'new'))return;
+    // an older draft saved before products and services were kept apart: only use it for the kind it really belongs to
+    if(kind==='product'&&!!d.values.prodIsService!==!!byId('prodIsService')?.checked)return;
     // For an existing listing, the database is authoritative. Do not let an
     // older autosaved draft (which may contain an empty/partial variety set)
     // overwrite varieties that were just loaded from Supabase.
