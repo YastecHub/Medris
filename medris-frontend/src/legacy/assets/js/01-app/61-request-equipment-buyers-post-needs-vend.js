@@ -147,32 +147,45 @@ async function renderRequestEquipment() {
     (async () => { if (!window.__categories?.length) { const { data } = await levroData.catalogue.categories(); window.__categories = data || []; } })(),
   ]);
 
-  let html = `${lvPageHero("request")}<div class="rq-head"><div class="rq-title"><span class="rq-ic"><svg viewBox='0 0 24 24' width='26' height='26' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 22V12'/><path d='M20.27 18.27 22 20'/><path d='M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559'/><path d='M3.29 7 12 12l8.71-5'/><path d='m7.5 4.27 8.997 5.148'/><circle cx='18.5' cy='16.5' r='2.5'/></svg></span><div><h2>Request an item</h2><p>Tell vendors what you need. They come to you with offers.</p></div></div><button type="button" class="rq-mine" onclick="navigate('myEquipmentRequests')" aria-label="Your requests" title="Your requests"><i class="fa-solid fa-list-check"></i></button></div>
-    <div class="card request-equipment-page rq-form" style="max-width:520px;">
-      <div id="reqError" class="error-text hidden"></div>
-      <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
-      <label>I want to</label>
-      <div class="flex">
+  // One flat page: photos on top, the title, buy or rent, then a short list of rows; each row opens its own page. Every field keeps its id.
+  let html = `<div class="rqf" data-rq-view="main">
+    <div class="rqf-top"><h2>Request an item</h2><button type="button" class="rqf-mine" onclick="navigate('myEquipmentRequests')" aria-label="Your requests" title="Your requests">My requests</button></div>
+    <div class="rqf-subtop"><button type="button" class="rqf-subback" onclick="rqClose()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h3 id="rqSubTitle"></h3><button type="button" class="rqf-subdone" onclick="rqClose()">Done</button></div>
+    <div id="reqError" class="error-text hidden"></div>
+    <div class="rqf-main">
+      <p class="rqf-hint">Tell shops what you need. They send you offers, you pick the best one.</p>
+      <div class="rqf-photos">
+        <div id="reqPhotoBox" class="req-photos empty"><button type="button" class="req-drop" onclick="document.getElementById('reqPhotoInput').click()"><span class="rd-ico"><i class="fa-solid fa-cloud-arrow-up"></i></span><b>Add photos</b><small>Up to 4 · helps vendors send the right offer</small></button></div>
+        <input id="reqPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="reqPhotosPicked(event)" />
+      </div>
+      <div class="rqf-name"><label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" /></div>
+      <div class="rqf-seg" role="group" aria-label="I want to">
         <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="buy" checked onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Buy</label>
         <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
       </div>
-      <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
-      <label>Photos <span class="muted" style="font-weight:500">(optional)</span></label>
-      <div id="reqPhotoBox" class="req-photos empty"><button type="button" class="req-drop" onclick="document.getElementById('reqPhotoInput').click()"><span class="rd-ico"><i class="fa-solid fa-cloud-arrow-up"></i></span><b>Add photos</b><small>Up to 4 · helps vendors send the right offer</small></button></div>
-      <input id="reqPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="reqPhotosPicked(event)" />
-      <div class="flex">
-        <div style="flex:1;"><label>Sector</label><button type="button" class="req-sector-picker" id="reqSectorPicker" onclick="openRequestSectorPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqSectorLabel">Any</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqSector" value=""></div>
-        <div style="flex:1;"><label>Category *</label><div class="req-category-picker-wrap"><button type="button" class="req-category-picker" id="reqCategoryPicker" onclick="openRequestCategoryPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqCategoryLabel">Choose one…</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqCategory" value=""></div></div>
-      </div>
-      <div class="flex">
-        <div style="flex:1;"><label>City</label><input id="reqCity" value="Lagos" /></div>
-      </div>
-      <div id="reqDatesWrap">
-        <label>Needed from</label><input type="date" id="reqFrom" style="width:100%;" />
-        <label>Needed to</label><input type="date" id="reqTo" style="width:100%;" />
+      <div class="rqf-rows">
+        <button type="button" class="rqf-row" data-rq-open="desc" onclick="rqOpen('desc')"><span class="rqf-ri"><i class="fa-solid fa-align-left"></i></span><span class="rqf-rt"><small>More details</small><b data-rq-sum="desc"></b></span><i class="fa-solid fa-chevron-right rqf-chev" aria-hidden="true"></i></button>
+        <button type="button" class="rqf-row" data-rq-open="category" onclick="rqOpen('category')"><span class="rqf-ri"><i class="fa-solid fa-layer-group"></i></span><span class="rqf-rt"><small>Category</small><b data-rq-sum="category"></b></span><i class="fa-solid fa-chevron-right rqf-chev" aria-hidden="true"></i></button>
+        <button type="button" class="rqf-row" data-rq-open="city" onclick="rqOpen('city')"><span class="rqf-ri"><i class="fa-solid fa-location-dot"></i></span><span class="rqf-rt"><small>City</small><b data-rq-sum="city"></b></span><i class="fa-solid fa-chevron-right rqf-chev" aria-hidden="true"></i></button>
+        <button type="button" class="rqf-row" data-rq-open="dates" hidden onclick="rqOpen('dates')"><span class="rqf-ri"><i class="fa-solid fa-calendar-days"></i></span><span class="rqf-rt"><small>Dates</small><b data-rq-sum="dates"></b></span><i class="fa-solid fa-chevron-right rqf-chev" aria-hidden="true"></i></button>
       </div>
       <button type="button" class="btn" id="postEquipmentRequestBtn" style="margin-top:0.6rem;" aria-label="Post request">Post request</button>
-    </div>`;
+    </div>
+    <div class="rqf-sec" data-rq="desc">
+      <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
+    </div>
+    <div class="rqf-sec" data-rq="category">
+      <div class="rqf-pair"><div style="flex:1;"><label>Sector</label><button type="button" class="req-sector-picker" id="reqSectorPicker" onclick="openRequestSectorPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqSectorLabel">Any</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqSector" value=""></div></div>
+      <div class="rqf-pair"><div style="flex:1;"><label>Category *</label><div class="req-category-picker-wrap"><button type="button" class="req-category-picker" id="reqCategoryPicker" onclick="openRequestCategoryPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqCategoryLabel">Choose one…</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqCategory" value=""></div></div></div>
+    </div>
+    <div class="rqf-sec" data-rq="city">
+      <div style="flex:1;"><label>City</label><input id="reqCity" value="Lagos" /></div>
+    </div>
+    <div class="rqf-sec" data-rq="dates" id="reqDatesWrap">
+      <label>Needed from</label><input type="date" id="reqFrom" style="width:100%;" />
+      <label>Needed to</label><input type="date" id="reqTo" style="width:100%;" />
+    </div>
+  </div>`;
   setTimeout(updateRequestFormFields, 0);
   window.__reqPhotos = [];
   window.__reqDraftPhotos = [];
@@ -729,3 +742,56 @@ document.addEventListener("lv-spot-changed", () => {
   try { window.lvBand3Winner && window.lvBand3Winner(); } catch (_) {}
   try { window.lvBandWinner && window.lvBandWinner(); } catch (_) {}
 });
+
+/* ---- Request an item: the flat page of rows. Each row opens its own page; every field keeps its id, so posting and drafts work as before. ---- */
+(function () {
+  const TITLES = { desc: "More details", category: "Category", city: "City", dates: "Dates" };
+  const $ = (id) => document.getElementById(id);
+  const root = () => document.querySelector("#app .rqf");
+  let savedY = 0, tick = 0;
+  function summaries() {
+    const s = {};
+    const d = ($("reqDesc")?.value || "").trim().replace(/\s+/g, " ");
+    s.desc = d.length > 46 ? d.slice(0, 45) + "…" : d || "Optional";
+    const sec = ($("reqSectorLabel")?.textContent || "").trim(), cat = $("reqCategory")?.value ? ($("reqCategoryLabel")?.textContent || "").trim() : "";
+    s.category = [sec && sec !== "Any" ? sec : "", cat].filter(Boolean).join(" · ");
+    s.city = ($("reqCity")?.value || "").trim();
+    const f = $("reqFrom")?.value, t = $("reqTo")?.value;
+    s.dates = f || t ? [f, t].filter(Boolean).join(" → ") : "";
+    return s;
+  }
+  function refresh() {
+    const r = root(); if (!r) return;
+    const s = summaries();
+    r.querySelectorAll("[data-rq-sum]").forEach((b) => {
+      const k = b.dataset.rqSum, need = k === "category" || k === "dates", v = s[k];
+      const t = v || (need ? "Required" : "Add a city");
+      if (b.textContent !== t) b.textContent = t;
+      b.closest(".rqf-row")?.classList.toggle("rqf-req", !v && need);
+    });
+    const dRow = r.querySelector('[data-rq-open="dates"]'), dSec = $("reqDatesWrap");
+    if (dRow && dSec) dRow.hidden = dSec.classList.contains("hidden");
+  }
+  function open(key) {
+    const r = root(); if (!r || !TITLES[key]) return;
+    if (r.dataset.rqView === "main") savedY = window.scrollY || 0;
+    r.dataset.rqView = key;
+    const t = $("rqSubTitle"); if (t) t.textContent = TITLES[key];
+    try { window.scrollTo(0, 0); } catch (_) {}
+  }
+  function close() { const r = root(); if (!r) return; r.dataset.rqView = "main"; refresh(); try { window.scrollTo(0, savedY); } catch (_) {} }
+  window.rqOpen = open; window.rqClose = close; window.rqRefresh = refresh;
+  // a check that fails on a field inside a closed page (say the category) focuses it: open that page first, so the message is seen
+  const prevFocus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function () {
+    try {
+      const r = root(), sec = r && this.closest && this.closest(".rqf-sec[data-rq]");
+      if (sec && r.contains(this) && r.dataset.rqView !== sec.dataset.rq) open(sec.dataset.rq);
+    } catch (_) {}
+    return prevFocus.apply(this, arguments);
+  };
+  const soon = (e) => { if (!e.target.closest || !e.target.closest(".rqf")) return; cancelAnimationFrame(tick); tick = requestAnimationFrame(refresh); };
+  ["input", "change", "click"].forEach((t) => document.addEventListener(t, soon, true));
+  setInterval(() => { if (!document.hidden && root()) refresh(); }, 700);   // catches values filled in by code (the pickers, a restored draft)
+  new MutationObserver(() => { if (root() && !root().__rq) { root().__rq = true; refresh(); } }).observe(document.body, { childList: true, subtree: true });
+})();

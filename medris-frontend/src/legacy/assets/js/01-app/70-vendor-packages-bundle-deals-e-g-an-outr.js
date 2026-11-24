@@ -295,3 +295,79 @@ async function deletePackage(id) {
   navigate(currentView === "vendorProducts" ? "vendorProducts" : "vendorPackages", {}, false);
 }
 
+
+/* ---- Add / Edit package: the same flat page of rows as products and services; each row opens its own page ----
+   Only the layout changed. Every field keeps its id, so saving, drafts and validation work exactly as before. */
+(function () {
+  const TITLES = { desc: "Description", price: "Price", items: "What is inside", billing: "Billing", delivery: "Delivery", more: "Likes and comments" };
+  const $ = (id) => document.getElementById(id);
+  const modal = () => $("packageModal");
+  let savedScroll = 0, tick = 0;
+  const money = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? "₦" + n.toLocaleString("en-NG", { maximumFractionDigits: 2 }) : ""; };
+  function summaries() {
+    const s = {};
+    const desc = ($("pkgDesc")?.value || "").trim().replace(/\s+/g, " ");
+    s.desc = desc.length > 46 ? desc.slice(0, 45) + "…" : desc || "Optional";
+    s.price = money($("pkgPrice")?.value);
+    const n = document.querySelectorAll("#pkgItemsList .pkg-item-check:checked").length;
+    s.items = n ? n + (n === 1 ? " product" : " products") : "";
+    s.billing = $("pkgBillingModel")?.value === "monthly" ? "Monthly · ₦999 a month" : "Commission on sales";
+    s.delivery = "Free, flat fee or per km, by campus";
+    const lv = $("pkgLikeVisibility"); const lt = lv && lv.selectedOptions[0] ? lv.selectedOptions[0].textContent.trim() : "";
+    s.more = ($("pkgAllowComments")?.checked ? "Comments on" : "Comments off") + (lt ? " · Likes: " + lt : "");
+    return s;
+  }
+  function refresh() {
+    const m = modal(); if (!m || m.classList.contains("hidden")) return;
+    const s = summaries();
+    m.querySelectorAll("[data-lm-sum]").forEach((b) => {
+      const k = b.dataset.lmSum, need = k === "price" || k === "items", v = s[k];
+      const t = v || (need ? "Required" : "");
+      if (b.textContent !== t) b.textContent = t;
+      b.closest(".lm-row")?.classList.toggle("lm-req", !v && need);
+    });
+    const dRow = m.querySelector('[data-lm-open="delivery"]'), dSec = $("pkgDeliverySec");
+    if (dRow && dSec) dRow.hidden = dSec.classList.contains("hidden");
+  }
+  function open(key) {
+    const m = modal(); if (!m || !TITLES[key]) return;
+    if (m.dataset.lmView === "main") savedScroll = m.scrollTop || 0;
+    m.dataset.lmView = key;
+    const t = $("lmpSubTitle"); if (t) t.textContent = TITLES[key];
+    m.scrollTop = 0; try { m.querySelector(".modal-content").scrollTop = 0; } catch (_) {}
+  }
+  function close() { const m = modal(); if (!m) return; m.dataset.lmView = "main"; refresh(); m.scrollTop = savedScroll; }
+  function toggleMore() {
+    const g = $("lmpMoreGroup"), b = $("lmpShowMore"); if (!g || !b) return;
+    const show = g.hidden; g.hidden = !show;
+    b.setAttribute("aria-expanded", String(show));
+    const sp = b.querySelector("span"); if (sp) sp.textContent = show ? "Show less" : "Show more";
+    const ic = b.querySelector("i"); if (ic) ic.className = "fa-solid " + (show ? "fa-chevron-up" : "fa-chevron-down");
+  }
+  window.lmpOpen = open; window.lmpClose = close; window.lmpToggleMore = toggleMore; window.lmpRefresh = refresh;
+  // a check that fails on a field inside a closed page focuses it: open that page first, so the message is seen
+  const prevFocus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function () {
+    try {
+      const m = modal(), sec = m && this.closest && this.closest(".lm-sec[data-lm]");
+      if (sec && m.contains(this) && m.dataset.lmView !== sec.dataset.lm) open(sec.dataset.lm);
+    } catch (_) {}
+    return prevFocus.apply(this, arguments);
+  };
+  function init() {
+    const m = modal(); if (!m || m.__lm) return !!m;
+    m.__lm = true;
+    const onOpen = () => {
+      if (m.classList.contains("hidden")) return;
+      if (m.dataset.lmView !== "main") m.dataset.lmView = "main";
+      const g = $("lmpMoreGroup"); if (g && !g.hidden) toggleMore();
+      savedScroll = 0; refresh();
+    };
+    new MutationObserver(onOpen).observe(m, { attributes: true, attributeFilter: ["class"] });
+    const soon = () => { cancelAnimationFrame(tick); tick = requestAnimationFrame(refresh); };
+    m.addEventListener("input", soon, true); m.addEventListener("change", soon, true); m.addEventListener("click", soon, true);
+    setInterval(() => { if (!m.classList.contains("hidden") && !document.hidden) refresh(); }, 700);
+    return true;
+  }
+  if (!init()) { const w = setInterval(() => { if (init()) clearInterval(w); }, 500); }
+})();
