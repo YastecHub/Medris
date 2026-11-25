@@ -8741,6 +8741,8 @@ window.lvNoImageHtml = function (seed) {
   }
   window.lvStatusOpen = openPage; window.lvStatusAdd = openAdd;
   /* ---- the same ring on a shop's picture on its storefront and in chats: tap it to see the status ---- */
+  // The ring belongs on a small round picture only; never on a product photo or any big box.
+  function ringOK(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.width <= 120 && r.height <= 120; }
   function liveFor(vid) { var g = groups(cache.rows).filter(function (x) { return x.id === vid; })[0]; return g || null; }
   function decorate() {
     if (Date.now() - cache.at > 60000) { load(false).then(decorate); return; }
@@ -8762,7 +8764,7 @@ window.lvNoImageHtml = function (seed) {
       if (!c || !c.vendor_id || !av) return;
       var g = liveFor(c.vendor_id), host = av.closest("button,span,div") || av;
       if (host === row || host.querySelector("strong,b,h3,h4,small,p")) host = av;
-      host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
+      g = g && ringOK(host) ? g : null; host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
       if (g) host.setAttribute("data-lvst", c.vendor_id); else host.removeAttribute("data-lvst");
     });
   }
@@ -8802,7 +8804,7 @@ window.lvNoImageHtml = function (seed) {
       // the ring belongs on the little picture only: when the picture sits straight in the row (like the Hall of fame), the nearest box is the
       // whole row, and the ring was drawn as a big oval around the shop's name and points
       if (host === row || host.querySelector("strong,b,h3,h4,small,p,button")) host = av;
-      host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
+      g = g && ringOK(host) ? g : null; host.classList.toggle("lvst-chat-live", !!g); host.classList.toggle("lvst-sf-seen", !!g && !g.unseen);
     });
   }
   var dt = 0; new MutationObserver(function () { if (dt) return; dt = setTimeout(function () { dt = 0; decorate(); try { decorateSearch(); } catch (_) {} }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
