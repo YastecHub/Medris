@@ -1861,12 +1861,12 @@
     opts = opts || {};
     var old = document.getElementById("lvLocPick"); if (old) old.remove();
     var w = document.createElement("div"); w.id = "lvLocPick"; w.className = "lvlp";
-    var school = opts.school || campusName();
+    var school = opts.noSchool ? "" : (opts.school || campusName());
     w.innerHTML = '<div class="lvlp-map" id="lvlpMap"></div><div class="lvlp-pin" aria-hidden="true"><i class="fa-solid fa-location-dot"></i></div>' +
-      '<div class="lvlp-top"><button type="button" class="lvlp-x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><div class="lvlp-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="lvlpQ" placeholder="Search your school or area" value="' + esc2(school) + '" autocomplete="off"></div></div>' +
-      '<div class="lvlp-card"><strong>Set your shop location</strong><p>Drag the map so the pin sits exactly where your shop is. This stays your location until you change it yourself.</p>' +
+      '<div class="lvlp-top"><button type="button" class="lvlp-x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><div class="lvlp-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="lvlpQ" placeholder="' + esc2(opts.placeholder || "Search your school or area") + '" value="' + esc2(school) + '" autocomplete="off"></div></div>' +
+      '<div class="lvlp-card"><strong>' + esc2(opts.title || "Set your shop location") + '</strong><p>' + esc2(opts.body || "Drag the map so the pin sits exactly where your shop is. This stays your location until you change it yourself.") + '</p>' + (opts.shop ? '<p class="lvlp-dist" id="lvlpDist"></p>' : "") +
       '<div class="lvlp-row"><button type="button" class="lvlp-alt" id="lvlpMe"><i class="fa-solid fa-location-crosshairs"></i> Use my location now</button>' + (school ? '<button type="button" class="lvlp-alt" id="lvlpSchool"><i class="fa-solid fa-graduation-cap"></i> My school</button>' : "") + '</div>' +
-      '<button type="button" class="lvlp-save" id="lvlpSave"><i class="fa-solid fa-check"></i> Save this location</button></div>';
+      '<button type="button" class="lvlp-save" id="lvlpSave"><i class="fa-solid fa-check"></i> ' + esc2(opts.saveLabel || "Save this location") + '</button></div>';
     document.body.appendChild(w); document.documentElement.style.overflow = "hidden";
     var map = null, close = function () { try { map && map.remove(); } catch (_) {} w.remove(); document.documentElement.style.overflow = ""; };
     w.querySelector(".lvlp-x").onclick = close;
@@ -1875,6 +1875,12 @@
       var start = opts.lat != null && opts.lng != null ? [Number(opts.lat), Number(opts.lng)] : [6.5244, 3.3792];
       map = window.L.map("lvlpMap", { zoomControl: false, attributionControl: true, tap: false }).setView(start, opts.lat != null ? 17 : 12);
       map.attributionControl.setPrefix(false);
+      if (opts.shop && opts.shop.lat != null) {
+        var distEl = w.querySelector("#lvlpDist"), hav = typeof haversineKm === "function" ? haversineKm : null;
+        var showDist = function () { var c = map.getCenter(); if (!distEl || !hav) return; var km = hav(c.lat, c.lng, Number(opts.shop.lat), Number(opts.shop.lng)); distEl.innerHTML = '<i class="fa-solid fa-route"></i> About <b>' + km.toFixed(2) + ' km</b> from the shop in a straight line'; };
+        map.on("move", showDist); showDist();
+        window.L.circleMarker([Number(opts.shop.lat), Number(opts.shop.lng)], { radius: 7, color: "#fff", weight: 2, fillColor: "#16a34a", fillOpacity: 1 }).addTo(map).bindTooltip("The shop");
+      }
       (typeof addBasemapTileLayer === "function" ? addBasemapTileLayer(map) : window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map));
       if (opts.lat == null && school) geocode(school).then(function (g) { if (g) go(g.lat, g.lng, 16); });
     });
